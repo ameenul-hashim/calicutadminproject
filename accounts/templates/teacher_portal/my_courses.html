@@ -8,17 +8,26 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        :root { --sidebar-width: 280px; }
         body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
-        .dashboard-container { display: flex; min-height: 100vh; }
-        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column; }
-        .logo-area { font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem; }
-        .nav-list { list-style: none; padding: 0; flex: 1; }
-        .nav-link { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; font-weight: 500; margin-bottom: 0.25rem; }
-        .nav-link:hover { background: #f1f5f9; color: #6366f1; }
-        .nav-link.active { background: #eef2ff; color: #6366f1; }
-        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .main-content { max-width: 1200px; margin: 0 auto; padding: 2rem 3rem; }
         
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1rem;
+            background: white;
+            color: #64748b;
+            text-decoration: none;
+            border-radius: 0.75rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+            margin-bottom: 2rem;
+        }
+        .back-btn:hover { background: #f1f5f9; color: #1e293b; border-color: #cbd5e1; }
+
         .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
         .course-card { background: white; border-radius: 1.25rem; overflow: hidden; border: 1px solid #e2e8f0; transition: transform 0.2s; }
         .course-card:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
@@ -33,24 +42,15 @@
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <aside class="sidebar">
-            <div class="logo-area">EduStream</div>
-            <nav class="nav-list">
-                <a href="{% url 'teacher_dashboard' %}" class="nav-link">🏠 Dashboard</a>
-                <a href="{% url 'my_courses' %}" class="nav-link active">📚 My Courses</a>
-                <a href="{% url 'teacher_explore' %}" class="nav-link">🌐 Explore Peer Courses</a>
-                <!-- Future features -->
-                <!-- <a href="#" class="nav-link">📝 Assignments</a> -->
-                <!-- <a href="#" class="nav-link">❓ Quizzes</a> -->
-            </nav>
-        </aside>
+    <main class="main-content">
+        <a href="{% url 'teacher_dashboard' %}" class="back-btn">
+            ← Back to Dashboard
+        </a>
 
-        <main class="main-content">
-            <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
-                <h1>My Courses</h1>
-                <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">+ Create Course</a>
-            </header>
+        <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
+            <h1 style="margin: 0;">My Courses</h1>
+            <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">+ Create Course</a>
+        </header>
 
             {% if messages %}
                 {% for message in messages %}
@@ -98,7 +98,7 @@
                 </div>
                 {% endfor %}
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
 </body>
 </html>

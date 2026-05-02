@@ -1,0 +1,154 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Teacher Portal | EduStream{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --teacher-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+        .logo-area { font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem; }
+        .nav-list { list-style: none; padding: 0; flex: 1; overflow-y: auto; }
+        .nav-link {
+            display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; color: #64748b;
+            text-decoration: none; border-radius: 0.75rem; transition: all 0.2s; font-weight: 500; margin-bottom: 0.25rem;
+        }
+        .nav-link:hover { background: #f1f5f9; color: #6366f1; }
+        .nav-link.active { background: #eef2ff; color: #6366f1; }
+        
+        .main-content {
+            flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem;
+        }
+
+        @media (max-width: 1024px) {
+            :root { --sidebar-width: 0px; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; z-index: 1000; width: 280px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 1.5rem; }
+            .mobile-toggle { display: block !important; }
+        }
+
+        .mobile-toggle {
+            display: none; position: fixed; top: 1rem; left: 1rem; background: white; padding: 0.5rem;
+            border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); z-index: 1001; cursor: pointer; border: 1px solid #e2e8f0;
+        }
+
+        .notif-dropdown.active { display: block !important; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
+        ☰
+    </button>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-area">EduStream <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
+            
+            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
+                <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    {% if user.profile_photo %}
+                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                        <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
+                    {% endif %}
+                </div>
+                <h4 style="margin: 0; color: #1e293b; font-size: 0.95rem;">{{ user.full_name|default:user.username }}</h4>
+                <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.75rem;">{{ user.email }}</p>
+                <a href="{% url 'edit_profile' %}" style="display: inline-block; margin-top: 0.75rem; font-size: 0.7rem; color: #6366f1; text-decoration: none; font-weight: 600; text-transform: uppercase;">Profile</a>
+            </div>
+
+            <nav class="nav-list">
+                <a href="{% url 'teacher_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_dashboard' %}active{% endif %}">🏠 Dashboard</a>
+                <a href="{% url 'my_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'my_courses' %}active{% endif %}">📚 My Courses</a>
+                <a href="{% url 'teacher_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_analytics' %}active{% endif %}">📈 Analytics</a>
+                <a href="{% url 'teacher_explore' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_explore' %}active{% endif %}">🌐 Explore Peer Courses</a>
+                <a href="{% url 'dashboard' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
+                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">👤 My Profile</a>
+            </nav>
+            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+                <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    {% block page_header %}
+                        <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Welcome, {{ user.full_name }}</h1>
+                    {% endblock %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 2rem;">
+                    <!-- Notification Bell -->
+                    <div class="notification-wrapper" style="position: relative; cursor: pointer;">
+                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
+                            🔔
+                            <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_notifications_count > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
+                        </div>
+                        
+                        <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                                <h4 style="margin: 0;">Notifications</h4>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none;">Mark All Read</a>
+                                    <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
+                                </div>
+                            </div>
+                            <div id="notif-items-container">
+                                {% for notif in notifications %}
+                                    <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
+                                        {{ notif.message }}
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
+                                            <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
+                                            {% if not notif.is_read %}
+                                                <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem; padding: 1rem; border-radius: 1rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    
+    {% include 'accounts/chat_widget.html' %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
