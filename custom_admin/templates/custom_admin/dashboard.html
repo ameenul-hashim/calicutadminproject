@@ -77,8 +77,6 @@
                                 {% else %}
                                     <a href="{% url 'toggle_user_status' u.id %}" class="action-link" style="color: #10b981;">Unblock/Accept</a>
                                 {% endif %}
-                                
-                                <a href="{% url 'delete_user' u.id %}" class="action-link" style="color: #64748b; margin-left: 0.5rem;" onclick="return confirm('Delete this user?')">Delete</a>
                             </td>
                         </tr>
                         {% empty %}

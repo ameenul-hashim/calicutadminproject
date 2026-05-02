@@ -78,13 +78,6 @@ def toggle_user_status(request, user_id):
     messages.success(request, f"User {user.username} has been {msg}.")
     return redirect('admin_dashboard')
 
-@user_passes_test(is_admin, login_url='admin_login')
-def delete_user(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
-    username = user.username
-    user.delete()
-    messages.success(request, f"User {username} deleted successfully.")
-    return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def create_user_admin(request):
@@ -122,9 +115,10 @@ def edit_user_admin(request, user_id):
         email = request.POST.get('email')
         fullname = request.POST.get('fullname')
         
-        # Check if email/username already taken by ANOTHER user
-        if CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
-            messages.error(request, "Username already taken.")
+        if not all([username, email, fullname]):
+            messages.error(request, "All fields are required for updating.")
+        elif CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
+            messages.error(request, "This username is already taken by another user. Please use a unique username.")
         elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
             messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
         else:
@@ -132,7 +126,7 @@ def edit_user_admin(request, user_id):
             user.email = email
             user.full_name = fullname
             user.save()
-            messages.success(request, "User updated successfully!")
+            messages.success(request, f"User {user.username} data updated successfully!")
             return redirect('admin_dashboard')
             
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
