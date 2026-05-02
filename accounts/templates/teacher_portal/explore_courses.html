@@ -48,14 +48,32 @@
             padding: 2rem 3rem;
         }
 
-        .course-list-card { background: white; border-radius: 1.5rem; padding: 2rem; border: 1px solid #f1f5f9; }
+        .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
+        .course-card { background: white; border-radius: 1.25rem; overflow: hidden; border: 1px solid #f1f5f9; transition: transform 0.3s, box-shadow 0.3s; position: relative; }
+        .course-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
         
+        .thumbnail-area { height: 180px; background: #f1f5f9; position: relative; overflow: hidden; }
+        .thumbnail-area img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .category-badge { position: absolute; top: 1rem; left: 1rem; background: rgba(255, 255, 255, 0.9); padding: 0.3rem 0.8rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #6366f1; backdrop-filter: blur(4px); }
+        
+        .course-info { padding: 1.5rem; }
+        .course-title { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 0 0 0.5rem 0; line-height: 1.4; }
+        .teacher-name { font-size: 0.9rem; color: #64748b; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 0.5rem; }
+        .teacher-name::before { content: '👤'; font-size: 0.8rem; }
+        
+        .course-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; padding-top: 1rem; }
+        .lesson-count { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
+        .view-details-btn { background: #eef2ff; color: #6366f1; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+        .view-details-btn:hover { background: #6366f1; color: white; }
+
         @media (max-width: 1024px) {
             :root { --sidebar-width: 0px; }
             .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; z-index: 1000; width: 280px; }
             .sidebar.active { transform: translateX(0); }
             .main-content { margin-left: 0; padding: 1.5rem; }
             .mobile-toggle { display: block !important; }
+            .course-grid { grid-template-columns: 1fr; }
         }
 
         .mobile-toggle {
@@ -98,42 +116,37 @@
                 <p style="color: #64748b;">Browse courses shared by other educators on EduStream.</p>
             </header>
 
-            <div class="course-list-card">
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="text-align: left; border-bottom: 1px solid #f1f5f9;">
-                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Course Title</th>
-                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Teacher</th>
-                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Category</th>
-                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Content</th>
-                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for course in other_courses %}
-                            <tr style="border-bottom: 1px solid #f8fafc;">
-                                <td style="padding: 1rem 0; font-weight: 500;">{{ course.title }}</td>
-                                <td style="padding: 1rem 0; color: #64748b; font-size: 0.9rem;">
-                                    <strong>{{ course.teacher.full_name|default:course.teacher.username }}</strong>
-                                </td>
-                                <td style="padding: 1rem 0;"><span style="font-size: 0.8rem; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 0.5rem;">{{ course.category }}</span></td>
-                                <td style="padding: 1rem 0; font-size: 0.85rem; color: #64748b;">
-                                    🎥 {{ course.lessons.count }} Lessons
-                                </td>
-                                <td style="padding: 1rem 0;">
-                                    <a href="{% url 'view_other_course' course.id %}" style="color: #6366f1; text-decoration: none; font-size: 0.9rem; font-weight: 600;">👁 View Details</a>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 3rem; color: #94a3b8;">No peer courses available yet.</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+            <div class="course-grid">
+                {% for course in other_courses %}
+                <div class="course-card">
+                    <div class="thumbnail-area">
+                        {% if course.thumbnail %}
+                            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}">
+                        {% else %}
+                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background: var(--teacher-gradient); color: white; font-weight: 700; font-size: 2rem;">
+                                {{ course.title|slice:":2"|upper }}
+                            </div>
+                        {% endif %}
+                        <div class="category-badge">{{ course.category }}</div>
+                    </div>
+                    <div class="course-info">
+                        <h3 class="course-title">{{ course.title }}</h3>
+                        <p class="teacher-name">{{ course.teacher.full_name|default:course.teacher.username }}</p>
+                        
+                        <div class="course-footer">
+                            <span class="lesson-count">🎥 {{ course.lessons.count }} Lessons</span>
+                            <a href="{% url 'view_other_course' course.id %}" class="view-details-btn">View Content</a>
+                        </div>
+                    </div>
                 </div>
+                {% empty %}
+                <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: white; border-radius: 1.5rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
+                    No peer courses available yet.
+                </div>
+                {% endfor %}
             </div>
+        </main>
+    </div>
         </main>
     </div>
 </body>
