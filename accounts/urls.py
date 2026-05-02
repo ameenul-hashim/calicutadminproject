@@ -17,6 +17,11 @@ urlpatterns = [
     path('teacher/quiz/<int:quiz_id>/questions/add/', views.add_questions, name='add_questions'),
     path('teacher/courses/<int:course_id>/assignment/create/', views.create_assignment, name='create_assignment'),
     path('student/enroll/<int:course_id>/', views.enroll_course, name='enroll_course'),
+    path('student/quiz/<int:quiz_id>/take/', views.take_quiz, name='take_quiz'),
+    path('student/assignment/<int:assignment_id>/submit/', views.submit_assignment, name='submit_assignment'),
+    path('teacher/quiz/<int:quiz_id>/results/', views.view_quiz_results, name='view_quiz_results'),
+    path('teacher/assignment/<int:assignment_id>/submissions/', views.view_submissions, name='view_submissions'),
+    path('teacher/submission/<int:submission_id>/grade/', views.grade_submission, name='grade_submission'),
     path('logout/', views.logout_view, name='logout'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
 ]

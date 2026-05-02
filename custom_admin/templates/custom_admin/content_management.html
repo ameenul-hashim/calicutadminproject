@@ -72,6 +72,62 @@
                             {% endfor %}
                         </ul>
                     </div>
+
+                    <!-- Quizzes Section -->
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: #8b5cf6;">❓ Quizzes</h4>
+                        <ul style="list-style: none; padding: 0;">
+                            {% for quiz in course.quizzes.all %}
+                            <li style="padding: 1rem; border-bottom: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center; background: {% if not quiz.is_approved %}#fef2f2{% else %}transparent{% endif %};">
+                                <div>
+                                    <strong style="display: block; margin-bottom: 0.25rem;">{{ quiz.title }}</strong>
+                                    <span style="font-size: 0.8rem; color: #94a3b8;">{{ quiz.questions.count }} Questions • {{ quiz.timer_minutes }} min timer</span>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <a href="{% url 'admin_view_quiz_attempts' quiz.id %}" style="color: #0ea5e9; text-decoration: none; font-size: 0.8rem; font-weight: 600;">View Results</a>
+                                    {% if quiz.is_approved %}
+                                        <a href="{% url 'toggle_quiz_approval' quiz.id %}" style="background: #fef2f2; color: #ef4444; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Reject</a>
+                                    {% else %}
+                                        <span style="color: #ef4444; font-size: 0.75rem; font-weight: 600;">PENDING</span>
+                                        <a href="{% url 'toggle_quiz_approval' quiz.id %}" style="background: #ecfdf5; color: #10b981; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Approve</a>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li style="color: #94a3b8; font-size: 0.9rem;">No quizzes created yet.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+
+                    <!-- Assignments Section -->
+                    <div style="margin-top: 1.5rem;">
+                        <h4 style="margin-bottom: 1rem; color: #ec4899;">📝 Assignments</h4>
+                        <ul style="list-style: none; padding: 0;">
+                            {% for assignment in course.assignments.all %}
+                            <li style="padding: 1rem; border-bottom: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center; background: {% if not assignment.is_approved %}#fef2f2{% else %}transparent{% endif %};">
+                                <div>
+                                    <strong style="display: block; margin-bottom: 0.25rem;">{{ assignment.title }}</strong>
+                                    <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
+                                        <span style="color: #94a3b8;">Deadline: {{ assignment.deadline|date:"M d, Y" }}</span>
+                                        {% if assignment.file %}<a href="{{ assignment.file.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 View File</a>{% endif %}
+                                        <span style="color: #94a3b8;">{{ assignment.submissions.count }} submissions</span>
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <a href="{% url 'admin_view_submissions' assignment.id %}" style="color: #0ea5e9; text-decoration: none; font-size: 0.8rem; font-weight: 600;">View Submissions</a>
+                                    {% if assignment.is_approved %}
+                                        <a href="{% url 'toggle_assignment_approval' assignment.id %}" style="background: #fef2f2; color: #ef4444; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Reject</a>
+                                    {% else %}
+                                        <span style="color: #ef4444; font-size: 0.75rem; font-weight: 600;">PENDING</span>
+                                        <a href="{% url 'toggle_assignment_approval' assignment.id %}" style="background: #ecfdf5; color: #10b981; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Approve</a>
+                                    {% endif %}
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li style="color: #94a3b8; font-size: 0.9rem;">No assignments created yet.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
                 {% empty %}
                 <div style="text-align: center; padding: 5rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; color: #94a3b8;">

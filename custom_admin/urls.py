@@ -21,4 +21,8 @@ urlpatterns = [
     path('user/edit/<int:user_id>/', views.edit_user_admin, name='edit_user_admin'),
     path('analytics/', views.analytics_view, name='admin_analytics'),
     path('content/', views.content_management_view, name='admin_content'),
+    path('quiz/toggle/<int:quiz_id>/', views.toggle_quiz_approval, name='toggle_quiz_approval'),
+    path('assignment/toggle/<int:assignment_id>/', views.toggle_assignment_approval, name='toggle_assignment_approval'),
+    path('assignment/<int:assignment_id>/submissions/', views.admin_view_submissions, name='admin_view_submissions'),
+    path('quiz/<int:quiz_id>/attempts/', views.admin_view_quiz_attempts, name='admin_view_quiz_attempts'),
 ]

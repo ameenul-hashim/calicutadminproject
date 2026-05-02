@@ -1,0 +1,66 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submissions | EduStream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .submission-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #e2e8f0; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+        .grade-form { display: flex; gap: 0.5rem; align-items: center; }
+        .grade-form input { padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; width: 80px; font-family: inherit; }
+        .grade-form button { background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduStream</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">🏠 Dashboard</a>
+                <a href="{% url 'course_lessons' assignment.course.id %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">📚 Manage Content</a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            {% if messages %}
+                {% for message in messages %}
+                    <div style="background: #ecfdf5; color: #10b981; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <h1>Submissions: {{ assignment.title }}</h1>
+            <p style="color: #64748b; margin-bottom: 2rem;">{{ assignment.course.title }} • Deadline: {{ assignment.deadline|date:"M d, Y h:i A" }} • {{ submissions.count }} submission(s)</p>
+
+            {% for sub in submissions %}
+            <div class="submission-card">
+                <div>
+                    <strong style="color: #1e293b;">{{ sub.student.full_name|default:sub.student.username }}</strong>
+                    <p style="color: #64748b; font-size: 0.85rem; margin: 0.25rem 0;">Submitted: {{ sub.submitted_at|date:"M d, Y h:i A" }}</p>
+                    <a href="{{ sub.file.url }}" target="_blank" style="color: #6366f1; text-decoration: none; font-weight: 600; font-size: 0.9rem;">📄 View / Download File</a>
+                </div>
+                <div>
+                    {% if sub.grade %}
+                    <span style="background: #ecfdf5; color: #10b981; padding: 0.4rem 1rem; border-radius: 2rem; font-weight: 700;">Grade: {{ sub.grade }}</span>
+                    {% endif %}
+                    <form method="POST" action="{% url 'grade_submission' sub.id %}" class="grade-form" style="margin-top: 0.5rem;">
+                        {% csrf_token %}
+                        <input type="text" name="grade" placeholder="A+, B, etc." required>
+                        <button type="submit">Grade</button>
+                    </form>
+                </div>
+            </div>
+            {% empty %}
+            <div style="text-align: center; padding: 4rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; color: #94a3b8;">
+                No submissions yet for this assignment.
+            </div>
+            {% endfor %}
+        </main>
+    </div>
+</body>
+</html>

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser
+from .models import CustomUser, Course, Lesson, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission
 from django.contrib.auth.decorators import user_passes_test
 import re
 
@@ -326,4 +326,74 @@ def create_assignment(request, course_id):
         messages.success(request, "Assignment created successfully!")
         return redirect('course_lessons', course_id=course.id) # Or a dedicated assignments page
     return render(request, 'teacher_portal/create_assignment.html', {'course': course})
+
+# ====== STUDENT: Take Quiz ======
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
+def take_quiz(request, quiz_id):
+    quiz = get_object_or_404(Quiz, id=quiz_id, is_approved=True)
+    # Check if already attempted
+    if QuizAttempt.objects.filter(quiz=quiz, student=request.user).exists():
+        attempt = QuizAttempt.objects.get(quiz=quiz, student=request.user)
+        messages.info(request, f"You have already taken this quiz. Score: {attempt.score}/{attempt.total_questions}")
+        return render(request, 'accounts/quiz_result.html', {'attempt': attempt, 'quiz': quiz})
+    
+    if request.method == 'POST':
+        questions = quiz.questions.all()
+        score = 0
+        total = questions.count()
+        for q in questions:
+            answer = request.POST.get(f'question_{q.id}')
+            if answer and answer.strip() == q.correct_answer.strip():
+                score += 1
+        QuizAttempt.objects.create(quiz=quiz, student=request.user, score=score, total_questions=total)
+        messages.success(request, f"Quiz submitted! You scored {score}/{total}.")
+        attempt = QuizAttempt.objects.get(quiz=quiz, student=request.user)
+        return render(request, 'accounts/quiz_result.html', {'attempt': attempt, 'quiz': quiz})
+    
+    return render(request, 'accounts/take_quiz.html', {'quiz': quiz})
+
+# ====== STUDENT: Submit Assignment ======
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
+def submit_assignment(request, assignment_id):
+    assignment = get_object_or_404(Assignment, id=assignment_id, is_approved=True)
+    existing = Submission.objects.filter(assignment=assignment, student=request.user).first()
+    
+    if request.method == 'POST' and not existing:
+        file = request.FILES.get('file')
+        if file:
+            Submission.objects.create(assignment=assignment, student=request.user, file=file)
+            messages.success(request, "Assignment submitted successfully!")
+        else:
+            messages.error(request, "Please attach a file to submit.")
+        return redirect('submit_assignment', assignment_id=assignment.id)
+    
+    return render(request, 'accounts/submit_assignment.html', {
+        'assignment': assignment,
+        'existing': existing,
+    })
+
+# ====== TEACHER: View Quiz Results ======
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def view_quiz_results(request, quiz_id):
+    quiz = get_object_or_404(Quiz, id=quiz_id, course__teacher=request.user)
+    attempts = quiz.attempts.all().select_related('student')
+    return render(request, 'teacher_portal/quiz_results.html', {'quiz': quiz, 'attempts': attempts})
+
+# ====== TEACHER: View Assignment Submissions ======
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def view_submissions(request, assignment_id):
+    assignment = get_object_or_404(Assignment, id=assignment_id, course__teacher=request.user)
+    submissions = assignment.submissions.all().select_related('student')
+    return render(request, 'teacher_portal/view_submissions.html', {'assignment': assignment, 'submissions': submissions})
+
+# ====== TEACHER: Grade a Submission ======
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def grade_submission(request, submission_id):
+    submission = get_object_or_404(Submission, id=submission_id, assignment__course__teacher=request.user)
+    if request.method == 'POST':
+        grade = request.POST.get('grade')
+        submission.grade = grade
+        submission.save()
+        messages.success(request, f"Graded {submission.student.username}'s submission: {grade}")
+    return redirect('view_submissions', assignment_id=submission.assignment.id)
 

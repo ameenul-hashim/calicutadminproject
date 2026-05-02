@@ -1,0 +1,66 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Results | EduStream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; }
+        th { background: #f8fafc; padding: 1rem; text-align: left; font-size: 0.85rem; color: #64748b; text-transform: uppercase; }
+        td { padding: 1rem; border-top: 1px solid #f1f5f9; color: #1e293b; }
+        .score-badge { padding: 0.3rem 0.8rem; border-radius: 2rem; font-weight: 600; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduStream</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">🏠 Dashboard</a>
+                <a href="{% url 'course_lessons' quiz.course.id %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">📚 Manage Content</a>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <h1>Results: {{ quiz.title }}</h1>
+            <p style="color: #64748b; margin-bottom: 2rem;">{{ quiz.course.title }} • {{ attempts.count }} student(s) attempted</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student</th>
+                        <th>Score</th>
+                        <th>Percentage</th>
+                        <th>Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attempt in attempts %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ attempt.student.full_name|default:attempt.student.username }}</strong></td>
+                        <td>{{ attempt.score }} / {{ attempt.total_questions }}</td>
+                        <td>
+                            {% widthratio attempt.score attempt.total_questions 100 as pct %}
+                            <span class="score-badge" style="background: {% if attempt.score > 0 %}#ecfdf5; color: #10b981{% else %}#fef2f2; color: #ef4444{% endif %};">
+                                {% widthratio attempt.score attempt.total_questions 100 %}%
+                            </span>
+                        </td>
+                        <td style="color: #64748b; font-size: 0.85rem;">{{ attempt.submitted_at|date:"M d, Y h:i A" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align: center; padding: 3rem; color: #94a3b8;">No students have attempted this quiz yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </main>
+    </div>
+</body>
+</html>

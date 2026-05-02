@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit Assignment | EduStream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; padding: 2rem; }
+        .container { max-width: 700px; margin: 0 auto; }
+        .assignment-header { background: linear-gradient(135deg, #ec4899, #f43f5e); color: white; padding: 2rem; border-radius: 1.5rem; margin-bottom: 2rem; }
+        .assignment-header h1 { margin: 0 0 0.5rem 0; }
+        .assignment-header p { margin: 0; opacity: 0.85; }
+        .card { background: white; border-radius: 1rem; padding: 2rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; }
+        .file-upload { border: 2px dashed #cbd5e1; padding: 2rem; border-radius: 1rem; text-align: center; background: #f8fafc; transition: border-color 0.2s; }
+        .file-upload:hover { border-color: #6366f1; }
+        .submit-btn { background: #6366f1; color: white; padding: 0.8rem 2rem; border: none; border-radius: 0.75rem; font-weight: 700; cursor: pointer; }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6366f1; text-decoration: none; font-weight: 600; }
+        .success-box { background: #ecfdf5; border: 1px solid #10b981; padding: 1.5rem; border-radius: 1rem; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'dashboard' %}" class="back-link">← Back to Dashboard</a>
+        
+        <div class="assignment-header">
+            <h1>{{ assignment.title }}</h1>
+            <p>{{ assignment.course.title }} • Deadline: {{ assignment.deadline|date:"M d, Y h:i A" }}</p>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top: 0; color: #1e293b;">Instructions</h3>
+            <p style="color: #475569; line-height: 1.6;">{{ assignment.description }}</p>
+            {% if assignment.file %}
+            <a href="{{ assignment.file.url }}" download target="_blank" style="color: #6366f1; text-decoration: none; font-weight: 600;">📎 Download Assignment File</a>
+            {% endif %}
+        </div>
+
+        {% if existing %}
+        <div class="success-box">
+            <span style="font-size: 2rem;">✅</span>
+            <h3 style="color: #10b981; margin: 0.5rem 0;">Already Submitted</h3>
+            <p style="color: #64748b; margin: 0.25rem 0;">Submitted on {{ existing.submitted_at|date:"M d, Y h:i A" }}</p>
+            {% if existing.grade %}
+            <p style="margin-top: 0.5rem; font-weight: 700; color: #1e293b; font-size: 1.2rem;">Grade: {{ existing.grade }}</p>
+            {% else %}
+            <p style="color: #f59e0b; font-weight: 600; margin-top: 0.5rem;">⏳ Awaiting grade from teacher</p>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="card">
+            <h3 style="margin-top: 0; color: #1e293b;">Upload Your Submission</h3>
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="file-upload">
+                    <span style="font-size: 2.5rem;">📄</span>
+                    <p style="color: #64748b; margin: 0.5rem 0;">Upload PDF, DOCX, ZIP or any file</p>
+                    <input type="file" name="file" required style="margin-top: 0.5rem;">
+                </div>
+                <div style="text-align: center; margin-top: 1.5rem;">
+                    <button type="submit" class="submit-btn">Submit Assignment</button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

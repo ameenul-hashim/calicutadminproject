@@ -1,0 +1,65 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ quiz.title }} | EduStream</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; padding: 2rem; }
+        .quiz-container { max-width: 800px; margin: 0 auto; }
+        .quiz-header { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 2rem; border-radius: 1.5rem; margin-bottom: 2rem; }
+        .quiz-header h1 { margin: 0 0 0.5rem 0; }
+        .quiz-header p { margin: 0; opacity: 0.85; }
+        .question-card { background: white; border-radius: 1rem; padding: 2rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; }
+        .question-text { font-weight: 600; color: #1e293b; margin-bottom: 1.5rem; font-size: 1.05rem; }
+        .question-number { display: inline-block; background: #eef2ff; color: #6366f1; padding: 0.2rem 0.6rem; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.75rem; }
+        .option-label { display: flex; align-items: center; padding: 0.75rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; margin-bottom: 0.5rem; cursor: pointer; transition: all 0.2s; }
+        .option-label:hover { border-color: #6366f1; background: #f5f3ff; }
+        .option-label input { margin-right: 0.75rem; accent-color: #6366f1; }
+        .submit-btn { background: #6366f1; color: white; padding: 1rem 3rem; border: none; border-radius: 0.75rem; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
+        .submit-btn:hover { background: #4f46e5; }
+        .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6366f1; text-decoration: none; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="quiz-container">
+        <a href="{% url 'dashboard' %}" class="back-link">← Back to Dashboard</a>
+        <div class="quiz-header">
+            <h1>{{ quiz.title }}</h1>
+            <p>{{ quiz.course.title }} • {{ quiz.questions.count }} Questions{% if quiz.timer_minutes > 0 %} • {{ quiz.timer_minutes }} Minutes{% endif %}</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            {% for question in quiz.questions.all %}
+            <div class="question-card">
+                <span class="question-number">Question {{ forloop.counter }}</span>
+                <p class="question-text">{{ question.text }}</p>
+                <label class="option-label">
+                    <input type="radio" name="question_{{ question.id }}" value="{{ question.option1 }}" required>
+                    {{ question.option1 }}
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="question_{{ question.id }}" value="{{ question.option2 }}">
+                    {{ question.option2 }}
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="question_{{ question.id }}" value="{{ question.option3 }}">
+                    {{ question.option3 }}
+                </label>
+                <label class="option-label">
+                    <input type="radio" name="question_{{ question.id }}" value="{{ question.option4 }}">
+                    {{ question.option4 }}
+                </label>
+            </div>
+            {% endfor %}
+
+            <div style="text-align: center; margin-top: 2rem;">
+                <button type="submit" class="submit-btn">Submit Quiz</button>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

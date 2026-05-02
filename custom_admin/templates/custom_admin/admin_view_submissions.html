@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submissions | Admin</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .container { display: flex; min-height: 100vh; }
+        .sidebar { width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem; }
+        .main { flex: 1; padding: 2rem; max-width: 1140px; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 1rem; overflow: hidden; border: 1px solid #e2e8f0; }
+        th { background: #f8fafc; padding: 1rem; text-align: left; font-size: 0.85rem; color: #64748b; text-transform: uppercase; }
+        td { padding: 1rem; border-top: 1px solid #f1f5f9; color: #1e293b; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
+            <nav>
+                <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">← Back to Content</a>
+            </nav>
+        </aside>
+        <main class="main">
+            <h1>Submissions: {{ assignment.title }}</h1>
+            <p style="color: #64748b; margin-bottom: 2rem;">{{ assignment.course.title }} • By {{ assignment.course.teacher.full_name|default:assignment.course.teacher.username }} • {{ submissions.count }} submission(s)</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student</th>
+                        <th>Submitted</th>
+                        <th>File</th>
+                        <th>Grade</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ sub.student.full_name|default:sub.student.username }}</strong></td>
+                        <td style="color: #64748b; font-size: 0.85rem;">{{ sub.submitted_at|date:"M d, Y h:i A" }}</td>
+                        <td><a href="{{ sub.file.url }}" target="_blank" style="color: #6366f1; text-decoration: none; font-weight: 600;">📄 Download</a></td>
+                        <td>{% if sub.grade %}<span style="background: #ecfdf5; color: #10b981; padding: 0.3rem 0.8rem; border-radius: 1rem; font-weight: 600;">{{ sub.grade }}</span>{% else %}<span style="color: #f59e0b;">Ungraded</span>{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" style="text-align: center; padding: 3rem; color: #94a3b8;">No submissions yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </main>
+    </div>
+</body>
+</html>

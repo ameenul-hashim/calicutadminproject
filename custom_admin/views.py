@@ -246,7 +246,7 @@ def analytics_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    courses = Course.objects.all().prefetch_related('lessons')
+    courses = Course.objects.all().prefetch_related('lessons', 'quizzes', 'quizzes__questions', 'assignments', 'assignments__submissions')
     return render(request, 'custom_admin/content_management.html', {'courses': courses})
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -357,6 +357,40 @@ def toggle_lesson_approval(request, lesson_id):
     
     messages.success(request, f"Lesson '{lesson.title}' content has been {msg}.")
     return redirect('admin_content')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def toggle_quiz_approval(request, quiz_id):
+    from accounts.models import Quiz
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    quiz.is_approved = not quiz.is_approved
+    quiz.save()
+    msg = "approved" if quiz.is_approved else "rejected"
+    messages.success(request, f"Quiz '{quiz.title}' has been {msg}.")
+    return redirect('admin_content')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def toggle_assignment_approval(request, assignment_id):
+    from accounts.models import Assignment
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    assignment.is_approved = not assignment.is_approved
+    assignment.save()
+    msg = "approved" if assignment.is_approved else "rejected"
+    messages.success(request, f"Assignment '{assignment.title}' has been {msg}.")
+    return redirect('admin_content')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_view_submissions(request, assignment_id):
+    from accounts.models import Assignment
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    submissions = assignment.submissions.all().select_related('student')
+    return render(request, 'custom_admin/admin_view_submissions.html', {'assignment': assignment, 'submissions': submissions})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_view_quiz_attempts(request, quiz_id):
+    from accounts.models import Quiz
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    attempts = quiz.attempts.all().select_related('student')
+    return render(request, 'custom_admin/admin_view_quiz_attempts.html', {'quiz': quiz, 'attempts': attempts})
 
 def admin_logout(request):
     logout(request)
