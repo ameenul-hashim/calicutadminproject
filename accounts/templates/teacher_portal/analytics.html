@@ -181,6 +181,13 @@
                     </div>
                 {% endif %}
             </div>
+
+            <div class="premium-panel">
+                <div class="premium-panel-header">
+                    <h2 class="premium-panel-title">Enrollment Trends (Last 7 Days)</h2>
+                </div>
+                <canvas id="enrollmentTrendChart" height="200"></canvas>
+            </div>
         </div>
     </div>
 
@@ -213,9 +220,9 @@
     </div>
 </div>
 
-{% if total_courses > 0 %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+    {% if total_courses > 0 %}
     new Chart(document.getElementById('teacherCourseChart'), {
         type: 'bar',
         data: {
@@ -240,6 +247,36 @@
             }
         }
     });
+    {% endif %}
+
+    new Chart(document.getElementById('enrollmentTrendChart'), {
+        type: 'line',
+        data: {
+            labels: {{ trend_labels|safe }},
+            datasets: [{
+                label: 'New Enrollments',
+                data: {{ trend_data|safe }},
+                borderColor: '#6366f1',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 4,
+                pointBackgroundColor: '#6366f1'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } },
+                y: {
+                    border: { display: false },
+                    beginAtZero: true,
+                    ticks: { stepSize: 1 }
+                }
+            }
+        }
+    });
 </script>
-{% endif %}
 {% endblock %}

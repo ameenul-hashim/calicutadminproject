@@ -186,6 +186,7 @@
                 {% endfor %}
             {% endif %}
 
+            {% block main_content %}
             <div class="stats-grid">
                 <div class="stat-card">
                     <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Total Courses</p>
@@ -236,6 +237,7 @@
                     </tbody>
                 </table>
             </div>
+            {% endblock %}
 
 
         </main>

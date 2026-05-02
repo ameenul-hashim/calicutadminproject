@@ -656,11 +656,28 @@ def mark_notification_read(request, notif_id):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_analytics_view(request):
     from django.db.models import Count
-    # Get courses provided by this teacher with their enrollment count
+    from datetime import datetime, timedelta
+    from django.utils import timezone
+    
+    # Get courses provided by this teacher
     courses = Course.objects.filter(teacher=request.user).annotate(enroll_count=Count('enrollments')).order_by('-enroll_count')
     
     course_labels = [c.title for c in courses]
     course_data = [c.enroll_count for c in courses]
+    
+    # Enrollment trend (last 7 days)
+    today = timezone.now().date()
+    enrollment_trend_labels = []
+    enrollment_trend_data = []
+    
+    for i in range(6, -1, -1):
+        day = today - timedelta(days=i)
+        enrollment_trend_labels.append(day.strftime('%b %d'))
+        count = Enrollment.objects.filter(
+            course__teacher=request.user,
+            enrolled_at__date=day
+        ).count()
+        enrollment_trend_data.append(count)
     
     total_courses = courses.count()
     total_students = sum(c.enroll_count for c in courses)
@@ -670,6 +687,8 @@ def teacher_analytics_view(request):
         'total_students': total_students,
         'course_labels': course_labels,
         'course_data': course_data,
+        'trend_labels': enrollment_trend_labels,
+        'trend_data': enrollment_trend_data,
         'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
