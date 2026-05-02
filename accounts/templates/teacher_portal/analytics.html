@@ -1,0 +1,63 @@
+{% extends 'teacher_portal/dashboard.html' %}
+{% load static %}
+
+{% block title %}Teacher Analytics | Admin{% endblock %}
+
+{% block main_content %}
+<div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 2.5rem; margin-bottom: 2rem;">
+    <div style="margin-bottom: 2rem;">
+        <h1 style="margin: 0 0 0.5rem 0; color: #1e293b; font-size: 1.8rem; font-weight: 700;">Course Analytics</h1>
+        <p style="color: #64748b; margin: 0;">Analyze your course enrollments and reach.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+        <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0;">
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Total Provided Courses</p>
+            <h2 style="font-size: 2.5rem; color: #0ea5e9; margin: 0;">{{ total_courses }}</h2>
+        </div>
+        <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0;">
+            <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600;">Total Students Enrolled</p>
+            <h2 style="font-size: 2.5rem; color: #10b981; margin: 0;">{{ total_students }}</h2>
+        </div>
+    </div>
+
+    <div style="background: #f8fafc; padding: 2rem; border-radius: 1rem; border: 1px solid #e2e8f0;">
+        <h3 style="margin-top: 0; margin-bottom: 1.5rem; color: #1e293b; font-size: 1.2rem;">Top Courses by Enrollment</h3>
+        {% if total_courses > 0 %}
+            <canvas id="teacherCourseChart" height="100"></canvas>
+        {% else %}
+            <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                You haven't uploaded any courses yet.
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if total_courses > 0 %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    new Chart(document.getElementById('teacherCourseChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ course_labels|safe }},
+            datasets: [{
+                label: 'Enrolled Students',
+                data: {{ course_data|safe }},
+                backgroundColor: '#0ea5e9'
+            }]
+        },
+        options: { 
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

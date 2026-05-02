@@ -33,14 +33,17 @@
             <nav>
                 <div class="nav-group">
                     <button class="nav-link dropdown-btn" onclick="toggleDropdown('student-drop')">
-                        <span>📊 Dashboard (Students)</span>
+                        <span>👨‍🎓 Manage Students</span>
                         <span id="student-arrow">▼</span>
                     </button>
-                    <div id="student-drop" class="dropdown-container {% if 'student' in request.path or 'pending_users' in request.path or request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">
-                        <a href="{% url 'manage_students' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_students' %}active{% endif %}">Student Details</a>
+                    <div id="student-drop" class="dropdown-container {% if 'student' in request.path or 'pending_users' in request.path or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
+                        <a href="{% url 'manage_students' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_students' or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">Dashboard (Details)</a>
                         <a href="{% url 'pending_users' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_users' %}active{% endif %}">Student Requests</a>
-                        <a href="{% url 'admin_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">Analytics</a>
                     </div>
+                </div>
+
+                <div class="nav-group">
+                    <a href="{% url 'admin_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">📈 Analytics</a>
                 </div>
 
                 <div class="nav-group">

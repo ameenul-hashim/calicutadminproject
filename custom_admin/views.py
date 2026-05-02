@@ -47,7 +47,7 @@ def manage_students(request):
             Q(full_name__icontains=search_query)
         )
     
-    notifications = Notification.objects.filter(user=request.user)[:10]
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
     return render(request, 'custom_admin/manage_students.html', {
@@ -296,7 +296,7 @@ def analytics_view(request):
         'teacher_perf_labels': teacher_performance_labels,
         'teacher_perf_data': teacher_performance_data,
         'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        'notifications': Notification.objects.filter(user=request.user)[:10],
+        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
         'pending_students_count': pending_students_count,
         'pending_teachers_count': pending_teachers_count,
@@ -311,7 +311,7 @@ def content_management_view(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
     courses = Course.objects.filter(status='PENDING').prefetch_related('lessons').order_by('-created_at')
-    notifications = Notification.objects.filter(user=request.user)[:10]
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     return render(request, 'custom_admin/pending_courses.html', {
         'courses': courses,

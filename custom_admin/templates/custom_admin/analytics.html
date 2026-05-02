@@ -46,6 +46,11 @@
                 </div>
             </div>
 
+            <div class="chart-container" style="margin-top: 1.5rem;">
+                <h3 style="margin-bottom: 1.5rem;">Top Courses by Enrollment</h3>
+                <canvas id="courseEnrollChart" height="100"></canvas>
+            </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         const months = {{ months|safe }};
@@ -101,6 +106,20 @@
                 }]
             },
             options: { indexAxis: 'y', responsive: true }
+        });
+
+        // Course Enrollment Chart
+        new Chart(document.getElementById('courseEnrollChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ course_enroll_labels|safe }},
+                datasets: [{
+                    label: 'Enrolled Students',
+                    data: {{ course_enroll_data|safe }},
+                    backgroundColor: '#0ea5e9'
+                }]
+            },
+            options: { responsive: true }
         });
     </script>
 {% endblock %}

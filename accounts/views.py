@@ -198,7 +198,7 @@ def dashboard_view(request):
         explore_courses = explore_courses.filter(title__icontains=search_query)
 
     # Get notifications
-    notifications = request.user.notifications.all()[:5]
+    notifications = request.user.notifications.filter(is_read=False)[:5]
     unread_notifications_count = request.user.notifications.filter(is_read=False).count()
 
     context = {
@@ -222,7 +222,7 @@ def teacher_dashboard(request):
         'pending_courses': courses.filter(status='PENDING').count(),
         'total_students': total_students,
         'recent_courses': courses.order_by('-created_at')[:5],
-        'notifications': Notification.objects.filter(user=request.user)[:10],
+        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
@@ -652,6 +652,28 @@ def mark_notification_read(request, notif_id):
     notif.is_read = True
     notif.save()
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def teacher_analytics_view(request):
+    from django.db.models import Count
+    # Get courses provided by this teacher with their enrollment count
+    courses = Course.objects.filter(teacher=request.user).annotate(enroll_count=Count('enrollments')).order_by('-enroll_count')
+    
+    course_labels = [c.title for c in courses]
+    course_data = [c.enroll_count for c in courses]
+    
+    total_courses = courses.count()
+    total_students = sum(c.enroll_count for c in courses)
+    
+    context = {
+        'total_courses': total_courses,
+        'total_students': total_students,
+        'course_labels': course_labels,
+        'course_data': course_data,
+        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
+        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+    }
+    return render(request, 'teacher_portal/analytics.html', context)
 
 @login_required
 def mark_all_notifications_read(request):
