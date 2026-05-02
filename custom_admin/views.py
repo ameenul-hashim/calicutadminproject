@@ -29,17 +29,32 @@ def is_admin(user):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_dashboard(request):
+    # Redirect to students list by default or provide overview
+    return redirect('manage_students')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def manage_students(request):
     search_query = request.GET.get('search', '')
+    users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
     if search_query:
-        users = CustomUser.objects.filter(
+        users = users.filter(
             Q(username__icontains=search_query) | 
             Q(email__icontains=search_query) |
             Q(full_name__icontains=search_query)
-        ).exclude(is_superuser=True)
-    else:
-        users = CustomUser.objects.all().exclude(is_superuser=True)
-    
-    return render(request, 'custom_admin/dashboard.html', {'users': users, 'search_query': search_query})
+        )
+    return render(request, 'custom_admin/manage_students.html', {'users': users, 'search_query': search_query})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def manage_teachers(request):
+    search_query = request.GET.get('search', '')
+    users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True)
+    if search_query:
+        users = users.filter(
+            Q(username__icontains=search_query) | 
+            Q(email__icontains=search_query) |
+            Q(full_name__icontains=search_query)
+        )
+    return render(request, 'custom_admin/manage_teachers.html', {'users': users, 'search_query': search_query})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_users_view(request):
@@ -86,7 +101,9 @@ def toggle_user_status(request, user_id):
         msg = "activated"
     user.save()
     messages.success(request, f"User {user.username} has been {msg}.")
-    return redirect('admin_dashboard')
+    if user.user_type == 'TEACHER':
+        return redirect('manage_teachers')
+    return redirect('manage_students')
 
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -121,7 +138,7 @@ def create_student_admin(request):
                 proof_file=proof_file
             )
             messages.success(request, f"Student {username} created successfully!")
-            return redirect('admin_dashboard')
+            return redirect('manage_students')
             
     return render(request, 'custom_admin/create_student.html')
 
@@ -158,7 +175,7 @@ def create_teacher_admin(request):
                 proof_file=proof_file
             )
             messages.success(request, f"Teacher {username} created successfully!")
-            return redirect('admin_dashboard')
+            return redirect('manage_teachers')
             
     return render(request, 'custom_admin/create_teacher.html')
 
@@ -233,7 +250,9 @@ def edit_user_admin(request, user_id):
                 user.set_password(password)
             user.save()
             messages.success(request, f"User {user.username} data updated successfully!")
-            return redirect('admin_dashboard')
+            if user.user_type == 'TEACHER':
+                return redirect('manage_teachers')
+            return redirect('manage_students')
             
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
