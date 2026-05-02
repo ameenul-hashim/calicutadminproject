@@ -106,7 +106,6 @@
             <nav class="nav-list">
                 <a href="{% url 'teacher_dashboard' %}" class="nav-link active">🏠 Dashboard</a>
                 <a href="{% url 'my_courses' %}" class="nav-link">📚 My Courses</a>
-                <a href="{% url 'create_course' %}" class="nav-link">➕ Create Course</a>
                 <a href="{% url 'teacher_explore' %}" class="nav-link">🌐 Explore Peer Courses</a>
             </nav>
             <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
@@ -121,7 +120,6 @@
                     <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Welcome, {{ user.full_name }}</h1>
                     <p style="color: #64748b;">Manage your courses and student engagement.</p>
                 </div>
-                <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.8rem; text-decoration: none; font-weight: 600;">+ Create New Course</a>
             </header>
 
             {% if messages %}
