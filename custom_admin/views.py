@@ -281,6 +281,9 @@ def analytics_view(request):
     top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
     teacher_performance_labels = [t.username for t in top_teachers]
     teacher_performance_data = [t.num_courses for t in top_teachers]
+    
+    # Course Enrollments
+    top_courses = Course.objects.annotate(enrollment_count=Count('enrollments')).select_related('teacher').order_by('-enrollment_count')[:5]
 
     pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
     pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
@@ -296,6 +299,7 @@ def analytics_view(request):
         'approval_stats': approval_stats,
         'teacher_perf_labels': teacher_performance_labels,
         'teacher_perf_data': teacher_performance_data,
+        'top_courses': top_courses,
         'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
