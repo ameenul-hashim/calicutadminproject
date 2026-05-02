@@ -13,9 +13,10 @@ def signup_view(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
+        profile_photo = request.FILES.get('profile_photo')
 
-        if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including student proof (PDF) are required.")
+        if not all([username, email, fullname, password, confirm_password, proof_file, profile_photo]):
+            messages.error(request, "All fields including student proof (PDF) and profile photo are required.")
             return render(request, 'accounts/signup.html')
 
         if not proof_file.name.endswith('.pdf'):
@@ -53,7 +54,8 @@ def signup_view(request):
             is_active=False,
             status='PENDING',
             user_type='STUDENT',
-            proof_file=proof_file
+            proof_file=proof_file,
+            profile_photo=profile_photo
         )
         messages.success(request, "Student registration successful! Your proof is pending admin approval.")
         return redirect('login')
@@ -68,9 +70,10 @@ def teacher_signup_view(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
+        profile_photo = request.FILES.get('profile_photo')
 
-        if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including teacher proof (PDF) are required.")
+        if not all([username, email, fullname, password, confirm_password, proof_file, profile_photo]):
+            messages.error(request, "All fields including teacher proof (PDF) and profile photo are required.")
             return render(request, 'accounts/teacher_signup.html')
 
         if not proof_file.name.endswith('.pdf'):
@@ -103,7 +106,8 @@ def teacher_signup_view(request):
             is_staff=True,
             status='PENDING',
             user_type='TEACHER',
-            proof_file=proof_file
+            proof_file=proof_file,
+            profile_photo=profile_photo
         )
         messages.success(request, "Teacher registration successful! Please wait for admin approval.")
         return redirect('teacher_login')
@@ -414,6 +418,10 @@ def grade_submission(request, submission_id):
         submission.save()
         messages.success(request, f"Graded {submission.student.username}'s submission: {grade}")
     return redirect('view_submissions', assignment_id=submission.assignment.id)
+
+@login_required
+def profile_view(request):
+    return render(request, 'accounts/profile.html', {'user': request.user})
 
 @login_required
 def course_player(request, course_id):
