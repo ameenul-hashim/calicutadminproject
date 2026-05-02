@@ -8,12 +8,8 @@
     /* Premium Dashboard Styles */
     .dashboard-layout {
         display: grid;
-        grid-template-columns: 1fr 320px;
+        grid-template-columns: 1fr;
         gap: 2rem;
-    }
-    
-    @media (max-width: 1200px) {
-        .dashboard-layout { grid-template-columns: 1fr; }
     }
 
     /* Stat Cards */
@@ -145,14 +141,21 @@
     }
 </style>
 
-<div style="margin-bottom: 2rem;">
-    <h1 style="margin: 0 0 0.5rem 0; color: #1e293b; font-size: 1.8rem; font-weight: 700;">Teacher Analytics</h1>
-    <p style="color: #64748b; margin: 0;">Analyze your course enrollments and reach.</p>
-</div>
+<div class="analytics-container" style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
+    <a href="{% url 'teacher_dashboard' %}" class="back-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; background: white; color: #64748b; text-decoration: none; border-radius: 0.75rem; font-weight: 600; font-size: 0.9rem; border: 1px solid #e2e8f0; transition: all 0.2s; margin-bottom: 2rem;">
+        ← Back to Dashboard
+    </a>
+
+    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <div>
+            <h1 style="margin: 0 0 0.5rem 0; color: #1e293b; font-size: 1.8rem; font-weight: 700;">Teacher Analytics</h1>
+            <p style="color: #64748b; margin: 0;">Analyze your course enrollments and reach.</p>
+        </div>
+    </div>
 
 <div class="dashboard-layout">
     <!-- Left Main Content -->
-    <div>
+    <div class="full-width-content">
         <!-- Stat Cards -->
         <div class="premium-stats-grid">
             <div class="premium-stat-card card-blue">
@@ -187,34 +190,6 @@
                     <h2 class="premium-panel-title">Enrollment Trends (Last 7 Days)</h2>
                 </div>
                 <canvas id="enrollmentTrendChart" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Sidebar (Notice Board) -->
-    <div>
-        <div class="notice-board">
-            <div class="premium-panel-header">
-                <h2 class="premium-panel-title">Notice Board</h2>
-                <a href="{% url 'all_notifications' %}" style="font-size: 0.8rem; color: #0ea5e9; text-decoration: none;">View All</a>
-            </div>
-            
-            <div style="margin-top: 1rem;">
-                {% for notif in notifications %}
-                <div class="notice-item">
-                    <div class="notice-icon" style="{% if 'User' in notif.message %}background: #fce7f3; color: #ec4899;{% elif 'Course' in notif.message %}background: #e0f2fe; color: #0ea5e9;{% else %}background: #fef3c7; color: #f59e0b;{% endif %}">
-                        {% if 'User' in notif.message %}👤{% elif 'Course' in notif.message %}📚{% else %}🔔{% endif %}
-                    </div>
-                    <div class="notice-content">
-                        <h4>{{ notif.message }}</h4>
-                        <p>{{ notif.created_at|date:"M d, Y - h:i A" }}</p>
-                    </div>
-                </div>
-                {% empty %}
-                <div style="text-align: center; padding: 2rem 0; color: #94a3b8; font-size: 0.9rem;">
-                    No new notices.
-                </div>
-                {% endfor %}
             </div>
         </div>
     </div>
