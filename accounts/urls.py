@@ -37,6 +37,7 @@ urlpatterns = [
     path('chat/messages/<int:other_user_id>/', views.get_chat_messages, name='get_chat_messages'),
     path('chat/list/', views.get_chat_list, name='get_chat_list'),
     path('notification/<int:notif_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/', views.all_notifications, name='all_notifications'),
 ]
 

@@ -58,6 +58,15 @@ def manage_students(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
+def admin_student_profile(request, user_id):
+    student = get_object_or_404(CustomUser, id=user_id, user_type='STUDENT')
+    enrollments = Enrollment.objects.filter(user=student).select_related('course')
+    return render(request, 'custom_admin/student_profile_invoice.html', {
+        'student': student,
+        'enrollments': enrollments
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
 def manage_teachers(request):
     search_query = request.GET.get('search', '')
     users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True)
@@ -68,6 +77,16 @@ def manage_teachers(request):
             Q(full_name__icontains=search_query)
         )
     return render(request, 'custom_admin/manage_teachers.html', {'users': users, 'search_query': search_query})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_teacher_profile(request, user_id):
+    from accounts.models import Course
+    teacher = get_object_or_404(CustomUser, id=user_id, user_type='TEACHER')
+    courses = Course.objects.filter(teacher=teacher)
+    return render(request, 'custom_admin/teacher_profile_invoice.html', {
+        'teacher': teacher,
+        'courses': courses
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_users_view(request):

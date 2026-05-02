@@ -654,6 +654,13 @@ def mark_notification_read(request, notif_id):
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required
+def mark_all_notifications_read(request):
+    from django.shortcuts import redirect
+    from .models import Notification
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@login_required
 def all_notifications(request):
     from django.shortcuts import render
     notifications = request.user.notifications.all().order_by('-created_at')

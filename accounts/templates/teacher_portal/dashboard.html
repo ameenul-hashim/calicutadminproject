@@ -152,7 +152,10 @@
                         <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
                                 <h4 style="margin: 0;">Notifications</h4>
-                                <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none;">Mark All Read</a>
+                                    <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
+                                </div>
                             </div>
                             {% for notif in notifications %}
                                 <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative;">
