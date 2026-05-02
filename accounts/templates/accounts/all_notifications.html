@@ -1,32 +1,60 @@
-{% extends base_template %}
-
-{% block title %}All Notifications{% endblock %}
-
-{% block header_title %}
-    <h1>Notifications</h1>
-    <p style="color: #64748b;">All your system alerts and messages.</p>
-{% endblock %}
-
-{% block content %}
-<div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 2rem;">
-    {% if notifications %}
-        <ul style="list-style: none; padding: 0; margin: 0;">
-            {% for notif in notifications %}
-            <li style="padding: 1rem; border-bottom: 1px solid #e2e8f0; {% if not notif.is_read %}background-color: #f8fafc; font-weight: bold;{% endif %} display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <span style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 0.25rem;">{{ notif.created_at|date:"M d, Y H:i" }}</span>
-                    <span style="color: #1e293b;">{{ notif.message }}</span>
-                </div>
-                {% if not notif.is_read %}
-                <a href="{% url 'mark_notification_read' notif.id %}" class="view-btn" style="background: #10b981; color: white; padding: 0.4rem 0.8rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.8rem;">Mark as Read</a>
-                {% endif %}
-            </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <div style="text-align: center; color: #94a3b8; padding: 2rem;">
-            No notifications found.
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>All Notifications</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; padding: 2rem; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+        .header h1 { margin: 0; color: #1e293b; font-size: 1.8rem; font-weight: 700; }
+        .back-link { text-decoration: none; color: #64748b; font-weight: 600; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; }
+        .back-link:hover { background: #f1f5f9; }
+        .card { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; }
+        .notif-item { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item.unread { background: #f0f9ff; }
+        .notif-message { color: #1e293b; font-size: 0.9rem; line-height: 1.5; flex: 1; }
+        .notif-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; min-width: 110px; }
+        .notif-time { font-size: 0.75rem; color: #94a3b8; white-space: nowrap; }
+        .mark-read-btn { font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 600; white-space: nowrap; }
+        .read-badge { font-size: 0.7rem; background: #dcfce7; color: #15803d; padding: 0.2rem 0.5rem; border-radius: 2rem; font-weight: 600; }
+        .empty { text-align: center; padding: 3rem; color: #94a3b8; font-size: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div>
+                <h1>🔔 All Notifications</h1>
+                <p style="color: #64748b; margin: 0.25rem 0 0 0;">Your complete notification history.</p>
+            </div>
+            <a href="javascript:history.back()" class="back-link">← Go Back</a>
         </div>
-    {% endif %}
-</div>
-{% endblock %}
+
+        <div class="card">
+            {% if notifications %}
+                {% for notif in notifications %}
+                <div class="notif-item {% if not notif.is_read %}unread{% endif %}">
+                    <div class="notif-message">{{ notif.message }}</div>
+                    <div class="notif-meta">
+                        <span class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</span>
+                        {% if not notif.is_read %}
+                            <a href="{% url 'mark_notification_read' notif.id %}" class="mark-read-btn">Mark as read</a>
+                        {% else %}
+                            <span class="read-badge">✓ Read</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty">No notifications found.</div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
