@@ -7,6 +7,7 @@
     <title>{{ course.title }} | EduStream Player</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
     <style>
         :root {
             --sidebar-width: 350px;
@@ -105,8 +106,10 @@
         
         /* Video Area */
         .video-main { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
-        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; }
-        .video-wrapper iframe, .video-wrapper video { width: 100%; height: 100%; border: none; }
+        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; position: relative; }
+        .plyr-container { width: 100%; height: 100%; display: none; }
+        .plyr--video { height: 100%; }
+        .video-wrapper embed { width: 100%; height: 100%; border: none; }
         
         .video-footer { padding: 1.5rem 2rem; background: #1e293b; border-top: 1px solid #334155; }
         .video-footer h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
@@ -181,9 +184,11 @@
                         <p>You can watch videos or read PDF notes directly here.</p>
                     </div>
 
-                    <!-- Players (Hidden by default) -->
-                    <iframe id="youtubePlayer" src="" allowfullscreen allow="autoplay; fullscreen" style="display: none;"></iframe>
-                    <video id="filePlayer" controls style="display: none; background: #000;"></video>
+                    <!-- Plyr Container -->
+                    <div id="playerContainer" class="plyr-container">
+                        <div id="player"></div>
+                    </div>
+                    
                     <embed id="pdfViewer" src="" type="application/pdf" style="display: none; width: 100%; height: 100%; background: white;">
                 </div>
 
@@ -201,12 +206,41 @@
         </div>
     </div>
 
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
+    let player = null;
+
+    function initPlayer(type, source) {
+        const playerContainer = document.getElementById('playerContainer');
+        playerContainer.style.display = 'block';
+        
+        // Destroy existing player if it exists
+        if (player) {
+            player.destroy();
+        }
+
+        const playerElement = document.getElementById('player');
+        
+        if (type === 'youtube') {
+            playerElement.setAttribute('data-plyr-provider', 'youtube');
+            playerElement.setAttribute('data-plyr-embed-id', source);
+            player = new Plyr('#player', {
+                settings: ['quality', 'speed'],
+                youtube: { noCookie: false, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+            });
+        } else {
+            // HTML5 Video
+            playerElement.innerHTML = `<video playsinline controls><source src="${source}" type="video/mp4"></video>`;
+            player = new Plyr(playerElement.querySelector('video'), {
+                settings: ['quality', 'speed']
+            });
+        }
+    }
+
     function toggleAccordion(header) {
         const item = header.parentElement;
         const isActive = header.classList.contains('active');
         
-        // Close all others
         document.querySelectorAll('.accordion-header').forEach(h => {
             h.classList.remove('active');
         });
@@ -216,42 +250,31 @@
         }
     }
 
-    function getEmbedUrl(url) {
+    function getYouTubeId(url) {
         if (!url) return '';
-        let videoId = '';
-        // Improved regex for all YouTube variants
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
         const match = url.match(regExp);
-        if (match && match[2].length === 11) {
-            videoId = match[2];
-        }
-        if (videoId) {
-            return `https://www.youtube.com/embed/${videoId}?rel=0`;
-        }
-        return url;
+        return (match && match[2].length === 11) ? match[2] : null;
     }
 
     function playContent(element, type, title, videoUrl, videoFileUrl, notesUrl) {
-        // Update sub-item active state
         document.querySelectorAll('.sub-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
 
-        // UI Elements
-        const ytPlayer = document.getElementById('youtubePlayer');
-        const filePlayer = document.getElementById('filePlayer');
+        const playerContainer = document.getElementById('playerContainer');
         const pdfViewer = document.getElementById('pdfViewer');
         const noVideoMsg = document.getElementById('noVideoMsg');
         const actionArea = document.getElementById('actionArea');
+        const externalLink = document.getElementById('externalLink');
         const downloadBtn = document.getElementById('downloadBtn');
         
-        // Titles
         document.getElementById('currentContentTitle').textContent = title;
         document.getElementById('contentSubtitle').textContent = type === 'video' ? '🎥 Watching Video Lesson' : '📄 Reading Study Notes';
 
         // Reset all
-        [ytPlayer, filePlayer, pdfViewer, noVideoMsg].forEach(el => el.style.display = 'none');
-        ytPlayer.src = "";
-        filePlayer.src = "";
+        playerContainer.style.display = 'none';
+        pdfViewer.style.display = 'none';
+        noVideoMsg.style.display = 'none';
         pdfViewer.src = "";
         actionArea.style.display = 'none';
         externalLink.style.display = 'none';
@@ -259,24 +282,29 @@
 
         if (type === 'video') {
             if (videoFileUrl) {
-                filePlayer.src = videoFileUrl;
-                filePlayer.style.display = 'block';
-                filePlayer.load();
-                filePlayer.play();
+                initPlayer('html5', videoFileUrl);
                 
                 downloadBtn.href = videoFileUrl;
                 downloadBtn.style.display = 'block';
                 actionArea.style.display = 'flex';
             } else if (videoUrl) {
-                ytPlayer.src = getEmbedUrl(videoUrl);
-                ytPlayer.style.display = 'block';
+                const videoId = getYouTubeId(videoUrl);
+                if (videoId) {
+                    initPlayer('youtube', videoId);
+                } else {
+                    // Fallback to iframe if not YouTube
+                    playerContainer.style.display = 'none';
+                    const iframe = document.createElement('iframe');
+                    iframe.src = videoUrl;
+                    iframe.style.width = '100%';
+                    iframe.style.height = '100%';
+                    document.getElementById('videoWrapper').appendChild(iframe);
+                }
                 externalLink.href = videoUrl;
                 externalLink.style.display = 'block';
                 actionArea.style.display = 'flex';
             }
         } else if (type === 'notes') {
-            // Display PDF inside iframe
-            // Adding #toolbar=0 to make it look cleaner, or keeping it default for native controls
             pdfViewer.src = notesUrl; 
             pdfViewer.style.display = 'block';
             
@@ -288,12 +316,10 @@
         }
     }
 
-    // Auto-open first lesson
     window.onload = function() {
         const firstHeader = document.querySelector('.accordion-header');
         if (firstHeader) {
             firstHeader.click();
-            // Also click the first sub-item if exists
             const firstSubItem = firstHeader.parentElement.querySelector('.sub-item');
             if (firstSubItem) firstSubItem.click();
         }
