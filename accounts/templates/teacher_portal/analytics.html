@@ -9,147 +9,90 @@
     .dashboard-layout {
         display: grid;
         grid-template-columns: 1fr;
-        gap: 2rem;
+        gap: 1.5rem;
     }
 
-    /* Stat Cards */
+    /* Stat Cards - more compact */
     .premium-stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
     }
     
     .premium-stat-card {
-        border-radius: 1.25rem;
-        padding: 2rem 1.5rem;
+        border-radius: 1rem;
+        padding: 1.25rem 1rem;
         text-align: center;
-        position: relative;
-        overflow: hidden;
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .premium-stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 20px -5px rgba(0,0,0,0.1);
+        background: white;
+        border: 1px solid #f1f5f9;
+        transition: transform 0.3s ease;
     }
     
     .stat-icon-hex {
-        width: 60px;
-        height: 60px;
-        margin: 0 auto 1rem;
+        width: 45px;
+        height: 45px;
+        margin: 0 auto 0.75rem;
         clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         color: white;
     }
 
-    .card-purple { background: #f3e8ff; }
-    .card-purple .stat-icon-hex { background: #8b5cf6; }
-    
-    .card-pink { background: #fce7f3; }
-    .card-pink .stat-icon-hex { background: #ec4899; }
-    
-    .card-blue { background: #e0f2fe; }
-    .card-blue .stat-icon-hex { background: #0ea5e9; }
-    
-    .card-yellow { background: #fef3c7; }
-    .card-yellow .stat-icon-hex { background: #f59e0b; }
-
     .premium-stat-card h3 {
-        margin: 0 0 0.5rem 0;
-        font-size: 0.9rem;
-        color: #475569;
+        margin: 0 0 0.25rem 0;
+        font-size: 0.8rem;
+        color: #64748b;
         font-weight: 600;
     }
     
     .premium-stat-card .value {
-        font-size: 2.2rem;
+        font-size: 1.8rem;
         font-weight: 800;
         color: #1e293b;
         margin: 0;
     }
 
-    /* Charts Section */
+    /* Charts Section - more compact */
     .premium-charts-grid {
         display: grid;
         grid-template-columns: 1fr;
         gap: 1.5rem;
-        margin-bottom: 2rem;
+        margin-bottom: 1.5rem;
     }
     
     .premium-panel {
         background: white;
-        border-radius: 1.25rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02);
+        border-radius: 1rem;
+        padding: 1.25rem;
+        border: 1px solid #f1f5f9;
     }
     
     .premium-panel-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1rem;
     }
     .premium-panel-title {
-        font-size: 1.1rem;
+        font-size: 1rem;
         font-weight: 700;
         color: #1e293b;
         margin: 0;
     }
-
-    /* Right Sidebar - Notice Board */
-    .notice-board {
-        background: white;
-        border-radius: 1.25rem;
-        padding: 1.5rem;
-        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);
-        height: 100%;
-    }
-    
-    .notice-item {
-        display: flex;
-        gap: 1rem;
-        padding: 1rem 0;
-        border-bottom: 1px solid #f1f5f9;
-    }
-    .notice-item:last-child { border-bottom: none; }
-    
-    .notice-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 0.75rem;
-        background: #f1f5f9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-    }
-    
-    .notice-content h4 {
-        margin: 0 0 0.25rem 0;
-        font-size: 0.9rem;
-        color: #1e293b;
-        line-height: 1.4;
-    }
-    .notice-content p {
-        margin: 0;
-        font-size: 0.75rem;
-        color: #94a3b8;
-    }
 </style>
 
-<div class="analytics-container" style="max-width: 1200px; margin: 0 auto; padding: 2rem;">
-    <a href="{% url 'teacher_dashboard' %}" class="back-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; background: white; color: #64748b; text-decoration: none; border-radius: 0.75rem; font-weight: 600; font-size: 0.9rem; border: 1px solid #e2e8f0; transition: all 0.2s; margin-bottom: 2rem;">
+<div class="analytics-container" style="max-width: 1200px; margin: 0 auto; padding: 1rem 1.5rem;">
+    <a href="{% url 'teacher_dashboard' %}" class="back-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem; background: white; color: #64748b; text-decoration: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.8rem; border: 1px solid #e2e8f0; transition: all 0.2s; margin-bottom: 1rem;">
         ← Back to Dashboard
     </a>
 
-    <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
         <div>
-            <h1 style="margin: 0 0 0.5rem 0; color: #1e293b; font-size: 1.8rem; font-weight: 700;">Teacher Analytics</h1>
-            <p style="color: #64748b; margin: 0;">Analyze your course enrollments and reach.</p>
+            <h1 style="margin: 0 0 0.25rem 0; color: #1e293b; font-size: 1.5rem; font-weight: 700;">Teacher Analytics</h1>
+            <p style="color: #64748b; margin: 0; font-size: 0.9rem;">Analyze your course enrollments and reach.</p>
         </div>
     </div>
 
@@ -177,9 +120,11 @@
                     <h2 class="premium-panel-title">Top Courses by Enrollment</h2>
                 </div>
                 {% if total_courses > 0 %}
-                    <canvas id="teacherCourseChart" height="200"></canvas>
+                    <div style="height: 180px;">
+                        <canvas id="teacherCourseChart"></canvas>
+                    </div>
                 {% else %}
-                    <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+                    <div style="text-align: center; padding: 1.5rem; color: #94a3b8;">
                         You haven't uploaded any courses yet.
                     </div>
                 {% endif %}
@@ -189,7 +134,9 @@
                 <div class="premium-panel-header">
                     <h2 class="premium-panel-title">Enrollment Trends (Last 7 Days)</h2>
                 </div>
-                <canvas id="enrollmentTrendChart" height="200"></canvas>
+                <div style="height: 180px;">
+                    <canvas id="enrollmentTrendChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
@@ -212,6 +159,7 @@
         },
         options: { 
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 x: { grid: { display: false } },
                 y: { 
@@ -242,6 +190,7 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: {
                 x: { grid: { display: false } },
