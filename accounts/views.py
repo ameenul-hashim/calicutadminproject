@@ -413,3 +413,18 @@ def grade_submission(request, submission_id):
         messages.success(request, f"Graded {submission.student.username}'s submission: {grade}")
     return redirect('view_submissions', assignment_id=submission.assignment.id)
 
+@login_required
+def course_player(request, course_id):
+    # Ensure student is enrolled
+    enrollment = get_object_or_404(Enrollment, user=request.user, course_id=course_id)
+    course = enrollment.course
+    lessons = course.lessons.filter(is_approved=True).order_by('order')
+    
+    context = {
+        'course': course,
+        'lessons': lessons,
+        'first_lesson': lessons.first() if lessons.exists() else None,
+    }
+    return render(request, 'accounts/course_player.html', context)
+
+

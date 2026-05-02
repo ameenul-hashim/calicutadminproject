@@ -25,6 +25,7 @@ urlpatterns = [
     path('logout/', views.logout_view, name='logout'),
     path('teacher/courses/view/<int:course_id>/', views.view_other_course, name='view_other_course'),
     path('teacher/explore/', views.explore_courses, name='teacher_explore'),
+    path('course/<int:course_id>/play/', views.course_player, name='course_play'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
 ]
 

@@ -232,56 +232,25 @@
             
             <div class="subject-grid" style="margin-bottom: 4rem;">
                 {% for course in courses %}
-                <div class="subject-card">
-                    <div style="height: 160px; background: #f1f5f9; position: relative;">
-                        {% if course.thumbnail %}
-                            <img src="{{ course.thumbnail.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="Course Thumbnail">
-                        {% else %}
-                            <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: var(--primary-gradient); color: white; font-weight: 700; font-size: 1.5rem;">{{ course.title|slice:":2"|upper }}</div>
-                        {% endif %}
-                    </div>
-                    <div class="subject-content">
-                        <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: #1e293b;">{{ course.title }}</h3>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">By {{ course.teacher.full_name|default:course.teacher.username }}</p>
-                        
-                        <div style="margin-bottom: 1.5rem;">
-                            <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 1.2rem; letter-spacing: 0.05em; font-weight: 700;">📚 Course Content</h4>
-                            {% for lesson in course.lessons.all %}
-                            {% if lesson.is_approved %}
-                            <div class="lesson-card-item">
-                                <div class="lesson-header">
-                                    <div class="lesson-title-area">
-                                        <div class="lesson-icon">{{ lesson.order }}</div>
-                                        <div>
-                                            <h4 style="margin: 0; font-size: 0.95rem; color: #1e293b;">{{ lesson.title }}</h4>
-                                            {% if lesson.video_url %}<span style="font-size: 0.75rem; color: #94a3b8;">🎥 Video Lesson</span>{% endif %}
-                                        </div>
-                                    </div>
-                                    <div class="action-group">
-                                        {% if lesson.video_url %}
-                                            <button onclick="toggleVideo(this, '{{ lesson.video_url }}')" class="view-btn video-toggle-btn" style="border: none; cursor: pointer; background: #0ea5e9; color: white;">▶ Watch</button>
-                                            <a href="{{ lesson.video_url }}" target="_blank" class="view-btn" style="background: #f1f5f9; color: #64748b; font-size: 0.7rem;">🌐 Open YT</a>
-                                        {% endif %}
-                                        {% if lesson.notes %}
-                                            <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="color: #0ea5e9; background: #f0f9ff;">📄 Notes</a>
-                                            <a href="{{ lesson.notes.url }}" download class="view-btn" style="color: #10b981; background: #ecfdf5;">⬇ Save</a>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% if lesson.video_url %}
-                                <div class="video-container" style="display: none;" oncontextmenu="return false;">
-                                    <iframe class="lesson-iframe" src="" style="width: 100%; height: 100%; aspect-ratio: 16/9; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen></iframe>
-                                    <div style="position: absolute; top: 0; right: 0; width: 60px; height: 60px; background: transparent; z-index: 5;"></div>
-                                </div>
-                                {% endif %}
-                            </div>
+                <a href="{% url 'course_play' course.id %}" style="text-decoration: none; color: inherit;">
+                    <div class="subject-card">
+                        <div style="height: 180px; background: #f1f5f9; position: relative;">
+                            {% if course.thumbnail %}
+                                <img src="{{ course.thumbnail.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="Course Thumbnail">
+                            {% else %}
+                                <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: var(--primary-gradient); color: white; font-weight: 700; font-size: 1.5rem;">{{ course.title|slice:":2"|upper }}</div>
                             {% endif %}
-                            {% empty %}
-                            <p style="text-align: center; padding: 2rem; color: #94a3b8; font-style: italic;">No lessons published yet.</p>
-                            {% endfor %}
+                        </div>
+                        <div class="subject-content">
+                            <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem; color: #1e293b; font-weight: 700;">{{ course.title }}</h3>
+                            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Teacher: {{ course.teacher.full_name|default:course.teacher.username }}</p>
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                                <span style="font-size: 0.8rem; color: #0ea5e9; font-weight: 600;">{{ course.lessons.count }} Lessons</span>
+                                <span style="font-size: 0.8rem; background: #e0f2fe; color: #0ea5e9; padding: 0.25rem 0.75rem; border-radius: 1rem; font-weight: 700;">Resume ➔</span>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </a>
                 {% empty %}
                 <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: white; border-radius: 2rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
                     You are not enrolled in any courses yet.
@@ -294,7 +263,7 @@
             <div class="subject-grid">
                 {% for course in explore_courses %}
                 <div class="subject-card">
-                    <div style="height: 160px; background: #f1f5f9; position: relative;">
+                    <div style="height: 180px; background: #f1f5f9; position: relative;">
                         {% if course.thumbnail %}
                             <img src="{{ course.thumbnail.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="Course Thumbnail">
                         {% else %}
@@ -303,12 +272,12 @@
                     </div>
                     <div class="subject-content">
                         <span style="display: inline-block; padding: 0.2rem 0.6rem; background: #f1f5f9; color: #64748b; font-size: 0.75rem; border-radius: 1rem; margin-bottom: 0.8rem; font-weight: 600;">{{ course.category }}</span>
-                        <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: #1e293b;">{{ course.title }}</h3>
-                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem; height: 40px; overflow: hidden;">{{ course.description|truncatewords:10 }}</p>
+                        <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem; color: #1e293b; font-weight: 700; height: 2.8rem; overflow: hidden;">{{ course.title }}</h3>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem; height: 3rem; overflow: hidden;">{{ course.description|truncatewords:10 }}</p>
                         
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">{% if course.price > 0 %}${{ course.price }}{% else %}Free{% endif %}</span>
-                            <a href="{% url 'enroll_course' course.id %}" class="view-btn" style="background: #0ea5e9; color: white;">Enroll Now</a>
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                            <span style="font-size: 0.95rem; font-weight: 700; color: #1e293b;">{% if course.price > 0 %}${{ course.price }}{% else %}Free{% endif %}</span>
+                            <a href="{% url 'enroll_course' course.id %}" class="view-btn" style="background: #0ea5e9; color: white; border-radius: 0.75rem; padding: 0.5rem 1rem;">Enroll Now</a>
                         </div>
                     </div>
                 </div>
@@ -317,73 +286,15 @@
                     No new courses available to explore.
                 </div>
                 {% endfor %}
+            </div>
         </main>
     </div>
 
     <script>
-    function getEmbedUrl(url) {
-        if (!url) return '';
-        let videoId = '';
-        
-        // Handle various YouTube URL formats
-        try {
-            if (url.includes('youtu.be/')) {
-                videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
-            } else if (url.includes('youtube.com/watch')) {
-                videoId = new URL(url).searchParams.get('v');
-            } else if (url.includes('youtube.com/embed/')) {
-                videoId = url.split('embed/')[1].split(/[?#]/)[0];
-            } else if (url.includes('youtube.com/v/')) {
-                videoId = url.split('v/')[1].split(/[?#]/)[0];
-            }
-        } catch (e) { console.error("URL parsing failed", e); }
-
-        if (!videoId || videoId.length !== 11) {
-            // Last resort regex
-            const match = url.match(/(?:v=|be\/|embed\/|v\/)([^#&?]*)/);
-            if (match && match[1].length === 11) videoId = match[1];
-        }
-
-        if (videoId) {
-            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`;
-        }
-        return url;
+    // Toggle Sidebar for mobile
+    function toggleSidebar() {
+        document.querySelector('.sidebar').classList.toggle('active');
     }
-
-    function toggleVideo(btn, url) {
-        const lessonCard = btn.closest('.lesson-card-item');
-        const container = lessonCard.querySelector('.video-container');
-        const iframe = container.querySelector('.lesson-iframe');
-
-        if (container.style.display === 'none') {
-            // Close other open videos
-            document.querySelectorAll('.video-container').forEach(vc => {
-                vc.style.display = 'none';
-                vc.querySelector('.lesson-iframe').src = '';
-            });
-            document.querySelectorAll('.video-toggle-btn').forEach(b => b.textContent = '▶ Watch');
-
-            iframe.src = getEmbedUrl(url);
-            container.style.display = 'block';
-            btn.textContent = '⏹ Close';
-            
-            // Scroll into view on mobile
-            if (window.innerWidth < 768) {
-                setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
-            }
-        } else {
-            iframe.src = '';
-            container.style.display = 'none';
-            btn.textContent = '▶ Watch';
-        }
-    }
-
-    // Block right-click on entire page to prevent "Copy video URL"
-    document.addEventListener('contextmenu', function(e) {
-        if (e.target.closest('.video-container') || e.target.closest('.lesson-iframe')) {
-            e.preventDefault();
-        }
-    });
     </script>
 </body>
 </html>

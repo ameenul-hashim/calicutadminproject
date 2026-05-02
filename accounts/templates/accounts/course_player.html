@@ -1,0 +1,223 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ course.title }} | EduStream Player</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 350px;
+            --header-height: 70px;
+            --primary-blue: #0ea5e9;
+        }
+        body { font-family: 'Inter', sans-serif; background: #0f172a; margin: 0; color: white; overflow: hidden; }
+        
+        .player-container { display: flex; height: 100vh; flex-direction: column; }
+        
+        /* Header */
+        .player-header {
+            height: var(--header-height);
+            background: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            align-items: center;
+            padding: 0 2rem;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        .back-btn { color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; font-weight: 500; }
+        .back-btn:hover { color: white; }
+        
+        /* Main Layout */
+        .player-content { display: flex; flex: 1; overflow: hidden; }
+        
+        /* Sidebar */
+        .content-sidebar {
+            width: var(--sidebar-width);
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+        .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
+        .sidebar-header h2 { margin: 0; font-size: 1.2rem; }
+        
+        .lesson-item {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid #334155;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .lesson-item:hover { background: #334155; }
+        .lesson-item.active { background: #0ea5e9; color: white; }
+        .lesson-item.active .lesson-order { background: white; color: #0ea5e9; }
+        
+        .lesson-order {
+            width: 28px;
+            height: 28px;
+            background: #334155;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .lesson-info h4 { margin: 0; font-size: 0.95rem; font-weight: 500; }
+        .lesson-info span { font-size: 0.75rem; color: #94a3b8; }
+        .lesson-item.active .lesson-info span { color: #e0f2fe; }
+        
+        /* Video Area */
+        .video-main { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
+        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .video-wrapper iframe { width: 100%; height: 100%; border: none; }
+        
+        .video-footer { padding: 1.5rem 2rem; background: #1e293b; border-top: 1px solid #334155; }
+        .video-footer h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
+        .video-footer p { margin: 0; color: #94a3b8; font-size: 0.95rem; }
+
+        /* Mobile Adjustments */
+        @media (max-width: 1024px) {
+            .player-content { flex-direction: column; overflow-y: auto; }
+            .content-sidebar { width: 100%; height: auto; border-right: none; border-top: 1px solid #334155; overflow-y: visible; }
+            .video-wrapper { aspect-ratio: 16/9; flex: none; height: auto; }
+            body { overflow-y: auto; }
+        }
+        
+        /* Full Screen Button */
+        .fullscreen-overlay { position: absolute; bottom: 20px; right: 20px; z-index: 10; }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <!-- Header -->
+        <header class="player-header">
+            <div style="display: flex; align-items: center; gap: 2rem;">
+                <a href="{% url 'dashboard' %}" class="back-btn">← Back</a>
+                <span style="font-weight: 600; color: #f1f5f9; font-size: 1.1rem;">{{ course.title }}</span>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <span style="font-size: 0.85rem; color: #94a3b8;">Learning Progress: <strong>100%</strong></span>
+            </div>
+        </header>
+
+        <div class="player-content">
+            <!-- Sidebar -->
+            <aside class="content-sidebar">
+                <div class="sidebar-header">
+                    <h2>Course Content</h2>
+                </div>
+                <div class="lesson-list">
+                    {% for lesson in lessons %}
+                    <div class="lesson-item {% if forloop.first %}active{% endif %}" 
+                         onclick="changeLesson(this, '{{ lesson.title }}', '{{ lesson.video_url }}', '{% if lesson.notes %}{{ lesson.notes.url }}{% endif %}')">
+                        <div class="lesson-order">{{ lesson.order }}</div>
+                        <div class="lesson-info">
+                            <h4>{{ lesson.title }}</h4>
+                            <span>{% if lesson.video_url %}🎥 Video{% endif %} {% if lesson.notes %}• 📄 Notes{% endif %}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </aside>
+
+            <!-- Video/Content Main -->
+            <main class="video-main">
+                <div class="video-wrapper" id="videoWrapper">
+                    {% if first_lesson.video_url %}
+                    <iframe id="mainPlayer" src="" allowfullscreen allow="autoplay; fullscreen"></iframe>
+                    {% else %}
+                    <div style="text-align: center; color: #64748b; padding: 5rem;">
+                        <span style="font-size: 4rem;">📺</span>
+                        <h3>Select a lesson to start learning</h3>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="video-footer">
+                    <h1 id="currentLessonTitle">{{ first_lesson.title }}</h1>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                        <p>Course: {{ course.title }} • By {{ course.teacher.full_name|default:course.teacher.username }}</p>
+                        <div id="notesArea" style="display: {% if first_lesson.notes %}flex{% else %}none{% endif %}; gap: 1rem;">
+                            <a id="viewNotesLink" href="{% if first_lesson.notes %}{{ first_lesson.notes.url }}{% endif %}" target="_blank" class="back-btn" style="color: #0ea5e9; border: 1px solid #0ea5e9; padding: 0.4rem 1rem; border-radius: 0.5rem;">📄 View Notes</a>
+                            <a id="downloadNotesLink" href="{% if first_lesson.notes %}{{ first_lesson.notes.url }}{% endif %}" download class="back-btn" style="color: #10b981; border: 1px solid #10b981; padding: 0.4rem 1rem; border-radius: 0.5rem;">⬇ Download</a>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    function getEmbedUrl(url) {
+        if (!url) return '';
+        let videoId = '';
+        try {
+            if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
+            } else if (url.includes('youtube.com/watch')) {
+                videoId = new URL(url).searchParams.get('v');
+            } else if (url.includes('youtube.com/embed/')) {
+                videoId = url.split('embed/')[1].split(/[?#]/)[0];
+            }
+        } catch (e) {}
+        
+        if (videoId) {
+            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`;
+        }
+        return url;
+    }
+
+    function changeLesson(element, title, videoUrl, notesUrl) {
+        // Update active state
+        document.querySelectorAll('.lesson-item').forEach(item => item.classList.remove('active'));
+        element.classList.add('active');
+
+        // Update Title
+        document.getElementById('currentLessonTitle').textContent = title;
+
+        // Update Video
+        const player = document.getElementById('mainPlayer');
+        if (videoUrl) {
+            player.src = getEmbedUrl(videoUrl);
+            player.style.display = 'block';
+        } else {
+            player.style.display = 'none';
+        }
+
+        // Update Notes
+        const notesArea = document.getElementById('notesArea');
+        const viewLink = document.getElementById('viewNotesLink');
+        const downloadLink = document.getElementById('downloadNotesLink');
+        if (notesUrl) {
+            notesArea.style.display = 'flex';
+            viewLink.href = notesUrl;
+            downloadLink.href = notesUrl;
+        } else {
+            notesArea.style.display = 'none';
+        }
+    }
+
+    // Auto-load first lesson
+    window.onload = function() {
+        const firstLesson = document.querySelector('.lesson-item');
+        if (firstLesson) {
+            firstLesson.click();
+        }
+    };
+    </script>
+</body>
+</html>
