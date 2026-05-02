@@ -103,6 +103,21 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div class="logo-area">EduStream <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
+            
+            <!-- Teacher Profile Quick View -->
+            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
+                <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    {% if user.profile_photo %}
+                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                        <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
+                    {% endif %}
+                </div>
+                <h4 style="margin: 0; color: #1e293b; font-size: 0.95rem;">{{ user.full_name|default:user.username }}</h4>
+                <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.75rem;">{{ user.email }}</p>
+                <a href="{% url 'edit_profile' %}" style="display: inline-block; margin-top: 0.75rem; font-size: 0.7rem; color: #6366f1; text-decoration: none; font-weight: 600; text-transform: uppercase;">Settings</a>
+            </div>
+
             <nav class="nav-list">
                 <a href="{% url 'teacher_dashboard' %}" class="nav-link active">🏠 Dashboard</a>
                 <a href="{% url 'my_courses' %}" class="nav-link">📚 My Courses</a>

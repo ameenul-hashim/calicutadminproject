@@ -253,7 +253,7 @@
             
             <div class="subject-grid" style="margin-bottom: 4rem;">
                 {% for course in courses %}
-                <a href="{% url 'course_play' course.id %}" style="text-decoration: none; color: inherit;">
+                <a href="{% url 'course_player' course.id %}" style="text-decoration: none; color: inherit;">
                     <div class="subject-card">
                         <div style="height: 180px; background: #f1f5f9; position: relative;">
                             {% if course.thumbnail %}

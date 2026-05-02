@@ -220,17 +220,30 @@ def analytics_view(request):
     total_lessons = Lesson.objects.count()
 
     # Month-wise Data (Simple aggregation for Chart.js)
-    def get_monthly_data(queryset):
+    def get_monthly_data(queryset, date_field='created_at'):
         data = [0] * 12
-        counts = queryset.annotate(month=ExtractMonth('created_at')).values('month').annotate(count=models.Count('id'))
+        counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=models.Count('id'))
         for entry in counts:
             if entry['month']:
                 data[entry['month']-1] = entry['count']
         return data
 
-    student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'))
-    teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'))
+    student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'), 'date_joined')
+    teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'), 'date_joined')
     course_data = get_monthly_data(Course.objects.all())
+
+    # Approval Stats
+    approval_stats = {
+        'approved': Course.objects.filter(status='PUBLISHED').count(),
+        'rejected': Course.objects.filter(status='REJECTED').count(),
+        'pending': Course.objects.filter(status='PENDING').count(),
+    }
+    
+    # Teacher Performance (Top Uploaders)
+    from django.db.models import Count
+    top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
+    teacher_performance_labels = [t.username for t in top_teachers]
+    teacher_performance_data = [t.num_courses for t in top_teachers]
 
     context = {
         'total_students': total_students,
@@ -240,6 +253,9 @@ def analytics_view(request):
         'student_data': student_data,
         'teacher_data': teacher_data,
         'course_data': course_data,
+        'approval_stats': approval_stats,
+        'teacher_perf_labels': teacher_performance_labels,
+        'teacher_perf_data': teacher_performance_data,
         'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     }
     return render(request, 'custom_admin/analytics.html', context)

@@ -4,13 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics Dashboard | Admin</title>
+    <title>Analytics | Admin</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0; text-align: center; }
+        .chart-container { background: white; padding: 2rem; border-radius: 1rem; border: 1px solid #e2e8f0; margin-bottom: 2rem; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+        @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+    </style>
 </head>
 <body>
     <div style="display: flex; min-height: 100vh;">
-        <!-- Sidebar -->
         <aside style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
             <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
             <nav>
@@ -21,119 +27,107 @@
                 <a href="{% url 'pending_courses' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Course Approvals</a>
                 <a href="{% url 'admin_analytics' %}" style="display: block; padding: 0.75rem 1rem; color: #0ea5e9; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">Analytics</a>
                 <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Content Data</a>
-                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
-                    <a href="{% url 'admin_logout' %}" style="display: block; padding: 0.75rem 1rem; color: #ef4444; text-decoration: none;">Logout</a>
-                </div>
             </nav>
         </aside>
 
         <main style="flex: 1; padding: 2rem; max-width: 1200px;">
-            <header style="margin-bottom: 2rem;">
-                <h1>Analytics Dashboard</h1>
+            <header style="margin-bottom: 3rem;">
+                <h1>Platform Analytics</h1>
+                <p style="color: #64748b;">Real-time performance and growth metrics.</p>
             </header>
 
-            <!-- Stats Cards -->
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
-                <div class="glass-card" style="background: #e0f2fe; text-align: center; padding: 1.5rem;">
-                    <h3 style="color: #0369a1; font-size: 0.9rem; text-transform: uppercase;">Total Students</h3>
-                    <p style="font-size: 2.5rem; font-weight: 800; color: #0ea5e9;">{{ total_students }}</p>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Students</p>
+                    <h2 style="font-size: 2rem; color: #1e293b;">{{ total_students }}</h2>
                 </div>
-                <div class="glass-card" style="background: #f5f3ff; text-align: center; padding: 1.5rem;">
-                    <h3 style="color: #5b21b6; font-size: 0.9rem; text-transform: uppercase;">Total Teachers</h3>
-                    <p style="font-size: 2.5rem; font-weight: 800; color: #6366f1;">{{ total_teachers }}</p>
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Teachers</p>
+                    <h2 style="font-size: 2rem; color: #1e293b;">{{ total_teachers }}</h2>
                 </div>
-                <div class="glass-card" style="background: #ecfdf5; text-align: center; padding: 1.5rem;">
-                    <h3 style="color: #065f46; font-size: 0.9rem; text-transform: uppercase;">Total Subjects</h3>
-                    <p style="font-size: 2.5rem; font-weight: 800; color: #10b981;">{{ total_subjects }}</p>
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Courses</p>
+                    <h2 style="font-size: 2rem; color: #1e293b;">{{ total_courses }}</h2>
                 </div>
-                <div class="glass-card" style="background: #fff7ed; text-align: center; padding: 1.5rem;">
-                    <h3 style="color: #9a3412; font-size: 0.9rem; text-transform: uppercase;">Videos / Notes</h3>
-                    <p style="font-size: 1.5rem; font-weight: 800; color: #f97316;">{{ total_videos }} / {{ total_notes }}</p>
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Lessons</p>
+                    <h2 style="font-size: 2rem; color: #1e293b;">{{ total_lessons }}</h2>
                 </div>
             </div>
 
-            <!-- Graphs -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                <div class="glass-card" style="background: white; padding: 2rem;">
-                    <h3 style="margin-bottom: 1.5rem;">Student Growth (Monthly)</h3>
-                    <canvas id="studentChart"></canvas>
+            <div class="chart-container">
+                <h3 style="margin-bottom: 1.5rem;">User Registration Trend</h3>
+                <canvas id="userChart" height="100"></canvas>
+            </div>
+
+            <div class="grid-2">
+                <div class="chart-container">
+                    <h3 style="margin-bottom: 1.5rem;">Course Approval Status</h3>
+                    <canvas id="approvalChart"></canvas>
                 </div>
-                <div class="glass-card" style="background: white; padding: 2rem;">
-                    <h3 style="margin-bottom: 1.5rem;">Teacher Growth (Monthly)</h3>
+                <div class="chart-container">
+                    <h3 style="margin-bottom: 1.5rem;">Top Performing Teachers</h3>
                     <canvas id="teacherChart"></canvas>
                 </div>
-                <div class="glass-card" style="background: white; padding: 2rem;">
-                    <h3 style="margin-bottom: 1.5rem;">Subject Creation (Monthly)</h3>
-                    <canvas id="subjectChart"></canvas>
-                </div>
-                <div class="glass-card" style="background: white; padding: 2rem; display: flex; align-items: center; justify-content: center;">
-                    <div style="text-align: center;">
-                        <h3 style="margin-bottom: 1rem;">Content Breakdown</h3>
-                        <canvas id="contentChart" style="max-height: 250px;"></canvas>
-                    </div>
-                </div>
             </div>
+
         </main>
     </div>
 
     <script>
         const months = {{ months|safe }};
         
-        // Student Chart
-        new Chart(document.getElementById('studentChart'), {
+        // User Chart
+        new Chart(document.getElementById('userChart'), {
             type: 'line',
             data: {
                 labels: months,
-                datasets: [{
-                    label: 'New Students',
-                    data: {{ student_data|safe }},
-                    borderColor: '#0ea5e9',
-                    backgroundColor: 'rgba(14, 165, 233, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            }
+                datasets: [
+                    {
+                        label: 'Students',
+                        data: {{ student_data|safe }},
+                        borderColor: '#0ea5e9',
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)'
+                    },
+                    {
+                        label: 'Teachers',
+                        data: {{ teacher_data|safe }},
+                        borderColor: '#6366f1',
+                        tension: 0.4,
+                        fill: true,
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)'
+                    }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { position: 'top' } } }
         });
 
-        // Teacher Chart
-        new Chart(document.getElementById('teacherChart'), {
-            type: 'line',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: 'New Teachers',
-                    data: {{ teacher_data|safe }},
-                    borderColor: '#6366f1',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    fill: true,
-                    tension: 0.4
-                }]
-            }
-        });
-
-        // Subject Chart
-        new Chart(document.getElementById('subjectChart'), {
-            type: 'bar',
-            data: {
-                labels: months,
-                datasets: [{
-                    label: 'Subjects Added',
-                    data: {{ subject_data|safe }},
-                    backgroundColor: '#10b981'
-                }]
-            }
-        });
-
-        // Content Breakdown Chart
-        new Chart(document.getElementById('contentChart'), {
+        // Approval Chart
+        new Chart(document.getElementById('approvalChart'), {
             type: 'doughnut',
             data: {
-                labels: ['Videos', 'Notes'],
+                labels: ['Approved', 'Rejected', 'Pending'],
                 datasets: [{
-                    data: [{{ total_videos }}, {{ total_notes }}],
-                    backgroundColor: ['#f97316', '#64748b']
+                    data: [{{ approval_stats.approved }}, {{ approval_stats.rejected }}, {{ approval_stats.pending }}],
+                    backgroundColor: ['#10b981', '#ef4444', '#f59e0b']
                 }]
             }
+        });
+
+        // Teacher Performance Chart
+        new Chart(document.getElementById('teacherChart'), {
+            type: 'bar',
+            data: {
+                labels: {{ teacher_perf_labels|safe }},
+                datasets: [{
+                    label: 'Courses Uploaded',
+                    data: {{ teacher_perf_data|safe }},
+                    backgroundColor: '#6366f1'
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true }
         });
     </script>
 </body>
