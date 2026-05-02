@@ -39,6 +39,7 @@
                 <table>
                     <thead>
                         <tr>
+                            <th>Photo</th>
                             <th>Username</th>
                             <th>Email</th>
                             <th>Full Name</th>
@@ -48,6 +49,13 @@
                     <tbody>
                         {% for u in users %}
                         <tr>
+                            <td style="padding: 0.5rem;">
+                                {% if u.profile_photo %}
+                                    <img src="{{ u.profile_photo.url }}" style="width: 80px; height: 100px; object-fit: cover; border-radius: 0.25rem; border: 1px solid #e2e8f0;" alt="Photo">
+                                {% else %}
+                                    <div style="width: 80px; height: 100px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #94a3b8; border-radius: 0.25rem;">No Photo</div>
+                                {% endif %}
+                            </td>
                             <td>{{ u.username }}</td>
                             <td>{{ u.email }}</td>
                             <td>{{ u.full_name }}</td>
