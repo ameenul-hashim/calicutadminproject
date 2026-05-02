@@ -139,7 +139,23 @@ def login_view(request):
             if user.user_type != 'STUDENT':
                 messages.error(request, "This login is for students only. Teachers please use the Teacher Login page.")
             elif user.status == 'ACTIVE':
+                # Concurrent login restriction for students
+                from django.contrib.sessions.models import Session
+                if user.current_session_key:
+                    try:
+                        old_session = Session.objects.get(session_key=user.current_session_key)
+                        old_session.delete()
+                    except Session.DoesNotExist:
+                        pass
+                
                 login(request, user)
+                
+                # Save the new session key
+                if not request.session.session_key:
+                    request.session.save()
+                user.current_session_key = request.session.session_key
+                user.save()
+                
                 messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
                 return redirect('dashboard')
             elif user.status == 'PENDING':

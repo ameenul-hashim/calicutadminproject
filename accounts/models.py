@@ -20,6 +20,7 @@ class CustomUser(AbstractUser):
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
     approved_at = models.DateTimeField(null=True, blank=True)
+    current_session_key = models.CharField(max_length=40, null=True, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.user_type})"
