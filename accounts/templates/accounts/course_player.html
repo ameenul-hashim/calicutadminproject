@@ -151,7 +151,8 @@
                     <h1 id="currentLessonTitle">{{ first_lesson.title }}</h1>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
                         <p>Course: {{ course.title }} • By {{ course.teacher.full_name|default:course.teacher.username }}</p>
-                        <div id="notesArea" style="display: {% if first_lesson.notes %}flex{% else %}none{% endif %}; gap: 1rem;">
+                        <div id="notesArea" style="display: {% if first_lesson.notes %}flex{% else %}none{% endif %}; gap: 1rem; align-items: center;">
+                            <a id="directYTLink" href="{{ first_lesson.video_url }}" target="_blank" class="back-btn" style="color: #64748b; font-size: 0.8rem; border: 1px solid #475569; padding: 0.4rem 1rem; border-radius: 0.5rem;">🌐 Open YT</a>
                             <a id="viewNotesLink" href="{% if first_lesson.notes %}{{ first_lesson.notes.url }}{% endif %}" target="_blank" class="back-btn" style="color: #0ea5e9; border: 1px solid #0ea5e9; padding: 0.4rem 1rem; border-radius: 0.5rem;">📄 View Notes</a>
                             <a id="downloadNotesLink" href="{% if first_lesson.notes %}{{ first_lesson.notes.url }}{% endif %}" download class="back-btn" style="color: #10b981; border: 1px solid #10b981; padding: 0.4rem 1rem; border-radius: 0.5rem;">⬇ Download</a>
                         </div>
@@ -176,7 +177,8 @@
         } catch (e) {}
         
         if (videoId) {
-            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`;
+            // Simplified embed URL to avoid configuration errors
+            return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
         }
         return url;
     }
@@ -191,23 +193,37 @@
 
         // Update Video
         const player = document.getElementById('mainPlayer');
+        const directLink = document.getElementById('directYTLink');
         if (videoUrl) {
             player.src = getEmbedUrl(videoUrl);
             player.style.display = 'block';
+            directLink.href = videoUrl;
+            directLink.style.display = 'inline-flex';
         } else {
             player.style.display = 'none';
+            directLink.style.display = 'none';
         }
 
         // Update Notes
         const notesArea = document.getElementById('notesArea');
         const viewLink = document.getElementById('viewNotesLink');
         const downloadLink = document.getElementById('downloadNotesLink');
-        if (notesUrl) {
+        
+        // Show notesArea if there are either notes or a video link (for the YT fallback)
+        if (notesUrl || videoUrl) {
             notesArea.style.display = 'flex';
+        } else {
+            notesArea.style.display = 'none';
+        }
+
+        if (notesUrl) {
+            viewLink.style.display = 'inline-flex';
+            downloadLink.style.display = 'inline-flex';
             viewLink.href = notesUrl;
             downloadLink.href = notesUrl;
         } else {
-            notesArea.style.display = 'none';
+            viewLink.style.display = 'none';
+            downloadLink.style.display = 'none';
         }
     }
 
