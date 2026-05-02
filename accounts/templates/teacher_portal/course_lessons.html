@@ -31,12 +31,10 @@
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
                     <div>
                         <h1 style="margin-bottom: 0.5rem;">Manage: {{ course.title }}</h1>
-                        <p style="color: #64748b; margin-top: 0.5rem;">Add videos, PDFs, assignments, and quizzes for this course.</p>
+                        <p style="color: #64748b; margin-top: 0.5rem;">Add videos and PDF notes for this course.</p>
                     </div>
                     <div style="display: flex; gap: 1rem;">
                         <a href="{% url 'add_lesson' course.id %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
-                        <a href="{% url 'create_quiz' course.id %}" class="btn" style="background: #8b5cf6; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">❓ Create Quiz</a>
-                        <a href="{% url 'create_assignment' course.id %}" class="btn" style="background: #ec4899; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">📝 Add Assignment</a>
                     </div>
                 </div>
                 {% if course.status == 'DRAFT' %}
@@ -74,50 +72,6 @@
                 {% endfor %}
             </div>
 
-            <!-- Quizzes Section -->
-            <h2 style="margin-top: 2.5rem; color: #1e293b;">❓ Quizzes</h2>
-            <div class="lessons-list">
-                {% for quiz in course.quizzes.all %}
-                <div class="lesson-card">
-                    <div style="display: flex; align-items: center; gap: 1.5rem;">
-                        <div style="width: 40px; height: 40px; background: #f5f3ff; color: #8b5cf6; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700;">Q</div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ quiz.title }}</h3>
-                            <span style="font-size: 0.8rem; color: #94a3b8;">{{ quiz.questions.count }} Questions • {{ quiz.timer_minutes }} min</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; {% if quiz.is_approved %}background: #ecfdf5; color: #10b981;{% else %}background: #fef2f2; color: #ef4444;{% endif %}">{% if quiz.is_approved %}Approved{% else %}Pending{% endif %}</span>
-                        <a href="{% url 'add_questions' quiz.id %}" style="color: #8b5cf6; text-decoration: none; font-size: 0.85rem; font-weight: 600;">Edit</a>
-                        <a href="{% url 'view_quiz_results' quiz.id %}" style="color: #0ea5e9; text-decoration: none; font-size: 0.85rem; font-weight: 600;">Results</a>
-                    </div>
-                </div>
-                {% empty %}
-                <div style="text-align: center; padding: 2rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; color: #94a3b8;">No quizzes created yet.</div>
-                {% endfor %}
-            </div>
-
-            <!-- Assignments Section -->
-            <h2 style="margin-top: 2.5rem; color: #1e293b;">📝 Assignments</h2>
-            <div class="lessons-list">
-                {% for assignment in course.assignments.all %}
-                <div class="lesson-card">
-                    <div style="display: flex; align-items: center; gap: 1.5rem;">
-                        <div style="width: 40px; height: 40px; background: #fdf2f8; color: #ec4899; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700;">A</div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ assignment.title }}</h3>
-                            <span style="font-size: 0.8rem; color: #94a3b8;">Deadline: {{ assignment.deadline|date:"M d, Y" }} • {{ assignment.submissions.count }} submissions</span>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; {% if assignment.is_approved %}background: #ecfdf5; color: #10b981;{% else %}background: #fef2f2; color: #ef4444;{% endif %}">{% if assignment.is_approved %}Approved{% else %}Pending{% endif %}</span>
-                        <a href="{% url 'view_submissions' assignment.id %}" style="color: #ec4899; text-decoration: none; font-size: 0.85rem; font-weight: 600;">View Submissions</a>
-                    </div>
-                </div>
-                {% empty %}
-                <div style="text-align: center; padding: 2rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; color: #94a3b8;">No assignments created yet.</div>
-                {% endfor %}
-            </div>
         </main>
     </div>
 </body>

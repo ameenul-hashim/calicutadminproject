@@ -69,41 +69,6 @@
             </div>
             {% endfor %}
 
-            <!-- Extra content like Quizzes and Assignments if they exist -->
-            {% if course.quizzes.exists %}
-            <h2 style="font-size: 1.25rem; margin-top: 3rem; margin-bottom: 1.5rem; color: #1e293b;">Quizzes</h2>
-            {% for quiz in course.quizzes.all %}
-                {% if quiz.is_approved %}
-                <div class="lesson-card" style="border-left: 4px solid #8b5cf6;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-size: 1.2rem;">❓</span>
-                        <h4 style="margin: 0;">{{ quiz.title }} ({{ quiz.questions.count }} Questions)</h4>
-                    </div>
-                    <span style="color: #64748b; font-size: 0.85rem;">Peer view only</span>
-                </div>
-                {% endif %}
-            {% endfor %}
-            {% endif %}
-
-            {% if course.assignments.exists %}
-            <h2 style="font-size: 1.25rem; margin-top: 3rem; margin-bottom: 1.5rem; color: #1e293b;">Assignments</h2>
-            {% for assignment in course.assignments.all %}
-                {% if assignment.is_approved %}
-                <div class="lesson-card" style="border-left: 4px solid #ec4899;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-size: 1.2rem;">📝</span>
-                        <h4 style="margin: 0;">{{ assignment.title }}</h4>
-                    </div>
-                    <div style="display: flex; gap: 0.75rem;">
-                        {% if assignment.file %}
-                            <a href="{{ assignment.file.url }}" target="_blank" class="view-btn" style="background: #fdf2f8; color: #db2777;">📄 View Instructions</a>
-                        {% endif %}
-                    </div>
-                </div>
-                {% endif %}
-            {% endfor %}
-            {% endif %}
-
         </main>
     </div>
 </body>

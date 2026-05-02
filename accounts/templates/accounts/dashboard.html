@@ -156,7 +156,6 @@
                 <li class="nav-item"><a href="#" class="nav-link"><span>📚</span> My Courses</a></li>
                 <li class="nav-item"><a href="#" class="nav-link"><span>🧠</span> Explore Courses</a></li>
                 <li class="nav-item"><a href="#" class="nav-link"><span>📈</span> Progress</a></li>
-                <li class="nav-item"><a href="#" class="nav-link"><span>📝</span> Assignments</a></li>
                 <li class="nav-item"><a href="#" class="nav-link"><span>🔔</span> Notifications</a></li>
                 <li class="nav-item"><a href="#" class="nav-link"><span>👤</span> Profile</a></li>
                 <li class="nav-item"><a href="#" class="nav-link"><span>⚙️</span> Settings</a></li>
@@ -248,26 +247,6 @@
                             <p style="font-size: 0.85rem; color: #94a3b8;">No lessons available yet.</p>
                             {% endfor %}
                         </div>
-
-                        <!-- Quizzes -->
-                        {% for quiz in course.quizzes.all %}
-                        {% if quiz.is_approved %}
-                        <div class="content-item" style="border-left: 3px solid #8b5cf6;">
-                            <span>❓ {{ quiz.title }} ({{ quiz.questions.count }} Q)</span>
-                            <a href="{% url 'take_quiz' quiz.id %}" class="view-btn" style="background: #f5f3ff; color: #8b5cf6;">Take Quiz</a>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-
-                        <!-- Assignments -->
-                        {% for assignment in course.assignments.all %}
-                        {% if assignment.is_approved %}
-                        <div class="content-item" style="border-left: 3px solid #ec4899;">
-                            <span>📝 {{ assignment.title }}</span>
-                            <a href="{% url 'submit_assignment' assignment.id %}" class="view-btn" style="background: #fdf2f8; color: #ec4899;">Submit</a>
-                        </div>
-                        {% endif %}
-                        {% endfor %}
                     </div>
                 </div>
                 {% empty %}
