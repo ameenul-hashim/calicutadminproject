@@ -1,0 +1,68 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Approvals | Admin</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div style="display: flex; min-height: 100vh;">
+        <aside style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
+            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
+            <nav>
+                <a href="{% url 'manage_students' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Students</a>
+                <a href="{% url 'manage_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Teachers</a>
+                <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Student Approvals</a>
+                <a href="{% url 'pending_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Teacher Approvals</a>
+                <a href="{% url 'pending_courses' %}" style="display: block; padding: 0.75rem 1rem; color: #0ea5e9; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">Course Approvals</a>
+            </nav>
+        </aside>
+
+        <main style="flex: 1; padding: 2rem; max-width: 1140px;">
+            <header class="admin-header">
+                <h1>Course Approvals</h1>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Course Title</th>
+                            <th>Teacher</th>
+                            <th>Lessons</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in courses %}
+                        <tr>
+                            <td>{{ course.title }}</td>
+                            <td>{{ course.teacher.username }}</td>
+                            <td>{{ course.lessons.count }}</td>
+                            <td><span class="status-badge" style="background: #fff7ed; color: #c2410c;">{{ course.get_status_display }}</span></td>
+                            <td>
+                                <a href="{% url 'approve_course' course.id %}" class="action-link" style="color: #10b981;">Approve</a>
+                                <a href="{% url 'reject_course' course.id %}" class="action-link block-link">Reject</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; padding: 3rem; color: #64748b;">No courses pending approval.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

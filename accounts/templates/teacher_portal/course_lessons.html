@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Lessons | EduStream</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .lesson-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #e2e8f0; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduStream</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
+                <a href="{% url 'my_courses' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">📚 My Courses</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="margin-bottom: 0.5rem;">{{ course.title }}</h1>
+                    <span style="color: #64748b;">Managing Content & Lessons</span>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <a href="{% url 'add_lesson' course.id %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
+                    {% if course.status == 'DRAFT' %}
+                    <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
+                    {% endif %}
+                </div>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="lessons-list">
+                {% for lesson in lessons %}
+                <div class="lesson-card">
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <div style="width: 40px; height: 40px; background: #eef2ff; color: #6366f1; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ lesson.order }}</div>
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ lesson.title }}</h3>
+                            <div style="display: flex; gap: 1rem; margin-top: 0.3rem;">
+                                {% if lesson.video %}<span style="font-size: 0.8rem; color: #94a3b8;">🎥 Video Uploaded</span>{% endif %}
+                                {% if lesson.notes %}<span style="font-size: 0.8rem; color: #94a3b8;">📄 Notes Uploaded</span>{% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <a href="#" style="color: #64748b; font-size: 0.9rem; text-decoration: none;">Edit</a>
+                        <span style="color: #e2e8f0;">|</span>
+                        <a href="#" style="color: #ef4444; font-size: 0.9rem; text-decoration: none;">Delete</a>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; padding: 5rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; color: #94a3b8;">
+                    No lessons added yet. Click "+ Add Lesson" to start building your course content.
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>

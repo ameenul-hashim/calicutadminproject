@@ -2,46 +2,128 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 class CustomUser(AbstractUser):
+    USER_TYPE_CHOICES = (
+        ('ADMIN', 'Admin'),
+        ('TEACHER', 'Teacher'),
+        ('STUDENT', 'Student'),
+    )
     STATUS_CHOICES = (
         ('PENDING', 'Pending Approval'),
         ('ACTIVE', 'Active'),
         ('BLOCKED', 'Blocked'),
     )
-    USER_TYPE_CHOICES = (
-        ('STUDENT', 'Student'),
-        ('TEACHER', 'Teacher'),
-    )
-    full_name = models.CharField(max_length=255)
-    email = models.EmailField(unique=True)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='STUDENT')
-    proof_file = models.FileField(upload_to='proofs/', null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
+    full_name = models.CharField(max_length=255, blank=True)
+    proof_file = models.FileField(upload_to='proofs/', blank=True, null=True)
+    rejection_reason = models.TextField(blank=True, null=True)
+    approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
+    approved_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.username} ({self.user_type})"
 
-class Subject(models.Model):
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return self.name
-
-class Video(models.Model):
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='videos')
+class Course(models.Model):
+    STATUS_CHOICES = (
+        ('DRAFT', 'Draft'),
+        ('PENDING', 'Pending Approval'),
+        ('PUBLISHED', 'Published'),
+        ('REJECTED', 'Rejected'),
+    )
+    LEVEL_CHOICES = (
+        ('BEGINNER', 'Beginner'),
+        ('ADVANCED', 'Advanced'),
+    )
+    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='courses')
     title = models.CharField(max_length=255)
-    video_file = models.FileField(upload_to='videos/')
+    description = models.TextField()
+    category = models.CharField(max_length=100)
+    thumbnail = models.ImageField(upload_to='course_thumbnails/', null=True, blank=True)
+    level = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='BEGINNER')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    intro_video = models.FileField(upload_to='course_intro/', null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    is_approved = models.BooleanField(default=False)
+    rejection_reason = models.TextField(blank=True, null=True)
+    approved_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_courses')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.title
 
-class Note(models.Model):
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name='notes')
+class Lesson(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=255)
-    note_file = models.FileField(upload_to='notes/')
+    video = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
+    notes = models.FileField(upload_to='lessons/notes/', null=True, blank=True)
+    order = models.PositiveIntegerField(default=1)
+    is_approved = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.title
+    class Meta:
+        ordering = ['order']
+
+class Assignment(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='assignments')
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    deadline = models.DateTimeField()
+    file = models.FileField(upload_to='assignments/', null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Submission(models.Model):
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='submissions')
+    file = models.FileField(upload_to='submissions/')
+    grade = models.CharField(max_length=10, blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+class Quiz(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quizzes')
+    title = models.CharField(max_length=255)
+    timer_minutes = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+class Question(models.Model):
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    option1 = models.CharField(max_length=255)
+    option2 = models.CharField(max_length=255)
+    option3 = models.CharField(max_length=255)
+    option4 = models.CharField(max_length=255)
+    correct_answer = models.CharField(max_length=255)
+
+class LiveClass(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='live_classes')
+    title = models.CharField(max_length=255)
+    meeting_link = models.URLField()
+    date_time = models.DateTimeField()
+
+class Enrollment(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='enrollments')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
+    enrolled_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'course')
+
+class ApprovalLog(models.Model):
+    content_type = models.CharField(max_length=50)
+    object_id = models.PositiveIntegerField()
+    status = models.CharField(max_length=20)
+    reviewed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+    comments = models.TextField(blank=True, null=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+class Report(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('REVIEWED', 'Reviewed'),
+        ('RESOLVED', 'Resolved'),
+    )
+    reporter = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='filed_reports')
+    content_type = models.CharField(max_length=50)
+    object_id = models.PositiveIntegerField()
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)

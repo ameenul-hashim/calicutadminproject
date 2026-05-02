@@ -17,6 +17,7 @@
                 <a href="{% url 'manage_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Teachers</a>
                 <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Student Approvals</a>
                 <a href="{% url 'pending_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Teacher Approvals</a>
+                <a href="{% url 'pending_courses' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Course Approvals</a>
                 <a href="{% url 'admin_analytics' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Analytics</a>
                 <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #0ea5e9; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">Content Data</a>
                 <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
@@ -31,50 +32,50 @@
             </header>
 
             <div style="display: grid; gap: 2rem;">
-                {% for subject in subjects %}
+                {% for course in courses %}
                 <div class="glass-card" style="background: white; padding: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1rem;">
-                        <h2 style="color: #1e293b;">{{ subject.name }}</h2>
+                        <div>
+                            <h2 style="color: #1e293b; margin: 0;">{{ course.title }}</h2>
+                            <p style="color: #64748b; font-size: 0.85rem; margin: 0.25rem 0 0 0;">By {{ course.teacher.full_name|default:course.teacher.username }}</p>
+                        </div>
                         <span style="background: #f1f5f9; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 600; color: #64748b;">
-                            {{ subject.videos.count }} Videos | {{ subject.notes.count }} Notes
+                            {{ course.lessons.count }} Lessons
                         </span>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-                        <!-- Videos List -->
-                        <div>
-                            <h4 style="margin-bottom: 1rem; color: #0ea5e9;">Videos</h4>
-                            <ul style="list-style: none; padding: 0;">
-                                {% for video in subject.videos.all %}
-                                <li style="padding: 0.5rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; display: flex; justify-content: space-between;">
-                                    <span>{{ video.title }}</span>
-                                    <span style="color: #94a3b8; font-size: 0.8rem;">{{ video.created_at|date:"M d, Y" }}</span>
-                                </li>
-                                {% empty %}
-                                <li style="color: #94a3b8; font-size: 0.9rem;">No videos uploaded.</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-
-                        <!-- Notes List -->
-                        <div>
-                            <h4 style="margin-bottom: 1rem; color: #6366f1;">Notes</h4>
-                            <ul style="list-style: none; padding: 0;">
-                                {% for note in subject.notes.all %}
-                                <li style="padding: 0.5rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; display: flex; justify-content: space-between;">
-                                    <span>{{ note.title }}</span>
-                                    <span style="color: #94a3b8; font-size: 0.8rem;">{{ note.created_at|date:"M d, Y" }}</span>
-                                </li>
-                                {% empty %}
-                                <li style="color: #94a3b8; font-size: 0.9rem;">No notes uploaded.</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
+                    <div>
+                        <h4 style="margin-bottom: 1rem; color: #0ea5e9;">Lessons & Content</h4>
+                        <ul style="list-style: none; padding: 0;">
+                            {% for lesson in course.lessons.all %}
+                            <li style="padding: 1rem; border-bottom: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center; background: {% if not lesson.is_approved %}#fef2f2{% else %}transparent{% endif %};">
+                                <div>
+                                    <strong style="display: block; margin-bottom: 0.25rem;">{{ lesson.order }}. {{ lesson.title }}</strong>
+                                    <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
+                                        {% if lesson.video %}<a href="{{ lesson.video.url }}" target="_blank" style="color: #6366f1; text-decoration: none;">🎥 View Video</a>{% else %}<span style="color: #94a3b8;">No Video</span>{% endif %}
+                                        {% if lesson.notes %}<a href="{{ lesson.notes.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 View Notes</a>{% else %}<span style="color: #94a3b8;">No Notes</span>{% endif %}
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <span style="font-size: 0.75rem; color: #64748b; margin-right: 1rem;">Added: {{ lesson.created_at|date:"M d, Y" }}</span>
+                                    {% if lesson.is_approved %}
+                                        <a href="{% url 'toggle_lesson_approval' lesson.id %}" class="btn" style="background: #fef2f2; color: #ef4444; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Reject Content</a>
+                                    {% else %}
+                                        <span style="color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem;">REJECTED</span>
+                                        <a href="{% url 'toggle_lesson_approval' lesson.id %}" class="btn" style="background: #ecfdf5; color: #10b981; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Approve Content</a>
+                                    {% endif %}
+                                    <a href="#" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; margin-left: 0.5rem;">🗑️ Delete</a>
+                                </div>
+                            </li>
+                            {% empty %}
+                            <li style="color: #94a3b8; font-size: 0.9rem;">No lessons uploaded yet.</li>
+                            {% endfor %}
+                        </ul>
                     </div>
                 </div>
                 {% empty %}
                 <div style="text-align: center; padding: 5rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
-                    No subjects found in database.
+                    No courses found in database.
                 </div>
                 {% endfor %}
             </div>

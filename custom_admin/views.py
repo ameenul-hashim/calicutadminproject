@@ -66,12 +66,27 @@ def pending_teachers_view(request):
     pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True)
     return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
 
+from django.utils import timezone
+from accounts.models import ApprovalLog
+
 @user_passes_test(is_admin, login_url='admin_login')
 def accept_user(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
     user.status = 'ACTIVE'
     user.is_active = True
+    user.approved_by = request.user
+    user.approved_at = timezone.now()
+    user.rejection_reason = ""
     user.save()
+    
+    ApprovalLog.objects.create(
+        content_type=user.user_type,
+        object_id=user.id,
+        status='APPROVED',
+        reviewed_by=request.user,
+        comments="Approved by admin."
+    )
+    
     messages.success(request, f"{user.user_type.title()} {user.username} has been approved.")
     if user.user_type == 'TEACHER':
         return redirect('pending_teachers')
@@ -80,13 +95,27 @@ def accept_user(request, user_id):
 @user_passes_test(is_admin, login_url='admin_login')
 def decline_user(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
-    user.status = 'BLOCKED'
-    user.is_active = False
-    user.save()
-    messages.success(request, f"{user.user_type.title()} {user.username} has been declined/blocked.")
-    if user.user_type == 'TEACHER':
-        return redirect('pending_teachers')
-    return redirect('pending_users')
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '')
+        user.status = 'BLOCKED'
+        user.is_active = False
+        user.rejection_reason = reason
+        user.save()
+        
+        ApprovalLog.objects.create(
+            content_type=user.user_type,
+            object_id=user.id,
+            status='REJECTED',
+            reviewed_by=request.user,
+            comments=reason
+        )
+        
+        messages.warning(request, f"{user.user_type.title()} {user.username} has been declined.")
+        if user.user_type == 'TEACHER':
+            return redirect('pending_teachers')
+        return redirect('pending_users')
+        
+    return render(request, 'custom_admin/decline_reason.html', {'target_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def toggle_user_status(request, user_id):
@@ -180,16 +209,15 @@ def create_teacher_admin(request):
     return render(request, 'custom_admin/create_teacher.html')
 
 from django.db.models.functions import ExtractMonth
-from accounts.models import Subject, Video, Note
+from accounts.models import Course, Lesson
 
 @user_passes_test(is_admin, login_url='admin_login')
 def analytics_view(request):
     # Stats Cards
     total_students = CustomUser.objects.filter(user_type='STUDENT').count()
     total_teachers = CustomUser.objects.filter(user_type='TEACHER').count()
-    total_subjects = Subject.objects.count()
-    total_videos = Video.objects.count()
-    total_notes = Note.objects.count()
+    total_courses = Course.objects.count()
+    total_lessons = Lesson.objects.count()
 
     # Month-wise Data (Simple aggregation for Chart.js)
     def get_monthly_data(queryset):
@@ -202,25 +230,72 @@ def analytics_view(request):
 
     student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'))
     teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'))
-    subject_data = get_monthly_data(Subject.objects.all())
+    course_data = get_monthly_data(Course.objects.all())
 
     context = {
         'total_students': total_students,
         'total_teachers': total_teachers,
-        'total_subjects': total_subjects,
-        'total_videos': total_videos,
-        'total_notes': total_notes,
+        'total_courses': total_courses,
+        'total_lessons': total_lessons,
         'student_data': student_data,
         'teacher_data': teacher_data,
-        'subject_data': subject_data,
+        'course_data': course_data,
         'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     }
     return render(request, 'custom_admin/analytics.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    subjects = Subject.objects.all().prefetch_related('videos', 'notes')
-    return render(request, 'custom_admin/content_management.html', {'subjects': subjects})
+    courses = Course.objects.all().prefetch_related('lessons')
+    return render(request, 'custom_admin/content_management.html', {'courses': courses})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def pending_courses_view(request):
+    courses = Course.objects.filter(status='PENDING')
+    return render(request, 'custom_admin/pending_courses.html', {'courses': courses})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def approve_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    course.status = 'PUBLISHED'
+    course.is_approved = True
+    course.approved_by = request.user
+    course.rejection_reason = ""
+    course.save()
+    
+    ApprovalLog.objects.create(
+        content_type='COURSE',
+        object_id=course.id,
+        status='APPROVED',
+        reviewed_by=request.user,
+        comments="Course published."
+    )
+    
+    messages.success(request, f"Course '{course.title}' has been approved and published!")
+    return redirect('pending_courses')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def reject_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '')
+        course.status = 'REJECTED'
+        course.is_approved = False
+        course.rejection_reason = reason
+        course.save()
+        
+        ApprovalLog.objects.create(
+            content_type='COURSE',
+            object_id=course.id,
+            status='REJECTED',
+            reviewed_by=request.user,
+            comments=reason
+        )
+        
+        messages.warning(request, f"Course '{course.title}' has been rejected.")
+        return redirect('pending_courses')
+        
+    return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def edit_user_admin(request, user_id):
@@ -255,6 +330,29 @@ def edit_user_admin(request, user_id):
             return redirect('manage_students')
             
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def toggle_lesson_approval(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+    if lesson.is_approved:
+        lesson.is_approved = False
+        msg = "rejected"
+    else:
+        lesson.is_approved = True
+        msg = "approved"
+    lesson.save()
+    
+    from accounts.models import ApprovalLog
+    ApprovalLog.objects.create(
+        content_type='LESSON',
+        object_id=lesson.id,
+        status='APPROVED' if lesson.is_approved else 'REJECTED',
+        reviewed_by=request.user,
+        comments=f"Lesson {msg} by admin."
+    )
+    
+    messages.success(request, f"Lesson '{lesson.title}' content has been {msg}.")
+    return redirect('admin_content')
 
 def admin_logout(request):
     logout(request)

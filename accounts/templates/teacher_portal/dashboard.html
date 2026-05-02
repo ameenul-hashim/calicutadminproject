@@ -1,0 +1,160 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard | EduStream</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --teacher-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .logo-area { font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem; }
+        .nav-list { list-style: none; padding: 0; flex: 1; overflow-y: auto; }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem 1rem;
+            color: #64748b;
+            text-decoration: none;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+        .nav-link:hover { background: #f1f5f9; color: #6366f1; }
+        .nav-link.active { background: #eef2ff; color: #6366f1; }
+        
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem 3rem;
+        }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 1.25rem; border: 1px solid #f1f5f9; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        
+        .course-list-card { background: white; border-radius: 1.5rem; padding: 2rem; border: 1px solid #f1f5f9; }
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 2rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .status-draft { background: #f1f5f9; color: #64748b; }
+        .status-pending { background: #fff7ed; color: #c2410c; }
+        .status-published { background: #ecfdf5; color: #059669; }
+        .status-rejected { background: #fef2f2; color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-area">EduStream <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
+            <nav class="nav-list">
+                <a href="{% url 'teacher_dashboard' %}" class="nav-link active">🏠 Dashboard</a>
+                <a href="{% url 'my_courses' %}" class="nav-link">📚 My Courses</a>
+                <a href="{% url 'create_course' %}" class="nav-link">➕ Create Course</a>
+                <a href="#" class="nav-link">🎥 Content Manager</a>
+                <a href="#" class="nav-link">📝 Assignments</a>
+                <a href="#" class="nav-link">❓ Quizzes</a>
+                <a href="#" class="nav-link">💬 Q&A</a>
+                <a href="#" class="nav-link">📅 Live Classes</a>
+                <a href="#" class="nav-link">👥 Students</a>
+                <a href="#" class="nav-link">📊 Analytics</a>
+                <a href="#" class="nav-link">🔔 Notifications</a>
+                <a href="#" class="nav-link">👤 Profile</a>
+                <a href="#" class="nav-link">⚙️ Settings</a>
+            </nav>
+            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+                <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;">🚪 Logout</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Welcome, {{ user.full_name }}</h1>
+                    <p style="color: #64748b;">Manage your courses and student engagement.</p>
+                </div>
+                <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.8rem; text-decoration: none; font-weight: 600;">+ Create New Course</a>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Total Courses</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem;">{{ total_courses }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Published</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: #10b981;">{{ published_courses }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Pending</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: #f59e0b;">{{ pending_courses }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Enrolled Students</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: #6366f1;">{{ total_students }}</h2>
+                </div>
+            </div>
+
+            <div class="course-list-card">
+                <h3 style="margin-bottom: 1.5rem;">Recent Courses</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 1px solid #f1f5f9;">
+                            <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Course Title</th>
+                            <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Status</th>
+                            <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Lessons</th>
+                            <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in recent_courses %}
+                        <tr style="border-bottom: 1px solid #f8fafc;">
+                            <td style="padding: 1rem 0; font-weight: 500;">{{ course.title }}</td>
+                            <td style="padding: 1rem 0;">
+                                <span class="status-badge status-{{ course.status|lower }}">{{ course.get_status_display }}</span>
+                            </td>
+                            <td style="padding: 1rem 0;">{{ course.lessons.count }}</td>
+                            <td style="padding: 1rem 0;">
+                                <a href="{% url 'course_lessons' course.id %}" style="color: #6366f1; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Manage Content</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 3rem; color: #94a3b8;">No courses created yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

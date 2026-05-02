@@ -1,7 +1,8 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .models import CustomUser
+from django.contrib.auth.decorators import user_passes_test
 import re
 
 def signup_view(request):
@@ -148,7 +149,7 @@ def teacher_login_view(request):
             elif user.status == 'ACTIVE':
                 login(request, user)
                 messages.success(request, "Teacher dashboard logged in successfully!")
-                return redirect('dashboard') # Using same dashboard for now or separate one later
+                return redirect('teacher_dashboard')
             else:
                 messages.error(request, "Your teacher account is pending approval or blocked.")
         else:
@@ -156,7 +157,7 @@ def teacher_login_view(request):
             
     return render(request, 'accounts/teacher_login.html')
 
-from accounts.models import Subject, Video, Note
+from accounts.models import Course, Lesson, Enrollment
 
 def dashboard_view(request):
     if not request.user.is_authenticated:
@@ -167,19 +168,104 @@ def dashboard_view(request):
         messages.error(request, "Please use the appropriate portal.")
         return redirect('admin_dashboard') if request.user.is_superuser else redirect('teacher_login')
 
-    subjects = Subject.objects.all().prefetch_related('videos', 'notes')
-    search_query = request.GET.get('search', '')
+    # Get enrolled courses
+    enrollments = Enrollment.objects.filter(user=request.user).select_related('course')
+    courses = [e.course for e in enrollments]
     
+    # Explore courses (all approved and published)
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=[c.id for c in courses])
+    
+    search_query = request.GET.get('search', '')
     if search_query:
-        subjects = subjects.filter(name__icontains=search_query)
+        explore_courses = explore_courses.filter(title__icontains=search_query)
 
     context = {
-        'subjects': subjects,
+        'courses': courses,
+        'explore_courses': explore_courses,
         'search_query': search_query,
-        'total_videos': sum(s.videos.count() for s in subjects),
-        'total_notes': sum(s.notes.count() for s in subjects),
+        'total_lessons': sum(c.lessons.count() for c in courses),
     }
     return render(request, 'accounts/dashboard.html', context)
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def teacher_dashboard(request):
+    courses = Course.objects.filter(teacher=request.user)
+    total_students = Enrollment.objects.filter(course__teacher=request.user).count()
+    
+    context = {
+        'total_courses': courses.count(),
+        'published_courses': courses.filter(status='PUBLISHED').count(),
+        'pending_courses': courses.filter(status='PENDING').count(),
+        'total_students': total_students,
+        'recent_courses': courses.order_by('-created_at')[:5],
+    }
+    return render(request, 'teacher_portal/dashboard.html', context)
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def my_courses(request):
+    courses = Course.objects.filter(teacher=request.user)
+    return render(request, 'teacher_portal/my_courses.html', {'courses': courses})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def create_course(request):
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        category = request.POST.get('category')
+        level = request.POST.get('level')
+        thumbnail = request.FILES.get('thumbnail')
+        
+        course = Course.objects.create(
+            teacher=request.user,
+            title=title,
+            description=description,
+            category=category,
+            level=level,
+            thumbnail=thumbnail,
+            status='DRAFT'
+        )
+        messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
+        return redirect('course_lessons', course_id=course.id)
+    
+    return render(request, 'teacher_portal/create_course.html')
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def course_lessons(request, course_id):
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    lessons = course.lessons.all()
+    return render(request, 'teacher_portal/course_lessons.html', {'course': course, 'lessons': lessons})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def add_lesson(request, course_id):
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        video = request.FILES.get('video')
+        notes = request.FILES.get('notes')
+        order = request.POST.get('order', 1)
+        
+        Lesson.objects.create(
+            course=course,
+            title=title,
+            video=video,
+            notes=notes,
+            order=order
+        )
+        messages.success(request, "Lesson added successfully!")
+        return redirect('course_lessons', course_id=course.id)
+    
+    return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def submit_course_approval(request, course_id):
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    if course.lessons.exists():
+        course.status = 'PENDING'
+        course.save()
+        messages.success(request, "Course submitted for admin approval.")
+    else:
+        messages.error(request, "Please add at least one lesson before submitting for approval.")
+    return redirect('my_courses')
 
 def logout_view(request):
     logout(request)
