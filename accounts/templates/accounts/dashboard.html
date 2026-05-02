@@ -4,37 +4,209 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | E-Learning</title>
+    <title>Student Dashboard | E-Learning</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
+        }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        
+        /* Sidebar Styles */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: white;
+            border-right: 1px solid #e2e8f0;
+            padding: 2rem 1.5rem;
+            position: fixed;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .logo-area { font-size: 1.5rem; font-weight: 800; color: #0ea5e9; margin-bottom: 3rem; display: flex; align-items: center; gap: 0.5rem; }
+        .nav-list { list-style: none; padding: 0; flex: 1; }
+        .nav-item { margin-bottom: 0.5rem; }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem 1rem;
+            color: #64748b;
+            text-decoration: none;
+            border-radius: 0.75rem;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .nav-link:hover { background: #f1f5f9; color: #0ea5e9; }
+        .nav-link.active { background: #e0f2fe; color: #0ea5e9; }
+        
+        /* Main Content Styles */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            padding: 2rem 3rem;
+        }
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 3rem;
+        }
+        .search-wrapper {
+            position: relative;
+            width: 400px;
+        }
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 1.5rem;
+            padding-right: 3.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 1rem;
+            background: white;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus { border-color: #0ea5e9; box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1); }
+        .search-btn {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #0ea5e9;
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 0.7rem;
+            cursor: pointer;
+        }
+
+        /* Stats & Subject Cards */
+        .welcome-section { margin-bottom: 2.5rem; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
+        .stat-card { background: white; padding: 1.5rem; border-radius: 1.25rem; border: 1px solid #f1f5f9; }
+        
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
+        .subject-card {
+            background: white;
+            border-radius: 1.5rem;
+            overflow: hidden;
+            border: 1px solid #f1f5f9;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .subject-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .subject-banner { height: 8px; background: var(--primary-gradient); }
+        .subject-content { padding: 1.5rem; }
+        .content-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; color: #475569; }
+        .content-item:last-child { border-bottom: none; }
+        .view-btn { display: inline-block; padding: 0.4rem 0.8rem; border-radius: 0.5rem; background: #f1f5f9; color: #0ea5e9; text-decoration: none; font-weight: 600; font-size: 0.8rem; }
+    </style>
 </head>
 <body>
-    <nav style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
-        <h2 style="color: var(--primary);">E-Learning</h2>
-        <div style="display: flex; align-items: center; gap: 1.5rem;">
-            <span>Hello, {{ user.full_name }}</span>
-            <a href="{% url 'logout' %}" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Logout</a>
-        </div>
-    </nav>
-
-    <main style="padding: 3rem 2rem; max-width: 1200px; margin: 0 auto;">
-        <div class="glass-card">
-            <h1>User Dashboard</h1>
-            <p style="margin-top: 1rem; color: var(--text-muted);">Welcome to your learning journey. Start exploring courses below.</p>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <span style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">EduStream</span>
+            </div>
             
-            <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-                <!-- Placeholder for courses -->
-                <div class="glass-card" style="background: rgba(0,0,0,0.2);">
-                    <h3>Python Basics</h3>
-                    <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0.5rem 0;">Master the fundamentals of Python programming.</p>
-                    <button class="btn btn-primary" style="font-size: 0.8rem; margin-top: 1rem;">Start Course</button>
+            <ul class="nav-list">
+                <li class="nav-item"><a href="#" class="nav-link active"><span>🏠</span> Dashboard</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>📚</span> My Courses</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>🧠</span> Explore Courses</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>📈</span> Progress</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>📝</span> Assignments</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>🔔</span> Notifications</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>👤</span> Profile</a></li>
+                <li class="nav-item"><a href="#" class="nav-link"><span>⚙️</span> Settings</a></li>
+            </ul>
+
+            <div style="padding-top: 2rem; border-top: 1px solid #f1f5f9;">
+                <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="welcome-section">
+                    <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Hello, {{ user.full_name }}!</h1>
+                    <p style="color: #64748b;">Ready to continue your learning journey today?</p>
                 </div>
-                <div class="glass-card" style="background: rgba(0,0,0,0.2);">
-                    <h3>Web Development</h3>
-                    <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0.5rem 0;">Learn to build modern web applications.</p>
-                    <button class="btn btn-primary" style="font-size: 0.8rem; margin-top: 1rem;">Start Course</button>
+
+                <form method="GET" class="search-wrapper">
+                    <input type="text" name="search" class="search-input" placeholder="Search for courses or subjects..." value="{{ search_query }}">
+                    <button type="submit" class="search-btn">Search</button>
+                </form>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem; padding: 1rem; border-radius: 1rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Enrolled Subjects</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; color: #1e293b;">{{ subjects.count }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Total Video Classes</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; color: #1e293b;">{{ total_videos }}</h2>
+                </div>
+                <div class="stat-card">
+                    <p style="color: #64748b; font-size: 0.9rem;">Available Study Notes</p>
+                    <h2 style="font-size: 2rem; font-weight: 700; color: #1e293b;">{{ total_notes }}</h2>
                 </div>
             </div>
-        </div>
-    </main>
+
+            <h2 style="margin-bottom: 2rem; color: #1e293b; font-size: 1.4rem;">Academic Content</h2>
+            
+            <div class="subject-grid">
+                {% for s in subjects %}
+                <div class="subject-card">
+                    <div class="subject-banner"></div>
+                    <div class="subject-content">
+                        <h3 style="font-size: 1.2rem; margin-bottom: 1.5rem; color: #1e293b;">{{ s.name }}</h3>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 0.8rem; letter-spacing: 0.05em;">Classes</h4>
+                            {% for video in s.videos.all|slice:":3" %}
+                            <div class="content-item">
+                                <span>{{ video.title }}</span>
+                                <a href="{{ video.video_file.url }}" target="_blank" class="view-btn">Watch</a>
+                            </div>
+                            {% empty %}
+                            <p style="font-size: 0.85rem; color: #94a3b8;">No classes available.</p>
+                            {% endfor %}
+                        </div>
+
+                        <div>
+                            <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 0.8rem; letter-spacing: 0.05em;">Notes</h4>
+                            {% for note in s.notes.all|slice:":3" %}
+                            <div class="content-item">
+                                <span>{{ note.title }}</span>
+                                <a href="{{ note.note_file.url }}" target="_blank" class="view-btn">Read</a>
+                            </div>
+                            {% empty %}
+                            <p style="font-size: 0.85rem; color: #94a3b8;">No notes available.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: white; border-radius: 2rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
+                    No subjects found matching your search.
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
 </body>
 </html>

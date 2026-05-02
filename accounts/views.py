@@ -156,10 +156,30 @@ def teacher_login_view(request):
             
     return render(request, 'accounts/teacher_login.html')
 
+from accounts.models import Subject, Video, Note
+
 def dashboard_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/dashboard.html')
+    
+    # Check for student access
+    if request.user.user_type != 'STUDENT':
+        messages.error(request, "Please use the appropriate portal.")
+        return redirect('admin_dashboard') if request.user.is_superuser else redirect('teacher_login')
+
+    subjects = Subject.objects.all().prefetch_related('videos', 'notes')
+    search_query = request.GET.get('search', '')
+    
+    if search_query:
+        subjects = subjects.filter(name__icontains=search_query)
+
+    context = {
+        'subjects': subjects,
+        'search_query': search_query,
+        'total_videos': sum(s.videos.count() for s in subjects),
+        'total_notes': sum(s.notes.count() for s in subjects),
+    }
+    return render(request, 'accounts/dashboard.html', context)
 
 def logout_view(request):
     logout(request)
