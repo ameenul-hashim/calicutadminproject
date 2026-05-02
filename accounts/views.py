@@ -275,11 +275,55 @@ def logout_view(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
 def enroll_course(request, course_id):
     course = get_object_or_404(Course, id=course_id, status='PUBLISHED', is_approved=True)
-    # Check if already enrolled
     if Enrollment.objects.filter(user=request.user, course=course).exists():
         messages.info(request, f"You are already enrolled in {course.title}.")
     else:
         Enrollment.objects.create(user=request.user, course=course)
         messages.success(request, f"Successfully enrolled in {course.title}!")
     return redirect('dashboard')
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def create_quiz(request, course_id):
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        timer_minutes = request.POST.get('timer_minutes', 0)
+        quiz = Quiz.objects.create(course=course, title=title, timer_minutes=timer_minutes)
+        messages.success(request, "Quiz created successfully! Now add some questions.")
+        return redirect('add_questions', quiz_id=quiz.id)
+    return render(request, 'teacher_portal/create_quiz.html', {'course': course})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def add_questions(request, quiz_id):
+    quiz = get_object_or_404(Quiz, id=quiz_id, course__teacher=request.user)
+    if request.method == 'POST':
+        text = request.POST.get('text')
+        option1 = request.POST.get('option1')
+        option2 = request.POST.get('option2')
+        option3 = request.POST.get('option3')
+        option4 = request.POST.get('option4')
+        correct_answer = request.POST.get('correct_answer')
+        
+        Question.objects.create(
+            quiz=quiz, text=text, option1=option1, option2=option2, option3=option3, option4=option4, correct_answer=correct_answer
+        )
+        messages.success(request, "Question added!")
+        return redirect('add_questions', quiz_id=quiz.id)
+    return render(request, 'teacher_portal/add_questions.html', {'quiz': quiz})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def create_assignment(request, course_id):
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        deadline = request.POST.get('deadline')
+        file = request.FILES.get('file')
+        
+        Assignment.objects.create(
+            course=course, title=title, description=description, deadline=deadline, file=file
+        )
+        messages.success(request, "Assignment created successfully!")
+        return redirect('course_lessons', course_id=course.id) # Or a dedicated assignments page
+    return render(request, 'teacher_portal/create_assignment.html', {'course': course})
 

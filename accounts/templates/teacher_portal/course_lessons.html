@@ -27,17 +27,21 @@
         </aside>
 
         <main class="main-content">
-            <header style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end;">
-                <div>
-                    <h1 style="margin-bottom: 0.5rem;">{{ course.title }}</h1>
-                    <span style="color: #64748b;">Managing Content & Lessons</span>
+            <header style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
+                    <div>
+                        <h1 style="margin-bottom: 0.5rem;">Manage: {{ course.title }}</h1>
+                        <p style="color: #64748b; margin-top: 0.5rem;">Add videos, PDFs, assignments, and quizzes for this course.</p>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <a href="{% url 'add_lesson' course.id %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
+                        <a href="{% url 'create_quiz' course.id %}" class="btn" style="background: #8b5cf6; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">❓ Create Quiz</a>
+                        <a href="{% url 'create_assignment' course.id %}" class="btn" style="background: #ec4899; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">📝 Add Assignment</a>
+                    </div>
                 </div>
-                <div style="display: flex; gap: 1rem;">
-                    <a href="{% url 'add_lesson' course.id %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
-                    {% if course.status == 'DRAFT' %}
-                    <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
-                    {% endif %}
-                </div>
+                {% if course.status == 'DRAFT' %}
+                <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
+                {% endif %}
             </header>
 
             {% if messages %}

@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Questions | EduStream</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .form-card { background: white; border-radius: 1.5rem; padding: 2.5rem; border: 1px solid #e2e8f0; max-width: 700px; margin-bottom: 2rem; }
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem; }
+        .input-group input, .input-group select, .input-group textarea { width: 100%; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: #6366f1; }
+        .question-list { list-style: none; padding: 0; }
+        .question-item { background: white; padding: 1.5rem; border-radius: 1rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduStream</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
+                <a href="{% url 'course_lessons' quiz.course.id %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">📚 Manage Content</a>
+                <a href="#" style="display: block; padding: 0.8rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600;">❓ Edit Quiz</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem;">
+                <h1>Add Questions to {{ quiz.title }}</h1>
+                <p style="color: #64748b;">Current Questions: <strong>{{ quiz.questions.count }}</strong></p>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div style="background: #ecfdf5; color: #10b981; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem;">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem;">
+                <div class="form-card" style="margin: 0;">
+                    <h3 style="margin-top: 0; color: #1e293b;">New Question Form</h3>
+                    <form method="POST">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <label for="text">Question Text</label>
+                            <textarea name="text" id="text" rows="3" required></textarea>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div class="input-group">
+                                <label for="option1">Option 1</label>
+                                <input type="text" name="option1" id="option1" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="option2">Option 2</label>
+                                <input type="text" name="option2" id="option2" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="option3">Option 3</label>
+                                <input type="text" name="option3" id="option3" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="option4">Option 4</label>
+                                <input type="text" name="option4" id="option4" required>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="correct_answer">Correct Answer (Type exact text of the correct option)</label>
+                            <input type="text" name="correct_answer" id="correct_answer" required>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                            <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Add Question</button>
+                            <a href="{% url 'course_lessons' quiz.course.id %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; text-align: center;">Done (Finish Quiz)</a>
+                        </div>
+                    </form>
+                </div>
+
+                <div>
+                    <h3 style="color: #1e293b; margin-top: 0;">Questions Added</h3>
+                    <ul class="question-list">
+                        {% for question in quiz.questions.all %}
+                        <li class="question-item">
+                            <p style="margin: 0 0 0.5rem 0; font-weight: 600; color: #1e293b;">Q{{ forloop.counter }}: {{ question.text }}</p>
+                            <span style="font-size: 0.8rem; color: #10b981; background: #ecfdf5; padding: 0.2rem 0.5rem; border-radius: 0.3rem; font-weight: 600;">Answer: {{ question.correct_answer }}</span>
+                        </li>
+                        {% empty %}
+                        <li style="color: #94a3b8; text-align: center; padding: 2rem; border: 1px dashed #cbd5e1; border-radius: 1rem;">No questions added yet.</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
