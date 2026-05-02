@@ -14,6 +14,7 @@ def admin_login_view(request):
         if user is not None:
             if user.is_staff:
                 login(request, user)
+                messages.success(request, "Admin logged in successfully!")
                 return redirect('admin_dashboard')
             else:
                 messages.error(request, "Access denied. Admin credentials required.")
@@ -98,7 +99,7 @@ def create_user_admin(request):
         elif CustomUser.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email already exists.")
+            messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
         else:
             CustomUser.objects.create_user(
                 username=username,
@@ -108,7 +109,7 @@ def create_user_admin(request):
                 is_active=True,
                 status='ACTIVE'
             )
-            messages.success(request, "User created successfully.")
+            messages.success(request, "User created successfully!")
             return redirect('admin_dashboard')
             
     return render(request, 'custom_admin/create_user.html')
@@ -125,17 +126,18 @@ def edit_user_admin(request, user_id):
         if CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
             messages.error(request, "Username already taken.")
         elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
-            messages.error(request, "Email already taken.")
+            messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
         else:
             user.username = username
             user.email = email
             user.full_name = fullname
             user.save()
-            messages.success(request, "User updated successfully.")
+            messages.success(request, "User updated successfully!")
             return redirect('admin_dashboard')
             
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 def admin_logout(request):
     logout(request)
+    messages.success(request, "Admin logged out successfully!")
     return redirect('admin_login')

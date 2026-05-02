@@ -83,6 +83,7 @@ def login_view(request):
         if user is not None:
             if user.status == 'ACTIVE':
                 login(request, user)
+                messages.success(request, f"Welcome back, {user.full_name}! You have logged in successfully.")
                 return redirect('dashboard')
             elif user.status == 'PENDING':
                 messages.error(request, "Your account is pending approval. Please wait for acceptance or contact the administrator for verification.")
@@ -104,4 +105,5 @@ def dashboard_view(request):
 
 def logout_view(request):
     logout(request)
+    messages.success(request, "You have been logged out successfully. Have a great day!")
     return redirect('login')
