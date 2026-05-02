@@ -1,0 +1,69 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Profile | EduStream</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 2rem; }
+        .edit-card { background: white; border-radius: 2rem; padding: 3rem; width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-align: center; }
+        .subtitle { color: #64748b; text-align: center; margin-bottom: 2.5rem; font-size: 0.95rem; }
+        
+        .photo-preview { width: 130px; height: 160px; border-radius: 0.5rem; margin: 0 auto 2rem; border: 1px solid #e2e8f0; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .form-group { margin-bottom: 2rem; }
+        .form-group label { display: block; font-weight: 700; color: #334155; margin-bottom: 0.75rem; font-size: 0.9rem; }
+        .file-input { width: 100%; padding: 0.8rem; border: 2px dashed #e2e8f0; border-radius: 1rem; cursor: pointer; transition: all 0.2s; }
+        .file-input:hover { border-color: #6366f1; background: #f8fafc; }
+        
+        .readonly-field { background: #f1f5f9; padding: 0.8rem 1.2rem; border-radius: 1rem; color: #64748b; font-size: 0.95rem; border: 1px solid #e2e8f0; }
+        
+        .btn-save { width: 100%; background: #6366f1; color: white; padding: 1rem; border-radius: 1rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.3s; margin-bottom: 1rem; }
+        .btn-save:hover { background: #4f46e5; transform: translateY(-2px); }
+        .btn-back { display: block; text-align: center; color: #64748b; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <div class="edit-card">
+        <h1 class="title">Update Profile Photo</h1>
+        <p class="subtitle">Upload your passport-size photo to keep your profile professional.</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem;">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="photo-preview">
+                {% if user.profile_photo %}
+                    <img src="{{ user.profile_photo.url }}" alt="Current Photo">
+                {% else %}
+                    <span style="font-size: 3rem;">👤</span>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label>PASSPORT SIZE PHOTO</label>
+                <input type="file" name="profile_photo" class="file-input" accept="image/*" required>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">* Only images are allowed. Passport size recommended.</p>
+            </div>
+
+            <div class="form-group">
+                <label>FULL NAME (Not Changeable)</label>
+                <div class="readonly-field">{{ user.full_name }}</div>
+            </div>
+
+            <button type="submit" class="btn-save">Update Photo</button>
+            <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
+        </form>
+    </div>
+</body>
+</html>

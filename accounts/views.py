@@ -459,6 +459,20 @@ def profile_view(request):
     return render(request, 'accounts/profile.html', {'user': request.user})
 
 @login_required
+def edit_profile(request):
+    if request.method == 'POST':
+        profile_photo = request.FILES.get('profile_photo')
+        if profile_photo:
+            request.user.profile_photo = profile_photo
+            request.user.save()
+            messages.success(request, "Profile photo updated successfully!")
+            return redirect('profile')
+        else:
+            messages.error(request, "Please select a photo to upload.")
+    
+    return render(request, 'accounts/edit_profile.html', {'user': request.user})
+
+@login_required
 def course_player(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     

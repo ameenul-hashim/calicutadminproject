@@ -30,5 +30,6 @@ urlpatterns = [
     path('course/<int:course_id>/play/', views.course_player, name='course_play'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('profile/', views.profile_view, name='profile'),
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
 ]
 
