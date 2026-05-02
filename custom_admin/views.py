@@ -263,6 +263,10 @@ def approve_course(request, course_id):
     course.rejection_reason = ""
     course.save()
     
+    # Auto-approve all current lessons in the course
+    course.lessons.update(is_approved=True)
+
+    
     ApprovalLog.objects.create(
         content_type='COURSE',
         object_id=course.id,

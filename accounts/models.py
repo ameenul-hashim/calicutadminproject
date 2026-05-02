@@ -57,7 +57,7 @@ class Lesson(models.Model):
     video = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
     notes = models.FileField(upload_to='lessons/notes/', null=True, blank=True)
     order = models.PositiveIntegerField(default=1)
-    is_approved = models.BooleanField(default=True)
+    is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
