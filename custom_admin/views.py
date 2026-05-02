@@ -46,7 +46,6 @@ def manage_students(request):
             Q(email__icontains=search_query) |
             Q(full_name__icontains=search_query)
         )
-        )
     
     notifications = Notification.objects.filter(user=request.user)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -273,7 +272,6 @@ def analytics_view(request):
         'course_data': course_data,
         'approval_stats': approval_stats,
         'teacher_perf_labels': teacher_performance_labels,
-        'teacher_perf_data': teacher_performance_data,
         'teacher_perf_data': teacher_performance_data,
         'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         'notifications': Notification.objects.filter(user=request.user)[:10],
