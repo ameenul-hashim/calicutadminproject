@@ -9,7 +9,7 @@ def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
 
 def notify_admins(message):
-    admins = CustomUser.objects.filter(is_superuser=True)
+    admins = CustomUser.objects.filter(user_type='ADMIN')
     for admin in admins:
         create_notification(admin, message)
 
@@ -693,4 +693,17 @@ def all_notifications(request):
     return render(request, 'accounts/all_notifications.html', {
         'notifications': notifications,
         'base_template': base_template
+    })
+@login_required
+def get_unread_counts(request):
+    from django.http import JsonResponse
+    from .models import Notification, ChatMessage
+    from django.db.models import Q
+    
+    notif_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    chat_count = ChatMessage.objects.filter(receiver=request.user, is_read=False).count()
+    
+    return JsonResponse({
+        'notifications': notif_count,
+        'chat': chat_count
     })

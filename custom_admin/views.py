@@ -340,8 +340,9 @@ def approve_course(request, course_id):
     
     # Notify all active students about new course
     students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
+    teacher_name = course.teacher.full_name or course.teacher.username
     for student in students:
-        create_notification(student, f"New course available: '{course.title}' by {course.teacher.username}")
+        create_notification(student, f"{teacher_name} added course {course.title}")
 
     
     ApprovalLog.objects.create(
@@ -430,8 +431,9 @@ def toggle_lesson_approval(request, lesson_id):
     if msg == "approved":
         # Notify enrolled students
         enrollments = Enrollment.objects.filter(course=lesson.course)
+        teacher_name = lesson.course.teacher.full_name or lesson.course.teacher.username
         for e in enrollments:
-            create_notification(e.user, f"New lesson added to your course '{lesson.course.title}': {lesson.title}")
+            create_notification(e.user, f"{teacher_name} added content {lesson.title}")
     
     from accounts.models import ApprovalLog
     ApprovalLog.objects.create(

@@ -197,15 +197,18 @@
                     <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Hello, {{ user.full_name }}!</h1>
                     <p style="color: #64748b;">Ready to continue your learning journey today?</p>
                 </div>
+                <div style="display: flex; align-items: center; gap: 1.5rem;">
+                    <!-- Search Bar -->
+                    <form method="GET" class="search-wrapper" style="width: 300px; margin: 0;">
+                        <input type="text" name="search" class="search-input" placeholder="Search courses..." value="{{ search_query }}">
+                        <button type="submit" class="search-btn">Search</button>
+                    </form>
 
-                <div style="display: flex; align-items: center; gap: 2rem;">
                     <!-- Notification Bell -->
                     <div class="notification-wrapper" style="position: relative; cursor: pointer;">
-                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
+                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative; padding: 5px;">
                             🔔
-                            {% if unread_notifications_count > 0 %}
-                                <span style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
-                            {% endif %}
+                            <span id="notif-count-badge" style="position: absolute; top: -2px; right: -2px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_notifications_count > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
                         </div>
                         
                         <!-- Notification Dropdown -->
@@ -217,25 +220,23 @@
                                     <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
                                 </div>
                             </div>
-                            {% for notif in notifications %}
-                                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative;">
-                                    {{ notif.message }}
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
-                                        <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                                        {% if not notif.is_read %}
-                                            <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
-                                        {% endif %}
+                            <div id="notif-items-container">
+                                {% for notif in notifications %}
+                                    <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
+                                        {{ notif.message }}
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
+                                            <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
+                                            {% if not notif.is_read %}
+                                                <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                </div>
-                            {% empty %}
-                                <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
-                            {% endfor %}
+                                {% empty %}
+                                    <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
+                                {% endfor %}
+                            </div>
                         </div>
-
-                    <form method="GET" class="search-wrapper" style="width: 300px;">
-                        <input type="text" name="search" class="search-input" placeholder="Search courses..." value="{{ search_query }}">
-                        <button type="submit" class="search-btn">Search</button>
-                    </form>
+                    </div>
                 </div>
             </header>
 

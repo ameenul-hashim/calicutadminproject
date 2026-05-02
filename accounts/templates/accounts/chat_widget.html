@@ -134,12 +134,47 @@
             <button onclick="sendMessage()" style="background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 1rem; cursor: pointer;">Send</button>
         </div>
     </div>
-    <button id="chat-toggle-btn" onclick="toggleChat()">💬</button>
+    <button id="chat-toggle-btn" onclick="toggleChat()">
+        💬
+        <span id="chat-unread-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; display: none; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">0</span>
+    </button>
 </div>
 
 <script>
     let currentReceiverId = null;
     let chatInterval = null;
+    let countsInterval = null;
+
+    // Polling for total unread counts (chat + notifications)
+    function pollUnreadCounts() {
+        fetch('{% url "get_unread_counts" %}')
+            .then(res => res.json())
+            .then(data => {
+                // Update chat badge
+                const chatBadge = document.getElementById('chat-unread-badge');
+                if (data.chat > 0) {
+                    chatBadge.innerText = data.chat;
+                    chatBadge.style.display = 'flex';
+                } else {
+                    chatBadge.style.display = 'none';
+                }
+
+                // Update notification badge (if exists in DOM)
+                const notifBadge = document.getElementById('notif-count-badge');
+                if (notifBadge) {
+                    if (data.notifications > 0) {
+                        notifBadge.innerText = data.notifications;
+                        notifBadge.style.display = 'flex';
+                    } else {
+                        notifBadge.style.display = 'none';
+                    }
+                }
+            });
+    }
+
+    // Start polling
+    pollUnreadCounts();
+    countsInterval = setInterval(pollUnreadCounts, 10000); // Every 10 seconds
 
     function toggleChat() {
         const win = document.getElementById('chat-window');
