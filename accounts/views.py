@@ -183,11 +183,17 @@ def dashboard_view(request):
     if search_query:
         explore_courses = explore_courses.filter(title__icontains=search_query)
 
+    # Get notifications
+    notifications = request.user.notifications.all()[:5]
+    unread_notifications_count = request.user.notifications.filter(is_read=False).count()
+
     context = {
         'courses': courses,
         'explore_courses': explore_courses,
         'search_query': search_query,
         'total_lessons': sum(c.lessons.count() for c in courses),
+        'notifications': notifications,
+        'unread_notifications_count': unread_notifications_count,
     }
     return render(request, 'accounts/dashboard.html', context)
 
