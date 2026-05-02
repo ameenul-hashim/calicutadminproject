@@ -128,15 +128,40 @@
         .subject-content { padding: 1.25rem; }
         .content-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; color: #475569; }
         .content-item:last-child { border-bottom: none; }
-        .view-btn { display: inline-block; padding: 0.4rem 0.8rem; border-radius: 0.5rem; background: #f1f5f9; color: #0ea5e9; text-decoration: none; font-weight: 600; font-size: 0.8rem; }
+        .view-btn { display: inline-block; padding: 0.4rem 0.8rem; border-radius: 0.5rem; background: #f1f5f9; color: #0ea5e9; text-decoration: none; font-weight: 600; font-size: 0.8rem; transition: all 0.2s; }
+        .view-btn:hover { background: #e0f2fe; transform: scale(1.05); }
         
         /* Video Container Fix */
         .video-container {
             width: 100%;
             background: #000;
-            border-radius: 0.75rem;
+            border-radius: 1rem;
             overflow: hidden;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin-top: 1rem;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .lesson-card-item {
+            background: #f8fafc;
+            border-radius: 1rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s;
+        }
+        .lesson-card-item:hover { border-color: #0ea5e9; background: white; }
+        
+        .lesson-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .lesson-title-area { display: flex; align-items: center; gap: 0.75rem; }
+        .lesson-icon { width: 32px; height: 32px; background: #e0f2fe; color: #0ea5e9; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; }
+        
+        .action-group { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        
+        @media (max-width: 640px) {
+            .lesson-header { flex-direction: column; align-items: flex-start; }
+            .action-group { width: 100%; justify-content: space-between; }
+            .view-btn { flex: 1; text-align: center; font-size: 0.75rem; padding: 0.5rem 0.4rem; }
         }
     </style>
 </head>
@@ -220,31 +245,39 @@
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">By {{ course.teacher.full_name|default:course.teacher.username }}</p>
                         
                         <div style="margin-bottom: 1.5rem;">
-                            <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 0.8rem; letter-spacing: 0.05em;">Lessons</h4>
+                            <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 1.2rem; letter-spacing: 0.05em; font-weight: 700;">📚 Course Content</h4>
                             {% for lesson in course.lessons.all %}
                             {% if lesson.is_approved %}
-                            <div class="content-item" style="flex-direction: column; align-items: stretch;">
-                                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                    <span>{{ lesson.order }}. {{ lesson.title }}</span>
-                                    <div style="display: flex; gap: 0.5rem;">
-                                        {% if lesson.video_url %}<button onclick="toggleVideo(this, '{{ lesson.video_url }}')" class="view-btn video-toggle-btn" style="border: none; cursor: pointer;">▶ Watch</button>{% endif %}
+                            <div class="lesson-card-item">
+                                <div class="lesson-header">
+                                    <div class="lesson-title-area">
+                                        <div class="lesson-icon">{{ lesson.order }}</div>
+                                        <div>
+                                            <h4 style="margin: 0; font-size: 0.95rem; color: #1e293b;">{{ lesson.title }}</h4>
+                                            {% if lesson.video_url %}<span style="font-size: 0.75rem; color: #94a3b8;">🎥 Video Lesson</span>{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="action-group">
+                                        {% if lesson.video_url %}
+                                            <button onclick="toggleVideo(this, '{{ lesson.video_url }}')" class="view-btn video-toggle-btn" style="border: none; cursor: pointer; background: #0ea5e9; color: white;">▶ Watch</button>
+                                            <a href="{{ lesson.video_url }}" target="_blank" class="view-btn" style="background: #f1f5f9; color: #64748b; font-size: 0.7rem;">🌐 Open YT</a>
+                                        {% endif %}
                                         {% if lesson.notes %}
-                                        <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="color: #0ea5e9; background: #f0f9ff;">👁 View</a>
-                                        <a href="{{ lesson.notes.url }}" download class="view-btn" style="color: #10b981; background: #ecfdf5;">⬇ Download</a>
+                                            <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="color: #0ea5e9; background: #f0f9ff;">📄 Notes</a>
+                                            <a href="{{ lesson.notes.url }}" download class="view-btn" style="color: #10b981; background: #ecfdf5;">⬇ Save</a>
                                         {% endif %}
                                     </div>
                                 </div>
                                 {% if lesson.video_url %}
-                                <div class="video-container" style="display: none; margin-top: 1rem; position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden;" oncontextmenu="return false;">
-                                    <iframe class="lesson-iframe" src="" style="width: 100%; height: 100%; border: none; pointer-events: auto;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen></iframe>
-                                    <!-- Stealth overlay to prevent YouTube redirection -->
-                                    <div style="position: absolute; top: 0; right: 0; width: 60px; height: 60px; background: transparent; z-index: 5; cursor: default;"></div>
+                                <div class="video-container" style="display: none;" oncontextmenu="return false;">
+                                    <iframe class="lesson-iframe" src="" style="width: 100%; height: 100%; aspect-ratio: 16/9; border: none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen></iframe>
+                                    <div style="position: absolute; top: 0; right: 0; width: 60px; height: 60px; background: transparent; z-index: 5;"></div>
                                 </div>
                                 {% endif %}
                             </div>
                             {% endif %}
                             {% empty %}
-                            <p style="font-size: 0.85rem; color: #94a3b8;">No lessons available yet.</p>
+                            <p style="text-align: center; padding: 2rem; color: #94a3b8; font-style: italic;">No lessons published yet.</p>
                             {% endfor %}
                         </div>
                     </div>
@@ -284,7 +317,6 @@
                     No new courses available to explore.
                 </div>
                 {% endfor %}
-            </div>
         </main>
     </div>
 
@@ -293,27 +325,38 @@
         if (!url) return '';
         let videoId = '';
         
-        // Extract ID from various YouTube URL formats
-        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-        const match = url.match(regExp);
-        
-        if (match && match[2].length === 11) {
-            videoId = match[2];
-        } else {
-            return url; // Fallback
+        // Handle various YouTube URL formats
+        try {
+            if (url.includes('youtu.be/')) {
+                videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
+            } else if (url.includes('youtube.com/watch')) {
+                videoId = new URL(url).searchParams.get('v');
+            } else if (url.includes('youtube.com/embed/')) {
+                videoId = url.split('embed/')[1].split(/[?#]/)[0];
+            } else if (url.includes('youtube.com/v/')) {
+                videoId = url.split('v/')[1].split(/[?#]/)[0];
+            }
+        } catch (e) { console.error("URL parsing failed", e); }
+
+        if (!videoId || videoId.length !== 11) {
+            // Last resort regex
+            const match = url.match(/(?:v=|be\/|embed\/|v\/)([^#&?]*)/);
+            if (match && match[1].length === 11) videoId = match[1];
         }
 
-        // Return optimized embed URL with security and full-screen parameters
-        return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`;
+        if (videoId) {
+            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`;
+        }
+        return url;
     }
 
     function toggleVideo(btn, url) {
-        const contentItem = btn.closest('.content-item');
-        const container = contentItem.querySelector('.video-container');
+        const lessonCard = btn.closest('.lesson-card-item');
+        const container = lessonCard.querySelector('.video-container');
         const iframe = container.querySelector('.lesson-iframe');
 
         if (container.style.display === 'none') {
-            // Close any other open videos first
+            // Close other open videos
             document.querySelectorAll('.video-container').forEach(vc => {
                 vc.style.display = 'none';
                 vc.querySelector('.lesson-iframe').src = '';
@@ -323,6 +366,11 @@
             iframe.src = getEmbedUrl(url);
             container.style.display = 'block';
             btn.textContent = '⏹ Close';
+            
+            // Scroll into view on mobile
+            if (window.innerWidth < 768) {
+                setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+            }
         } else {
             iframe.src = '';
             container.style.display = 'none';
@@ -334,14 +382,6 @@
     document.addEventListener('contextmenu', function(e) {
         if (e.target.closest('.video-container') || e.target.closest('.lesson-iframe')) {
             e.preventDefault();
-        }
-    });
-
-    // Block keyboard shortcuts for view-source / dev tools on video area
-    document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) ||
-            (e.ctrlKey && (e.key === 'U' || e.key === 'u'))) {
-            // Allow but don't block globally — just a deterrent
         }
     });
     </script>
