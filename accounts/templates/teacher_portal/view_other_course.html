@@ -56,12 +56,7 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 0.75rem;">
-                    {% if lesson.video_url %}
-                        <a href="{{ lesson.video_url }}" target="_blank" class="view-btn" style="background: #fdf2f8; color: #db2777;">🎥 Watch Video</a>
-                    {% endif %}
-                    {% if lesson.notes %}
-                        <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="background: #ecfdf5; color: #059669;">📄 View Notes</a>
-                    {% endif %}
+                    <a href="{% url 'course_player' course.id %}" class="view-btn" style="background: #eef2ff; color: #6366f1;">📺 Open Course Player</a>
                 </div>
             </div>
             {% empty %}

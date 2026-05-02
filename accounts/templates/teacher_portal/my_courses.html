@@ -76,6 +76,7 @@
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
                             <span style="font-size: 0.85rem; color: #94a3b8;">{{ course.lessons.count }} Lessons</span>
                             <div style="display: flex; gap: 0.5rem;">
+                                <a href="{% url 'course_player' course.id %}" style="padding: 0.4rem 0.8rem; background: #ecfdf5; color: #059669; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">View in Player</a>
                                 <a href="{% url 'course_lessons' course.id %}" style="padding: 0.4rem 0.8rem; background: #f1f5f9; color: #6366f1; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">Edit</a>
                                 {% if course.status == 'DRAFT' or course.status == 'REJECTED' %}
                                 <a href="{% url 'submit_course_approval' course.id %}" style="padding: 0.4rem 0.8rem; background: #6366f1; color: white; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">Submit</a>

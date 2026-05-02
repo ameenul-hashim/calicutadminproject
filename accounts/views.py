@@ -417,10 +417,21 @@ def grade_submission(request, submission_id):
 
 @login_required
 def course_player(request, course_id):
-    # Ensure student is enrolled
-    enrollment = get_object_or_404(Enrollment, user=request.user, course_id=course_id)
-    course = enrollment.course
-    lessons = course.lessons.filter(is_approved=True).order_by('order')
+    course = get_object_or_404(Course, id=course_id)
+    
+    # Check access: Admin can always view, Teacher can view if they own it or if it's approved, Student must be enrolled
+    if request.user.user_type == 'STUDENT':
+        get_object_or_404(Enrollment, user=request.user, course=course)
+    elif request.user.user_type == 'TEACHER':
+        if course.teacher != request.user and not course.is_approved:
+            messages.error(request, "You do not have permission to view this course.")
+            return redirect('teacher_dashboard')
+    
+    # Teachers and Admins can see all lessons, students see only approved ones
+    if request.user.user_type in ['TEACHER', 'ADMIN'] or request.user.is_superuser:
+        lessons = course.lessons.all().order_by('order')
+    else:
+        lessons = course.lessons.filter(is_approved=True).order_by('order')
     
     context = {
         'course': course,

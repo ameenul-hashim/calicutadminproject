@@ -12,15 +12,17 @@
             --sidebar-width: 350px;
             --header-height: 70px;
             --primary-blue: #0ea5e9;
+            --sidebar-bg: #1e293b;
+            --main-bg: #0f172a;
         }
-        body { font-family: 'Inter', sans-serif; background: #0f172a; margin: 0; color: white; overflow: hidden; }
+        body { font-family: 'Inter', sans-serif; background: var(--main-bg); margin: 0; color: white; overflow: hidden; }
         
         .player-container { display: flex; height: 100vh; flex-direction: column; }
         
         /* Header */
         .player-header {
             height: var(--header-height);
-            background: #1e293b;
+            background: var(--sidebar-bg);
             border-bottom: 1px solid #334155;
             display: flex;
             align-items: center;
@@ -37,7 +39,7 @@
         /* Sidebar */
         .content-sidebar {
             width: var(--sidebar-width);
-            background: #1e293b;
+            background: var(--sidebar-bg);
             border-right: 1px solid #334155;
             display: flex;
             flex-direction: column;
@@ -46,38 +48,64 @@
         .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
         .sidebar-header h2 { margin: 0; font-size: 1.2rem; }
         
-        .lesson-item {
+        /* Accordion Style Sidebar */
+        .lesson-accordion { display: flex; flex-direction: column; }
+        .accordion-item { border-bottom: 1px solid #334155; }
+        
+        .accordion-header {
             padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid #334155;
             cursor: pointer;
-            transition: all 0.2s;
             display: flex;
             align-items: center;
             gap: 1rem;
+            transition: background 0.2s;
+            position: relative;
         }
-        .lesson-item:hover { background: #334155; }
-        .lesson-item.active { background: #0ea5e9; color: white; }
-        .lesson-item.active .lesson-order { background: white; color: #0ea5e9; }
+        .accordion-header:hover { background: #334155; }
+        .accordion-header.active { background: #1e293b; border-left: 4px solid var(--primary-blue); }
         
         .lesson-order {
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             background: #334155;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: 700;
-            flex-shrink: 0;
+            color: #94a3b8;
         }
-        .lesson-info h4 { margin: 0; font-size: 0.95rem; font-weight: 500; }
-        .lesson-info span { font-size: 0.75rem; color: #94a3b8; }
-        .lesson-item.active .lesson-info span { color: #e0f2fe; }
+        .accordion-header.active .lesson-order { background: var(--primary-blue); color: white; }
+        
+        .accordion-header h4 { margin: 0; font-size: 0.95rem; font-weight: 500; flex: 1; }
+        .chevron { font-size: 0.8rem; color: #64748b; transition: transform 0.3s; }
+        .accordion-header.active .chevron { transform: rotate(180deg); }
+        
+        .accordion-content {
+            background: #0f172a;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .accordion-header.active + .accordion-content { max-height: 200px; }
+        
+        .sub-item {
+            padding: 0.8rem 3.5rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            transition: all 0.2s;
+        }
+        .sub-item:hover { color: white; background: #1e293b; }
+        .sub-item.active { color: var(--primary-blue); font-weight: 600; background: #0f172a; }
         
         /* Video Area */
         .video-main { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
-        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; }
+        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; }
         .video-wrapper iframe, .video-wrapper video { width: 100%; height: 100%; border: none; }
         
         .video-footer { padding: 1.5rem 2rem; background: #1e293b; border-top: 1px solid #334155; }
@@ -92,7 +120,6 @@
             body { overflow-y: auto; }
         }
         
-        /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
@@ -103,11 +130,11 @@
         <!-- Header -->
         <header class="player-header">
             <div style="display: flex; align-items: center; gap: 2rem;">
-                <a href="{% url 'dashboard' %}" class="back-btn">← Back</a>
+                <a href="{% if request.user.user_type == 'STUDENT' %}{% url 'dashboard' %}{% else %}{% url 'teacher_dashboard' %}{% endif %}" class="back-btn">← Back</a>
                 <span style="font-weight: 600; color: #f1f5f9; font-size: 1.1rem;">{{ course.title }}</span>
             </div>
             <div style="display: flex; gap: 1rem;">
-                <span style="font-size: 0.85rem; color: #94a3b8;">Learning Progress: <strong>100%</strong></span>
+                <span style="font-size: 0.85rem; color: #94a3b8;">Status: <strong style="color: #10b981;">Active</strong></span>
             </div>
         </header>
 
@@ -117,14 +144,27 @@
                 <div class="sidebar-header">
                     <h2>Course Content</h2>
                 </div>
-                <div class="lesson-list">
+                <div class="lesson-accordion">
                     {% for lesson in lessons %}
-                    <div class="lesson-item {% if forloop.first %}active{% endif %}" 
-                         onclick="changeLesson(this, '{{ lesson.title }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}', '{% if lesson.notes %}{{ lesson.notes.url }}{% endif %}')">
-                        <div class="lesson-order">{{ lesson.order }}</div>
-                        <div class="lesson-info">
+                    <div class="accordion-item" id="lesson-{{ lesson.id }}">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <div class="lesson-order">{{ forloop.counter }}</div>
                             <h4>{{ lesson.title }}</h4>
-                            <span>{% if lesson.video_url or lesson.video_file %}🎥 Video{% endif %} {% if lesson.notes %}• 📄 Notes{% endif %}</span>
+                            <span class="chevron">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                            {% if lesson.video_url or lesson.video_file %}
+                            <div class="sub-item video-link" 
+                                 onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}')">
+                                🎥 Watch Video
+                            </div>
+                            {% endif %}
+                            {% if lesson.notes %}
+                            <div class="sub-item notes-link" 
+                                 onclick="playContent(this, 'notes', '{{ lesson.title|escapejs }}', '', '', '{{ lesson.notes.url }}')">
+                                📄 Study Notes (PDF)
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                     {% endfor %}
@@ -134,22 +174,25 @@
             <!-- Video/Content Main -->
             <main class="video-main">
                 <div class="video-wrapper" id="videoWrapper">
-                    <iframe id="mainPlayer" src="" allowfullscreen allow="autoplay; fullscreen" style="display: none;"></iframe>
-                    <video id="filePlayer" controls style="display: none; background: #000;"></video>
-                    <div id="noVideoMsg" style="display: none; text-align: center; color: #64748b; padding: 5rem;">
-                        <span style="font-size: 4rem;">📺</span>
-                        <h3>Select a lesson to start learning</h3>
+                    <!-- Default Player State -->
+                    <div id="noVideoMsg" style="text-align: center; color: #64748b; padding: 5rem;">
+                        <span style="font-size: 4rem;">📚</span>
+                        <h3>Select a lesson from the sidebar to start</h3>
+                        <p>You can watch videos or read PDF notes directly here.</p>
                     </div>
+
+                    <!-- Players (Hidden by default) -->
+                    <iframe id="youtubePlayer" src="" allowfullscreen allow="autoplay; fullscreen" style="display: none;"></iframe>
+                    <video id="filePlayer" controls style="display: none; background: #000;"></video>
+                    <iframe id="pdfViewer" src="" style="display: none; width: 100%; height: 100%; background: white;"></iframe>
                 </div>
 
                 <div class="video-footer">
-                    <h1 id="currentLessonTitle">{{ first_lesson.title }}</h1>
+                    <h1 id="currentContentTitle">Welcome to {{ course.title }}</h1>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
-                        <p>Course: {{ course.title }} • By {{ course.teacher.full_name|default:course.teacher.username }}</p>
-                        <div id="notesArea" style="display: none; gap: 1rem; align-items: center;">
-                            <a id="directYTLink" href="#" target="_blank" class="back-btn" style="color: #64748b; font-size: 0.8rem; border: 1px solid #475569; padding: 0.4rem 1rem; border-radius: 0.5rem; display: none;">🌐 Open YT</a>
-                            <a id="viewNotesLink" href="#" target="_blank" class="back-btn" style="color: #0ea5e9; border: 1px solid #0ea5e9; padding: 0.4rem 1rem; border-radius: 0.5rem; display: none;">📄 View Notes</a>
-                            <a id="downloadNotesLink" href="#" download class="back-btn" style="color: #10b981; border: 1px solid #10b981; padding: 0.4rem 1rem; border-radius: 0.5rem; display: none;">⬇ Download</a>
+                        <p id="contentSubtitle">Select a lesson to begin your learning journey.</p>
+                        <div id="actionArea" style="display: none; gap: 1rem; align-items: center;">
+                            <a id="externalLink" href="#" target="_blank" class="back-btn" style="color: #64748b; font-size: 0.8rem; border: 1px solid #475569; padding: 0.4rem 1rem; border-radius: 0.5rem;">🌐 Open External</a>
                         </div>
                     </div>
                 </div>
@@ -158,84 +201,91 @@
     </div>
 
     <script>
+    function toggleAccordion(header) {
+        const item = header.parentElement;
+        const isActive = header.classList.contains('active');
+        
+        // Close all others
+        document.querySelectorAll('.accordion-header').forEach(h => {
+            h.classList.remove('active');
+        });
+        
+        if (!isActive) {
+            header.classList.add('active');
+        }
+    }
+
     function getEmbedUrl(url) {
         if (!url) return '';
         let videoId = '';
+        // Improved regex for all YouTube variants
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
         const match = url.match(regExp);
         if (match && match[2].length === 11) {
             videoId = match[2];
         }
         if (videoId) {
-            return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+            // Simplified URL to avoid Error 153 configuration issues
+            // Use origin for security and rel=0 to show related videos from same channel
+            const origin = window.location.origin;
+            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`;
         }
         return url;
     }
 
-    function changeLesson(element, title, videoUrl, videoFileUrl, notesUrl) {
-        // Update active state
-        document.querySelectorAll('.lesson-item').forEach(item => item.classList.remove('active'));
+    function playContent(element, type, title, videoUrl, videoFileUrl, notesUrl) {
+        // Update sub-item active state
+        document.querySelectorAll('.sub-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
 
-        // Update Title
-        document.getElementById('currentLessonTitle').textContent = title;
-
-        // Players
-        const youtubePlayer = document.getElementById('mainPlayer');
+        // UI Elements
+        const ytPlayer = document.getElementById('youtubePlayer');
         const filePlayer = document.getElementById('filePlayer');
+        const pdfViewer = document.getElementById('pdfViewer');
         const noVideoMsg = document.getElementById('noVideoMsg');
-        const directLink = document.getElementById('directYTLink');
-
-        // Hide everything first
-        youtubePlayer.style.display = 'none';
-        filePlayer.style.display = 'none';
-        noVideoMsg.style.display = 'none';
-        youtubePlayer.src = "";
-        filePlayer.src = "";
-
-        if (videoFileUrl) {
-            filePlayer.src = videoFileUrl;
-            filePlayer.style.display = 'block';
-            filePlayer.load();
-            filePlayer.play();
-            directLink.style.display = 'none';
-        } else if (videoUrl) {
-            youtubePlayer.src = getEmbedUrl(videoUrl);
-            youtubePlayer.style.display = 'block';
-            directLink.href = videoUrl;
-            directLink.style.display = 'inline-flex';
-        } else {
-            noVideoMsg.style.display = 'block';
-            directLink.style.display = 'none';
-        }
-
-        // Update Notes
-        const notesArea = document.getElementById('notesArea');
-        const viewLink = document.getElementById('viewNotesLink');
-        const downloadLink = document.getElementById('downloadNotesLink');
+        const actionArea = document.getElementById('actionArea');
+        const externalLink = document.getElementById('externalLink');
         
-        if (notesUrl || videoUrl || videoFileUrl) {
-            notesArea.style.display = 'flex';
-        } else {
-            notesArea.style.display = 'none';
-        }
+        // Titles
+        document.getElementById('currentContentTitle').textContent = title;
+        document.getElementById('contentSubtitle').textContent = type === 'video' ? '🎥 Watching Video Lesson' : '📄 Reading Study Notes';
 
-        if (notesUrl) {
-            viewLink.style.display = 'inline-flex';
-            downloadLink.style.display = 'inline-flex';
-            viewLink.href = notesUrl;
-            downloadLink.href = notesUrl;
-        } else {
-            viewLink.style.display = 'none';
-            downloadLink.style.display = 'none';
+        // Reset all
+        [ytPlayer, filePlayer, pdfViewer, noVideoMsg].forEach(el => el.style.display = 'none');
+        ytPlayer.src = "";
+        filePlayer.src = "";
+        pdfViewer.src = "";
+        actionArea.style.display = 'none';
+
+        if (type === 'video') {
+            if (videoFileUrl) {
+                filePlayer.src = videoFileUrl;
+                filePlayer.style.display = 'block';
+                filePlayer.load();
+                filePlayer.play();
+            } else if (videoUrl) {
+                ytPlayer.src = getEmbedUrl(videoUrl);
+                ytPlayer.style.display = 'block';
+                externalLink.href = videoUrl;
+                actionArea.style.display = 'flex';
+            }
+        } else if (type === 'notes') {
+            // Display PDF inside iframe
+            pdfViewer.src = notesUrl;
+            pdfViewer.style.display = 'block';
+            externalLink.href = notesUrl;
+            actionArea.style.display = 'flex';
         }
     }
 
-    // Auto-load first lesson
+    // Auto-open first lesson
     window.onload = function() {
-        const firstLesson = document.querySelector('.lesson-item');
-        if (firstLesson) {
-            firstLesson.click();
+        const firstHeader = document.querySelector('.accordion-header');
+        if (firstHeader) {
+            firstHeader.click();
+            // Also click the first sub-item if exists
+            const firstSubItem = firstHeader.parentElement.querySelector('.sub-item');
+            if (firstSubItem) firstSubItem.click();
         }
     };
     </script>

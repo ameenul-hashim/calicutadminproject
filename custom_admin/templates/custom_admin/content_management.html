@@ -68,9 +68,12 @@
                             <h2 style="color: #1e293b; margin: 0;">{{ course.title }}</h2>
                             <p style="color: #64748b; font-size: 0.85rem; margin: 0.25rem 0 0 0;">By {{ course.teacher.full_name|default:course.teacher.username }}</p>
                         </div>
-                        <span style="background: #f1f5f9; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 600; color: #64748b;">
-                            {{ course.lessons.count }} Lessons
-                        </span>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <a href="{% url 'course_player' course.id %}" style="text-decoration: none; background: #ecfdf5; color: #059669; padding: 0.4rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600;">Preview in Player</a>
+                            <span style="background: #f1f5f9; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 600; color: #64748b;">
+                                {{ course.lessons.count }} Lessons
+                            </span>
+                        </div>
                     </div>
 
                     <div>
