@@ -24,6 +24,7 @@ urlpatterns = [
     path('teacher/submission/<int:submission_id>/grade/', views.grade_submission, name='grade_submission'),
     path('logout/', views.logout_view, name='logout'),
     path('teacher/courses/view/<int:course_id>/', views.view_other_course, name='view_other_course'),
+    path('teacher/explore/', views.explore_courses, name='teacher_explore'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
 ]
 
