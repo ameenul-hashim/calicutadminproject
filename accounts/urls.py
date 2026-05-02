@@ -41,5 +41,8 @@ urlpatterns = [
     path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/', views.all_notifications, name='all_notifications'),
     path('unread-counts/', views.get_unread_counts, name='get_unread_counts'),
+    path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('reset-password/', views.reset_password, name='reset_password'),
 ]
 

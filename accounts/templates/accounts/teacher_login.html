@@ -32,6 +32,9 @@
             <div class="input-group">
                 <label for="password">Password</label>
                 <input type="password" name="password" id="password" required>
+                <div style="text-align: right; margin-top: 0.5rem;">
+                    <a href="{% url 'forgot_password' %}" style="color: #6366f1; font-size: 0.85rem; text-decoration: none; font-weight: 500;">Forgot Password?</a>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary" style="width: 100%; background: #6366f1;">Teacher Sign In</button>
         </form>

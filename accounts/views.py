@@ -1,9 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission, Notification, ChatMessage
+from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission, Notification, ChatMessage, PasswordResetOTP
 from django.contrib.auth.decorators import user_passes_test, login_required
 import re
+import random
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils import timezone
+from datetime import timedelta
 
 def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
@@ -742,3 +747,98 @@ def get_unread_counts(request):
         'notifications': notif_count,
         'chat': chat_count
     })
+
+# ====== FORGOT PASSWORD FLOW ======
+
+def forgot_password(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        user = CustomUser.objects.filter(email=email).first()
+        
+        if user:
+            # Generate 6-digit OTP
+            otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            PasswordResetOTP.objects.create(user=user, otp=otp)
+            
+            # Send Email
+            subject = 'Password Reset OTP - EduStream'
+            message = f'Your OTP for password reset is: {otp}. It is valid for 10 minutes.'
+            email_from = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [email]
+            
+            try:
+                send_mail(subject, message, email_from, recipient_list)
+                messages.success(request, "OTP has been sent to your email.")
+                request.session['reset_email'] = email
+                return redirect('verify_otp')
+            except Exception as e:
+                messages.error(request, "Error sending email. Please try again later.")
+        else:
+            messages.error(request, "No user found with this email address.")
+            
+    return render(request, 'accounts/forgot_password.html')
+
+def verify_otp(request):
+    email = request.session.get('reset_email')
+    if not email:
+        return redirect('forgot_password')
+        
+    if request.method == 'POST':
+        otp_entered = request.POST.get('otp')
+        # Check latest OTP for this user
+        otp_record = PasswordResetOTP.objects.filter(
+            user__email=email, 
+            otp=otp_entered,
+            created_at__gte=timezone.now() - timedelta(minutes=10)
+        ).last()
+        
+        if otp_record:
+            otp_record.is_verified = True
+            otp_record.save()
+            messages.success(request, "OTP verified successfully. You can now reset your password.")
+            return redirect('reset_password')
+        else:
+            messages.error(request, "Invalid or expired OTP.")
+            
+    return render(request, 'accounts/verify_otp.html', {'email': email})
+
+def reset_password(request):
+    email = request.session.get('reset_email')
+    if not email:
+        return redirect('forgot_password')
+        
+    # Ensure OTP was verified
+    otp_record = PasswordResetOTP.objects.filter(user__email=email, is_verified=True).last()
+    if not otp_record:
+        messages.error(request, "Please verify your OTP first.")
+        return redirect('verify_otp')
+        
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+        else:
+            # Password Validation
+            if len(new_password) < 8:
+                messages.error(request, "Password must be at least 8 characters long.")
+            elif not re.search(r'[A-Z]', new_password):
+                messages.error(request, "Password must contain at least one uppercase letter.")
+            elif not re.search(r'[a-z]', new_password):
+                messages.error(request, "Password must contain at least one lowercase letter.")
+            elif not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
+                messages.error(request, "Password must contain at least one special character.")
+            else:
+                user = otp_record.user
+                user.set_password(new_password)
+                user.save()
+                
+                # Cleanup
+                PasswordResetOTP.objects.filter(user=user).delete()
+                del request.session['reset_email']
+                
+                messages.success(request, "Password reset successful! Please login with your new password.")
+                return redirect('login')
+                
+    return render(request, 'accounts/reset_password.html')

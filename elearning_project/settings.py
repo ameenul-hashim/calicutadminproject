@@ -137,3 +137,7 @@ LOGIN_REDIRECT_URL = 'dashboard'
 
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 
+# Email Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'support@edustream.com'
+
