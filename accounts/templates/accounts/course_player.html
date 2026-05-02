@@ -193,6 +193,7 @@
                         <p id="contentSubtitle">Select a lesson to begin your learning journey.</p>
                         <div id="actionArea" style="display: none; gap: 1rem; align-items: center;">
                             <a id="externalLink" href="#" target="_blank" class="back-btn" style="color: #64748b; font-size: 0.8rem; border: 1px solid #475569; padding: 0.4rem 1rem; border-radius: 0.5rem;">🌐 Open External</a>
+                            <a id="downloadBtn" href="#" download class="back-btn" style="background: var(--primary-blue); color: white; font-size: 0.8rem; padding: 0.4rem 1rem; border-radius: 0.5rem; text-decoration: none;">⬇ Download</a>
                         </div>
                     </div>
                 </div>
@@ -244,7 +245,7 @@
         const pdfViewer = document.getElementById('pdfViewer');
         const noVideoMsg = document.getElementById('noVideoMsg');
         const actionArea = document.getElementById('actionArea');
-        const externalLink = document.getElementById('externalLink');
+        const downloadBtn = document.getElementById('downloadBtn');
         
         // Titles
         document.getElementById('currentContentTitle').textContent = title;
@@ -256,6 +257,8 @@
         filePlayer.src = "";
         pdfViewer.src = "";
         actionArea.style.display = 'none';
+        externalLink.style.display = 'none';
+        downloadBtn.style.display = 'none';
 
         if (type === 'video') {
             if (videoFileUrl) {
@@ -263,17 +266,27 @@
                 filePlayer.style.display = 'block';
                 filePlayer.load();
                 filePlayer.play();
+                
+                downloadBtn.href = videoFileUrl;
+                downloadBtn.style.display = 'block';
+                actionArea.style.display = 'flex';
             } else if (videoUrl) {
                 ytPlayer.src = getEmbedUrl(videoUrl);
                 ytPlayer.style.display = 'block';
                 externalLink.href = videoUrl;
+                externalLink.style.display = 'block';
                 actionArea.style.display = 'flex';
             }
         } else if (type === 'notes') {
             // Display PDF inside iframe
-            pdfViewer.src = notesUrl;
+            // Adding #toolbar=0 to make it look cleaner, or keeping it default for native controls
+            pdfViewer.src = notesUrl; 
             pdfViewer.style.display = 'block';
+            
             externalLink.href = notesUrl;
+            externalLink.style.display = 'block';
+            downloadBtn.href = notesUrl;
+            downloadBtn.style.display = 'block';
             actionArea.style.display = 'flex';
         }
     }
