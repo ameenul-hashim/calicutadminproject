@@ -86,9 +86,14 @@ def create_user_admin(request):
         email = request.POST.get('email')
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
         
-        if not all([username, email, fullname, password]):
+        if not all([username, email, fullname, password, confirm_password]):
             messages.error(request, "All fields are required.")
+        elif password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+        elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
         elif CustomUser.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
@@ -114,9 +119,15 @@ def edit_user_admin(request, user_id):
         username = request.POST.get('username')
         email = request.POST.get('email')
         fullname = request.POST.get('fullname')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
         
         if not all([username, email, fullname]):
             messages.error(request, "All fields are required for updating.")
+        elif password and (password != confirm_password):
+            messages.error(request, "Passwords do not match.")
+        elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
         elif CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
             messages.error(request, "This username is already taken by another user. Please use a unique username.")
         elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
@@ -125,6 +136,8 @@ def edit_user_admin(request, user_id):
             user.username = username
             user.email = email
             user.full_name = fullname
+            if password:
+                user.set_password(password)
             user.save()
             messages.success(request, f"User {user.username} data updated successfully!")
             return redirect('admin_dashboard')

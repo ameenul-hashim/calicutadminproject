@@ -54,6 +54,10 @@
                         <label for="password">Password</label>
                         <input type="password" name="password" id="password" required>
                     </div>
+                    <div class="input-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" required>
+                    </div>
                     <div style="display: flex; gap: 1rem;">
                         <button type="submit" class="btn btn-primary">Create User</button>
                         <a href="{% url 'admin_dashboard' %}" class="btn" style="background: #f1f5f9; color: #64748b;">Cancel</a>
