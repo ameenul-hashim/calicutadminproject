@@ -271,3 +271,15 @@ def logout_view(request):
     logout(request)
     messages.success(request, "You have been logged out successfully. Have a great day!")
     return redirect('login')
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
+def enroll_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id, status='PUBLISHED', is_approved=True)
+    # Check if already enrolled
+    if Enrollment.objects.filter(user=request.user, course=course).exists():
+        messages.info(request, f"You are already enrolled in {course.title}.")
+    else:
+        Enrollment.objects.create(user=request.user, course=course)
+        messages.success(request, f"Successfully enrolled in {course.title}!")
+    return redirect('dashboard')
+

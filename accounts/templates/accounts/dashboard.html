@@ -227,7 +227,7 @@
                         
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">{% if course.price > 0 %}${{ course.price }}{% else %}Free{% endif %}</span>
-                            <a href="#" class="view-btn" style="background: #0ea5e9; color: white;">Enroll Now</a>
+                            <a href="{% url 'enroll_course' course.id %}" class="view-btn" style="background: #0ea5e9; color: white;">Enroll Now</a>
                         </div>
                     </div>
                 </div>
