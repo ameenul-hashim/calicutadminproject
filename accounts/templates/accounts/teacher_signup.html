@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Signup | E-Learning</title>
+    <title>Teacher Signup | E-Learning</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
-<body style="display: flex; align-items: center; justify-content: center;">
-    <div class="glass-card" style="width: 100%; max-width: 450px;">
-        <h1 style="text-align: center; margin-bottom: 2rem;">Join E-Learning</h1>
+<body style="display: flex; align-items: center; justify-content: center; padding: 2rem 0;">
+    <div class="glass-card" style="width: 100%; max-width: 450px; background: white;">
+        <h1 style="text-align: center; margin-bottom: 1rem; color: #6366f1;">Teacher Registration</h1>
+        <p style="text-align: center; color: #64748b; margin-bottom: 2rem;">Join as an educator</p>
         
         {% if messages %}
             {% for message in messages %}
@@ -34,7 +35,7 @@
                 <input type="email" name="email" id="email" required>
             </div>
             <div class="input-group">
-                <label for="proof_file">Student Proof (PDF)</label>
+                <label for="proof_file">Teacher Proof (PDF)</label>
                 <input type="file" name="proof_file" id="proof_file" accept=".pdf" required>
             </div>
             <div class="input-group">
@@ -45,11 +46,11 @@
                 <label for="confirm_password">Confirm Password</label>
                 <input type="password" name="confirm_password" id="confirm_password" required>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Create Account</button>
+            <button type="submit" class="btn btn-primary" style="width: 100%; background: #6366f1;">Register as Teacher</button>
         </form>
 
         <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted);">
-            Already have an account? <a href="{% url 'login' %}" style="color: var(--primary); text-decoration: none;">Login</a>
+            Already have a teacher account? <a href="{% url 'teacher_login' %}" style="color: #6366f1; text-decoration: none; font-weight: 600;">Teacher Login</a>
         </p>
     </div>
 </body>

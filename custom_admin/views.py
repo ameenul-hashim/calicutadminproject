@@ -4,6 +4,7 @@ from django.contrib import messages
 from accounts.models import CustomUser
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Q
+import re
 
 def admin_login_view(request):
     if request.method == 'POST':
@@ -42,8 +43,13 @@ def admin_dashboard(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_users_view(request):
-    pending_users = CustomUser.objects.filter(status='PENDING').exclude(is_superuser=True)
-    return render(request, 'custom_admin/pending_users.html', {'users': pending_users})
+    pending_students = CustomUser.objects.filter(status='PENDING', user_type='STUDENT').exclude(is_superuser=True)
+    return render(request, 'custom_admin/pending_students.html', {'users': pending_students})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def pending_teachers_view(request):
+    pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True)
+    return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def accept_user(request, user_id):
@@ -51,7 +57,9 @@ def accept_user(request, user_id):
     user.status = 'ACTIVE'
     user.is_active = True
     user.save()
-    messages.success(request, f"User {user.username} has been approved.")
+    messages.success(request, f"{user.user_type.title()} {user.username} has been approved.")
+    if user.user_type == 'TEACHER':
+        return redirect('pending_teachers')
     return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -60,7 +68,9 @@ def decline_user(request, user_id):
     user.status = 'BLOCKED'
     user.is_active = False
     user.save()
-    messages.success(request, f"User {user.username} has been declined/blocked.")
+    messages.success(request, f"{user.user_type.title()} {user.username} has been declined/blocked.")
+    if user.user_type == 'TEACHER':
+        return redirect('pending_teachers')
     return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
