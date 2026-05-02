@@ -257,6 +257,7 @@ def add_lesson(request, course_id):
     if request.method == 'POST':
         title = request.POST.get('title')
         video_url = request.POST.get('video_url')
+        video_file = request.FILES.get('video_file')
         notes = request.FILES.get('notes')
         order = request.POST.get('order', 1)
         
@@ -264,6 +265,7 @@ def add_lesson(request, course_id):
             course=course,
             title=title,
             video_url=video_url,
+            video_file=video_file,
             notes=notes,
             order=order
         )

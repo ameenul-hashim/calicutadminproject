@@ -78,7 +78,7 @@
         /* Video Area */
         .video-main { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; }
         .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; }
-        .video-wrapper iframe { width: 100%; height: 100%; border: none; }
+        .video-wrapper iframe, .video-wrapper video { width: 100%; height: 100%; border: none; }
         
         .video-footer { padding: 1.5rem 2rem; background: #1e293b; border-top: 1px solid #334155; }
         .video-footer h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
@@ -91,9 +91,6 @@
             .video-wrapper { aspect-ratio: 16/9; flex: none; height: auto; }
             body { overflow-y: auto; }
         }
-        
-        /* Full Screen Button */
-        .fullscreen-overlay { position: absolute; bottom: 20px; right: 20px; z-index: 10; }
         
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
@@ -123,11 +120,11 @@
                 <div class="lesson-list">
                     {% for lesson in lessons %}
                     <div class="lesson-item {% if forloop.first %}active{% endif %}" 
-                         onclick="changeLesson(this, '{{ lesson.title }}', '{{ lesson.video_url }}', '{% if lesson.notes %}{{ lesson.notes.url }}{% endif %}')">
+                         onclick="changeLesson(this, '{{ lesson.title }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}', '{% if lesson.notes %}{{ lesson.notes.url }}{% endif %}')">
                         <div class="lesson-order">{{ lesson.order }}</div>
                         <div class="lesson-info">
                             <h4>{{ lesson.title }}</h4>
-                            <span>{% if lesson.video_url %}🎥 Video{% endif %} {% if lesson.notes %}• 📄 Notes{% endif %}</span>
+                            <span>{% if lesson.video_url or lesson.video_file %}🎥 Video{% endif %} {% if lesson.notes %}• 📄 Notes{% endif %}</span>
                         </div>
                     </div>
                     {% endfor %}
@@ -137,24 +134,22 @@
             <!-- Video/Content Main -->
             <main class="video-main">
                 <div class="video-wrapper" id="videoWrapper">
-                    {% if first_lesson.video_url %}
-                    <iframe id="mainPlayer" src="" allowfullscreen allow="autoplay; fullscreen"></iframe>
-                    {% else %}
-                    <div style="text-align: center; color: #64748b; padding: 5rem;">
+                    <iframe id="mainPlayer" src="" allowfullscreen allow="autoplay; fullscreen" style="display: none;"></iframe>
+                    <video id="filePlayer" controls style="display: none; background: #000;"></video>
+                    <div id="noVideoMsg" style="display: none; text-align: center; color: #64748b; padding: 5rem;">
                         <span style="font-size: 4rem;">📺</span>
                         <h3>Select a lesson to start learning</h3>
                     </div>
-                    {% endif %}
                 </div>
 
                 <div class="video-footer">
                     <h1 id="currentLessonTitle">{{ first_lesson.title }}</h1>
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
                         <p>Course: {{ course.title }} • By {{ course.teacher.full_name|default:course.teacher.username }}</p>
-                        <div id="notesArea" style="display: {% if first_lesson.notes %}flex{% else %}none{% endif %}; gap: 1rem; align-items: center;">
-                            <a id="directYTLink" href="{{ first_lesson.video_url }}" target="_blank" class="back-btn" style="color: #64748b; font-size: 0.8rem; border: 1px solid #475569; padding: 0.4rem 1rem; border-radius: 0.5rem;">🌐 Open YT</a>
-                            <a id="viewNotesLink" href="{% if first_lesson.notes %}{{ first_lesson.notes.url }}{% endif %}" target="_blank" class="back-btn" style="color: #0ea5e9; border: 1px solid #0ea5e9; padding: 0.4rem 1rem; border-radius: 0.5rem;">📄 View Notes</a>
-                            <a id="downloadNotesLink" href="{% if first_lesson.notes %}{{ first_lesson.notes.url }}{% endif %}" download class="back-btn" style="color: #10b981; border: 1px solid #10b981; padding: 0.4rem 1rem; border-radius: 0.5rem;">⬇ Download</a>
+                        <div id="notesArea" style="display: none; gap: 1rem; align-items: center;">
+                            <a id="directYTLink" href="#" target="_blank" class="back-btn" style="color: #64748b; font-size: 0.8rem; border: 1px solid #475569; padding: 0.4rem 1rem; border-radius: 0.5rem; display: none;">🌐 Open YT</a>
+                            <a id="viewNotesLink" href="#" target="_blank" class="back-btn" style="color: #0ea5e9; border: 1px solid #0ea5e9; padding: 0.4rem 1rem; border-radius: 0.5rem; display: none;">📄 View Notes</a>
+                            <a id="downloadNotesLink" href="#" download class="back-btn" style="color: #10b981; border: 1px solid #10b981; padding: 0.4rem 1rem; border-radius: 0.5rem; display: none;">⬇ Download</a>
                         </div>
                     </div>
                 </div>
@@ -166,24 +161,18 @@
     function getEmbedUrl(url) {
         if (!url) return '';
         let videoId = '';
-        try {
-            if (url.includes('youtu.be/')) {
-                videoId = url.split('youtu.be/')[1].split(/[?#]/)[0];
-            } else if (url.includes('youtube.com/watch')) {
-                videoId = new URL(url).searchParams.get('v');
-            } else if (url.includes('youtube.com/embed/')) {
-                videoId = url.split('embed/')[1].split(/[?#]/)[0];
-            }
-        } catch (e) {}
-        
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=|live\/)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        if (match && match[2].length === 11) {
+            videoId = match[2];
+        }
         if (videoId) {
-            // Simplified embed URL to avoid configuration errors
-            return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+            return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
         }
         return url;
     }
 
-    function changeLesson(element, title, videoUrl, notesUrl) {
+    function changeLesson(element, title, videoUrl, videoFileUrl, notesUrl) {
         // Update active state
         document.querySelectorAll('.lesson-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
@@ -191,16 +180,32 @@
         // Update Title
         document.getElementById('currentLessonTitle').textContent = title;
 
-        // Update Video
-        const player = document.getElementById('mainPlayer');
+        // Players
+        const youtubePlayer = document.getElementById('mainPlayer');
+        const filePlayer = document.getElementById('filePlayer');
+        const noVideoMsg = document.getElementById('noVideoMsg');
         const directLink = document.getElementById('directYTLink');
-        if (videoUrl) {
-            player.src = getEmbedUrl(videoUrl);
-            player.style.display = 'block';
+
+        // Hide everything first
+        youtubePlayer.style.display = 'none';
+        filePlayer.style.display = 'none';
+        noVideoMsg.style.display = 'none';
+        youtubePlayer.src = "";
+        filePlayer.src = "";
+
+        if (videoFileUrl) {
+            filePlayer.src = videoFileUrl;
+            filePlayer.style.display = 'block';
+            filePlayer.load();
+            filePlayer.play();
+            directLink.style.display = 'none';
+        } else if (videoUrl) {
+            youtubePlayer.src = getEmbedUrl(videoUrl);
+            youtubePlayer.style.display = 'block';
             directLink.href = videoUrl;
             directLink.style.display = 'inline-flex';
         } else {
-            player.style.display = 'none';
+            noVideoMsg.style.display = 'block';
             directLink.style.display = 'none';
         }
 
@@ -209,8 +214,7 @@
         const viewLink = document.getElementById('viewNotesLink');
         const downloadLink = document.getElementById('downloadNotesLink');
         
-        // Show notesArea if there are either notes or a video link (for the YT fallback)
-        if (notesUrl || videoUrl) {
+        if (notesUrl || videoUrl || videoFileUrl) {
             notesArea.style.display = 'flex';
         } else {
             notesArea.style.display = 'none';
