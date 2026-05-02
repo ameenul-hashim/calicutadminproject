@@ -285,6 +285,35 @@ def add_lesson(request, course_id):
     return render(request, 'teacher_portal/add_lesson.html', {'course': course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def edit_lesson(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id, course__teacher=request.user)
+    if request.method == 'POST':
+        lesson.title = request.POST.get('title')
+        lesson.video_url = request.POST.get('video_url')
+        if request.FILES.get('video_file'):
+            lesson.video_file = request.FILES.get('video_file')
+        if request.FILES.get('notes'):
+            lesson.notes = request.FILES.get('notes')
+        lesson.order = request.POST.get('order', 1)
+        
+        # Reset approval status on edit
+        lesson.is_approved = False
+        lesson.save()
+        
+        messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
+        return redirect('course_lessons', course_id=lesson.course.id)
+    
+    return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def delete_lesson(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id, course__teacher=request.user)
+    course_id = lesson.course.id
+    lesson.delete()
+    messages.success(request, "Lesson deleted successfully.")
+    return redirect('course_lessons', course_id=course_id)
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def submit_course_approval(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     if course.lessons.exists():
