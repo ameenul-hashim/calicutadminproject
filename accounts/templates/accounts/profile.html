@@ -213,29 +213,62 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+        
         let cropper;
         const photoInput = document.getElementById('photoInput');
         const cropModal = document.getElementById('cropModal');
         const imageToCrop = document.getElementById('imageToCrop');
 
         photoInput.addEventListener('change', function(e) {
-            const files = e.target.files;
-            if (files && files.length > 0) {
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    imageToCrop.src = event.target.result;
-                    cropModal.style.display = 'flex';
-                    if (cropper) cropper.destroy();
-                    cropper = new Cropper(imageToCrop, {
-                        aspectRatio: 3.5 / 4.5, // Standard passport photo ratio
-                        viewMode: 1,
-                        background: false,
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            if (file.type === 'application/pdf') {
+                reader.onload = function() {
+                    const typedarray = new Uint8Array(this.result);
+                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                        pdf.getPage(1).then(function(page) {
+                            const viewport = page.getViewport({scale: 2.0});
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+
+                            const renderContext = {
+                                canvasContext: context,
+                                viewport: viewport
+                            };
+                            page.render(renderContext).promise.then(function() {
+                                imageToCrop.src = canvas.toDataURL();
+                                startCropper();
+                            });
+                        });
                     });
                 };
-                reader.readAsDataURL(files[0]);
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.onload = function(event) {
+                    imageToCrop.src = event.target.result;
+                    startCropper();
+                };
+                reader.readAsDataURL(file);
             }
         });
+
+        function startCropper() {
+            cropModal.style.display = 'flex';
+            if (cropper) cropper.destroy();
+            cropper = new Cropper(imageToCrop, {
+                aspectRatio: 3.5 / 4.5,
+                viewMode: 1,
+                background: false,
+            });
+        }
 
         function closeModal() {
             cropModal.style.display = 'none';
