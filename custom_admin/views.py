@@ -245,6 +245,7 @@ def create_teacher_admin(request):
     return render(request, 'custom_admin/create_teacher.html')
 
 from django.db.models.functions import ExtractMonth
+from django.db import models
 from accounts.models import Course, Lesson
 
 @user_passes_test(is_admin, login_url='admin_login')
