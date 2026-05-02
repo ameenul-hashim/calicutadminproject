@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Course | Teacher Portal</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .lesson-card { background: white; padding: 1.25rem; border-radius: 1rem; margin-bottom: 1rem; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+        .view-btn { padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem; }
+        
+        /* Mobile adjustment */
+        @media (max-width: 1024px) {
+            :root { --sidebar-width: 0px; }
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduStream</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">🏠 Dashboard</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2.5rem;">
+                <a href="{% url 'teacher_dashboard' %}" style="color: #6366f1; text-decoration: none; font-weight: 600;">← Back to Dashboard</a>
+                <h1 style="margin-top: 1rem; font-size: 2rem; color: #1e293b;">{{ course.title }}</h1>
+                <p style="color: #64748b;">Created by <strong>{{ course.teacher.full_name|default:course.teacher.username }}</strong> • {{ course.category }}</p>
+            </header>
+
+            <div style="background: #eef2ff; border-left: 4px solid #6366f1; padding: 1rem; border-radius: 0.5rem; margin-bottom: 2rem;">
+                <p style="margin: 0; color: #4338ca; font-weight: 500;">🔒 <strong>Read-Only Access:</strong> You are viewing this course as a peer teacher. You cannot edit or delete this content.</p>
+            </div>
+
+            <h2 style="font-size: 1.25rem; margin-bottom: 1.5rem; color: #1e293b;">Course Lessons ({{ lessons.count }})</h2>
+            
+            {% for lesson in lessons %}
+            <div class="lesson-card">
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div style="width: 35px; height: 35px; background: #f1f5f9; color: #64748b; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">{{ lesson.order }}</div>
+                    <div>
+                        <h4 style="margin: 0; color: #1e293b;">{{ lesson.title }}</h4>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.75rem;">
+                    {% if lesson.video_url %}
+                        <a href="{{ lesson.video_url }}" target="_blank" class="view-btn" style="background: #fdf2f8; color: #db2777;">🎥 Watch Video</a>
+                    {% endif %}
+                    {% if lesson.notes %}
+                        <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="background: #ecfdf5; color: #059669;">📄 View Notes</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div style="text-align: center; padding: 4rem; background: white; border-radius: 1rem; border: 1px dashed #e2e8f0; color: #94a3b8;">
+                This course has no lessons uploaded yet.
+            </div>
+            {% endfor %}
+
+            <!-- Extra content like Quizzes and Assignments if they exist -->
+            {% if course.quizzes.exists %}
+            <h2 style="font-size: 1.25rem; margin-top: 3rem; margin-bottom: 1.5rem; color: #1e293b;">Quizzes</h2>
+            {% for quiz in course.quizzes.all %}
+                {% if quiz.is_approved %}
+                <div class="lesson-card" style="border-left: 4px solid #8b5cf6;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-size: 1.2rem;">❓</span>
+                        <h4 style="margin: 0;">{{ quiz.title }} ({{ quiz.questions.count }} Questions)</h4>
+                    </div>
+                    <span style="color: #64748b; font-size: 0.85rem;">Peer view only</span>
+                </div>
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+
+            {% if course.assignments.exists %}
+            <h2 style="font-size: 1.25rem; margin-top: 3rem; margin-bottom: 1.5rem; color: #1e293b;">Assignments</h2>
+            {% for assignment in course.assignments.all %}
+                {% if assignment.is_approved %}
+                <div class="lesson-card" style="border-left: 4px solid #ec4899;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <span style="font-size: 1.2rem;">📝</span>
+                        <h4 style="margin: 0;">{{ assignment.title }}</h4>
+                    </div>
+                    <div style="display: flex; gap: 0.75rem;">
+                        {% if assignment.file %}
+                            <a href="{{ assignment.file.url }}" target="_blank" class="view-btn" style="background: #fdf2f8; color: #db2777;">📄 View Instructions</a>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+            {% endfor %}
+            {% endif %}
+
+        </main>
+    </div>
+</body>
+</html>

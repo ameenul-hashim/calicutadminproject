@@ -155,7 +155,7 @@
             </div>
 
             <div class="course-list-card">
-                <h3 style="margin-bottom: 1.5rem;">Recent Courses</h3>
+                <h3 style="margin-bottom: 1.5rem;">My Recent Courses</h3>
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="text-align: left; border-bottom: 1px solid #f1f5f9;">
@@ -184,6 +184,45 @@
                         {% endfor %}
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Other Teachers' Courses Section -->
+            <div class="course-list-card" style="margin-top: 3rem; border-top: 4px solid #10b981;">
+                <h3 style="margin-bottom: 1.5rem; color: #1e293b;">🌐 Peer Courses (View Only)</h3>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="text-align: left; border-bottom: 1px solid #f1f5f9;">
+                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Course Title</th>
+                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Teacher</th>
+                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Category</th>
+                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Content</th>
+                                <th style="padding: 1rem 0; color: #64748b; font-weight: 600;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for course in other_courses %}
+                            <tr style="border-bottom: 1px solid #f8fafc;">
+                                <td style="padding: 1rem 0; font-weight: 500;">{{ course.title }}</td>
+                                <td style="padding: 1rem 0; color: #64748b; font-size: 0.9rem;">
+                                    <strong>{{ course.teacher.full_name|default:course.teacher.username }}</strong>
+                                </td>
+                                <td style="padding: 1rem 0;"><span style="font-size: 0.8rem; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 0.5rem;">{{ course.category }}</span></td>
+                                <td style="padding: 1rem 0; font-size: 0.85rem; color: #64748b;">
+                                    🎥 {{ course.lessons.count }} Lessons
+                                </td>
+                                <td style="padding: 1rem 0;">
+                                    <a href="{% url 'view_other_course' course.id %}" style="color: #10b981; text-decoration: none; font-size: 0.9rem; font-weight: 600;">👁 View Details</a>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" style="text-align: center; padding: 3rem; color: #94a3b8;">No peer courses available yet.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>

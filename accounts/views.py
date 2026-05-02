@@ -192,14 +192,28 @@ def teacher_dashboard(request):
     courses = Course.objects.filter(teacher=request.user)
     total_students = Enrollment.objects.filter(course__teacher=request.user).count()
     
+    # Other teachers' courses for viewing
+    other_courses = Course.objects.exclude(teacher=request.user).filter(is_approved=True).select_related('teacher').prefetch_related('lessons')
+    
     context = {
         'total_courses': courses.count(),
         'published_courses': courses.filter(status='PUBLISHED').count(),
         'pending_courses': courses.filter(status='PENDING').count(),
         'total_students': total_students,
         'recent_courses': courses.order_by('-created_at')[:5],
+        'other_courses': other_courses,
     }
     return render(request, 'teacher_portal/dashboard.html', context)
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def view_other_course(request, course_id):
+    # This is for viewing OTHER teachers' courses
+    course = get_object_or_404(Course, id=course_id, is_approved=True)
+    lessons = course.lessons.all().order_by('order')
+    return render(request, 'teacher_portal/view_other_course.html', {
+        'course': course,
+        'lessons': lessons
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
