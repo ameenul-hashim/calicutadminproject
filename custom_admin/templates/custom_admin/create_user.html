@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create User | Admin</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <h2 style="color: var(--primary); margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
+            <nav>
+                <a href="{% url 'admin_dashboard' %}" class="nav-link">Users Management</a>
+                <a href="{% url 'create_user_admin' %}" class="nav-link active">Create User</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem;">
+                <h1>Create New User</h1>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="glass-card" style="max-width: 600px;">
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <input type="text" name="username" id="username" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" name="fullname" id="fullname" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="email">Email</label>
+                        <input type="email" name="email" id="email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" name="password" id="password" required>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary">Create User</button>
+                        <a href="{% url 'admin_dashboard' %}" class="btn" style="background: var(--glass-bg); color: white;">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

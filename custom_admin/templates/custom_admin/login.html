@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login | E-Learning</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; background: #020617;">
+    <div class="glass-card" style="width: 100%; max-width: 400px; border-top: 4px solid var(--primary);">
+        <h1 style="text-align: center; margin-bottom: 2rem;">Admin Control</h1>
+        
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+            <div class="input-group">
+                <label for="username">Admin Username</label>
+                <input type="text" name="username" id="username" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Admin Password</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">Admin Login</button>
+        </form>
+        
+        <p style="text-align: center; margin-top: 1.5rem;">
+            <a href="{% url 'login' %}" style="color: var(--text-muted); font-size: 0.8rem; text-decoration: none;">Return to User Login</a>
+        </p>
+    </div>
+</body>
+</html>

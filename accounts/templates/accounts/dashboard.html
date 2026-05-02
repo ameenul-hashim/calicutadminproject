@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | E-Learning</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <nav style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+        <h2 style="color: var(--primary);">E-Learning</h2>
+        <div style="display: flex; align-items: center; gap: 1.5rem;">
+            <span>Hello, {{ user.full_name }}</span>
+            <a href="{% url 'logout' %}" class="btn btn-danger" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Logout</a>
+        </div>
+    </nav>
+
+    <main style="padding: 3rem 2rem; max-width: 1200px; margin: 0 auto;">
+        <div class="glass-card">
+            <h1>User Dashboard</h1>
+            <p style="margin-top: 1rem; color: var(--text-muted);">Welcome to your learning journey. Start exploring courses below.</p>
+            
+            <div style="margin-top: 2rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+                <!-- Placeholder for courses -->
+                <div class="glass-card" style="background: rgba(0,0,0,0.2);">
+                    <h3>Python Basics</h3>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0.5rem 0;">Master the fundamentals of Python programming.</p>
+                    <button class="btn btn-primary" style="font-size: 0.8rem; margin-top: 1rem;">Start Course</button>
+                </div>
+                <div class="glass-card" style="background: rgba(0,0,0,0.2);">
+                    <h3>Web Development</h3>
+                    <p style="font-size: 0.875rem; color: var(--text-muted); margin: 0.5rem 0;">Learn to build modern web applications.</p>
+                    <button class="btn btn-primary" style="font-size: 0.8rem; margin-top: 1rem;">Start Course</button>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

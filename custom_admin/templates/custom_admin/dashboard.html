@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | E-Learning</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
+        <header class="admin-header">
+            <h1 style="font-size: 2rem;">Admin Dashboard</h1>
+            <div style="display: flex; gap: 1rem;">
+                <a href="{% url 'create_user_admin' %}" class="btn btn-primary">+ Create User</a>
+                <a href="{% url 'admin_logout' %}" class="btn btn-danger">Logout</a>
+            </div>
+        </header>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="GET" class="search-bar">
+            <input type="text" name="search" class="search-input" placeholder="Search by username" value="{{ search_query }}">
+            <button type="submit" class="btn btn-search">Search</button>
+            <a href="{% url 'admin_dashboard' %}" class="btn btn-refresh">Refresh</a>
+        </form>
+
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for u in users %}
+                    <tr>
+                        <td>{{ u.username }}</td>
+                        <td>{{ u.email }}</td>
+                        <td>
+                            {% if u.is_active %}
+                                <span class="status-badge status-active">Active</span>
+                            {% else %}
+                                <span class="status-badge status-blocked">Blocked</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'edit_user_admin' u.id %}" class="action-link edit-link">Edit</a>
+                            
+                            {% if u.is_active %}
+                                <a href="{% url 'toggle_user_status' u.id %}" class="action-link block-link">Block</a>
+                            {% else %}
+                                <a href="{% url 'toggle_user_status' u.id %}" class="action-link" style="color: #10b981;">Unblock</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
