@@ -47,6 +47,9 @@
             <nav style="flex: 1;">
                 <a href="{% url 'dashboard' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
                 <a href="{% url 'student_explore' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: var(--primary-blue); background: #f0f9ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600; margin-bottom: 0.5rem;">🌐 Explore</a>
+                {% if user.user_type == 'TEACHER' %}
+                    <a href="{% url 'teacher_dashboard' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem; border: 1px solid #c7d2fe;">👨‍🏫 Teacher Portal</a>
+                {% endif %}
                 <a href="{% url 'profile' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">👤 Profile</a>
                 
                 <div style="margin-top: 2rem;">

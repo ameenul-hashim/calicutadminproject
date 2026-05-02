@@ -122,6 +122,7 @@
                 <a href="{% url 'teacher_dashboard' %}" class="nav-link active">🏠 Dashboard</a>
                 <a href="{% url 'my_courses' %}" class="nav-link">📚 My Courses</a>
                 <a href="{% url 'teacher_explore' %}" class="nav-link">🌐 Explore Peer Courses</a>
+                <a href="{% url 'dashboard' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
                 <a href="{% url 'profile' %}" class="nav-link">👤 My Profile</a>
             </nav>
             <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
@@ -136,6 +137,35 @@
                     <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Welcome, {{ user.full_name }}</h1>
                     <p style="color: #64748b;">Manage your courses and student engagement.</p>
                 </div>
+
+                <div style="display: flex; align-items: center; gap: 2rem;">
+                    <!-- Notification Bell -->
+                    <div class="notification-wrapper" style="position: relative; cursor: pointer;">
+                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
+                            🔔
+                            {% if unread_notifications_count > 0 %}
+                                <span style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Notification Dropdown -->
+                        <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
+                            <h4 style="margin: 0 0 1rem 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">Notifications</h4>
+                            {% for notif in notifications %}
+                                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %}">
+                                    {{ notif.message }}
+                                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.3rem;">{{ notif.created_at|timesince }} ago</div>
+                                </div>
+                            {% empty %}
+                                <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    .notif-dropdown.active { display: block !important; }
+                </style>
             </header>
 
             {% if messages %}

@@ -179,6 +179,9 @@
             <ul class="nav-list">
                 <li class="nav-item"><a href="{% url 'dashboard' %}" class="nav-link active"><span>🏠</span> Dashboard</a></li>
                 <li class="nav-item"><a href="{% url 'student_explore' %}" class="nav-link"><span>🌐</span> Explore</a></li>
+                {% if user.user_type == 'TEACHER' %}
+                    <li class="nav-item"><a href="{% url 'teacher_dashboard' %}" class="nav-link" style="background: #eef2ff; color: #6366f1; border: 1px solid #c7d2fe;"><span>👨‍🏫</span> Teacher Portal</a></li>
+                {% endif %}
                 <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link"><span>👤</span> Profile</a></li>
             </ul>
 

@@ -177,14 +177,18 @@ def dashboard_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
     
-    # Check for student access
-    if request.user.user_type != 'STUDENT':
+    # Check for access: Allow Students and Teachers (for preview)
+    if request.user.user_type not in ['STUDENT', 'TEACHER']:
         messages.error(request, "Please use the appropriate portal.")
-        return redirect('admin_dashboard') if request.user.is_superuser else redirect('teacher_login')
+        return redirect('admin_dashboard') if request.user.is_superuser else redirect('login')
 
-    # Get enrolled courses
-    enrollments = Enrollment.objects.filter(user=request.user).select_related('course')
-    courses = [e.course for e in enrollments]
+    if request.user.user_type == 'TEACHER':
+        # For Teacher: Show their own courses in the dashboard for easy preview
+        courses = Course.objects.filter(teacher=request.user)
+    else:
+        # For Student: Get enrolled courses
+        enrollments = Enrollment.objects.filter(user=request.user).select_related('course')
+        courses = [e.course for e in enrollments]
     
     # Explore courses (all approved and published)
     explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=[c.id for c in courses])
@@ -218,6 +222,8 @@ def teacher_dashboard(request):
         'pending_courses': courses.filter(status='PENDING').count(),
         'total_students': total_students,
         'recent_courses': courses.order_by('-created_at')[:5],
+        'notifications': Notification.objects.filter(user=request.user)[:10],
+        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 

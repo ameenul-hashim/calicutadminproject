@@ -46,7 +46,17 @@ def manage_students(request):
             Q(email__icontains=search_query) |
             Q(full_name__icontains=search_query)
         )
-    return render(request, 'custom_admin/manage_students.html', {'users': users, 'search_query': search_query})
+        )
+    
+    notifications = Notification.objects.filter(user=request.user)[:10]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    
+    return render(request, 'custom_admin/manage_students.html', {
+        'users': users, 
+        'search_query': search_query,
+        'notifications': notifications,
+        'unread_notifications_count': unread_count
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_teachers(request):
@@ -264,7 +274,10 @@ def analytics_view(request):
         'approval_stats': approval_stats,
         'teacher_perf_labels': teacher_performance_labels,
         'teacher_perf_data': teacher_performance_data,
-        'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        'teacher_perf_data': teacher_performance_data,
+        'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        'notifications': Notification.objects.filter(user=request.user)[:10],
+        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
     return render(request, 'custom_admin/analytics.html', context)
 
