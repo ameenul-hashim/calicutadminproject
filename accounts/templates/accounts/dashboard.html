@@ -89,23 +89,61 @@
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-bottom: 3rem; }
         .stat-card { background: white; padding: 1.5rem; border-radius: 1.25rem; border: 1px solid #f1f5f9; }
         
-        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
+        /* Responsive Sidebar */
+        @media (max-width: 1024px) {
+            :root { --sidebar-width: 0px; }
+            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; z-index: 1000; width: 280px; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0; padding: 1.5rem; }
+            .mobile-toggle { display: block !important; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .search-wrapper { width: 100%; }
+            .top-header { flex-direction: column; gap: 1rem; align-items: flex-start; }
+        }
+
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            background: white;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            cursor: pointer;
+            border: 1px solid #e2e8f0;
+        }
+
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem; }
         .subject-card {
             background: white;
-            border-radius: 1.5rem;
+            border-radius: 1.25rem;
             overflow: hidden;
             border: 1px solid #f1f5f9;
             transition: transform 0.3s, box-shadow 0.3s;
         }
         .subject-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
         .subject-banner { height: 8px; background: var(--primary-gradient); }
-        .subject-content { padding: 1.5rem; }
+        .subject-content { padding: 1.25rem; }
         .content-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; color: #475569; }
         .content-item:last-child { border-bottom: none; }
         .view-btn { display: inline-block; padding: 0.4rem 0.8rem; border-radius: 0.5rem; background: #f1f5f9; color: #0ea5e9; text-decoration: none; font-weight: 600; font-size: 0.8rem; }
+        
+        /* Video Container Fix */
+        .video-container {
+            width: 100%;
+            background: #000;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
     </style>
 </head>
 <body>
+    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
+        ☰
+    </button>
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -199,8 +237,9 @@
                                 </div>
                                 {% if lesson.video_url %}
                                 <div class="video-container" style="display: none; margin-top: 1rem; position: relative; width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 0.75rem; overflow: hidden;" oncontextmenu="return false;">
-                                    <iframe class="lesson-iframe" src="" style="width: 100%; height: 100%; border: none; pointer-events: auto;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-                                    <div style="position: absolute; top: 0; right: 0; width: 80px; height: 40px; background: #000; z-index: 5;"></div>
+                                    <iframe class="lesson-iframe" src="" style="width: 100%; height: 100%; border: none; pointer-events: auto;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" allowfullscreen></iframe>
+                                    <!-- Stealth overlay to prevent YouTube redirection -->
+                                    <div style="position: absolute; top: 0; right: 0; width: 60px; height: 60px; background: transparent; z-index: 5; cursor: default;"></div>
                                 </div>
                                 {% endif %}
                             </div>
@@ -273,12 +312,20 @@
     <script>
     function getEmbedUrl(url) {
         if (!url) return '';
-        let match = url.match(/[?&]v=([^&]+)/);
-        if (match) return 'https://www.youtube.com/embed/' + match[1] + '?rel=0&modestbranding=1';
-        match = url.match(/youtu\.be\/([^?&]+)/);
-        if (match) return 'https://www.youtube.com/embed/' + match[1] + '?rel=0&modestbranding=1';
-        if (url.includes('/embed/')) return url;
-        return url;
+        let videoId = '';
+        
+        // Extract ID from various YouTube URL formats
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = url.match(regExp);
+        
+        if (match && match[2].length === 11) {
+            videoId = match[2];
+        } else {
+            return url; // Fallback
+        }
+
+        // Return optimized embed URL with security and full-screen parameters
+        return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&showinfo=0&iv_load_policy=3&enablejsapi=1&origin=${window.location.origin}`;
     }
 
     function toggleVideo(btn, url) {
