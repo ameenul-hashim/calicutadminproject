@@ -211,6 +211,23 @@ def teacher_dashboard(request):
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
+def student_explore(request):
+    # Enrolled course IDs to exclude
+    enrolled_ids = Enrollment.objects.filter(user=request.user).values_list('course_id', flat=True)
+    
+    # All approved and published courses not yet enrolled
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).order_by('-created_at')
+    
+    search_query = request.GET.get('search', '')
+    if search_query:
+        explore_courses = explore_courses.filter(title__icontains=search_query)
+        
+    return render(request, 'accounts/explore_courses.html', {
+        'explore_courses': explore_courses,
+        'search_query': search_query
+    })
+
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def explore_courses(request):
     # Other teachers' courses for viewing

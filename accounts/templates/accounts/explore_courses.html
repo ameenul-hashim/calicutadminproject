@@ -1,0 +1,106 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explore Courses | EduStream</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --sidebar-width: 280px; --primary-blue: #0ea5e9; --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        
+        .search-bar { width: 100%; max-width: 500px; padding: 0.8rem 1.5rem; border: 1px solid #e2e8f0; border-radius: 2rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: all 0.2s; background: white; margin-bottom: 2rem; }
+        .search-bar:focus { border-color: var(--primary-blue); box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1); }
+        
+        .subject-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 2rem; }
+        .subject-card { background: white; border-radius: 1.5rem; overflow: hidden; border: 1px solid #e2e8f0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; height: 100%; display: flex; flex-direction: column; }
+        .subject-card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); border-color: var(--primary-blue); }
+        
+        .btn-enroll { width: 100%; padding: 0.8rem; background: var(--primary-blue); color: white; border: none; border-radius: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-top: auto; }
+        .btn-enroll:hover { background: #0284c7; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary-blue); margin-bottom: 3rem; display: flex; align-items: center; gap: 0.5rem;">
+                📚 <span style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">EduStream</span>
+            </div>
+
+            <!-- User Profile Quick View -->
+            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
+                <div style="width: 60px; height: 60px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white;">
+                    {% if user.profile_photo %}
+                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                        <div style="width: 100%; height: 100%; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
+                    {% endif %}
+                </div>
+                <h4 style="margin: 0; color: #1e293b; font-size: 0.9rem;">{{ user.full_name|default:user.username }}</h4>
+            </div>
+
+            <nav style="flex: 1;">
+                <a href="{% url 'dashboard' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
+                <a href="{% url 'student_explore' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: var(--primary-blue); background: #f0f9ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600; margin-bottom: 0.5rem;">🌐 Explore</a>
+                <a href="{% url 'profile' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">👤 Settings</a>
+            </nav>
+            <a href="{% url 'logout' %}" style="padding: 1rem; color: #ef4444; text-decoration: none; border-radius: 0.75rem;">🚪 Logout</a>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 3rem;">
+                <h1 style="font-size: 2.5rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem;">Discover New Courses</h1>
+                <p style="color: #64748b; font-size: 1.1rem;">Find and enroll in new courses to expand your knowledge.</p>
+            </header>
+
+            <form method="GET" action="{% url 'student_explore' %}">
+                <input type="text" name="search" placeholder="Search for courses..." class="search-bar" value="{{ search_query }}">
+            </form>
+
+            <div class="subject-grid">
+                {% for course in explore_courses %}
+                <div class="subject-card">
+                    <div style="height: 180px; background: #f1f5f9; position: relative;">
+                        {% if course.thumbnail %}
+                            <img src="{{ course.thumbnail.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="Course Thumbnail">
+                        {% else %}
+                            <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: var(--primary-gradient); color: white; font-weight: 700; font-size: 1.5rem;">{{ course.title|slice:":2"|upper }}</div>
+                        {% endif %}
+                        <div style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); padding: 0.3rem 0.8rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; color: var(--primary-blue);">{{ course.category }}</div>
+                    </div>
+                    <div style="padding: 1.5rem; flex: 1; display: flex; flex-direction: column;">
+                        <h3 style="font-size: 1.2rem; margin-bottom: 0.5rem; color: #1e293b; font-weight: 700;">{{ course.title }}</h3>
+                        <p style="color: #64748b; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ course.description }}</p>
+                        
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+                            <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: #e2e8f0;">
+                                {% if course.teacher.profile_photo %}
+                                    <img src="{{ course.teacher.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                {% endif %}
+                            </div>
+                            <span style="font-size: 0.85rem; color: #475569; font-weight: 500;">{{ course.teacher.full_name|default:course.teacher.username }}</span>
+                        </div>
+
+                        <form action="{% url 'enroll_course' course.id %}" method="POST">
+                            {% csrf_token %}
+                            <button type="submit" class="btn-enroll">Enroll Now</button>
+                        </form>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="grid-column: 1/-1; text-align: center; padding: 5rem; background: white; border-radius: 1.5rem; border: 2px dashed #e2e8f0;">
+                    <span style="font-size: 4rem;">🔍</span>
+                    <h3 style="color: #1e293b; margin-top: 1rem;">No courses found</h3>
+                    <p style="color: #64748b;">Try searching for something else or check back later.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>
