@@ -1,0 +1,251 @@
+<style>
+    #chat-widget-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+        font-family: 'Inter', sans-serif;
+    }
+    #chat-toggle-btn {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--primary-gradient, linear-gradient(135deg, #6366f1 0%, #4f46e5 100%));
+        color: white;
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        transition: transform 0.2s;
+    }
+    #chat-toggle-btn:hover { transform: scale(1.05); }
+    #chat-window {
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 1.5rem;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 15px;
+    }
+    #chat-window.active { display: flex; }
+    .chat-header {
+        padding: 1rem 1.5rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .chat-body {
+        flex: 1;
+        padding: 1rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        background: #fff;
+    }
+    .chat-footer {
+        padding: 1rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 0.5rem;
+    }
+    .chat-input {
+        flex: 1;
+        padding: 0.6rem 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        outline: none;
+        font-size: 0.9rem;
+    }
+    .chat-input:focus { border-color: #6366f1; }
+    .msg {
+        max-width: 80%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        font-size: 0.85rem;
+        line-height: 1.4;
+        position: relative;
+    }
+    .msg.me {
+        align-self: flex-end;
+        background: #6366f1;
+        color: white;
+        border-bottom-right-radius: 0.2rem;
+    }
+    .msg.other {
+        align-self: flex-start;
+        background: #f1f5f9;
+        color: #1e293b;
+        border-bottom-left-radius: 0.2rem;
+    }
+    .msg-time {
+        font-size: 0.65rem;
+        opacity: 0.7;
+        margin-top: 0.25rem;
+        display: block;
+        text-align: right;
+    }
+    .user-list-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: background 0.2s;
+    }
+    .user-list-item:hover { background: #f8fafc; }
+    .unread-badge {
+        background: #ef4444;
+        color: white;
+        font-size: 0.7rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 1rem;
+        font-weight: 700;
+    }
+</style>
+
+<div id="chat-widget-container">
+    <div id="chat-window">
+        <div class="chat-header">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span id="chat-back-btn" style="cursor: pointer; display: none;">⬅️</span>
+                <strong id="chat-title">Messages</strong>
+            </div>
+            <span style="cursor: pointer;" onclick="toggleChat()">✖️</span>
+        </div>
+        <div id="chat-user-list" class="chat-body">
+            <!-- Users will be loaded here -->
+        </div>
+        <div id="chat-messages" class="chat-body" style="display: none;">
+            <!-- Messages will be loaded here -->
+        </div>
+        <div class="chat-footer" id="chat-footer" style="display: none;">
+            <input type="text" id="chat-input-field" class="chat-input" placeholder="Type a message...">
+            <button onclick="sendMessage()" style="background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 1rem; cursor: pointer;">Send</button>
+        </div>
+    </div>
+    <button id="chat-toggle-btn" onclick="toggleChat()">💬</button>
+</div>
+
+<script>
+    let currentReceiverId = null;
+    let chatInterval = null;
+
+    function toggleChat() {
+        const win = document.getElementById('chat-window');
+        win.classList.toggle('active');
+        if (win.classList.contains('active')) {
+            loadUserList();
+        } else {
+            clearInterval(chatInterval);
+        }
+    }
+
+    function loadUserList() {
+        document.getElementById('chat-title').innerText = "Messages";
+        document.getElementById('chat-user-list').style.display = 'flex';
+        document.getElementById('chat-messages').style.display = 'none';
+        document.getElementById('chat-footer').style.display = 'none';
+        document.getElementById('chat-back-btn').style.display = 'none';
+        currentReceiverId = null;
+        clearInterval(chatInterval);
+
+        fetch('/chat/list/')
+            .then(res => res.json())
+            .then(data => {
+                const list = document.getElementById('chat-user-list');
+                list.innerHTML = '';
+                data.users.forEach(u => {
+                    const item = document.createElement('div');
+                    item.className = 'user-list-item';
+                    item.innerHTML = `
+                        <div style="width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; overflow: hidden;">
+                            ${u.profile_photo ? `<img src="${u.profile_photo}" style="width: 100%; height: 100%; object-fit: cover;">` : ''}
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between;">
+                                <strong style="font-size: 0.9rem;">${u.name}</strong>
+                                ${u.unread_count > 0 ? `<span class="unread-badge">${u.unread_count}</span>` : ''}
+                            </div>
+                            <div style="font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${u.last_message}</div>
+                        </div>
+                    `;
+                    item.onclick = () => openChat(u.id, u.name);
+                    list.appendChild(item);
+                });
+            });
+    }
+
+    function openChat(userId, userName) {
+        currentReceiverId = userId;
+        document.getElementById('chat-title').innerText = userName;
+        document.getElementById('chat-user-list').style.display = 'none';
+        document.getElementById('chat-messages').style.display = 'flex';
+        document.getElementById('chat-footer').style.display = 'flex';
+        document.getElementById('chat-back-btn').style.display = 'inline';
+        document.getElementById('chat-back-btn').onclick = loadUserList;
+
+        loadMessages();
+        chatInterval = setInterval(loadMessages, 3000);
+    }
+
+    function loadMessages() {
+        if (!currentReceiverId) return;
+        fetch(`/chat/messages/${currentReceiverId}/`)
+            .then(res => res.json())
+            .then(data => {
+                const box = document.getElementById('chat-messages');
+                const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 1;
+                
+                box.innerHTML = '';
+                data.messages.forEach(m => {
+                    const msgDiv = document.createElement('div');
+                    msgDiv.className = `msg ${m.is_me ? 'me' : 'other'}`;
+                    msgDiv.innerHTML = `
+                        ${m.message}
+                        <span class="msg-time">${m.timestamp}</span>
+                    `;
+                    box.appendChild(msgDiv);
+                });
+
+                if (wasAtBottom) {
+                    box.scrollTop = box.scrollHeight;
+                }
+            });
+    }
+
+    function sendMessage() {
+        const input = document.getElementById('chat-input-field');
+        const text = input.value.trim();
+        if (!text || !currentReceiverId) return;
+
+        const formData = new FormData();
+        formData.append('receiver_id', currentReceiverId);
+        formData.append('message', text);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch('/chat/send/', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            input.value = '';
+            loadMessages();
+        });
+    }
+
+    document.getElementById('chat-input-field').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+</script>

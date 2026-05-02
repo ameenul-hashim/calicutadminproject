@@ -1,9 +1,17 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission
+from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission, Notification, ChatMessage
 from django.contrib.auth.decorators import user_passes_test, login_required
 import re
+
+def create_notification(user, message):
+    Notification.objects.create(user=user, message=message)
+
+def notify_admins(message):
+    admins = CustomUser.objects.filter(is_superuser=True)
+    for admin in admins:
+        create_notification(admin, message)
 
 def signup_view(request):
     if request.method == 'POST':
@@ -58,6 +66,7 @@ def signup_view(request):
             profile_photo=profile_photo
         )
         messages.success(request, "Student registration successful! Your proof is pending admin approval.")
+        notify_admins(f"New student registration: {username}. Approval needed.")
         return redirect('login')
 
     return render(request, 'accounts/signup.html')
@@ -110,6 +119,7 @@ def teacher_signup_view(request):
             profile_photo=profile_photo
         )
         messages.success(request, "Teacher registration successful! Please wait for admin approval.")
+        notify_admins(f"New teacher registration: {username}. Approval needed.")
         return redirect('teacher_login')
 
     return render(request, 'accounts/teacher_signup.html')
@@ -369,6 +379,7 @@ def submit_course_approval(request, course_id):
         course.status = 'PENDING'
         course.save()
         messages.success(request, "Course submitted for admin approval.")
+        notify_admins(f"Teacher {request.user.username} submitted course '{course.title}' for approval.")
     else:
         messages.error(request, "Please add at least one lesson before submitting for approval.")
     return redirect('my_courses')
@@ -386,6 +397,8 @@ def enroll_course(request, course_id):
     else:
         Enrollment.objects.create(user=request.user, course=course)
         messages.success(request, f"Successfully enrolled in {course.title}!")
+        create_notification(request.user, f"Welcome! You have successfully enrolled in '{course.title}'.")
+        create_notification(course.teacher, f"New student enrolled in your course '{course.title}': {request.user.username}")
     return redirect('dashboard')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -544,6 +557,75 @@ def course_player(request, course_id):
         'lessons': lessons,
         'first_lesson': lessons.first() if lessons.exists() else None,
     }
-    return render(request, 'accounts/course_player.html', context)
+    return render(request, 'accounts/course_player.html', context)@login_required
+def send_chat_message(request):
+    if request.method == 'POST':
+        receiver_id = request.POST.get('receiver_id')
+        message_text = request.POST.get('message')
+        receiver = get_object_or_404(CustomUser, id=receiver_id)
+        
+        msg = ChatMessage.objects.create(sender=request.user, receiver=receiver, message=message_text)
+        
+        from django.http import JsonResponse
+        return JsonResponse({
+            'status': 'success',
+            'message': msg.message,
+            'timestamp': msg.timestamp.strftime('%H:%M'),
+            'sender': msg.sender.username
+        })
+    return JsonResponse({'status': 'error'}, status=400)
 
+@login_required
+def get_chat_messages(request, other_user_id):
+    other_user = get_object_or_404(CustomUser, id=other_user_id)
+    from django.db.models import Q
+    messages = ChatMessage.objects.filter(
+        (Q(sender=request.user) & Q(receiver=other_user)) |
+        (Q(sender=other_user) & Q(receiver=request.user))
+    ).order_by('timestamp')
+    
+    # Mark as read
+    messages.filter(receiver=request.user, is_read=False).update(is_read=True)
+    
+    data = []
+    for m in messages:
+        data.append({
+            'sender_id': m.sender.id,
+            'sender_name': m.sender.username,
+            'message': m.message,
+            'timestamp': m.timestamp.strftime('%H:%M'),
+            'is_me': m.sender == request.user
+        })
+    
+    from django.http import JsonResponse
+    return JsonResponse({'messages': data})
 
+@login_required
+def get_chat_list(request):
+    from django.db.models import Q
+    # For Admin: list all teachers with messages
+    # For Teacher: list all admins
+    if request.user.user_type == 'ADMIN' or request.user.is_superuser:
+        users = CustomUser.objects.filter(user_type='TEACHER')
+    else:
+        users = CustomUser.objects.filter(is_superuser=True)
+        
+    data = []
+    for u in users:
+        last_msg = ChatMessage.objects.filter(
+            (Q(sender=request.user) & Q(receiver=u)) |
+            (Q(sender=u) & Q(receiver=request.user))
+        ).last()
+        
+        unread_count = ChatMessage.objects.filter(sender=u, receiver=request.user, is_read=False).count()
+        
+        data.append({
+            'id': u.id,
+            'name': u.full_name or u.username,
+            'last_message': last_msg.message if last_msg else "No messages yet",
+            'unread_count': unread_count,
+            'profile_photo': u.profile_photo.url if u.profile_photo else None
+        })
+    
+    from django.http import JsonResponse
+    return JsonResponse({'users': data})

@@ -5,6 +5,10 @@ from accounts.models import CustomUser
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Q
 import re
+from accounts.models import Notification, Enrollment
+
+def create_notification(user, message):
+    Notification.objects.create(user=user, message=message)
 
 def admin_login_view(request):
     if request.method == 'POST':
@@ -79,6 +83,8 @@ def accept_user(request, user_id):
     user.rejection_reason = ""
     user.save()
     
+    create_notification(user, f"Your account has been approved by admin. You can now login.")
+    
     ApprovalLog.objects.create(
         content_type=user.user_type,
         object_id=user.id,
@@ -101,6 +107,8 @@ def decline_user(request, user_id):
         user.is_active = False
         user.rejection_reason = reason
         user.save()
+        
+        create_notification(user, f"Your account registration was declined. Reason: {reason}")
         
         ApprovalLog.objects.create(
             content_type=user.user_type,
@@ -282,6 +290,13 @@ def approve_course(request, course_id):
     # Auto-approve all current lessons in the course
     course.lessons.update(is_approved=True)
 
+    create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
+    
+    # Notify all active students about new course
+    students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
+    for student in students:
+        create_notification(student, f"New course available: '{course.title}' by {course.teacher.username}")
+
     
     ApprovalLog.objects.create(
         content_type='COURSE',
@@ -303,6 +318,8 @@ def reject_course(request, course_id):
         course.is_approved = False
         course.rejection_reason = reason
         course.save()
+        
+        create_notification(course.teacher, f"Your course '{course.title}' was rejected. Reason: {reason}")
         
         ApprovalLog.objects.create(
             content_type='COURSE',
@@ -361,6 +378,14 @@ def toggle_lesson_approval(request, lesson_id):
         lesson.is_approved = True
         msg = "approved"
     lesson.save()
+    
+    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been {msg}.")
+    
+    if msg == "approved":
+        # Notify enrolled students
+        enrollments = Enrollment.objects.filter(course=lesson.course)
+        for e in enrollments:
+            create_notification(e.user, f"New lesson added to your course '{lesson.course.title}': {lesson.title}")
     
     from accounts.models import ApprovalLog
     ApprovalLog.objects.create(

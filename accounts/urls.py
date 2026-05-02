@@ -33,5 +33,8 @@ urlpatterns = [
     path('student/explore/', views.student_explore, name='student_explore'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
+    path('chat/send/', views.send_chat_message, name='send_chat_message'),
+    path('chat/messages/<int:other_user_id>/', views.get_chat_messages, name='get_chat_messages'),
+    path('chat/list/', views.get_chat_list, name='get_chat_list'),
 ]
 
