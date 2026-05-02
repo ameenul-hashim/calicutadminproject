@@ -563,7 +563,9 @@ def course_player(request, course_id):
         'lessons': lessons,
         'first_lesson': lessons.first() if lessons.exists() else None,
     }
-    return render(request, 'accounts/course_player.html', context)@login_required
+    return render(request, 'accounts/course_player.html', context)
+
+@login_required
 def send_chat_message(request):
     if request.method == 'POST':
         receiver_id = request.POST.get('receiver_id')
