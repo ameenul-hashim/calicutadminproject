@@ -179,8 +179,13 @@
             <ul class="nav-list">
                 <li class="nav-item"><a href="{% url 'dashboard' %}" class="nav-link active"><span>🏠</span> Dashboard</a></li>
                 <li class="nav-item"><a href="{% url 'student_explore' %}" class="nav-link"><span>🌐</span> Explore</a></li>
-                <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link"><span>👤</span> Settings</a></li>
+                <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link"><span>👤</span> Profile</a></li>
             </ul>
+
+            <div style="margin-top: 2rem;">
+                <p style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; padding-left: 1rem;">Browse Categories</p>
+                <a href="{% url 'student_explore' %}?search=mathematics" class="nav-link" style="font-size: 0.9rem; padding: 0.6rem 1rem;"><span>📐</span> Mathematics</a>
+            </div>
 
             <div style="padding-top: 2rem; border-top: 1px solid #f1f5f9;">
                 <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
