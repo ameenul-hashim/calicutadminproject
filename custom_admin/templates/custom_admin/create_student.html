@@ -1,0 +1,76 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Student | Admin</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div style="display: flex; min-height: 100vh;">
+        <!-- Sidebar -->
+        <aside style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
+            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
+            <nav>
+                <a href="{% url 'admin_dashboard' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">All Users</a>
+                <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Student Approvals</a>
+                <a href="{% url 'pending_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Teacher Approvals</a>
+                <a href="{% url 'admin_analytics' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Analytics</a>
+                <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Content Data</a>
+                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
+                    <a href="{% url 'admin_logout' %}" style="display: block; padding: 0.75rem 1rem; color: #ef4444; text-decoration: none;">Logout</a>
+                </div>
+            </nav>
+        </aside>
+
+        <main style="flex: 1; padding: 2rem; max-width: 1140px;">
+            <header style="margin-bottom: 2rem;">
+                <h1>Create New Student</h1>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <div class="glass-card" style="max-width: 600px; background: white;">
+                <form method="POST" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <label for="username">Username</label>
+                        <input type="text" name="username" id="username" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="fullname">Full Name</label>
+                        <input type="text" name="fullname" id="fullname" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" name="email" id="email" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="proof_file">Student Proof (PDF)</label>
+                        <input type="file" name="proof_file" id="proof_file" accept=".pdf" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="password">Password</label>
+                        <input type="password" name="password" id="password" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" required>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary">Create Student</button>
+                        <a href="{% url 'admin_dashboard' %}" class="btn" style="background: #f1f5f9; color: #64748b;">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

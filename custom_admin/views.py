@@ -90,16 +90,17 @@ def toggle_user_status(request, user_id):
 
 
 @user_passes_test(is_admin, login_url='admin_login')
-def create_user_admin(request):
+def create_student_admin(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
+        proof_file = request.FILES.get('proof_file')
         
-        if not all([username, email, fullname, password, confirm_password]):
-            messages.error(request, "All fields are required.")
+        if not all([username, email, fullname, password, confirm_password, proof_file]):
+            messages.error(request, "All fields including Student Proof (PDF) are required.")
         elif password != confirm_password:
             messages.error(request, "Passwords do not match.")
         elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
@@ -107,7 +108,7 @@ def create_user_admin(request):
         elif CustomUser.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
+            messages.error(request, "The email is already exist in the database.")
         else:
             CustomUser.objects.create_user(
                 username=username,
@@ -115,12 +116,94 @@ def create_user_admin(request):
                 password=password,
                 full_name=fullname,
                 is_active=True,
-                status='ACTIVE'
+                status='ACTIVE',
+                user_type='STUDENT',
+                proof_file=proof_file
             )
-            messages.success(request, "User created successfully!")
+            messages.success(request, f"Student {username} created successfully!")
             return redirect('admin_dashboard')
             
-    return render(request, 'custom_admin/create_user.html')
+    return render(request, 'custom_admin/create_student.html')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def create_teacher_admin(request):
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        fullname = request.POST.get('fullname')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        proof_file = request.FILES.get('proof_file')
+        
+        if not all([username, email, fullname, password, confirm_password, proof_file]):
+            messages.error(request, "All fields including Teacher Proof (PDF) are required.")
+        elif password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+        elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
+        elif CustomUser.objects.filter(username=username).exists():
+            messages.error(request, "Username already exists.")
+        elif CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "The email is already exist in the database.")
+        else:
+            CustomUser.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                full_name=fullname,
+                is_active=True,
+                is_staff=True,
+                status='ACTIVE',
+                user_type='TEACHER',
+                proof_file=proof_file
+            )
+            messages.success(request, f"Teacher {username} created successfully!")
+            return redirect('admin_dashboard')
+            
+    return render(request, 'custom_admin/create_teacher.html')
+
+from django.db.models.functions import ExtractMonth
+from accounts.models import Subject, Video, Note
+
+@user_passes_test(is_admin, login_url='admin_login')
+def analytics_view(request):
+    # Stats Cards
+    total_students = CustomUser.objects.filter(user_type='STUDENT').count()
+    total_teachers = CustomUser.objects.filter(user_type='TEACHER').count()
+    total_subjects = Subject.objects.count()
+    total_videos = Video.objects.count()
+    total_notes = Note.objects.count()
+
+    # Month-wise Data (Simple aggregation for Chart.js)
+    def get_monthly_data(queryset):
+        data = [0] * 12
+        counts = queryset.annotate(month=ExtractMonth('created_at')).values('month').annotate(count=models.Count('id'))
+        for entry in counts:
+            if entry['month']:
+                data[entry['month']-1] = entry['count']
+        return data
+
+    student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'))
+    teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'))
+    subject_data = get_monthly_data(Subject.objects.all())
+
+    context = {
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'total_subjects': total_subjects,
+        'total_videos': total_videos,
+        'total_notes': total_notes,
+        'student_data': student_data,
+        'teacher_data': teacher_data,
+        'subject_data': subject_data,
+        'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    }
+    return render(request, 'custom_admin/analytics.html', context)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def content_management_view(request):
+    subjects = Subject.objects.all().prefetch_related('videos', 'notes')
+    return render(request, 'custom_admin/content_management.html', {'subjects': subjects})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def edit_user_admin(request, user_id):

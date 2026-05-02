@@ -10,6 +10,9 @@ urlpatterns = [
     path('user/accept/<int:user_id>/', views.accept_user, name='accept_user'),
     path('user/decline/<int:user_id>/', views.decline_user, name='decline_user'),
     path('user/toggle/<int:user_id>/', views.toggle_user_status, name='toggle_user_status'),
-    path('user/create/', views.create_user_admin, name='create_user_admin'),
+    path('student/create/', views.create_student_admin, name='create_student_admin'),
+    path('teacher/create/', views.create_teacher_admin, name='create_teacher_admin'),
     path('user/edit/<int:user_id>/', views.edit_user_admin, name='edit_user_admin'),
+    path('analytics/', views.analytics_view, name='admin_analytics'),
+    path('content/', views.content_management_view, name='admin_content'),
 ]

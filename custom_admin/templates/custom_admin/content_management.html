@@ -1,0 +1,83 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Management | Admin</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div style="display: flex; min-height: 100vh;">
+        <!-- Sidebar -->
+        <aside style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
+            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
+            <nav>
+                <a href="{% url 'admin_dashboard' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">All Users</a>
+                <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Student Approvals</a>
+                <a href="{% url 'pending_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Teacher Approvals</a>
+                <a href="{% url 'admin_analytics' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Analytics</a>
+                <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #0ea5e9; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">Content Data</a>
+                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
+                    <a href="{% url 'admin_logout' %}" style="display: block; padding: 0.75rem 1rem; color: #ef4444; text-decoration: none;">Logout</a>
+                </div>
+            </nav>
+        </aside>
+
+        <main style="flex: 1; padding: 2rem; max-width: 1140px;">
+            <header class="admin-header">
+                <h1>Content Overview (Real-time)</h1>
+            </header>
+
+            <div style="display: grid; gap: 2rem;">
+                {% for subject in subjects %}
+                <div class="glass-card" style="background: white; padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1rem;">
+                        <h2 style="color: #1e293b;">{{ subject.name }}</h2>
+                        <span style="background: #f1f5f9; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 600; color: #64748b;">
+                            {{ subject.videos.count }} Videos | {{ subject.notes.count }} Notes
+                        </span>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <!-- Videos List -->
+                        <div>
+                            <h4 style="margin-bottom: 1rem; color: #0ea5e9;">Videos</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                {% for video in subject.videos.all %}
+                                <li style="padding: 0.5rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; display: flex; justify-content: space-between;">
+                                    <span>{{ video.title }}</span>
+                                    <span style="color: #94a3b8; font-size: 0.8rem;">{{ video.created_at|date:"M d, Y" }}</span>
+                                </li>
+                                {% empty %}
+                                <li style="color: #94a3b8; font-size: 0.9rem;">No videos uploaded.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <!-- Notes List -->
+                        <div>
+                            <h4 style="margin-bottom: 1rem; color: #6366f1;">Notes</h4>
+                            <ul style="list-style: none; padding: 0;">
+                                {% for note in subject.notes.all %}
+                                <li style="padding: 0.5rem 0; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; display: flex; justify-content: space-between;">
+                                    <span>{{ note.title }}</span>
+                                    <span style="color: #94a3b8; font-size: 0.8rem;">{{ note.created_at|date:"M d, Y" }}</span>
+                                </li>
+                                {% empty %}
+                                <li style="color: #94a3b8; font-size: 0.9rem;">No notes uploaded.</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; padding: 5rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
+                    No subjects found in database.
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+    </div>
+</body>
+</html>
