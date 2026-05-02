@@ -184,13 +184,16 @@
                         
                         <div style="margin-bottom: 1.5rem;">
                             <h4 style="font-size: 0.85rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 0.8rem; letter-spacing: 0.05em;">Recent Lessons</h4>
-                            {% for lesson in course.lessons.all|slice:":3" %}
+                            {% for lesson in course.lessons.all %}
                             {% if lesson.is_approved %}
                             <div class="content-item">
                                 <span>{{ lesson.order }}. {{ lesson.title }}</span>
                                 <div style="display: flex; gap: 0.5rem;">
-                                    {% if lesson.video_url %}<a href="{{ lesson.video_url }}" target="_blank" class="view-btn">Watch</a>{% endif %}
-                                    {% if lesson.notes %}<a href="{{ lesson.notes.url }}" download target="_blank" class="view-btn" style="color: #10b981; background: #ecfdf5;">PDF</a>{% endif %}
+                                    {% if lesson.video_url %}<button onclick="openVideo('{{ lesson.video_url }}')" class="view-btn" style="border: none; cursor: pointer;">▶ Watch</button>{% endif %}
+                                    {% if lesson.notes %}
+                                    <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="color: #0ea5e9; background: #f0f9ff;">👁 View</a>
+                                    <a href="{{ lesson.notes.url }}" download class="view-btn" style="color: #10b981; background: #ecfdf5;">⬇ Download</a>
+                                    {% endif %}
                                 </div>
                             </div>
                             {% endif %}
@@ -258,5 +261,44 @@
             </div>
         </main>
     </div>
+
+    <!-- Video Player Modal -->
+    <div id="videoModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
+        <div style="position:relative; width:80%; max-width:900px; aspect-ratio:16/9; background:#000; border-radius:1rem; overflow:hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+            <button onclick="closeVideo()" style="position:absolute; top:-40px; right:0; background:none; border:none; color:white; font-size:2rem; cursor:pointer; z-index:10;">✕</button>
+            <iframe id="videoFrame" src="" style="width:100%; height:100%; border:none;" allow="autoplay; fullscreen" allowfullscreen></iframe>
+        </div>
+    </div>
+
+    <script>
+    function getEmbedUrl(url) {
+        if (!url) return '';
+        // youtube.com/watch?v=ID
+        let match = url.match(/[?&]v=([^&]+)/);
+        if (match) return 'https://www.youtube.com/embed/' + match[1] + '?autoplay=1';
+        // youtu.be/ID
+        match = url.match(/youtu\.be\/([^?&]+)/);
+        if (match) return 'https://www.youtube.com/embed/' + match[1] + '?autoplay=1';
+        // youtube.com/embed/ID (already embed)
+        if (url.includes('/embed/')) return url + (url.includes('?') ? '&autoplay=1' : '?autoplay=1');
+        // fallback: just use it as-is in iframe
+        return url;
+    }
+    function openVideo(url) {
+        const modal = document.getElementById('videoModal');
+        const frame = document.getElementById('videoFrame');
+        frame.src = getEmbedUrl(url);
+        modal.style.display = 'flex';
+    }
+    function closeVideo() {
+        const modal = document.getElementById('videoModal');
+        const frame = document.getElementById('videoFrame');
+        frame.src = '';
+        modal.style.display = 'none';
+    }
+    document.getElementById('videoModal').addEventListener('click', function(e) {
+        if (e.target === this) closeVideo();
+    });
+    </script>
 </body>
 </html>
