@@ -208,8 +208,12 @@
         <main class="main-content">
             <header class="top-header">
                 <div class="welcome-section">
-                    <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Hello, {{ user.full_name }}!</h1>
-                    <p style="color: #64748b;">Ready to continue your learning journey today?</p>
+                    <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Welcome, {{ user.full_name }}</h1>
+                    <p style="color: #64748b;">{% if user.user_type == 'TEACHER' %}Previewing Student View{% else %}Ready to learn something new today?{% endif %}</p>
+                    
+                    {% if user.user_type == 'TEACHER' %}
+                        <a href="{% url 'teacher_dashboard' %}" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">← Back to Teacher Portal</a>
+                    {% endif %}
                 </div>
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
                     <!-- Search Bar -->

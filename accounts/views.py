@@ -243,7 +243,7 @@ def teacher_dashboard(request):
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
+@user_passes_test(lambda u: u.is_authenticated and u.user_type in ['STUDENT', 'TEACHER'], login_url='login')
 def student_explore(request):
     # Enrolled course IDs to exclude
     enrolled_ids = Enrollment.objects.filter(user=request.user).values_list('course_id', flat=True)
