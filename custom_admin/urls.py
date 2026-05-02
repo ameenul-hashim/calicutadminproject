@@ -25,4 +25,5 @@ urlpatterns = [
     path('assignment/toggle/<int:assignment_id>/', views.toggle_assignment_approval, name='toggle_assignment_approval'),
     path('assignment/<int:assignment_id>/submissions/', views.admin_view_submissions, name='admin_view_submissions'),
     path('quiz/<int:quiz_id>/attempts/', views.admin_view_quiz_attempts, name='admin_view_quiz_attempts'),
+    path('course/<int:course_id>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
 ]

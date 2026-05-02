@@ -637,3 +637,25 @@ def get_chat_list(request):
     
     from django.http import JsonResponse
     return JsonResponse({'users': data})
+
+@login_required
+def mark_notification_read(request, notif_id):
+    from django.shortcuts import get_object_or_404, redirect
+    from .models import Notification
+    notif = get_object_or_404(Notification, id=notif_id, user=request.user)
+    notif.is_read = True
+    notif.save()
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@login_required
+def all_notifications(request):
+    from django.shortcuts import render
+    notifications = request.user.notifications.all().order_by('-created_at')
+    
+    # Determine base template based on user type
+    base_template = 'custom_admin/base_admin.html' if (request.user.user_type == 'ADMIN' or request.user.is_superuser) else 'accounts/base.html'
+    
+    return render(request, 'accounts/all_notifications.html', {
+        'notifications': notifications,
+        'base_template': base_template
+    })

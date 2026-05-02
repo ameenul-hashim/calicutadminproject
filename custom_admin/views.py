@@ -449,6 +449,16 @@ def admin_view_quiz_attempts(request, quiz_id):
     attempts = quiz.attempts.all().select_related('student')
     return render(request, 'custom_admin/admin_view_quiz_attempts.html', {'quiz': quiz, 'attempts': attempts})
 
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_view_course_content(request, course_id):
+    from accounts.models import Course, Lesson
+    course = get_object_or_404(Course, id=course_id)
+    lessons = course.lessons.all().order_by('order')
+    return render(request, 'custom_admin/course_content_verify.html', {
+        'course': course,
+        'lessons': lessons
+    })
+
 def admin_logout(request):
     logout(request)
     messages.success(request, "Admin logged out successfully!")

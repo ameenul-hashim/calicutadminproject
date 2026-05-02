@@ -1,0 +1,79 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Verify Course | Admin{% endblock %}
+
+{% block header_title %}
+    <h1>Verify Course Content</h1>
+    <p style="color: #64748b;">Review lessons, videos, and notes for "{{ course.title }}".</p>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 2rem;">
+    <a href="{% url 'pending_courses' %}" class="view-btn" style="text-decoration: none; color: #64748b; font-weight: 600;">&larr; Back to Requests</a>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+    {% for lesson in lessons %}
+    <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column;">
+        <div style="padding: 1.5rem; flex-grow: 1;">
+            <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.2rem; color: #1e293b;">{{ lesson.title }}</h3>
+            
+            {% if lesson.video_file %}
+            <div style="margin-top: 1rem; margin-bottom: 1rem;">
+                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Video File:</p>
+                <video controls style="width: 100%; border-radius: 0.5rem;">
+                    <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            {% endif %}
+
+            {% if lesson.video_url %}
+            <div style="margin-top: 1rem; margin-bottom: 1rem;">
+                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Video URL:</p>
+                <a href="{{ lesson.video_url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.9rem;">Watch External Video &nearr;</a>
+            </div>
+            {% endif %}
+
+            {% if lesson.notes %}
+            <div style="margin-top: 1rem; margin-bottom: 1rem;">
+                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Notes:</p>
+                <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="display: inline-block; padding: 0.4rem 0.8rem; background: #eef2ff; color: #4f46e5; text-decoration: none; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600;">View PDF</a>
+            </div>
+            {% endif %}
+            
+            {% if lesson.multiple_notes.all %}
+            <div style="margin-top: 1rem; margin-bottom: 1rem;">
+                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Additional Notes:</p>
+                <ul style="list-style: none; padding: 0; margin: 0;">
+                    {% for note in lesson.multiple_notes.all %}
+                    <li style="margin-bottom: 0.5rem;">
+                        <a href="{{ note.file.url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.85rem;">{{ note.title|default:"Attachment" }} &nearr;</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 0.85rem; font-weight: 600; color: {% if lesson.is_approved %}#10b981{% else %}#f59e0b{% endif %};">
+                {% if lesson.is_approved %}Approved{% else %}Pending{% endif %}
+            </span>
+            <form action="{% url 'toggle_lesson_approval' lesson.id %}" method="post" style="margin: 0;">
+                {% csrf_token %}
+                {% if lesson.is_approved %}
+                    <button type="submit" class="view-btn" style="background: #fee2e2; color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Revoke</button>
+                {% else %}
+                    <button type="submit" class="view-btn" style="background: #dcfce7; color: #10b981; border: none; padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Approve</button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: white; border-radius: 1rem; border: 1px dashed #cbd5e1;">
+        <p style="color: #64748b; margin: 0;">No lessons have been added to this course yet.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

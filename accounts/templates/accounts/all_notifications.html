@@ -1,0 +1,32 @@
+{% extends base_template %}
+
+{% block title %}All Notifications{% endblock %}
+
+{% block header_title %}
+    <h1>Notifications</h1>
+    <p style="color: #64748b;">All your system alerts and messages.</p>
+{% endblock %}
+
+{% block content %}
+<div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 2rem;">
+    {% if notifications %}
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for notif in notifications %}
+            <li style="padding: 1rem; border-bottom: 1px solid #e2e8f0; {% if not notif.is_read %}background-color: #f8fafc; font-weight: bold;{% endif %} display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <span style="font-size: 0.85rem; color: #94a3b8; display: block; margin-bottom: 0.25rem;">{{ notif.created_at|date:"M d, Y H:i" }}</span>
+                    <span style="color: #1e293b;">{{ notif.message }}</span>
+                </div>
+                {% if not notif.is_read %}
+                <a href="{% url 'mark_notification_read' notif.id %}" class="view-btn" style="background: #10b981; color: white; padding: 0.4rem 0.8rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.8rem;">Mark as Read</a>
+                {% endif %}
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div style="text-align: center; color: #94a3b8; padding: 2rem;">
+            No notifications found.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
