@@ -251,7 +251,7 @@ def content_management_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
-    courses = Course.objects.filter(status='PENDING')
+    courses = Course.objects.filter(status='PENDING').prefetch_related('lessons')
     return render(request, 'custom_admin/pending_courses.html', {'courses': courses})
 
 @user_passes_test(is_admin, login_url='admin_login')

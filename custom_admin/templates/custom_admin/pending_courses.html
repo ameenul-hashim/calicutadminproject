@@ -45,13 +45,29 @@
                     <tbody>
                         {% for course in courses %}
                         <tr>
-                            <td>{{ course.title }}</td>
+                            <td><strong>{{ course.title }}</strong></td>
                             <td>{{ course.teacher.username }}</td>
                             <td>{{ course.lessons.count }}</td>
                             <td><span class="status-badge" style="background: #fff7ed; color: #c2410c;">{{ course.get_status_display }}</span></td>
                             <td>
                                 <a href="{% url 'approve_course' course.id %}" class="action-link" style="color: #10b981;">Approve</a>
                                 <a href="{% url 'reject_course' course.id %}" class="action-link block-link">Reject</a>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" style="background: #f8fafc; padding: 1rem;">
+                                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #64748b; text-transform: uppercase;">Course Content for Verification</h4>
+                                <ul style="list-style: none; padding: 0; margin: 0; display: grid; gap: 0.5rem;">
+                                    {% for lesson in course.lessons.all %}
+                                    <li style="display: flex; gap: 1rem; align-items: center; font-size: 0.85rem; background: white; padding: 0.5rem 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+                                        <span style="font-weight: 600; width: 200px;">{{ lesson.order }}. {{ lesson.title }}</span>
+                                        {% if lesson.video_url %}<a href="{{ lesson.video_url }}" target="_blank" style="color: #6366f1; text-decoration: none;">🎥 Watch Video</a>{% else %}<span style="color: #94a3b8;">No Video</span>{% endif %}
+                                        {% if lesson.notes %}<a href="{{ lesson.notes.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 Read Notes</a>{% else %}<span style="color: #94a3b8;">No Notes</span>{% endif %}
+                                    </li>
+                                    {% empty %}
+                                    <li style="color: #ef4444; font-size: 0.85rem;">No lessons added! You should probably reject this course.</li>
+                                    {% endfor %}
+                                </ul>
                             </td>
                         </tr>
                         {% empty %}
