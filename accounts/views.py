@@ -256,6 +256,25 @@ def create_course(request):
     return render(request, 'teacher_portal/create_course.html')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def edit_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    if request.method == 'POST':
+        course.title = request.POST.get('title')
+        course.description = request.POST.get('description')
+        course.category = request.POST.get('category')
+        course.level = request.POST.get('level')
+        if request.FILES.get('thumbnail'):
+            course.thumbnail = request.FILES.get('thumbnail')
+        
+        # If it was rejected, we might want to keep it in rejected state until they click submit?
+        # Or automatically move to draft? Let's keep it as is, but inform them they need to submit.
+        course.save()
+        messages.success(request, "Course updated successfully!")
+        return redirect('my_courses')
+    
+    return render(request, 'teacher_portal/edit_course.html', {'course': course})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     lessons = course.lessons.all()
