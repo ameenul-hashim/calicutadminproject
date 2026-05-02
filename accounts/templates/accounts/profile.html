@@ -69,10 +69,10 @@
         .plus-icon { width: 40px; height: 40px; background: white; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
 
         /* Modal Styles */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center; padding: 2rem; }
-        .modal-content { background: white; border-radius: 1.5rem; width: 100%; max-width: 500px; padding: 2rem; position: relative; }
-        .crop-container { width: 100%; aspect-ratio: 1; background: #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; }
-        .crop-container img { max-width: 100%; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
+        .modal-content { background: white; border-radius: 1.5rem; width: 100%; max-width: 450px; padding: 1.5rem; position: relative; max-height: 90vh; overflow-y: auto; }
+        .crop-container { width: 100%; max-height: 400px; background: #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; border-radius: 0.5rem; }
+        .crop-container img { display: block; max-width: 100%; }
         
         .profile-meta h1 { margin: 0; font-size: 2.2rem; font-weight: 800; color: var(--text-main); }
         .role-badge {
@@ -233,7 +233,8 @@
                     const typedarray = new Uint8Array(this.result);
                     pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
                         pdf.getPage(1).then(function(page) {
-                            const viewport = page.getViewport({scale: 2.0});
+                            // High scale for better quality
+                            const viewport = page.getViewport({scale: 1.5});
                             const canvas = document.createElement('canvas');
                             const context = canvas.getContext('2d');
                             canvas.height = viewport.height;
@@ -243,9 +244,15 @@
                                 canvasContext: context,
                                 viewport: viewport
                             };
-                            page.render(renderContext).promise.then(function() {
-                                imageToCrop.src = canvas.toDataURL();
-                                startCropper();
+                            
+                            const renderTask = page.render(renderContext);
+                            renderTask.promise.then(function() {
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                                imageToCrop.src = dataUrl;
+                                // Wait for image to load before starting cropper
+                                imageToCrop.onload = function() {
+                                    startCropper();
+                                };
                             });
                         });
                     });
@@ -262,12 +269,26 @@
 
         function startCropper() {
             cropModal.style.display = 'flex';
-            if (cropper) cropper.destroy();
-            cropper = new Cropper(imageToCrop, {
-                aspectRatio: 3.5 / 4.5,
-                viewMode: 1,
-                background: false,
-            });
+            if (cropper) {
+                cropper.destroy();
+            }
+            
+            // Short delay to ensure modal is visible and dimensions are calculated
+            setTimeout(() => {
+                cropper = new Cropper(imageToCrop, {
+                    aspectRatio: 3.5 / 4.5,
+                    viewMode: 1,
+                    dragMode: 'move',
+                    autoCropArea: 1,
+                    restore: false,
+                    guides: true,
+                    center: true,
+                    highlight: false,
+                    cropBoxMovable: true,
+                    cropBoxResizable: true,
+                    toggleDragModeOnDblclick: false,
+                });
+            }, 100);
         }
 
         function closeModal() {
