@@ -184,7 +184,7 @@
                     <!-- Players (Hidden by default) -->
                     <iframe id="youtubePlayer" src="" allowfullscreen allow="autoplay; fullscreen" style="display: none;"></iframe>
                     <video id="filePlayer" controls style="display: none; background: #000;"></video>
-                    <iframe id="pdfViewer" src="" style="display: none; width: 100%; height: 100%; background: white;"></iframe>
+                    <embed id="pdfViewer" src="" type="application/pdf" style="display: none; width: 100%; height: 100%; background: white;">
                 </div>
 
                 <div class="video-footer">
@@ -226,10 +226,7 @@
             videoId = match[2];
         }
         if (videoId) {
-            // Simplified URL to avoid Error 153 configuration issues
-            // Use origin for security and rel=0 to show related videos from same channel
-            const origin = window.location.origin;
-            return `https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1&enablejsapi=1&origin=${origin}`;
+            return `https://www.youtube.com/embed/${videoId}?rel=0`;
         }
         return url;
     }
