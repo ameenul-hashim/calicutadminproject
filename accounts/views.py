@@ -382,10 +382,16 @@ def delete_lesson(request, lesson_id):
 def submit_course_approval(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     if course.lessons.exists():
+        is_resubmission = course.rejection_reason not in [None, '']
         course.status = 'PENDING'
+        # Keep old rejection reason so admin can see it during review
         course.save()
-        messages.success(request, "Course submitted for admin approval.")
-        notify_admins(f"Teacher {request.user.username} submitted course '{course.title}' for approval.")
+        if is_resubmission:
+            messages.success(request, f"Course '{course.title}' re-submitted for admin approval.")
+            notify_admins(f"🔁 RE-SUBMISSION: Teacher {request.user.username} re-submitted course '{course.title}' for approval after rejection.")
+        else:
+            messages.success(request, "Course submitted for admin approval.")
+            notify_admins(f"📚 NEW SUBMISSION: Teacher {request.user.username} submitted course '{course.title}' for approval.")
     else:
         messages.error(request, "Please add at least one lesson before submitting for approval.")
     return redirect('my_courses')

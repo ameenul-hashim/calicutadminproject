@@ -291,8 +291,14 @@ def content_management_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
-    courses = Course.objects.filter(status='PENDING').prefetch_related('lessons')
-    return render(request, 'custom_admin/pending_courses.html', {'courses': courses})
+    courses = Course.objects.filter(status='PENDING').prefetch_related('lessons').order_by('-created_at')
+    notifications = Notification.objects.filter(user=request.user)[:10]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    return render(request, 'custom_admin/pending_courses.html', {
+        'courses': courses,
+        'notifications': notifications,
+        'unread_notifications_count': unread_count,
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_course(request, course_id):

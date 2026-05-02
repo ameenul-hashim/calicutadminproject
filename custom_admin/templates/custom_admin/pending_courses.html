@@ -20,9 +20,15 @@
                     {% endif %}
                     
                     <div style="position: absolute; top: 1rem; right: 1rem;">
-                        <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fef9c3; color: #854d0e; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                            Pending
-                        </span>
+                        {% if course.rejection_reason %}
+                            <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fee2e2; color: #b91c1c; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                🔁 Re-submitted
+                            </span>
+                        {% else %}
+                            <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fef9c3; color: #854d0e; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                🆕 New Request
+                            </span>
+                        {% endif %}
                     </div>
 
                     <div style="padding: 1.5rem; flex-grow: 1;">
@@ -33,9 +39,17 @@
                             <strong>Teacher:</strong> {{ course.teacher.full_name|default:course.teacher.username }}
                         </div>
                         
-                        <div style="display: flex; gap: 1rem; color: #64748b; font-size: 0.85rem; margin-bottom: 1.5rem;">
+                        <div style="display: flex; gap: 1rem; color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">
                             <span>📚 {{ course.lessons.count }} Lessons</span>
+                            <span>📅 {{ course.created_at|date:"M d, Y" }}</span>
                         </div>
+                        
+                        {% if course.rejection_reason %}
+                        <div style="background: #fff7ed; border-left: 3px solid #f97316; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 1rem; font-size: 0.85rem;">
+                            <strong style="color: #c2410c;">Previous Rejection Reason:</strong>
+                            <p style="margin: 0.25rem 0 0 0; color: #7c2d12;">{{ course.rejection_reason }}</p>
+                        </div>
+                        {% endif %}
                         
                         <a href="{% url 'admin_view_course_content' course.id %}" style="display: block; width: 100%; text-align: center; padding: 0.6rem; background: #eef2ff; color: #4f46e5; text-decoration: none; border-radius: 0.5rem; font-weight: 600; margin-bottom: 1rem;">Verify Content</a>
 
