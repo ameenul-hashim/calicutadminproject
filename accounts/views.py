@@ -207,15 +207,16 @@ def dashboard_view(request):
         # For Teacher: Show their own courses in the dashboard for easy preview
         courses = Course.objects.filter(teacher=request.user)
     else:
-        # For Student: Get enrolled courses
-        enrollments = Enrollment.objects.filter(user=request.user).select_related('course')
-        courses = [e.course for e in enrollments]
+        # For Student: Get enrolled courses as a queryset
+        courses = Course.objects.filter(enrollments__user=request.user)
     
     # Explore courses (all approved and published)
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=[c.id for c in courses])
+    enrolled_ids = courses.values_list('id', flat=True)
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids)
     
     search_query = request.GET.get('search', '')
     if search_query:
+        courses = courses.filter(title__icontains=search_query)
         explore_courses = explore_courses.filter(title__icontains=search_query)
 
     # Get notifications
