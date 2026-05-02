@@ -40,12 +40,41 @@ def admin_dashboard(request):
     return render(request, 'custom_admin/dashboard.html', {'users': users, 'search_query': search_query})
 
 @user_passes_test(is_admin, login_url='admin_login')
+def pending_users_view(request):
+    pending_users = CustomUser.objects.filter(status='PENDING').exclude(is_superuser=True)
+    return render(request, 'custom_admin/pending_users.html', {'users': pending_users})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def accept_user(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    user.status = 'ACTIVE'
+    user.is_active = True
+    user.save()
+    messages.success(request, f"User {user.username} has been approved.")
+    return redirect('pending_users')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def decline_user(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    user.status = 'BLOCKED'
+    user.is_active = False
+    user.save()
+    messages.success(request, f"User {user.username} has been declined/blocked.")
+    return redirect('pending_users')
+
+@user_passes_test(is_admin, login_url='admin_login')
 def toggle_user_status(request, user_id):
     user = get_object_or_404(CustomUser, id=user_id)
-    user.is_active = not user.is_active
+    if user.status == 'ACTIVE':
+        user.status = 'BLOCKED'
+        user.is_active = False
+        msg = "blocked"
+    else:
+        user.status = 'ACTIVE'
+        user.is_active = True
+        msg = "activated"
     user.save()
-    status = "activated" if user.is_active else "deactivated"
-    messages.success(request, f"User {user.username} has been {status}.")
+    messages.success(request, f"User {user.username} has been {msg}.")
     return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -64,7 +93,9 @@ def create_user_admin(request):
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         
-        if CustomUser.objects.filter(username=username).exists():
+        if not all([username, email, fullname, password]):
+            messages.error(request, "All fields are required.")
+        elif CustomUser.objects.filter(username=username).exists():
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "Email already exists.")
@@ -74,7 +105,8 @@ def create_user_admin(request):
                 email=email,
                 password=password,
                 full_name=fullname,
-                is_active=True
+                is_active=True,
+                status='ACTIVE'
             )
             messages.success(request, "User created successfully.")
             return redirect('admin_dashboard')

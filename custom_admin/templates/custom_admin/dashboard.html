@@ -8,69 +8,88 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <div style="padding: 2rem; max-width: 1400px; margin: 0 auto;">
-        <header class="admin-header">
-            <h1 style="font-size: 2rem;">Admin Dashboard</h1>
-            <div style="display: flex; gap: 1rem;">
-                <a href="{% url 'create_user_admin' %}" class="btn btn-primary">+ Create User</a>
-                <a href="{% url 'admin_logout' %}" class="btn btn-danger">Logout</a>
-            </div>
-        </header>
-
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
+    <div style="display: flex; min-height: 100vh;">
+        <!-- Sidebar -->
+        <aside style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
+            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
+            <nav>
+                <a href="{% url 'admin_dashboard' %}" style="display: block; padding: 0.75rem 1rem; color: #0ea5e9; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">All Users</a>
+                <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Pending Approvals</a>
+                <a href="{% url 'create_user_admin' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Create User</a>
+                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
+                    <a href="{% url 'admin_logout' %}" style="display: block; padding: 0.75rem 1rem; color: #ef4444; text-decoration: none;">Logout</a>
                 </div>
-            {% endfor %}
-        {% endif %}
+            </nav>
+        </aside>
 
-        <form method="GET" class="search-bar">
-            <input type="text" name="search" class="search-input" placeholder="Search by username" value="{{ search_query }}">
-            <button type="submit" class="btn btn-search">Search</button>
-            <a href="{% url 'admin_dashboard' %}" class="btn btn-refresh">Refresh</a>
-        </form>
+        <!-- Main Content -->
+        <main style="flex: 1; padding: 2rem; max-width: 1140px;">
+            <header class="admin-header">
+                <h1 style="font-size: 2rem;">Admin Dashboard</h1>
+                <div style="display: flex; gap: 1rem;">
+                    <a href="{% url 'create_user_admin' %}" class="btn btn-primary">+ Create User</a>
+                </div>
+            </header>
 
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in users %}
-                    <tr>
-                        <td>{{ u.username }}</td>
-                        <td>{{ u.email }}</td>
-                        <td>
-                            {% if u.is_active %}
-                                <span class="status-badge status-active">Active</span>
-                            {% else %}
-                                <span class="status-badge status-blocked">Blocked</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'edit_user_admin' u.id %}" class="action-link edit-link">Edit</a>
-                            
-                            {% if u.is_active %}
-                                <a href="{% url 'toggle_user_status' u.id %}" class="action-link block-link">Block</a>
-                            {% else %}
-                                <a href="{% url 'toggle_user_status' u.id %}" class="action-link" style="color: #10b981;">Unblock</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="GET" class="search-bar">
+                <input type="text" name="search" class="search-input" placeholder="Search by username" value="{{ search_query }}">
+                <button type="submit" class="btn btn-search">Search</button>
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-refresh">Refresh</a>
+            </form>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in users %}
+                        <tr>
+                            <td>{{ u.username }}</td>
+                            <td>{{ u.email }}</td>
+                            <td>
+                                {% if u.status == 'ACTIVE' %}
+                                    <span class="status-badge status-active">Active</span>
+                                {% elif u.status == 'PENDING' %}
+                                    <span class="status-badge" style="background: #fef9c3; color: #854d0e;">Pending</span>
+                                {% else %}
+                                    <span class="status-badge status-blocked">Blocked</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'edit_user_admin' u.id %}" class="action-link edit-link">Edit</a>
+                                
+                                {% if u.status == 'ACTIVE' %}
+                                    <a href="{% url 'toggle_user_status' u.id %}" class="action-link block-link">Block</a>
+                                {% else %}
+                                    <a href="{% url 'toggle_user_status' u.id %}" class="action-link" style="color: #10b981;">Unblock/Accept</a>
+                                {% endif %}
+                                
+                                <a href="{% url 'delete_user' u.id %}" class="action-link" style="color: #64748b; margin-left: 0.5rem;" onclick="return confirm('Delete this user?')">Delete</a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" style="text-align: center; padding: 3rem; color: var(--text-muted);">No users found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </main>
     </div>
 </body>
 </html>

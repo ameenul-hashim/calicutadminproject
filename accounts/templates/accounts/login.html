@@ -19,7 +19,7 @@
             {% endfor %}
         {% endif %}
 
-        <form method="POST">
+        <form method="POST" novalidate>
             {% csrf_token %}
             <div class="input-group">
                 <label for="username">Username</label>
