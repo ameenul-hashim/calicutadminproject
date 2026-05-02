@@ -69,10 +69,11 @@
     <div style="display: flex;">
         <aside class="sidebar">
             <h2 style="color: #1e293b; margin-bottom: 2.5rem; padding: 0 1rem; font-weight: 800; font-size: 1.5rem;">
-                Admin <span style="color: #0ea5e9;">Panel</span>
+                EduStream <span style="color: #0ea5e9;">Admin</span>
             </h2>
             
             <nav>
+                <!-- 1. Manage Students -->
                 <div class="nav-group">
                     <button class="nav-link dropdown-btn" onclick="toggleDropdown('student-drop')">
                         <span>👨‍🎓 Manage Students</span>
@@ -84,10 +85,7 @@
                     </div>
                 </div>
 
-                <div class="nav-group">
-                    <a href="{% url 'admin_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">📈 Analytics</a>
-                </div>
-
+                <!-- 2. Manage Teachers -->
                 <div class="nav-group">
                     <button class="nav-link dropdown-btn" onclick="toggleDropdown('teacher-drop')">
                         <span>👨‍🏫 Manage Teachers</span>
@@ -99,6 +97,7 @@
                     </div>
                 </div>
 
+                <!-- 3. Manage Courses -->
                 <div class="nav-group">
                     <button class="nav-link dropdown-btn" onclick="toggleDropdown('course-drop')">
                         <span>📚 Manage Courses</span>
@@ -110,8 +109,14 @@
                     </div>
                 </div>
 
+                <!-- 4. Student View -->
                 <div class="nav-group">
                     <a href="{% url 'dashboard' %}" target="_blank" class="nav-link" style="color: #6366f1; border: 1px dashed #6366f1;">👁️ Student View</a>
+                </div>
+
+                <!-- 5. Analytics Page -->
+                <div class="nav-group">
+                    <a href="{% url 'admin_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">📈 Analytics</a>
                 </div>
 
                 <div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
