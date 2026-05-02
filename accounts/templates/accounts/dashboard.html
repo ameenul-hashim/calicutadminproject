@@ -189,7 +189,7 @@
                             <div class="content-item">
                                 <span>{{ lesson.order }}. {{ lesson.title }}</span>
                                 <div style="display: flex; gap: 0.5rem;">
-                                    {% if lesson.video %}<a href="{{ lesson.video.url }}" target="_blank" class="view-btn">Watch</a>{% endif %}
+                                    {% if lesson.video_url %}<a href="{{ lesson.video_url }}" target="_blank" class="view-btn">Watch</a>{% endif %}
                                     {% if lesson.notes %}<a href="{{ lesson.notes.url }}" download target="_blank" class="view-btn" style="color: #10b981; background: #ecfdf5;">PDF</a>{% endif %}
                                 </div>
                             </div>

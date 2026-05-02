@@ -54,7 +54,7 @@ class Course(models.Model):
 class Lesson(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
     title = models.CharField(max_length=255)
-    video = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
+    video_url = models.URLField(max_length=500, null=True, blank=True, help_text="YouTube or other video link")
     notes = models.FileField(upload_to='lessons/notes/', null=True, blank=True)
     order = models.PositiveIntegerField(default=1)
     is_approved = models.BooleanField(default=False)

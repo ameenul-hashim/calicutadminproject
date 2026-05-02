@@ -240,14 +240,14 @@ def add_lesson(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     if request.method == 'POST':
         title = request.POST.get('title')
-        video = request.FILES.get('video')
+        video_url = request.POST.get('video_url')
         notes = request.FILES.get('notes')
         order = request.POST.get('order', 1)
         
         Lesson.objects.create(
             course=course,
             title=title,
-            video=video,
+            video_url=video_url,
             notes=notes,
             order=order
         )

@@ -52,7 +52,7 @@
                                 <div>
                                     <strong style="display: block; margin-bottom: 0.25rem;">{{ lesson.order }}. {{ lesson.title }}</strong>
                                     <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
-                                        {% if lesson.video %}<a href="{{ lesson.video.url }}" target="_blank" style="color: #6366f1; text-decoration: none;">🎥 View Video</a>{% else %}<span style="color: #94a3b8;">No Video</span>{% endif %}
+                                        {% if lesson.video_url %}<a href="{{ lesson.video_url }}" target="_blank" style="color: #6366f1; text-decoration: none;">🎥 View Video</a>{% else %}<span style="color: #94a3b8;">No Video</span>{% endif %}
                                         {% if lesson.notes %}<a href="{{ lesson.notes.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 View Notes</a>{% else %}<span style="color: #94a3b8;">No Notes</span>{% endif %}
                                     </div>
                                 </div>
