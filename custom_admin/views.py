@@ -262,6 +262,9 @@ def analytics_view(request):
     teacher_performance_labels = [t.username for t in top_teachers]
     teacher_performance_data = [t.num_courses for t in top_teachers]
 
+    pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
+    pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
+
     context = {
         'total_students': total_students,
         'total_teachers': total_teachers,
@@ -276,6 +279,8 @@ def analytics_view(request):
         'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         'notifications': Notification.objects.filter(user=request.user)[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+        'pending_students_count': pending_students_count,
+        'pending_teachers_count': pending_teachers_count,
     }
     return render(request, 'custom_admin/analytics.html', context)
 

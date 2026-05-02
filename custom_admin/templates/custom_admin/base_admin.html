@@ -1,0 +1,128 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin Panel{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
+        .sidebar { width: 280px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem; position: fixed; height: 100vh; overflow-y: auto; }
+        .main-content { margin-left: 280px; padding: 2rem; flex: 1; }
+        .nav-group { margin-bottom: 1.5rem; }
+        .nav-label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; padding: 0 1rem; margin-bottom: 0.75rem; display: block; }
+        .nav-link { display: flex; align-items: center; gap: 0.75rem; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; font-size: 0.95rem; transition: all 0.2s; margin-bottom: 0.25rem; }
+        .nav-link:hover { background: #f1f5f9; color: #1e293b; }
+        .nav-link.active { background: #f0f9ff; color: #0ea5e9; font-weight: 600; }
+        .dropdown-btn { cursor: pointer; display: flex; justify-content: space-between; width: 100%; border: none; background: none; text-align: left; }
+        .dropdown-container { display: none; padding-left: 1.5rem; }
+        .dropdown-container.active { display: block; }
+        .notif-dropdown.active { display: block !important; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div style="display: flex;">
+        <aside class="sidebar">
+            <h2 style="color: #1e293b; margin-bottom: 2.5rem; padding: 0 1rem; font-weight: 800; font-size: 1.5rem;">
+                Admin <span style="color: #0ea5e9;">Panel</span>
+            </h2>
+            
+            <nav>
+                <div class="nav-group">
+                    <a href="{% url 'admin_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">📊 Dashboard Overview</a>
+                </div>
+
+                <div class="nav-group">
+                    <button class="nav-link dropdown-btn" onclick="toggleDropdown('student-drop')">
+                        <span>👨‍🎓 Manage Students</span>
+                        <span id="student-arrow">▼</span>
+                    </button>
+                    <div id="student-drop" class="dropdown-container {% if 'student' in request.path or 'pending_users' in request.path %}active{% endif %}">
+                        <a href="{% url 'manage_students' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_students' %}active{% endif %}">Details</a>
+                        <a href="{% url 'pending_users' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_users' %}active{% endif %}">Requests</a>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <button class="nav-link dropdown-btn" onclick="toggleDropdown('teacher-drop')">
+                        <span>👨‍🏫 Manage Teachers</span>
+                        <span id="teacher-arrow">▼</span>
+                    </button>
+                    <div id="teacher-drop" class="dropdown-container {% if 'teacher' in request.path or 'pending_teachers' in request.path %}active{% endif %}">
+                        <a href="{% url 'manage_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_teachers' %}active{% endif %}">Details</a>
+                        <a href="{% url 'pending_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_teachers' %}active{% endif %}">Requests</a>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <button class="nav-link dropdown-btn" onclick="toggleDropdown('course-drop')">
+                        <span>📚 Manage Courses</span>
+                        <span id="course-arrow">▼</span>
+                    </button>
+                    <div id="course-drop" class="dropdown-container {% if 'content' in request.path or 'pending_courses' in request.path %}active{% endif %}">
+                        <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">Details</a>
+                        <a href="{% url 'pending_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_courses' %}active{% endif %}">Requests</a>
+                    </div>
+                </div>
+
+                <div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                    <a href="{% url 'admin_logout' %}" class="nav-link" style="color: #ef4444;">🚪 Logout</a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    {% block header_title %}<h1>Welcome Admin</h1>{% endblock %}
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 2rem;">
+                    <!-- Notification Bell -->
+                    <div class="notification-wrapper" style="position: relative; cursor: pointer;">
+                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
+                            🔔
+                            {% if unread_notifications_count > 0 %}
+                                <span style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: flex; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Notification Dropdown -->
+                        <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
+                            <h4 style="margin: 0 0 1rem 0; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">Notifications</h4>
+                            {% for notif in notifications %}
+                                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %}">
+                                    {{ notif.message }}
+                                    <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 0.3rem;">{{ notif.created_at|timesince }} ago</div>
+                                </div>
+                            {% empty %}
+                                <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem;">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script>
+        function toggleDropdown(id) {
+            document.getElementById(id).classList.toggle('active');
+        }
+    </script>
+    {% include 'accounts/chat_widget.html' %}
+</body>
+</html>

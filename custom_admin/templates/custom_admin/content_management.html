@@ -1,124 +1,49 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Content Management | Admin</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-</head>
-<body>
-    <style>
-        @media (max-width: 1024px) {
-            .admin-container { flex-direction: column; }
-            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; position: fixed !important; height: 100vh; z-index: 1000; width: 280px !important; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { padding: 1rem !important; }
-            .mobile-toggle { display: block !important; }
-            .course-header { flex-direction: column; align-items: flex-start !important; gap: 0.5rem; }
-        }
+{% extends 'custom_admin/base_admin.html' %}
 
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            background: white;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
-            cursor: pointer;
-            border: 1px solid #e2e8f0;
-        }
-    </style>
-</head>
-<body>
-    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-        ☰
-    </button>
-    <div class="admin-container" style="display: flex; min-height: 100vh;">
-        <!-- Sidebar -->
-        <aside class="sidebar" style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
-            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
-            <nav>
-                <a href="{% url 'manage_students' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Students</a>
-                <a href="{% url 'manage_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Teachers</a>
-                <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Student Approvals</a>
-                <a href="{% url 'pending_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Teacher Approvals</a>
-                <a href="{% url 'pending_courses' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Course Approvals</a>
-                <a href="{% url 'admin_analytics' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Analytics</a>
-                <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #0ea5e9; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">Content Data</a>
-                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
-                    <a href="{% url 'admin_logout' %}" style="display: block; padding: 0.75rem 1rem; color: #ef4444; text-decoration: none;">Logout</a>
-                </div>
-            </nav>
-        </aside>
+{% block title %}Content Management | Admin{% endblock %}
 
-        <main class="main-content" style="flex: 1; padding: 2rem; max-width: 1140px;">
-            <header class="admin-header">
-                <h1>Content Overview (Real-time)</h1>
-            </header>
+{% block header_title %}
+    <h1>Course Details</h1>
+    <p style="color: #64748b;">Manage and moderate all published courses on the platform.</p>
+{% endblock %}
 
-            <div style="display: grid; gap: 2rem;">
-                {% for course in courses %}
-                <div class="glass-card" style="background: white; padding: 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0; margin-bottom: 2rem;">
-                    <div class="course-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 1rem;">
-                        <div>
-                            <h2 style="color: #1e293b; margin: 0;">{{ course.title }}</h2>
-                            <p style="color: #64748b; font-size: 0.85rem; margin: 0.25rem 0 0 0;">By {{ course.teacher.full_name|default:course.teacher.username }}</p>
-                        </div>
-                        <div style="display: flex; gap: 1rem; align-items: center;">
-                            <a href="{% url 'course_player' course.id %}" style="text-decoration: none; background: #ecfdf5; color: #059669; padding: 0.4rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600;">Preview in Player</a>
-                            <span style="background: #f1f5f9; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 600; color: #64748b;">
-                                {{ course.lessons.count }} Lessons
-                            </span>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 style="margin-bottom: 1rem; color: #0ea5e9;">Lessons & Content</h4>
-                        <ul style="list-style: none; padding: 0;">
-                            {% for lesson in course.lessons.all %}
-                            <li style="padding: 1rem; border-bottom: 1px solid #f8fafc; display: flex; justify-content: space-between; align-items: center; background: {% if not lesson.is_approved %}#fef2f2{% else %}transparent{% endif %};">
-                                <div>
-                                    <strong style="display: block; margin-bottom: 0.25rem;">{{ lesson.order }}. {{ lesson.title }}</strong>
-                                    <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
-                                        {% if lesson.video_url %}<a href="{{ lesson.video_url }}" target="_blank" style="color: #6366f1; text-decoration: none;">🎥 View Video</a>{% else %}<span style="color: #94a3b8;">No Video</span>{% endif %}
-                                        {% if lesson.notes %}<a href="{{ lesson.notes.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 Main Note</a>{% endif %}
-                                        {% for note in lesson.multiple_notes.all %}
-                                            <a href="{{ note.file.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 {{ note.title|truncatechars:15 }}</a>
-                                        {% endfor %}
-                                        {% if not lesson.notes and not lesson.multiple_notes.all %}
-                                            <span style="color: #94a3b8;">No Notes</span>
-                                        {% endif %}
-                                    </div>
+{% block content %}
+            <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Course</th>
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Teacher</th>
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Stats</th>
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for course in courses %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 1.25rem 1.5rem;">
+                                <div style="font-weight: 600; color: #1e293b;">{{ course.title }}</div>
+                                <div style="font-size: 0.8rem; color: #64748b;">{{ course.category }}</div>
+                            </td>
+                            <td style="padding: 1.25rem 1.5rem; color: #64748b; font-size: 0.9rem;">
+                                {{ course.teacher.full_name|default:course.teacher.username }}
+                            </td>
+                            <td style="padding: 1.25rem 1.5rem; color: #64748b; font-size: 0.9rem;">
+                                <div style="display: flex; gap: 1rem;">
+                                    <span>📚 {{ course.lessons.count }} Lessons</span>
+                                    <span>👥 {{ course.enrollments.count }} Students</span>
                                 </div>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <span style="font-size: 0.75rem; color: #64748b; margin-right: 1rem;">Added: {{ lesson.created_at|date:"M d, Y" }}</span>
-                                    {% if lesson.is_approved %}
-                                        <a href="{% url 'toggle_lesson_approval' lesson.id %}" class="btn" style="background: #fef2f2; color: #ef4444; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Reject Content</a>
-                                    {% else %}
-                                        <span style="color: #ef4444; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem;">REJECTED</span>
-                                        <a href="{% url 'toggle_lesson_approval' lesson.id %}" class="btn" style="background: #ecfdf5; color: #10b981; padding: 0.3rem 0.8rem; font-size: 0.75rem; border-radius: 0.3rem; text-decoration: none;">Approve Content</a>
-                                    {% endif %}
-                                    <a href="#" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; margin-left: 0.5rem;">🗑️ Delete</a>
-                                </div>
-                            </li>
-                            {% empty %}
-                            <li style="color: #94a3b8; font-size: 0.9rem;">No lessons uploaded yet.</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-
-                </div>
-                {% empty %}
-                <div style="text-align: center; padding: 5rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
-                    No courses found in database.
-                </div>
-                {% endfor %}
+                            </td>
+                            <td style="padding: 1.25rem 1.5rem;">
+                                <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; 
+                                    {% if course.is_approved %}background: #dcfce7; color: #15803d;
+                                    {% else %}background: #fef9c3; color: #854d0e;{% endif %}">
+                                    {% if course.is_approved %}Approved{% else %}Pending{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
-        </main>
-    </div>
-</body>
-</html>
+{% endblock %}

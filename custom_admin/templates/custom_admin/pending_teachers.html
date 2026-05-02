@@ -1,90 +1,64 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Approvals | Admin</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-</head>
-<body>
-    <div style="display: flex; min-height: 100vh;">
-        <!-- Sidebar -->
-        <aside style="width: 260px; background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1rem;">
-            <h2 style="color: #1e293b; margin-bottom: 2rem; padding: 0 1rem;">Admin Panel</h2>
-            <nav>
-                <a href="{% url 'manage_students' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Students</a>
-                <a href="{% url 'manage_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Manage Teachers</a>
-                <a href="{% url 'pending_users' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Student Approvals</a>
-                <a href="{% url 'pending_teachers' %}" style="display: block; padding: 0.75rem 1rem; color: #6366f1; background: #f1f5f9; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem; font-weight: 600;">Teacher Approvals</a>
-                <a href="{% url 'pending_courses' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Course Approvals</a>
-                <a href="{% url 'admin_analytics' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Analytics</a>
-                <a href="{% url 'admin_content' %}" style="display: block; padding: 0.75rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; margin-bottom: 0.5rem;">Content Data</a>
-                <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
-                    <a href="{% url 'admin_logout' %}" style="display: block; padding: 0.75rem 1rem; color: #ef4444; text-decoration: none;">Logout</a>
-                </div>
-            </nav>
-        </aside>
+{% extends 'custom_admin/base_admin.html' %}
 
-        <main style="flex: 1; padding: 2rem; max-width: 1140px;">
-            <header class="admin-header">
-                <h1>Teacher Approvals</h1>
-            </header>
+{% block title %}Teacher Approvals | Admin{% endblock %}
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+{% block header_title %}
+    <h1>Teacher Approvals</h1>
+    <p style="color: #64748b;">Review and approve new teacher applications.</p>
+{% endblock %}
 
-            <div class="table-container">
-                <table>
+{% block content %}
+            <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
                     <thead>
-                        <tr>
-                            <th>Photo</th>
-                            <th>Username</th>
-                            <th>Email</th>
-                            <th>Full Name</th>
-                            <th>Teacher Proof</th>
-                            <th>Actions</th>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Teacher</th>
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Credentials</th>
+                            <th style="padding: 1.25rem 1.5rem; color: #64748b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for u in users %}
-                        <tr>
-                            <td style="padding: 0.5rem;">
-                                {% if u.profile_photo %}
-                                    <img src="{{ u.profile_photo.url }}" style="width: 80px; height: 100px; object-fit: cover; border-radius: 0.25rem; border: 1px solid #e2e8f0;" alt="Photo">
-                                {% else %}
-                                    <div style="width: 80px; height: 100px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #94a3b8; border-radius: 0.25rem;">No Photo</div>
-                                {% endif %}
+                        <tr style="border-bottom: 1px solid #f1f5f9;">
+                            <td style="padding: 1.25rem 1.5rem;">
+                                <div style="display: flex; align-items: center; gap: 1rem;">
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: #f1f5f9; overflow: hidden;">
+                                        {% if u.profile_photo %}
+                                            <img src="{{ u.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: #1e293b;">{{ u.full_name|default:u.username }}</div>
+                                        <div style="font-size: 0.85rem; color: #64748b;">{{ u.email }}</div>
+                                    </div>
+                                </div>
                             </td>
-                            <td>{{ u.username }}</td>
-                            <td>{{ u.email }}</td>
-                            <td>{{ u.full_name }}</td>
-                            <td>
+                            <td style="padding: 1.25rem 1.5rem;">
                                 {% if u.proof_file %}
-                                    <a href="{{ u.proof_file.url }}" target="_blank" style="color: #6366f1; font-weight: 600;">View Teacher ID (PDF)</a>
+                                    <a href="{{ u.proof_file.url }}" target="_blank" class="view-btn" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: #eef2ff; color: #6366f1;">📄 View Proof</a>
                                 {% else %}
-                                    <span style="color: #94a3b8;">No File</span>
+                                    <span style="color: #94a3b8; font-size: 0.85rem;">No proof provided</span>
                                 {% endif %}
                             </td>
-                            <td>
-                                <a href="{% url 'accept_user' u.id %}" class="btn" style="background: #10b981; color: white; padding: 0.4rem 1rem; font-size: 0.8rem;">Accept</a>
-                                <a href="{% url 'decline_user' u.id %}" class="btn" style="background: #ef4444; color: white; padding: 0.4rem 1rem; font-size: 0.8rem; margin-left: 0.5rem;">Decline</a>
+                            <td style="padding: 1.25rem 1.5rem;">
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'accept_user' u.id %}" class="view-btn" style="background: #10b981; color: white; border: none; font-size: 0.8rem; padding: 0.4rem 1rem;">Approve</a>
+                                    <button onclick="document.getElementById('reject-form-{{ u.id }}').style.display='block'" class="view-btn" style="background: #ef4444; color: white; border: none; font-size: 0.8rem; padding: 0.4rem 1rem;">Reject</button>
+                                </div>
+                                
+                                <form id="reject-form-{{ u.id }}" method="POST" action="{% url 'decline_user' u.id %}" style="display: none; margin-top: 1rem;">
+                                    {% csrf_token %}
+                                    <input type="text" name="reason" placeholder="Reason for rejection" required style="width: 100%; padding: 0.5rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; margin-bottom: 0.5rem;">
+                                    <button type="submit" class="view-btn" style="background: #1e293b; color: white; border: none; font-size: 0.8rem; padding: 0.4rem 1rem;">Confirm Rejection</button>
+                                </form>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" style="text-align: center; padding: 3rem; color: #64748b;">No pending teacher requests.</td>
+                            <td colspan="3" style="padding: 3rem; text-align: center; color: #94a3b8;">No pending teacher requests.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-        </main>
-    </div>
-</body>
-</html>
+{% endblock %}
