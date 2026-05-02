@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission
+from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission
 from django.contrib.auth.decorators import user_passes_test, login_required
 import re
 
@@ -290,15 +290,20 @@ def add_lesson(request, course_id):
         notes = request.FILES.get('notes')
         order = request.POST.get('order', 1)
         
-        Lesson.objects.create(
+        lesson = Lesson.objects.create(
             course=course,
             title=title,
             video_url=video_url,
             video_file=video_file,
-            notes=notes,
             order=order
         )
-        messages.success(request, "Lesson added successfully!")
+        
+        # Handle multiple notes
+        notes_files = request.FILES.getlist('notes')
+        for f in notes_files:
+            LessonNote.objects.create(lesson=lesson, file=f, title=f.name)
+            
+        messages.success(request, "Lesson and notes added successfully!")
         return redirect('course_lessons', course_id=course.id)
     
     return render(request, 'teacher_portal/add_lesson.html', {'course': course})
@@ -311,8 +316,16 @@ def edit_lesson(request, lesson_id):
         lesson.video_url = request.POST.get('video_url')
         if request.FILES.get('video_file'):
             lesson.video_file = request.FILES.get('video_file')
-        if request.FILES.get('notes'):
-            lesson.notes = request.FILES.get('notes')
+        
+        # Handle multiple notes (add new ones)
+        notes_files = request.FILES.getlist('notes')
+        if notes_files:
+            # Optionally clear old notes or keep them? 
+            # User said "allow multiple notes", usually adding to current or replacing.
+            # I'll add new ones and provide a way to delete in the UI later if needed.
+            for f in notes_files:
+                LessonNote.objects.create(lesson=lesson, file=f, title=f.name)
+                
         lesson.order = request.POST.get('order', 1)
         
         # Reset approval status on edit

@@ -165,9 +165,15 @@
                             {% if lesson.notes %}
                             <div class="sub-item notes-link" 
                                  onclick="playContent(this, 'notes', '{{ lesson.title|escapejs }}', '', '', '{{ lesson.notes.url }}')">
-                                📄 Study Notes (PDF)
+                                📄 Main Notes (PDF)
                             </div>
                             {% endif %}
+                            {% for note in lesson.multiple_notes.all %}
+                            <div class="sub-item notes-link" 
+                                 onclick="playContent(this, 'notes', '{{ note.title|default:"Study Material"|escapejs }}', '', '', '{{ note.file.url }}')">
+                                📄 {{ note.title|default:"Study Note"|truncatechars:20 }}
+                            </div>
+                            {% endfor %}
                         </div>
                     </div>
                     {% endfor %}

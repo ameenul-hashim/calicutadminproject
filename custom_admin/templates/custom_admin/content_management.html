@@ -85,7 +85,13 @@
                                     <strong style="display: block; margin-bottom: 0.25rem;">{{ lesson.order }}. {{ lesson.title }}</strong>
                                     <div style="display: flex; gap: 1rem; font-size: 0.8rem;">
                                         {% if lesson.video_url %}<a href="{{ lesson.video_url }}" target="_blank" style="color: #6366f1; text-decoration: none;">🎥 View Video</a>{% else %}<span style="color: #94a3b8;">No Video</span>{% endif %}
-                                        {% if lesson.notes %}<a href="{{ lesson.notes.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 View Notes</a>{% else %}<span style="color: #94a3b8;">No Notes</span>{% endif %}
+                                        {% if lesson.notes %}<a href="{{ lesson.notes.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 Main Note</a>{% endif %}
+                                        {% for note in lesson.multiple_notes.all %}
+                                            <a href="{{ note.file.url }}" target="_blank" style="color: #10b981; text-decoration: none;">📄 {{ note.title|truncatechars:15 }}</a>
+                                        {% endfor %}
+                                        {% if not lesson.notes and not lesson.multiple_notes.all %}
+                                            <span style="color: #94a3b8;">No Notes</span>
+                                        {% endif %}
                                     </div>
                                 </div>
                                 <div style="display: flex; gap: 0.5rem; align-items: center;">
