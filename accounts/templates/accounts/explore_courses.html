@@ -51,11 +51,6 @@
                     <a href="{% url 'teacher_dashboard' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem; border: 1px solid #c7d2fe;">👨‍🏫 Teacher Portal</a>
                 {% endif %}
                 <a href="{% url 'profile' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">👤 Profile</a>
-                
-                <div style="margin-top: 2rem;">
-                    <p style="font-size: 0.7rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; padding-left: 1rem;">Browse Categories</p>
-                    <a href="{% url 'student_explore' %}?search=mathematics" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.5rem; font-size: 0.85rem; transition: all 0.2s;">📐 Mathematics</a>
-                </div>
             </nav>
             <a href="{% url 'logout' %}" style="padding: 1rem; color: #ef4444; text-decoration: none; border-radius: 0.75rem;">🚪 Logout</a>
         </aside>

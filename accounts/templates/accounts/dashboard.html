@@ -185,11 +185,6 @@
                 <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link"><span>👤</span> Profile</a></li>
             </ul>
 
-            <div style="margin-top: 2rem;">
-                <p style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; padding-left: 1rem;">Browse Categories</p>
-                <a href="{% url 'student_explore' %}?search=mathematics" class="nav-link" style="font-size: 0.9rem; padding: 0.6rem 1rem;"><span>📐</span> Mathematics</a>
-            </div>
-
             <div style="padding-top: 2rem; border-top: 1px solid #f1f5f9;">
                 <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
             </div>
@@ -282,6 +277,34 @@
                 {% empty %}
                 <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: white; border-radius: 2rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
                     You are not enrolled in any courses yet.
+                </div>
+                {% endfor %}
+            </div>
+
+            <h2 style="margin-bottom: 2rem; color: #1e293b; font-size: 1.4rem;">Explore New Courses</h2>
+            <div class="subject-grid" style="margin-bottom: 4rem;">
+                {% for course in explore_courses %}
+                <div class="subject-card">
+                    <div style="height: 180px; background: #f1f5f9; position: relative;">
+                        {% if course.thumbnail %}
+                            <img src="{{ course.thumbnail.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="Course Thumbnail">
+                        {% else %}
+                            <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: var(--primary-gradient); color: white; font-weight: 700; font-size: 1.5rem;">{{ course.title|slice:":2"|upper }}</div>
+                        {% endif %}
+                        <div style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.9); padding: 0.3rem 0.8rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; color: #0ea5e9;">{{ course.category }}</div>
+                    </div>
+                    <div class="subject-content">
+                        <h3 style="font-size: 1.15rem; margin-bottom: 0.5rem; color: #1e293b; font-weight: 700;">{{ course.title }}</h3>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem; min-height: 2.5rem;">{{ course.description|truncatewords:15 }}</p>
+                        <form action="{% url 'enroll_course' course.id %}" method="POST">
+                            {% csrf_token %}
+                            <button type="submit" class="view-btn" style="width: 100%; border: none; background: #0ea5e9; color: white; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;">Enroll Now</button>
+                        </form>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; color: #94a3b8;">
+                    No new courses to explore at the moment.
                 </div>
                 {% endfor %}
             </div>
