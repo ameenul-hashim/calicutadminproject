@@ -58,7 +58,7 @@ def admin_student_view(request):
 def admin_student_logout(request):
     if 'student_view_unlocked' in request.session:
         del request.session['student_view_unlocked']
-    return redirect('admin_dashboard')
+    return redirect('admin_student_view_auth')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
