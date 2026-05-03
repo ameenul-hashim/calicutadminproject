@@ -61,9 +61,24 @@ def manage_students(request):
 def admin_student_profile(request, user_id):
     student = get_object_or_404(CustomUser, id=user_id, user_type='STUDENT')
     enrollments = Enrollment.objects.filter(user=student).select_related('course')
+    
+    # Calculate balance (Total course prices)
+    current_balance = sum(e.course.price for e in enrollments)
+    
+    # Calculate Yesterday Balance (Enrollments from yesterday)
+    from django.utils import timezone
+    from datetime import timedelta
+    yesterday = timezone.now().date() - timedelta(days=1)
+    yesterday_enrollments = enrollments.filter(enrolled_at__date=yesterday)
+    yesterday_balance = sum(e.course.price for e in yesterday_enrollments)
+    
     return render(request, 'custom_admin/student_profile_invoice.html', {
         'student': student,
-        'enrollments': enrollments
+        'enrollments': enrollments,
+        'current_balance': current_balance,
+        'yesterday_balance': yesterday_balance,
+        'invoice_date': timezone.now().date(),
+        'invoice_number': f"INV-STU-{student.id:05d}"
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -80,12 +95,28 @@ def manage_teachers(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_teacher_profile(request, user_id):
-    from accounts.models import Course
+    from accounts.models import Course, Enrollment
     teacher = get_object_or_404(CustomUser, id=user_id, user_type='TEACHER')
     courses = Course.objects.filter(teacher=teacher)
+    
+    # Calculate Total Revenue (Enrollments for all teacher's courses)
+    all_enrollments = Enrollment.objects.filter(course__in=courses)
+    current_balance = sum(e.course.price for e in all_enrollments)
+    
+    # Calculate Yesterday Revenue
+    from django.utils import timezone
+    from datetime import timedelta
+    yesterday = timezone.now().date() - timedelta(days=1)
+    yesterday_enrollments = all_enrollments.filter(enrolled_at__date=yesterday)
+    yesterday_balance = sum(e.course.price for e in yesterday_enrollments)
+    
     return render(request, 'custom_admin/teacher_profile_invoice.html', {
         'teacher': teacher,
-        'courses': courses
+        'courses': courses,
+        'current_balance': current_balance,
+        'yesterday_balance': yesterday_balance,
+        'invoice_date': timezone.now().date(),
+        'invoice_number': f"INV-TEA-{teacher.id:05d}"
     })
 
 @user_passes_test(is_admin, login_url='admin_login')

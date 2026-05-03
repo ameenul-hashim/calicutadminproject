@@ -1,11 +1,11 @@
 {% extends 'custom_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Teacher Profile | Admin{% endblock %}
+{% block title %}Teacher Revenue Report | Admin{% endblock %}
 
 {% block header_title %}
-    <h1>Teacher Profile</h1>
-    <p style="color: #64748b;">Detailed view and provided courses.</p>
+    <h1>Teacher Revenue & Profile</h1>
+    <p style="color: #64748b;">Financial performance and instructional portfolio.</p>
 {% endblock %}
 
 {% block content %}
@@ -17,130 +17,108 @@
     </div>
     <div style="display: flex; gap: 1rem;">
         <button onclick="window.print()" class="view-btn" style="background: #1e293b; color: white; padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-            <span>🖨️</span> Print / PDF
+            <span>🖨️</span> Print Report
         </button>
     </div>
 </div>
 
-<div id="printable-area" style="background: white; border-radius: 0; border: 1px solid #cbd5e1; padding: 4rem; margin-bottom: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); position: relative; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif;">
+<div id="printable-area" style="background: white; padding: 4rem; margin: 0 auto; max-width: 900px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); color: #1e293b; font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0;">
     
-    <!-- Professional Watermark -->
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 8rem; color: rgba(0,0,0,0.03); font-weight: 900; pointer-events: none; white-space: nowrap; z-index: 0; text-transform: uppercase;">
-        Faculty Record
-    </div>
-
     <!-- Invoice Header -->
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4rem; border-bottom: 3px solid #6366f1; padding-bottom: 2rem; position: relative; z-index: 1;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 2rem;">
         <div>
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                <div style="width: 50px; height: 50px; background: #6366f1; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; font-weight: 800;">E</div>
-                <h1 style="color: #1e293b; font-weight: 800; margin: 0; font-size: 2.2rem; letter-spacing: -0.02em;">EduStream</h1>
-            </div>
-            <p style="color: #64748b; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem;">Faculty Management Division</p>
+            <h1 style="color: #6366f1; font-size: 2rem; margin: 0; font-weight: 800;">EduStream</h1>
+            <p style="color: #64748b; margin: 0.5rem 0 0 0;">Faculty Administration Portal</p>
+            <p style="font-size: 0.85rem; color: #94a3b8;">123 Academy Way, Digital City</p>
         </div>
         <div style="text-align: right;">
-            <h2 style="margin: 0; color: #6366f1; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 800;">Teacher Performance Report</h2>
-            <p style="color: #64748b; margin: 0.5rem 0 0 0; font-weight: 500;">Faculty ID: <span style="color: #1e293b;">#TEA-{{ teacher.id|stringformat:"05d" }}</span></p>
-            <p style="color: #64748b; margin: 0.25rem 0 0 0; font-weight: 500;">Issued Date: <span style="color: #1e293b;">{{ "now"|date:"M d, Y" }}</span></p>
+            <h2 style="font-size: 2.5rem; margin: 0; color: #cbd5e1; text-transform: uppercase; letter-spacing: 2px;">EARNINGS</h2>
+            <p style="margin: 0.5rem 0 0 0; font-weight: 600;"># {{ invoice_number }}</p>
+            <p style="margin: 0.2rem 0 0 0; color: #64748b;">Report Date: {{ invoice_date|date:"M d, Y" }}</p>
         </div>
     </div>
 
-    <!-- Header / User Info -->
-    <div style="display: flex; gap: 3rem; align-items: center; margin-bottom: 3.5rem; padding: 2rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; position: relative; z-index: 1;">
-        <div style="position: relative;">
-            {% if teacher.profile_photo %}
-                <img src="{{ teacher.profile_photo.url }}" alt="{{ teacher.username }}" style="width: 140px; height: 140px; border-radius: 1rem; object-fit: cover; border: 5px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            {% else %}
-                <div style="width: 140px; height: 140px; border-radius: 1rem; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; font-weight: bold; color: #94a3b8; border: 5px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    {{ teacher.username|make_list|first|upper }}
-                </div>
-            {% endif %}
-            <!-- Verification Seal -->
-            <div style="position: absolute; -right: 15px; -bottom: 15px; width: 50px; height: 50px; background: #6366f1; border-radius: 50%; border: 4px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">★</div>
-        </div>
-        
-        <div style="flex-grow: 1;">
-            <div style="margin-bottom: 1rem;">
-                <span style="font-size: 0.75rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.1em;">Faculty Information</span>
-                <h2 style="margin: 0.25rem 0 0.5rem 0; font-size: 2rem; color: #1e293b; letter-spacing: -0.02em;">{{ teacher.full_name|default:teacher.username }}</h2>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <!-- Faculty Info Section -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 4rem;">
+        <div>
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Faculty Member:</h3>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                {% if teacher.profile_photo %}
+                    <img src="{{ teacher.profile_photo.url }}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                {% endif %}
                 <div>
-                    <p style="margin: 0; color: #64748b; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Official Email</p>
-                    <p style="margin: 0.25rem 0 0 0; color: #1e293b; font-weight: 600;">{{ teacher.email }}</p>
-                </div>
-                <div>
-                    <p style="margin: 0; color: #64748b; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Account Status</p>
-                    <p style="margin: 0.25rem 0 0 0; color: {% if teacher.status == 'ACTIVE' %}#10b981{% else %}#f59e0b{% endif %}; font-weight: 700;">{{ teacher.status }}</p>
+                    <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ teacher.full_name|default:teacher.username }}</h4>
+                    <p style="margin: 0; color: #64748b; font-size: 0.9rem;">{{ teacher.email }}</p>
                 </div>
             </div>
+            <p style="margin: 1rem 0 0 0; color: #64748b;">Faculty ID: #TEA-{{ teacher.id|stringformat:"05d" }}</p>
         </div>
-        
-        <div style="text-align: right; min-width: 200px;">
-            <div style="padding: 1rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; background: white;">
-                <p style="margin: 0 0 0.5rem 0; font-weight: 700; color: #475569; font-size: 0.8rem; text-transform: uppercase;">Identity Hash</p>
-                <code style="display: block; background: #f1f5f9; padding: 0.5rem; border-radius: 0.4rem; font-size: 0.7rem; color: #64748b; word-break: break-all;">AUTH-{{ teacher.username|slice:":3"|upper }}-{{ teacher.id }}-SECURE</code>
+        <div style="text-align: right;">
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Revenue Summary:</h3>
+            <div style="background: #f5f3ff; padding: 1rem; border-radius: 0.5rem; display: inline-block; min-width: 200px; text-align: left; border: 1px solid #ddd6fe;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: #64748b;">Total Courses:</span>
+                    <span style="font-weight: 700; color: #6366f1;">{{ courses.count }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; color: #1e293b;">
+                    <span>Total Revenue:</span>
+                    <span>${{ current_balance }}</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Provided Courses -->
-    <div style="position: relative; z-index: 1;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
-            <h3 style="color: #1e293b; margin: 0; font-size: 1.5rem; letter-spacing: -0.01em;">Instructional Course Load</h3>
-            <span style="background: #6366f1; color: white; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.85rem; font-weight: 700;">Total Courses: {{ courses.count }}</span>
-        </div>
-        
-        {% if courses %}
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 0.75rem; overflow: hidden;">
+    <!-- Items Table -->
+    <div style="margin-bottom: 4rem;">
+        <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr style="background: #1e293b;">
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 50px;">#</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Curriculum Title</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Category</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Current Status</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Total Enrollment</th>
+                <tr style="background: #1e293b; color: white;">
+                    <th style="padding: 1rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Course Portfolio</th>
+                    <th style="padding: 1rem; text-align: center; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Category</th>
+                    <th style="padding: 1rem; text-align: right; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Base Price</th>
                 </tr>
             </thead>
             <tbody>
                 {% for course in courses %}
-                <tr style="{% if forloop.counter|divisibleby:2 %}background: #fcfdfe;{% else %}background: white;{% endif %}">
-                    <td style="padding: 1.2rem 1rem; color: #64748b; font-weight: 700; text-align: center; border-bottom: 1px solid #f1f5f9;">{{ forloop.counter }}</td>
-                    <td style="padding: 1.2rem 1rem; font-weight: 700; color: #1e293b; border-bottom: 1px solid #f1f5f9;">{{ course.title }}</td>
-                    <td style="padding: 1.2rem 1rem; color: #64748b; font-weight: 500; border-bottom: 1px solid #f1f5f9;">
-                        <span style="padding: 0.3rem 0.6rem; background: #eef2ff; color: #4f46e5; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">{{ course.category }}</span>
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 1.5rem 1rem;">
+                        <div style="font-weight: 600;">{{ course.title }}</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">Status: {{ course.status }}</div>
                     </td>
-                    <td style="padding: 1.2rem 1rem; border-bottom: 1px solid #f1f5f9;">
-                        <span style="padding: 0.25rem 0.5rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 800; {% if course.status == 'PUBLISHED' %}background: #dcfce7; color: #15803d;{% else %}background: #fef9c3; color: #854d0e;{% endif %}">
-                            {{ course.status }}
-                        </span>
-                    </td>
-                    <td style="padding: 1.2rem 1rem; color: #1e293b; font-weight: 800; text-align: right; border-bottom: 1px solid #f1f5f9;">{{ course.enrollments.count }} Students</td>
+                    <td style="padding: 1.5rem 1rem; text-align: center; color: #64748b;">{{ course.category }}</td>
+                    <td style="padding: 1.5rem 1rem; text-align: right; font-weight: 600;">${{ course.price }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="padding: 3rem; text-align: center; color: #94a3b8;">No courses provided.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <div style="text-align: center; padding: 4rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">👨‍🏫</div>
-            <p style="font-weight: 600;">No instructional records found for this faculty member.</p>
-        </div>
-        {% endif %}
     </div>
 
-    <!-- Official Footnote -->
-    <div style="margin-top: 5rem; display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
-        <div style="max-width: 400px;">
-            <p style="color: #94a3b8; font-size: 0.75rem; line-height: 1.6;">
-                This document is a certified performance summary generated by the EduStream Administration. 
-                Information contained herein is strictly for internal academic verification purposes.
-            </p>
+    <!-- Financial Summary -->
+    <div style="display: flex; justify-content: flex-end;">
+        <div style="width: 300px;">
+            <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="color: #64748b;">Total Sales Value:</span>
+                <span style="font-weight: 600;">${{ current_balance }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="color: #6366f1; font-weight: 700;">Yesterday's Earnings:</span>
+                <span style="font-weight: 700; color: #6366f1;">${{ yesterday_balance }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem 0; background: #f8fafc; margin-top: 1rem; padding: 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+                <span style="font-size: 1.2rem; font-weight: 800;">Payable Balance:</span>
+                <span style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">${{ current_balance }}</span>
+            </div>
         </div>
-        <div style="text-align: center; border-top: 2px solid #1e293b; padding-top: 1rem; min-width: 250px;">
-            <p style="margin: 0; font-family: 'Brush Script MT', cursive; font-size: 1.5rem; color: #1e293b;">EduStream Registrar</p>
-            <p style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em;">Authorized Signature</p>
-        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top: 6rem; text-align: center; color: #94a3b8; font-size: 0.85rem; border-top: 1px solid #f1f5f9; padding-top: 2rem;">
+        <p>Faculty Performance Report - EduStream Learning Academy</p>
+        <p style="margin-top: 0.5rem;">Confidential document. For administrative use only.</p>
     </div>
 </div>
 
@@ -149,9 +127,9 @@
         body { background: white !important; }
         .sidebar, .view-btn, header, .notification-wrapper, .mobile-toggle { display: none !important; }
         .main-content { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
-        #printable-area { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
-        .dashboard-container { display: block !important; }
+        #printable-area { border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 </style>
+{% endblock %}
 {% endblock %}

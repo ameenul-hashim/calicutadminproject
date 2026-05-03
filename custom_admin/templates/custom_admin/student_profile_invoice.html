@@ -1,11 +1,11 @@
 {% extends 'custom_admin/base_admin.html' %}
 {% load static %}
 
-{% block title %}Student Profile | Admin{% endblock %}
+{% block title %}Student Invoice | Admin{% endblock %}
 
 {% block header_title %}
-    <h1>Student Profile</h1>
-    <p style="color: #64748b;">Detailed view and course enrollments.</p>
+    <h1>Student Statement / Invoice</h1>
+    <p style="color: #64748b;">Financial overview and enrollment history.</p>
 {% endblock %}
 
 {% block content %}
@@ -17,126 +17,101 @@
     </div>
     <div style="display: flex; gap: 1rem;">
         <button onclick="window.print()" class="view-btn" style="background: #1e293b; color: white; padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
-            <span>🖨️</span> Print / PDF
+            <span>🖨️</span> Print Invoice
         </button>
     </div>
 </div>
 
-<div id="printable-area" style="background: white; border-radius: 0; border: 1px solid #cbd5e1; padding: 4rem; margin-bottom: 2rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); position: relative; overflow: hidden; font-family: 'Inter', 'Segoe UI', sans-serif;">
+<div id="printable-area" style="background: white; padding: 4rem; margin: 0 auto; max-width: 900px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); color: #1e293b; font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0;">
     
-    <!-- Professional Watermark -->
-    <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 8rem; color: rgba(0,0,0,0.03); font-weight: 900; pointer-events: none; white-space: nowrap; z-index: 0; text-transform: uppercase;">
-        Official Record
-    </div>
-
     <!-- Invoice Header -->
-    <div style="display: flex; justify-content: space-between; margin-bottom: 4rem; border-bottom: 3px solid #0ea5e9; padding-bottom: 2rem; position: relative; z-index: 1;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 2rem;">
         <div>
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                <div style="width: 50px; height: 50px; background: #0ea5e9; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem; font-weight: 800;">E</div>
-                <h1 style="color: #1e293b; font-weight: 800; margin: 0; font-size: 2.2rem; letter-spacing: -0.02em;">EduStream</h1>
-            </div>
-            <p style="color: #64748b; margin: 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.8rem;">Excellence in Digital Learning</p>
+            <h1 style="color: #0ea5e9; font-size: 2rem; margin: 0; font-weight: 800;">EduStream</h1>
+            <p style="color: #64748b; margin: 0.5rem 0 0 0;">Learning Academy Portal</p>
+            <p style="font-size: 0.85rem; color: #94a3b8;">123 Academy Way, Digital City</p>
         </div>
         <div style="text-align: right;">
-            <h2 style="margin: 0; color: #0ea5e9; font-size: 1.4rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 800;">Academic Transcript</h2>
-            <p style="color: #64748b; margin: 0.5rem 0 0 0; font-weight: 500;">Report ID: <span style="color: #1e293b;">#STU-{{ student.id|stringformat:"05d" }}</span></p>
-            <p style="color: #64748b; margin: 0.25rem 0 0 0; font-weight: 500;">Issued Date: <span style="color: #1e293b;">{{ "now"|date:"M d, Y" }}</span></p>
+            <h2 style="font-size: 2.5rem; margin: 0; color: #cbd5e1; text-transform: uppercase; letter-spacing: 2px;">INVOICE</h2>
+            <p style="margin: 0.5rem 0 0 0; font-weight: 600;"># {{ invoice_number }}</p>
+            <p style="margin: 0.2rem 0 0 0; color: #64748b;">Date: {{ invoice_date|date:"M d, Y" }}</p>
         </div>
     </div>
 
-    <!-- Header / User Info -->
-    <div style="display: flex; gap: 3rem; align-items: center; margin-bottom: 3.5rem; padding: 2rem; background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; position: relative; z-index: 1;">
-        <div style="position: relative;">
-            {% if student.profile_photo %}
-                <img src="{{ student.profile_photo.url }}" alt="{{ student.username }}" style="width: 140px; height: 140px; border-radius: 1rem; object-fit: cover; border: 5px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-            {% else %}
-                <div style="width: 140px; height: 140px; border-radius: 1rem; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 3.5rem; font-weight: bold; color: #94a3b8; border: 5px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    {{ student.username|make_list|first|upper }}
-                </div>
-            {% endif %}
-            <!-- Verification Seal -->
-            <div style="position: absolute; -right: 15px; -bottom: 15px; width: 50px; height: 50px; background: #10b981; border-radius: 50%; border: 4px solid white; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">✓</div>
+    <!-- Bill To Section -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 4rem;">
+        <div>
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Bill To:</h3>
+            <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ student.full_name|default:student.username }}</h4>
+            <p style="margin: 0.5rem 0 0 0; color: #64748b;">{{ student.email }}</p>
+            <p style="margin: 0.2rem 0 0 0; color: #64748b;">Student ID: #STU-{{ student.id|stringformat:"05d" }}</p>
         </div>
-        
-        <div style="flex-grow: 1;">
-            <div style="margin-bottom: 1rem;">
-                <span style="font-size: 0.75rem; font-weight: 700; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.1em;">Student Identity</span>
-                <h2 style="margin: 0.25rem 0 0.5rem 0; font-size: 2rem; color: #1e293b; letter-spacing: -0.02em;">{{ student.full_name|default:student.username }}</h2>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
-                <div>
-                    <p style="margin: 0; color: #64748b; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Registration Email</p>
-                    <p style="margin: 0.25rem 0 0 0; color: #1e293b; font-weight: 600;">{{ student.email }}</p>
+        <div style="text-align: right;">
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Summary:</h3>
+            <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; display: inline-block; min-width: 200px; text-align: left;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: #64748b;">Status:</span>
+                    <span style="font-weight: 700; color: #10b981;">PAID</span>
                 </div>
-                <div>
-                    <p style="margin: 0; color: #64748b; font-size: 0.8rem; font-weight: 600; text-transform: uppercase;">Enrollment Status</p>
-                    <p style="margin: 0.25rem 0 0 0; color: {% if student.status == 'ACTIVE' %}#10b981{% else %}#f59e0b{% endif %}; font-weight: 700;">{{ student.status }}</p>
+                <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; color: #1e293b;">
+                    <span>Total:</span>
+                    <span>${{ current_balance }}</span>
                 </div>
-            </div>
-        </div>
-        
-        <div style="text-align: right; min-width: 200px;">
-            <div style="padding: 1rem; border: 2px solid #e2e8f0; border-radius: 0.75rem; background: white;">
-                <p style="margin: 0 0 0.5rem 0; font-weight: 700; color: #475569; font-size: 0.8rem; text-transform: uppercase;">Document Verification</p>
-                <code style="display: block; background: #f1f5f9; padding: 0.5rem; border-radius: 0.4rem; font-size: 0.7rem; color: #64748b; word-break: break-all;">AUTH-{{ student.username|slice:":3"|upper }}-{{ student.id }}-SECURE</code>
             </div>
         </div>
     </div>
 
-    <!-- Enrolled Courses -->
-    <div style="position: relative; z-index: 1;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
-            <h3 style="color: #1e293b; margin: 0; font-size: 1.5rem; letter-spacing: -0.01em;">Course Participation History</h3>
-            <span style="background: #0ea5e9; color: white; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.85rem; font-weight: 700;">Total Credits: {{ enrollments.count }}</span>
-        </div>
-        
-        {% if enrollments %}
-        <table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e2e8f0; border-radius: 0.75rem; overflow: hidden;">
+    <!-- Items Table -->
+    <div style="margin-bottom: 4rem;">
+        <table style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr style="background: #1e293b;">
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; width: 50px;">#</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Course Curriculum</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Classification</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em;">Faculty</th>
-                    <th style="padding: 1.2rem 1rem; color: white; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Certified On</th>
+                <tr style="background: #1e293b; color: white;">
+                    <th style="padding: 1rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Course Description</th>
+                    <th style="padding: 1rem; text-align: center; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Enrolled Date</th>
+                    <th style="padding: 1rem; text-align: right; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Amount</th>
                 </tr>
             </thead>
             <tbody>
-                {% for enrollment in enrollments %}
-                <tr style="{% if forloop.counter|divisibleby:2 %}background: #fcfdfe;{% else %}background: white;{% endif %}">
-                    <td style="padding: 1.2rem 1rem; color: #64748b; font-weight: 700; text-align: center; border-bottom: 1px solid #f1f5f9;">{{ forloop.counter }}</td>
-                    <td style="padding: 1.2rem 1rem; font-weight: 700; color: #1e293b; border-bottom: 1px solid #f1f5f9;">{{ enrollment.course.title }}</td>
-                    <td style="padding: 1.2rem 1rem; color: #64748b; font-weight: 500; border-bottom: 1px solid #f1f5f9;">
-                        <span style="padding: 0.3rem 0.6rem; background: #e0f2fe; color: #0369a1; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">{{ enrollment.course.category }}</span>
+                {% for e in enrollments %}
+                <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 1.5rem 1rem;">
+                        <div style="font-weight: 600;">{{ e.course.title }}</div>
+                        <div style="font-size: 0.85rem; color: #64748b;">Category: {{ e.course.category }}</div>
                     </td>
-                    <td style="padding: 1.2rem 1rem; color: #475569; font-weight: 500; border-bottom: 1px solid #f1f5f9;">Prof. {{ enrollment.course.teacher.full_name|default:enrollment.course.teacher.username }}</td>
-                    <td style="padding: 1.2rem 1rem; color: #64748b; font-weight: 600; text-align: right; border-bottom: 1px solid #f1f5f9;">{{ enrollment.enrolled_at|date:"d M Y" }}</td>
+                    <td style="padding: 1.5rem 1rem; text-align: center; color: #64748b;">{{ e.enrolled_at|date:"M d, Y" }}</td>
+                    <td style="padding: 1.5rem 1rem; text-align: right; font-weight: 600;">${{ e.course.price }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="3" style="padding: 3rem; text-align: center; color: #94a3b8;">No enrollments found.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        {% else %}
-        <div style="text-align: center; padding: 4rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">📁</div>
-            <p style="font-weight: 600;">No academic records found for this student.</p>
-        </div>
-        {% endif %}
     </div>
 
-    <!-- Official Footnote -->
-    <div style="margin-top: 5rem; display: flex; justify-content: space-between; align-items: flex-end; position: relative; z-index: 1;">
-        <div style="max-width: 400px;">
-            <p style="color: #94a3b8; font-size: 0.75rem; line-height: 1.6;">
-                This document is a certified digital transcript generated by the EduStream Learning Management System. 
-                Any alterations to this record will render it invalid. For verification, please contact the administration.
-            </p>
+    <!-- Financial Summary -->
+    <div style="display: flex; justify-content: flex-end;">
+        <div style="width: 300px;">
+            <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="color: #64748b;">Subtotal:</span>
+                <span style="font-weight: 600;">${{ current_balance }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="color: #0ea5e9; font-weight: 700;">Yesterday's Balance:</span>
+                <span style="font-weight: 700; color: #0ea5e9;">${{ yesterday_balance }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem 0; background: #f8fafc; margin-top: 1rem; padding: 1rem; border-radius: 0.5rem;">
+                <span style="font-size: 1.2rem; font-weight: 800;">Total Balance:</span>
+                <span style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">${{ current_balance }}</span>
+            </div>
         </div>
-        <div style="text-align: center; border-top: 2px solid #1e293b; padding-top: 1rem; min-width: 250px;">
-            <p style="margin: 0; font-family: 'Brush Script MT', cursive; font-size: 1.5rem; color: #1e293b;">EduStream Admin</p>
-            <p style="margin: 0; font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em;">Authorized Signature</p>
-        </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="margin-top: 6rem; text-align: center; color: #94a3b8; font-size: 0.85rem; border-top: 1px solid #f1f5f9; padding-top: 2rem;">
+        <p>Thank you for being part of EduStream Learning Academy.</p>
+        <p style="margin-top: 0.5rem;">This is a computer-generated document and does not require a physical signature.</p>
     </div>
 </div>
 
@@ -145,11 +120,9 @@
         body { background: white !important; }
         .sidebar, .view-btn, header, .notification-wrapper, .mobile-toggle { display: none !important; }
         .main-content { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
-        #printable-area { border: none !important; box-shadow: none !important; padding: 0 !important; width: 100% !important; }
-        .dashboard-container { display: block !important; }
-        
-        /* Ensure background colors print */
+        #printable-area { border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
 </style>
+{% endblock %}
 {% endblock %}
