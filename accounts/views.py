@@ -329,6 +329,29 @@ def my_courses(request):
     return render(request, 'teacher_portal/my_courses.html', {'courses': courses})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def delete_course(request, course_id):
+    from .models import DeletionRequest, Course
+    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    
+    existing_request = DeletionRequest.objects.filter(
+        teacher=request.user, item_type='Course', item_id=course.id, status='PENDING'
+    ).first()
+    
+    if existing_request:
+        messages.info(request, "A deletion request for this course is already pending admin approval.")
+    else:
+        DeletionRequest.objects.create(
+            teacher=request.user,
+            item_type='Course',
+            item_id=course.id,
+            item_name=course.title
+        )
+        messages.success(request, "Deletion request for course sent to admin.")
+        notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete course '{course.title}'.")
+        
+    return redirect('my_courses')
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def create_course(request):
     if request.method == 'POST':
         title = request.POST.get('title')
