@@ -1,0 +1,22 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Server Error | 500{% endblock %}
+
+{% block header_title %}
+    <h1 style="font-size: 3rem; color: #ef4444;">500</h1>
+{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="text-align: center; padding: 5rem 2rem;">
+    <div style="font-size: 5rem; margin-bottom: 1.5rem;">⚙️</div>
+    <h2 style="font-size: 2rem; margin-bottom: 1rem; color: #1e293b;">Internal Server Error</h2>
+    <p style="color: #64748b; font-size: 1.1rem; max-width: 600px; margin: 0 auto 2.5rem;">
+        Something went wrong on our end. We are working to fix it as soon as possible. 
+        Please try refreshing the page or come back later.
+    </p>
+    <div style="display: flex; gap: 1rem; justify-content: center;">
+        <a href="javascript:location.reload()" class="view-btn" style="padding: 1rem 2rem; font-size: 1.1rem; background: #0ea5e9; color: white;">Refresh Page</a>
+        <a href="/" class="view-btn" style="padding: 1rem 2rem; font-size: 1.1rem; background: #f1f5f9; color: #475569;">Return Home</a>
+    </div>
+</div>
+{% endblock %}

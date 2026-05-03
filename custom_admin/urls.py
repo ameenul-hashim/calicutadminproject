@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.shortcuts import redirect
 
 urlpatterns = [
     path('login/', views.admin_login_view, name='admin_login'),
@@ -28,4 +29,5 @@ urlpatterns = [
     path('assignment/<int:assignment_id>/submissions/', views.admin_view_submissions, name='admin_view_submissions'),
     path('quiz/<int:quiz_id>/attempts/', views.admin_view_quiz_attempts, name='admin_view_quiz_attempts'),
     path('course/<int:course_id>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
+    path('manage_students/', lambda r: redirect('manage_students')),
 ]
