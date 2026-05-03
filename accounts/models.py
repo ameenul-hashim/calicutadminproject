@@ -59,6 +59,7 @@ class Lesson(models.Model):
     video_url = models.URLField(max_length=500, null=True, blank=True, help_text="YouTube or other video link")
     video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
     notes = models.FileField(upload_to='lessons/notes/', null=True, blank=True)
+    pdf_url = models.URLField(max_length=1000, null=True, blank=True, help_text="Supabase PDF URL")
     order = models.PositiveIntegerField(default=1)
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -69,6 +70,7 @@ class Lesson(models.Model):
 class LessonNote(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='multiple_notes')
     file = models.FileField(upload_to='lessons/notes/')
+    pdf_url = models.URLField(max_length=1000, null=True, blank=True)
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
