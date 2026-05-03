@@ -37,8 +37,8 @@ def admin_student_view(request):
     from django.db.models import Count, Sum
     
     # Adapt dashboard logic for admin preview
-    courses = Course.objects.all().annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category')[:12]
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).only('id', 'title', 'thumbnail', 'category').select_related('teacher')[:10]
+    courses = Course.objects.all().annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:12]
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:10]
     
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:5]
     unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()

@@ -308,12 +308,12 @@ def dashboard_view(request):
         return redirect('admin_dashboard') if request.user.is_staff else redirect('login')
 
     if request.user.user_type == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'status', 'category')
+        courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     else:
-        courses = Course.objects.filter(enrollments__user=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category')
+        courses = Course.objects.filter(enrollments__user=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     enrolled_ids = list(courses.values_list('id', flat=True))
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price', 'category').select_related('teacher')[:10]
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price', 'category', 'teacher').select_related('teacher')[:10]
     
     search_query = request.GET.get('search', '')
     if search_query:
