@@ -233,40 +233,37 @@ def teacher_login_view(request):
 
 from accounts.models import Course, Lesson, Enrollment
 
+from django.db.models import Count, Q
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def dashboard_view(request):
-    
-    # Check for access: Allow Students and Teachers (for preview)
+    # Check for access
     if request.user.user_type not in ['STUDENT', 'TEACHER']:
         messages.error(request, "Please use the appropriate portal.")
-        return redirect('admin_dashboard') if request.user.is_superuser else redirect('login')
+        return redirect('admin_dashboard') if request.user.is_staff else redirect('login')
 
     if request.user.user_type == 'TEACHER':
-        # For Teacher: Show their own courses in the dashboard for easy preview
-        courses = Course.objects.filter(teacher=request.user)
+        courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons'))
     else:
-        # For Student: Get enrolled courses as a queryset
-        courses = Course.objects.filter(enrollments__user=request.user)
+        courses = Course.objects.filter(enrollments__user=request.user).annotate(lesson_count=Count('lessons'))
     
-    # Explore courses (all approved and published)
     enrolled_ids = courses.values_list('id', flat=True)
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids)
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price')[:10]
     
     search_query = request.GET.get('search', '')
     if search_query:
         courses = courses.filter(title__icontains=search_query)
         explore_courses = explore_courses.filter(title__icontains=search_query)
 
-    # Get notifications
-    notifications = request.user.notifications.filter(is_read=False)[:5]
+    notifications = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')[:5]
     unread_notifications_count = request.user.notifications.filter(is_read=False).count()
 
     context = {
         'courses': courses,
         'explore_courses': explore_courses,
         'search_query': search_query,
-        'total_lessons': sum(c.lessons.count() for c in courses),
+        'total_lessons': sum(c.lesson_count for c in courses),
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count,
     }
@@ -275,7 +272,7 @@ def dashboard_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_dashboard(request):
-    courses = Course.objects.filter(teacher=request.user)
+    courses = Course.objects.filter(teacher=request.user).only('id', 'title', 'status', 'created_at')
     total_students = Enrollment.objects.filter(course__teacher=request.user).count()
     
     context = {
@@ -284,7 +281,7 @@ def teacher_dashboard(request):
         'pending_courses': courses.filter(status='PENDING').count(),
         'total_students': total_students,
         'recent_courses': courses.order_by('-created_at')[:5],
-        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
+        'notifications': Notification.objects.filter(user=request.user, is_read=False).only('id', 'message')[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
