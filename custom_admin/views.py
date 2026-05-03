@@ -539,25 +539,22 @@ def admin_view_quiz_attempts(request, quiz_id):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_id):
-    context = {
-        'total_students': total_students,
-        'total_teachers': total_teachers,
-        'total_courses': total_courses,
-        'total_lessons': total_lessons,
-        'student_data': student_data,
-        'teacher_data': teacher_data,
-        'course_data': course_data,
-        'approval_stats': approval_stats,
-        'teacher_perf_labels': teacher_performance_labels,
-        'teacher_perf_data': teacher_performance_data,
-        'top_courses': top_courses,
-        'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
-        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
-        'pending_students_count': pending_students_count,
-        'pending_teachers_count': pending_teachers_count,
-    }
-    return render(request, 'custom_admin/analytics.html', context)
+    course = get_object_or_404(Course, id=course_id)
+    lessons = course.lessons.all().order_by('order')
+    quizzes = course.quizzes.all()
+    assignments = course.assignments.all()
+    
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    
+    return render(request, 'custom_admin/course_content_verify.html', {
+        'course': course,
+        'lessons': lessons,
+        'quizzes': quizzes,
+        'assignments': assignments,
+        'notifications': notifications,
+        'unread_notifications_count': unread_count,
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
@@ -595,7 +592,7 @@ def approve_course(request, course_id):
     for student in students:
         create_notification(student, f"{teacher_name} added course {course.title}")
 
-    
+    from accounts.models import ApprovalLog
     ApprovalLog.objects.create(
         content_type='COURSE',
         object_id=course.id,
@@ -619,6 +616,7 @@ def reject_course(request, course_id):
         
         create_notification(course.teacher, f"Your course '{course.title}' was rejected. Reason: {reason}")
         
+        from accounts.models import ApprovalLog
         ApprovalLog.objects.create(
             content_type='COURSE',
             object_id=course.id,
@@ -646,12 +644,10 @@ def edit_user_admin(request, user_id):
             messages.error(request, "All fields are required for updating.")
         elif password and (password != confirm_password):
             messages.error(request, "Passwords do not match.")
-        elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
-            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
         elif CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
-            messages.error(request, "This username is already taken by another user. Please use a unique username.")
+            messages.error(request, "This username is already taken.")
         elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
-            messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
+            messages.error(request, "The email is already taken.")
         else:
             user.username = username
             user.email = email
@@ -659,32 +655,19 @@ def edit_user_admin(request, user_id):
             if password:
                 user.set_password(password)
             user.save()
-            messages.success(request, f"User {user.username} data updated successfully!")
-            if user.user_type == 'TEACHER':
-                return redirect('manage_teachers')
-            return redirect('manage_students')
+            messages.success(request, f"User {user.username} updated successfully!")
+            return redirect('manage_teachers' if user.user_type == 'TEACHER' else 'manage_students')
             
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def toggle_lesson_approval(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
-    if lesson.is_approved:
-        lesson.is_approved = False
-        msg = "rejected"
-    else:
-        lesson.is_approved = True
-        msg = "approved"
+    lesson.is_approved = not lesson.is_approved
+    msg = "approved" if lesson.is_approved else "rejected"
     lesson.save()
     
     create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been {msg}.")
-    
-    if msg == "approved":
-        # Notify enrolled students
-        enrollments = Enrollment.objects.filter(course=lesson.course)
-        teacher_name = lesson.course.teacher.full_name or lesson.course.teacher.username
-        for e in enrollments:
-            create_notification(e.user, f"{teacher_name} added content {lesson.title}")
     
     from accounts.models import ApprovalLog
     ApprovalLog.objects.create(
@@ -695,8 +678,8 @@ def toggle_lesson_approval(request, lesson_id):
         comments=f"Lesson {msg} by admin."
     )
     
-    messages.success(request, f"Lesson '{lesson.title}' content has been {msg}.")
-    return redirect('admin_content')
+    messages.success(request, f"Lesson '{lesson.title}' has been {msg}.")
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def toggle_quiz_approval(request, quiz_id):
@@ -706,7 +689,7 @@ def toggle_quiz_approval(request, quiz_id):
     quiz.save()
     msg = "approved" if quiz.is_approved else "rejected"
     messages.success(request, f"Quiz '{quiz.title}' has been {msg}.")
-    return redirect('admin_content')
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def toggle_assignment_approval(request, assignment_id):
@@ -716,7 +699,7 @@ def toggle_assignment_approval(request, assignment_id):
     assignment.save()
     msg = "approved" if assignment.is_approved else "rejected"
     messages.success(request, f"Assignment '{assignment.title}' has been {msg}.")
-    return redirect('admin_content')
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_submissions(request, assignment_id):
@@ -737,9 +720,19 @@ def admin_view_course_content(request, course_id):
     from accounts.models import Course, Lesson
     course = get_object_or_404(Course, id=course_id)
     lessons = course.lessons.all().order_by('order')
+    quizzes = course.quizzes.all()
+    assignments = course.assignments.all()
+    
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
-        'lessons': lessons
+        'lessons': lessons,
+        'quizzes': quizzes,
+        'assignments': assignments,
+        'notifications': notifications,
+        'unread_notifications_count': unread_count,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
