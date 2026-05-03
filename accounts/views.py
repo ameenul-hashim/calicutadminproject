@@ -435,11 +435,22 @@ def submit_course_approval(request, course_id):
     return redirect('my_courses')
 
 def logout_view(request):
-    user_type = getattr(request.user, 'user_type', None)
+    if not request.user.is_authenticated:
+        return redirect('login')
+        
+    user_type = request.user.user_type
+    
+    # If Admin or Teacher is 'logging out' from student view, just send them back to their portal
+    if user_type == 'ADMIN':
+        messages.info(request, "Returning to Admin Panel.")
+        return redirect('admin_dashboard')
+    elif user_type == 'TEACHER':
+        messages.info(request, "Returning to Teacher Dashboard.")
+        return redirect('teacher_dashboard')
+        
+    # Real logout for students
     logout(request)
     messages.success(request, "You have been logged out successfully. Have a great day!")
-    if user_type == 'TEACHER':
-        return redirect('teacher_login')
     return redirect('login')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
