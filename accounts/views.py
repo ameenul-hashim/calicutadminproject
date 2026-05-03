@@ -315,20 +315,22 @@ def dashboard_view(request):
     notifications = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')[:5]
     unread_notifications_count = request.user.notifications.filter(is_read=False).count()
 
+    # Pagination for courses
+    from django.core.paginator import Paginator
+    paginator = Paginator(courses, 12)  # 12 courses per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     # Build initial context
     context = {
-        'courses': courses,
+        'courses': page_obj,
+        'page_obj': page_obj,
         'explore_courses': explore_courses,
         'search_query': search_query,
         'total_lessons': sum(c.lesson_count for c in courses),
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count,
     }
-    # Update context to use paginated courses
-    context.update({
-        'courses': page_obj,
-        'page_obj': page_obj,
-    })
     return render(request, 'accounts/dashboard.html', context)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
