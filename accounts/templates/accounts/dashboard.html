@@ -226,7 +226,7 @@
                     <div class="notification-wrapper" style="position: relative; cursor: pointer;">
                         <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative; padding: 5px;">
                             🔔
-                            <span id="notif-count-badge" style="position: absolute; top: -2px; right: -2px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_notifications_count > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
+                            <span id="notif-count-badge" style="position: absolute; top: -2px; right: -2px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_student_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_student_notifs }}</span>
                         </div>
                         
                         <!-- Notification Dropdown -->

@@ -64,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'accounts.context_processors.pending_counts',
             ],
         },
     },
@@ -72,13 +73,19 @@ TEMPLATES = [
 WSGI_APPLICATION = 'elearning_project.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+# Database - Supabase PostgreSQL (Transaction Pooler)
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres.ypcebdfiiohtgrptnmwv',
+        'PASSWORD': 'pkd02786*#123',
+        'HOST': 'aws-1-ap-southeast-1.pooler.supabase.com',
+        'PORT': '6543',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
+        'CONN_MAX_AGE': 600,
     }
 }
 

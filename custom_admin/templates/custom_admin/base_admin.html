@@ -143,7 +143,12 @@
                     </button>
                     <div id="student-drop" class="dropdown-container {% if 'student' in request.path or 'pending_users' in request.path or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
                         <a href="{% url 'manage_students' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_students' or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">Student Details</a>
-                        <a href="{% url 'pending_users' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_users' %}active{% endif %}">Student Requests</a>
+                        <a href="{% url 'pending_users' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_users' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                            Student Requests
+                            {% if pending_students_count > 0 %}
+                            <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_students_count }}</span>
+                            {% endif %}
+                        </a>
                     </div>
                 </div>
 
@@ -155,7 +160,12 @@
                     </button>
                     <div id="teacher-drop" class="dropdown-container {% if 'teacher' in request.path or 'pending_teachers' in request.path %}active{% endif %}">
                         <a href="{% url 'manage_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_teachers' %}active{% endif %}">Teacher Details</a>
-                        <a href="{% url 'pending_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_teachers' %}active{% endif %}">Requests</a>
+                        <a href="{% url 'pending_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_teachers' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                            Requests
+                            {% if pending_teachers_count > 0 %}
+                            <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_teachers_count }}</span>
+                            {% endif %}
+                        </a>
                     </div>
                 </div>
 
@@ -167,10 +177,14 @@
                     </button>
                     <div id="course-drop" class="dropdown-container {% if 'content' in request.path or 'pending_courses' in request.path %}active{% endif %}">
                         <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">Details</a>
-                        <a href="{% url 'pending_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_courses' %}active{% endif %}">Requests</a>
+                        <a href="{% url 'pending_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_courses' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                            Requests
+                            {% if pending_courses_total > 0 %}
+                            <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_courses_total }}</span>
+                            {% endif %}
+                        </a>
                     </div>
                 </div>
-
 
                 <!-- 4. Student View -->
                 <div class="nav-group">
@@ -179,8 +193,11 @@
 
                 <!-- 3.5 Deletion Requests -->
                 <div class="nav-group">
-                    <a href="{% url 'manage_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_deletion_requests' %}active{% endif %}" style="color: #ef4444;">
-                        🗑️ Deletion Requests
+                    <a href="{% url 'manage_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_deletion_requests' %}active{% endif %}" style="color: #ef4444; display: flex; justify-content: space-between; align-items: center;">
+                        <span>🗑️ Deletion Requests</span>
+                        {% if pending_deletions_count > 0 %}
+                        <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_deletions_count }}</span>
+                        {% endif %}
                     </a>
                 </div>
 
@@ -209,7 +226,7 @@
                     <div class="notification-wrapper" style="position: relative; cursor: pointer;">
                         <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
                             🔔
-                            <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_notifications_count > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_notifications_count }}</span>
+                            <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_admin_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_admin_notifs }}</span>
                         </div>
                         
                         <!-- Notification Dropdown -->
@@ -235,7 +252,22 @@
                                 <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
                             {% endfor %}
                         </div>
+                        </div>
                     </div>
+
+                    <!-- Admin Profile Chip -->
+                    <div style="display: flex; align-items: center; gap: 0.6rem; padding-left: 1.5rem; border-left: 1px solid #e2e8f0;">
+                        <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #6366f1); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                            {{ request.user.username|slice:":1"|upper }}
+                        </div>
+                        <div style="display: none;" class="admin-name-label">
+                            <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">{{ request.user.full_name|default:request.user.username }}</div>
+                            <div style="font-size: 0.72rem; color: #64748b;">Administrator</div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Menu Toggle -->
+                    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')" aria-label="Toggle Menu">☰</button>
                 </div>
             </header>
 
@@ -253,8 +285,20 @@
 
     <script>
         function toggleDropdown(id) {
-            document.getElementById(id).classList.toggle('active');
+            const el = document.getElementById(id);
+            const isActive = el.classList.contains('active');
+            // Close all first
+            document.querySelectorAll('.dropdown-container').forEach(d => d.classList.remove('active'));
+            if (!isActive) el.classList.add('active');
         }
+
+        // Close notification dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.notification-wrapper')) {
+                const nd = document.getElementById('notifDropdown');
+                if (nd) nd.classList.remove('active');
+            }
+        });
     </script>
     {% include 'accounts/chat_widget.html' %}
 </body>
