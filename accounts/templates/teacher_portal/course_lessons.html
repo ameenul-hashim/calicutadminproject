@@ -18,16 +18,7 @@
 </head>
 <body>
     <div class="dashboard-container">
-        <aside class="sidebar">
-            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduStream</div>
-            <nav>
-                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
-                <a href="{% url 'my_courses' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">📚 My Courses</a>
-                <a href="{% url 'teacher_explore' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🌐 Explore Peer Courses</a>
-            </nav>
-        </aside>
-
-        <main class="main-content">
+        <main class="main-content" style="margin-left: 0;">
             <header style="margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem;">
                     <div>
@@ -38,11 +29,18 @@
                         <a href="{% url 'add_lesson' course.id %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
                     </div>
                 </div>
-                {% with pending_lessons=course.lessons.all|dictsort:"is_approved" %}
-                    {% if course.status == 'DRAFT' or course.status == 'REJECTED' or course.lessons.filter(is_approved=False).exists or course.quizzes.filter(is_approved=False).exists or course.assignments.filter(is_approved=False).exists %}
-                    <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
-                    {% endif %}
-                {% endwith %}
+                {% if course.status == 'DRAFT' or course.status == 'REJECTED' or has_pending_content %}
+                <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
+                {% endif %}
+
+                {% if course.status == 'REJECTED' and course.rejection_reason %}
+                <div style="margin-top: 1.5rem; padding: 1.25rem; background: #fee2e2; border-left: 5px solid #ef4444; border-radius: 0.75rem; color: #b91c1c; font-size: 0.95rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div style="font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 1.2rem;">⚠️</span> REJECTION FEEDBACK
+                    </div>
+                    <div style="line-height: 1.5; opacity: 0.9;">{{ course.rejection_reason }}</div>
+                </div>
+                {% endif %}
             </header>
 
             {% if messages %}

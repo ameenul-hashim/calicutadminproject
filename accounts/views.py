@@ -333,7 +333,19 @@ def edit_course(request, course_id):
 def course_lessons(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     lessons = course.lessons.all()
-    return render(request, 'teacher_portal/course_lessons.html', {'course': course, 'lessons': lessons})
+    
+    # Check for any unapproved content
+    has_pending_lessons = course.lessons.filter(is_approved=False).exists()
+    has_pending_quizzes = course.quizzes.filter(is_approved=False).exists()
+    has_pending_assignments = course.assignments.filter(is_approved=False).exists()
+    
+    has_pending_content = has_pending_lessons or has_pending_quizzes or has_pending_assignments
+    
+    return render(request, 'teacher_portal/course_lessons.html', {
+        'course': course, 
+        'lessons': lessons,
+        'has_pending_content': has_pending_content
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def add_lesson(request, course_id):
