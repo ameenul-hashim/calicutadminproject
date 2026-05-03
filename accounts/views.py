@@ -36,6 +36,12 @@ def signup_view(request):
             messages.error(request, "Only PDF files are accepted for student proof.")
             return render(request, 'accounts/signup.html')
 
+        # Upload PDF to Supabase
+        pdf_url = upload_pdf(proof_file)
+        if not pdf_url:
+            messages.error(request, "Failed to upload verification document. Please try again.")
+            return render(request, 'accounts/signup.html')
+
         # ... (Existing validations)
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not re.match(email_regex, email):
@@ -67,7 +73,7 @@ def signup_view(request):
             is_active=False,
             status='PENDING',
             user_type='STUDENT',
-            proof_file=proof_file
+            proof_pdf=pdf_url
         )
         messages.success(request, "Student registration successful! Your proof is pending admin approval.")
         notify_admins(f"New student registration: {username}. Approval needed.")
@@ -90,6 +96,12 @@ def teacher_signup_view(request):
 
         if not proof_file.name.endswith('.pdf'):
             messages.error(request, "Only PDF files are accepted for teacher proof.")
+            return render(request, 'accounts/teacher_signup.html')
+
+        # Upload PDF to Supabase
+        pdf_url = upload_pdf(proof_file)
+        if not pdf_url:
+            messages.error(request, "Failed to upload verification document. Please try again.")
             return render(request, 'accounts/teacher_signup.html')
 
         if CustomUser.objects.filter(username=username).exists():
@@ -118,7 +130,7 @@ def teacher_signup_view(request):
             is_staff=True,
             status='PENDING',
             user_type='TEACHER',
-            proof_file=proof_file
+            proof_pdf=pdf_url
         )
         messages.success(request, "Teacher registration successful! Please wait for admin approval.")
         notify_admins(f"New teacher registration: {username}. Approval needed.")

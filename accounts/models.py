@@ -16,7 +16,7 @@ class CustomUser(AbstractUser):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
     full_name = models.CharField(max_length=255, blank=True)
     profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
-    proof_file = models.FileField(upload_to='proofs/', blank=True, null=True)
+    proof_pdf = models.URLField(max_length=1000, blank=True, null=True)
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
     approved_at = models.DateTimeField(null=True, blank=True)
