@@ -57,11 +57,18 @@ def manage_students(request):
     notifications = Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(users, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'custom_admin/manage_students.html', {
-        'users': users, 
+        'users': page_obj, 
         'search_query': search_query,
         'notifications': notifications,
-        'unread_notifications_count': unread_count
+        'unread_notifications_count': unread_count,
+        'page_obj': page_obj
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -98,7 +105,17 @@ def manage_teachers(request):
             Q(email__icontains=search_query) |
             Q(full_name__icontains=search_query)
         )
-    return render(request, 'custom_admin/manage_teachers.html', {'users': users, 'search_query': search_query})
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(users, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'custom_admin/manage_teachers.html', {
+        'users': page_obj, 
+        'search_query': search_query,
+        'page_obj': page_obj
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_teacher_profile(request, user_id):
@@ -371,8 +388,16 @@ def analytics_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    courses = Course.objects.all().prefetch_related('lessons', 'quizzes', 'quizzes__questions', 'assignments', 'assignments__submissions')
-    return render(request, 'custom_admin/content_management.html', {'courses': courses})
+    courses = Course.objects.all().prefetch_related('lessons', 'quizzes', 'assignments').only('id', 'title', 'teacher__username', 'status', 'created_at')
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(courses, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'custom_admin/content_management.html', {
+        'courses': page_obj,
+        'page_obj': page_obj
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
@@ -538,8 +563,19 @@ def toggle_assignment_approval(request, assignment_id):
 def admin_view_submissions(request, assignment_id):
     from accounts.models import Assignment
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    submissions = assignment.submissions.all().select_related('student')
-    return render(request, 'custom_admin/admin_view_submissions.html', {'assignment': assignment, 'submissions': submissions})
+    submissions_qs = assignment.submissions.all().select_related('student')
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(submissions_qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'custom_admin/admin_view_submissions.html', {
+        'assignment': assignment, 
+        'submissions': page_obj,
+        'page_obj': page_obj
+    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_quiz_attempts(request, quiz_id):
@@ -567,184 +603,7 @@ def admin_view_course_content(request, course_id):
         'unread_notifications_count': unread_count,
     })
 
-@user_passes_test(is_admin, login_url='admin_login')
-def content_management_view(request):
-    courses = Course.objects.all().prefetch_related('lessons', 'quizzes', 'quizzes__questions', 'assignments', 'assignments__submissions')
-    return render(request, 'custom_admin/content_management.html', {'courses': courses})
 
-@user_passes_test(is_admin, login_url='admin_login')
-def pending_courses_view(request):
-    courses = Course.objects.filter(status='PENDING').prefetch_related('lessons').order_by('-created_at')
-    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
-    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
-    return render(request, 'custom_admin/pending_courses.html', {
-        'courses': courses,
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
-    })
-
-@user_passes_test(is_admin, login_url='admin_login')
-def approve_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
-    course.status = 'PUBLISHED'
-    course.is_approved = True
-    course.approved_by = request.user
-    course.rejection_reason = ""
-    course.save()
-    
-    # Auto-approve all current lessons in the course
-    course.lessons.update(is_approved=True)
-
-    create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
-    
-    # Notify all active students about new course
-    students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
-    teacher_name = course.teacher.full_name or course.teacher.username
-    for student in students:
-        create_notification(student, f"{teacher_name} added course {course.title}")
-
-    from accounts.models import ApprovalLog
-    ApprovalLog.objects.create(
-        content_type='COURSE',
-        object_id=course.id,
-        status='APPROVED',
-        reviewed_by=request.user,
-        comments="Course published."
-    )
-    
-    messages.success(request, f"Course '{course.title}' has been approved and published!")
-    return redirect('pending_courses')
-
-@user_passes_test(is_admin, login_url='admin_login')
-def reject_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
-    if request.method == 'POST':
-        reason = request.POST.get('reason', '')
-        course.status = 'REJECTED'
-        course.is_approved = False
-        course.rejection_reason = reason
-        course.save()
-        
-        create_notification(course.teacher, f"Your course '{course.title}' was rejected. Reason: {reason}")
-        
-        from accounts.models import ApprovalLog
-        ApprovalLog.objects.create(
-            content_type='COURSE',
-            object_id=course.id,
-            status='REJECTED',
-            reviewed_by=request.user,
-            comments=reason
-        )
-        
-        messages.warning(request, f"Course '{course.title}' has been rejected.")
-        return redirect('pending_courses')
-        
-    return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
-
-@user_passes_test(is_admin, login_url='admin_login')
-def edit_user_admin(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        fullname = request.POST.get('fullname')
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
-        
-        if not all([username, email, fullname]):
-            messages.error(request, "All fields are required for updating.")
-        elif password and (password != confirm_password):
-            messages.error(request, "Passwords do not match.")
-        elif CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
-            messages.error(request, "This username is already taken.")
-        elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
-            messages.error(request, "The email is already taken.")
-        else:
-            user.username = username
-            user.email = email
-            user.full_name = fullname
-            if password:
-                user.set_password(password)
-            user.save()
-            messages.success(request, f"User {user.username} updated successfully!")
-            return redirect('manage_teachers' if user.user_type == 'TEACHER' else 'manage_students')
-            
-    return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
-
-@user_passes_test(is_admin, login_url='admin_login')
-def toggle_lesson_approval(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
-    lesson.is_approved = not lesson.is_approved
-    msg = "approved" if lesson.is_approved else "rejected"
-    lesson.save()
-    
-    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been {msg}.")
-    
-    from accounts.models import ApprovalLog
-    ApprovalLog.objects.create(
-        content_type='LESSON',
-        object_id=lesson.id,
-        status='APPROVED' if lesson.is_approved else 'REJECTED',
-        reviewed_by=request.user,
-        comments=f"Lesson {msg} by admin."
-    )
-    
-    messages.success(request, f"Lesson '{lesson.title}' has been {msg}.")
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
-
-@user_passes_test(is_admin, login_url='admin_login')
-def toggle_quiz_approval(request, quiz_id):
-    from accounts.models import Quiz
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    quiz.is_approved = not quiz.is_approved
-    quiz.save()
-    msg = "approved" if quiz.is_approved else "rejected"
-    messages.success(request, f"Quiz '{quiz.title}' has been {msg}.")
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
-
-@user_passes_test(is_admin, login_url='admin_login')
-def toggle_assignment_approval(request, assignment_id):
-    from accounts.models import Assignment
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    assignment.is_approved = not assignment.is_approved
-    assignment.save()
-    msg = "approved" if assignment.is_approved else "rejected"
-    messages.success(request, f"Assignment '{assignment.title}' has been {msg}.")
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
-
-@user_passes_test(is_admin, login_url='admin_login')
-def admin_view_submissions(request, assignment_id):
-    from accounts.models import Assignment
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    submissions = assignment.submissions.all().select_related('student')
-    return render(request, 'custom_admin/admin_view_submissions.html', {'assignment': assignment, 'submissions': submissions})
-
-@user_passes_test(is_admin, login_url='admin_login')
-def admin_view_quiz_attempts(request, quiz_id):
-    from accounts.models import Quiz
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    attempts = quiz.attempts.all().select_related('student')
-    return render(request, 'custom_admin/admin_view_quiz_attempts.html', {'quiz': quiz, 'attempts': attempts})
-
-@user_passes_test(is_admin, login_url='admin_login')
-def admin_view_course_content(request, course_id):
-    from accounts.models import Course, Lesson
-    course = get_object_or_404(Course, id=course_id)
-    lessons = course.lessons.all().order_by('order')
-    quizzes = course.quizzes.all()
-    assignments = course.assignments.all()
-    
-    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
-    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
-    
-    return render(request, 'custom_admin/course_content_verify.html', {
-        'course': course,
-        'lessons': lessons,
-        'quizzes': quizzes,
-        'assignments': assignments,
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
-    })
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_course_secure(request, course_id):

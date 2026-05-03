@@ -69,6 +69,18 @@
                     </tbody>
                 </table>
             </div>
+            
+            {% if courses.has_other_pages %}
+            <div class="pagination" style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; align-items: center;">
+                {% if courses.has_previous %}
+                    <a href="?page={{ courses.previous_page_number }}" style="padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.5rem; text-decoration: none; color: #1e293b; font-weight: 600;">← Previous</a>
+                {% endif %}
+                <span style="color: #64748b; font-weight: 600;">Page {{ courses.number }} of {{ courses.paginator.num_pages }}</span>
+                {% if courses.has_next %}
+                    <a href="?page={{ courses.next_page_number }}" style="padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.5rem; text-decoration: none; color: #1e293b; font-weight: 600;">Next →</a>
+                {% endif %}
+            </div>
+            {% endif %}
 
     <!-- Secure Delete Modal -->
     <div id="secureDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">

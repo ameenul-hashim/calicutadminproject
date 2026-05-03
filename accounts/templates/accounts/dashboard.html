@@ -340,7 +340,7 @@
 
             <h2 style="margin-bottom: 2rem; color: #1e293b; font-size: 1.4rem;">Your Enrolled Courses</h2>
             
-            <div class="subject-grid" style="margin-bottom: 4rem;">
+            <div class="subject-grid" style="margin-bottom: 2rem;">
                 {% for course in courses %}
                 <a href="{% url 'course_player' course.id %}" style="text-decoration: none; color: inherit;">
                     <div class="subject-card">
@@ -367,6 +367,18 @@
                 </div>
                 {% endfor %}
             </div>
+
+            {% if courses.has_other_pages %}
+            <div class="pagination" style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 3rem;">
+                {% if courses.has_previous %}
+                    <a href="?page={{ courses.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="view-btn">← Previous</a>
+                {% endif %}
+                <span style="font-weight: 600; color: #64748b;">Page {{ courses.number }} of {{ courses.paginator.num_pages }}</span>
+                {% if courses.has_next %}
+                    <a href="?page={{ courses.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}" class="view-btn">Next →</a>
+                {% endif %}
+            </div>
+            {% endif %}
 
             <h2 style="margin-bottom: 2rem; color: #1e293b; font-size: 1.4rem;">Explore New Courses</h2>
             <div class="subject-grid" style="margin-bottom: 4rem;">

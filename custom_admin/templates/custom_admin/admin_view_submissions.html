@@ -53,6 +53,18 @@
                     {% endfor %}
                 </tbody>
             </table>
+            
+            {% if submissions.has_other_pages %}
+            <div class="pagination" style="margin-top: 1.5rem; display: flex; justify-content: center; gap: 1rem; align-items: center;">
+                {% if submissions.has_previous %}
+                    <a href="?page={{ submissions.previous_page_number }}" style="padding: 0.5rem 1rem; background: #eef2ff; border-radius: 0.5rem; text-decoration: none; color: #6366f1; font-weight: 600;">← Previous</a>
+                {% endif %}
+                <span style="color: #64748b; font-weight: 600;">Page {{ submissions.number }} of {{ submissions.paginator.num_pages }}</span>
+                {% if submissions.has_next %}
+                    <a href="?page={{ submissions.next_page_number }}" style="padding: 0.5rem 1rem; background: #eef2ff; border-radius: 0.5rem; text-decoration: none; color: #6366f1; font-weight: 600;">Next →</a>
+                {% endif %}
+            </div>
+            {% endif %}
         </main>
     </div>
 </body>
