@@ -454,7 +454,7 @@ def logout_view(request):
         return redirect('admin_login')
     
     # If Admin or Teacher is 'logging out' from student view, just send them back to their portal
-    if user_type == 'ADMIN':
+    if user_type == 'ADMIN' or request.user.is_staff:
         messages.info(request, "Returning to Admin Panel.")
         return redirect('admin_dashboard')
     elif user_type == 'TEACHER':

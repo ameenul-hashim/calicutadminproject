@@ -142,7 +142,7 @@
                         <span id="student-arrow">▼</span>
                     </button>
                     <div id="student-drop" class="dropdown-container {% if 'student' in request.path or 'pending_users' in request.path or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">
-                        <a href="{% url 'manage_students' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_students' or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">Dashboard (Details)</a>
+                        <a href="{% url 'manage_students' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_students' or request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}">Student Details</a>
                         <a href="{% url 'pending_users' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_users' %}active{% endif %}">Student Requests</a>
                     </div>
                 </div>
@@ -154,7 +154,7 @@
                         <span id="teacher-arrow">▼</span>
                     </button>
                     <div id="teacher-drop" class="dropdown-container {% if 'teacher' in request.path or 'pending_teachers' in request.path %}active{% endif %}">
-                        <a href="{% url 'manage_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_teachers' %}active{% endif %}">Details</a>
+                        <a href="{% url 'manage_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_teachers' %}active{% endif %}">Teacher Details</a>
                         <a href="{% url 'pending_teachers' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_teachers' %}active{% endif %}">Requests</a>
                     </div>
                 </div>
