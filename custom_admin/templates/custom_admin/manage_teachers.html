@@ -21,17 +21,19 @@
 </style>
 {% endblock %}
 
-{% block content %}
-    <form method="GET" style="margin-bottom: 2rem; display: flex; gap: 1rem; width: 100%;">
+{% block header_actions %}
+    <form method="GET" style="display: flex; gap: 1rem; width: 100%;">
         <div style="flex: 1; position: relative;">
             <input type="text" name="search" value="{{ search_query }}" placeholder="Search teachers by name or email..." 
-                style="width: 100%; padding: 1rem 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 1rem; font-size: 1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;">
+                style="width: 100%; padding: 0.8rem 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;">
         </div>
-        <button type="submit" class="btn-primary" style="padding: 0 2rem; border-radius: 1rem; font-weight: 700; cursor: pointer; border: none; background: #6366f1; color: white;">Search</button>
-        <a href="{% url 'manage_teachers' %}" style="padding: 1rem 2rem; background: #64748b; color: white; text-decoration: none; border-radius: 1rem; font-weight: 700; display: flex; align-items: center;">Refresh</a>
+        <button type="submit" class="btn-primary" style="padding: 0 2rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; border: none; background: #6366f1; color: white;">Search</button>
+        <a href="{% url 'manage_teachers' %}" style="padding: 0.8rem 2rem; background: #64748b; color: white; text-decoration: none; border-radius: 0.75rem; font-weight: 700; display: flex; align-items: center; font-size: 0.9rem;">Refresh</a>
     </form>
+{% endblock %}
 
-            <div class="glass-card" style="border-radius: 1rem; overflow: hidden;">
+{% block content %}
+    <div class="glass-card" style="border-radius: 1rem; overflow: hidden;">
                 <div class="table-scroll">
                 <table style="width: 100%; border-collapse: collapse; text-align: left; min-width: 700px;">
                     <thead>

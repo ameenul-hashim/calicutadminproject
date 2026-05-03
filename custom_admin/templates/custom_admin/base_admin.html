@@ -43,22 +43,30 @@
             margin-left: 260px;
             flex: 1;
             height: 100vh;
-            overflow-y: auto;
+            overflow: hidden; /* Prevent stage scroll */
             background: #e0f7fa;
             position: relative;
-            scroll-behavior: smooth;
-            width: calc(100% - 260px);
             display: flex;
             flex-direction: column;
         }
+        header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 1.5rem 2.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            z-index: 40;
+            flex-shrink: 0; /* Header stays fixed size */
+        }
         .main-content {
-            padding: 2.5rem;
+            flex: 1;
+            overflow-y: auto; /* Only content scrolls */
+            padding: 2rem 2.5rem;
             width: 100%;
             box-sizing: border-box;
-            flex: 1;
             display: flex;
             flex-direction: column;
             gap: 2rem;
+            scroll-behavior: smooth;
         }
 
         /* Mobile Responsive */
@@ -290,72 +298,72 @@
         </aside>
 
         <div class="main-stage">
-            <main class="main-content">
-                <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+            <header>
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <div style="display: flex; align-items: center; gap: 1rem;">
                         <a href="javascript:history.back()" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; color: #64748b; text-decoration: none; font-size: 1.2rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f1f5f9'; this.style.color='#0ea5e9';" onmouseout="this.style.background='white'; this.style.color='#64748b';">←</a>
                         {% block header_title %}<h1>Welcome Admin</h1>{% endblock %}
                     </div>
 
-                <div style="display: flex; align-items: center; gap: 1.5rem;">
-                    <!-- Notification Bell -->
-                    <div class="notification-wrapper" style="position: relative; cursor: pointer;">
-                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
-                            🔔
-                            <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_admin_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_admin_notifs }}</span>
-                        </div>
-                        
-                        <!-- Notification Dropdown -->
-                        <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
-                                <h4 style="margin: 0;">Notifications</h4>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none;">Mark All Read</a>
-                                    <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
-                                </div>
+                    <div style="display: flex; align-items: center; gap: 1.5rem;">
+                        <!-- Notification Bell -->
+                        <div class="notification-wrapper" style="position: relative; cursor: pointer;">
+                            <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
+                                🔔
+                                <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_admin_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_admin_notifs }}</span>
                             </div>
-                            {% for notif in notifications %}
-                                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative;">
-                                    {{ notif.message }}
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
-                                        <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                                        {% if not notif.is_read %}
-                                            <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
-                                        {% endif %}
+                            
+                            <!-- Notification Dropdown -->
+                            <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                                    <h4 style="margin: 0;">Notifications</h4>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none;">Mark All Read</a>
+                                        <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
                                     </div>
                                 </div>
-                            {% empty %}
-                                <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
-                            {% endfor %}
+                                {% for notif in notifications %}
+                                    <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative;">
+                                        {{ notif.message }}
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
+                                            <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
+                                            {% if not notif.is_read %}
+                                                <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
+                                {% endfor %}
+                            </div>
                         </div>
+
+                        <!-- Admin Profile Chip -->
+                        <div style="display: flex; align-items: center; gap: 0.6rem; padding-left: 1.5rem; border-left: 1px solid #e2e8f0;">
+                            <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #6366f1); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                {{ request.user.username|slice:":1"|upper }}
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Admin Profile Chip -->
-                    <div style="display: flex; align-items: center; gap: 0.6rem; padding-left: 1.5rem; border-left: 1px solid #e2e8f0;">
-                        <div style="width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #6366f1); color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                            {{ request.user.username|slice:":1"|upper }}
-                        </div>
-                        <div style="display: none;" class="admin-name-label">
-                            <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b;">{{ request.user.full_name|default:request.user.username }}</div>
-                            <div style="font-size: 0.72rem; color: #64748b;">Administrator</div>
-                        </div>
-                    </div>
-
-                    <!-- Mobile Menu Toggle -->
-                    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')" aria-label="Toggle Menu">☰</button>
+                <!-- Fixed Header Actions (Search/Refresh etc.) -->
+                <div style="margin-top: 1.5rem;">
+                    {% block header_actions %}{% endblock %}
                 </div>
             </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem;">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+            <main class="main-content">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
 
-            {% block content %}{% endblock %}
+                {% block content %}{% endblock %}
+            </main>
             </main>
         </div>
     </div>
