@@ -3,12 +3,7 @@
 {% block title %}Manage Students | Admin{% endblock %}
 
 {% block header_title %}
-    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <h1 style="font-size: 2rem; font-weight: 800; color: #1e293b; margin: 0;">Manage Students</h1>
-        <a href="{% url 'create_student_admin' %}" class="btn-primary" style="padding: 0.75rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);">
-            <span>+</span> New Student
-        </a>
-    </div>
+    <h1 style="font-size: 1.8rem; font-weight: 800; color: #1e293b; margin: 0;">Manage Students</h1>
 {% endblock %}
 
 {% block extra_css %}
@@ -22,14 +17,19 @@
 {% endblock %}
 
 {% block header_actions %}
-    <form method="GET" style="display: flex; gap: 1rem; width: 100%;">
-        <div style="flex: 1; position: relative;">
-            <input type="text" name="search" value="{{ search_query }}" placeholder="Search students by name or email..." 
-                style="width: 100%; padding: 0.8rem 1.5rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s;">
-        </div>
-        <button type="submit" class="btn-primary" style="padding: 0 2rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; border: none; background: #0ea5e9; color: white;">Search</button>
-        <a href="{% url 'manage_students' %}" style="padding: 0.8rem 2rem; background: #64748b; color: white; text-decoration: none; border-radius: 0.75rem; font-weight: 700; display: flex; align-items: center; font-size: 0.9rem;">Refresh</a>
-    </form>
+    <div style="display: flex; gap: 1rem; width: 100%; align-items: center;">
+        <a href="{% url 'create_student_admin' %}" class="btn-primary" style="padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #0ea5e9; color: white; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);">
+            <span>+</span> New Student
+        </a>
+        <form method="GET" style="display: flex; gap: 0.5rem; flex: 1;">
+            <div style="flex: 1;">
+                <input type="text" name="search" value="{{ search_query }}" placeholder="Search students..." 
+                    style="width: 100%; padding: 0.8rem 1.2rem; background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.9rem;">
+            </div>
+            <button type="submit" style="padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; border: none; background: #0ea5e9; color: white; font-size: 0.9rem;">Search</button>
+        </form>
+        <a href="{% url 'manage_students' %}" style="padding: 0.8rem 1.5rem; background: #64748b; color: white; text-decoration: none; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem;">Refresh</a>
+    </div>
 {% endblock %}
 
 {% block content %}
