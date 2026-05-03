@@ -549,6 +549,7 @@ def add_lesson(request, course_id):
             # Upload to Supabase if PDF
             if f.name.endswith('.pdf'):
                 pdf_url = upload_pdf(f)
+                f.seek(0) # IMPORTANT: Seek back to start after reading for Supabase
                 if pdf_url:
                     LessonNote.objects.create(lesson=lesson, file=f, title=f.name, pdf_url=pdf_url)
                 else:
@@ -576,6 +577,7 @@ def edit_lesson(request, lesson_id):
             for f in notes_files:
                 if f.name.endswith('.pdf'):
                     pdf_url = upload_pdf(f)
+                    f.seek(0) # IMPORTANT: Seek back to start after reading for Supabase
                     if pdf_url:
                         LessonNote.objects.create(lesson=lesson, file=f, title=f.name, pdf_url=pdf_url)
                     else:
