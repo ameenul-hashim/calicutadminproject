@@ -42,9 +42,19 @@
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 4rem;">
         <div>
             <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Bill To:</h3>
-            <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ student.full_name|default:student.username }}</h4>
-            <p style="margin: 0.5rem 0 0 0; color: #64748b;">{{ student.email }}</p>
-            <p style="margin: 0.2rem 0 0 0; color: #64748b;">Student ID: #STU-{{ student.id|stringformat:"05d" }}</p>
+            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                {% if student.profile_photo %}
+                    <img src="{{ student.profile_photo.url }}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+                {% else %}
+                    <div style="width: 70px; height: 70px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #94a3b8; border: 2px solid #e2e8f0;">👤</div>
+                {% endif %}
+                <div>
+                    <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ student.full_name|default:student.username }}</h4>
+                    <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.95rem;">{{ student.email }}</p>
+                    <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Student ID: #STU-{{ student.id|stringformat:"05d" }}</p>
+                    <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Joined: {{ student.date_joined|date:"M d, Y" }}</p>
+                </div>
+            </div>
         </div>
         <div style="text-align: right;">
             <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Summary:</h3>
