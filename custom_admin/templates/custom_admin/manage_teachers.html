@@ -68,6 +68,7 @@
                                     <a href="{% url 'toggle_user_status' u.id %}" class="view-btn" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: #f1f5f9; color: #475569;">
                                         {% if u.status == 'ACTIVE' %}Block{% else %}Activate{% endif %}
                                     </a>
+                                    <a href="{% url 'delete_user_admin' u.id %}" class="view-btn" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: #fee2e2; color: #ef4444; border: none;">Delete</a>
                                 </div>
                             </td>
                         </tr>

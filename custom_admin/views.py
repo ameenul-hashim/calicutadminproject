@@ -743,6 +743,32 @@ def admin_delete_course_secure(request, course_id):
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
+@user_passes_test(is_admin, login_url='admin_login')
+def delete_user_admin(request, user_id):
+    target_user = get_object_or_404(CustomUser, id=user_id)
+    
+    if request.method == 'POST':
+        username = request.POST.get('admin_username')
+        password = request.POST.get('admin_password')
+        
+        # Verify admin credentials
+        user = authenticate(request, username=username, password=password)
+        if user is not None and user == request.user and user.is_staff:
+            user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
+            target_user.delete()
+            messages.success(request, f"User '{user_info}' has been permanently deleted.")
+            
+            # Redirect back to appropriate list
+            if target_user.user_type == 'TEACHER':
+                return redirect('manage_teachers')
+            return redirect('manage_students')
+        else:
+            messages.error(request, "Authentication failed. Incorrect admin credentials.")
+            
+    return render(request, 'custom_admin/delete_user_confirm.html', {
+        'target_user': target_user
+    })
+
 def admin_logout(request):
     logout(request)
     messages.success(request, "Admin logged out successfully!")
