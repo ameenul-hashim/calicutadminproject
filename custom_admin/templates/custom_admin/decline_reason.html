@@ -10,15 +10,23 @@
 <body style="background: #f8fafc; display: flex; align-items: center; justify-content: center; min-height: 100vh;">
     <div class="glass-card" style="width: 100%; max-width: 500px; background: white; padding: 2rem;">
         <h2 style="color: #ef4444; margin-bottom: 1rem;">
-            {% if is_course %}Reject Course{% else %}Decline {{ target_user.user_type|title }}{% endif %}
+            {% if is_content %}
+                Reject {{ content_type }}
+            {% elif is_course %}
+                Reject Course
+            {% else %}
+                Decline {{ target_user.user_type|title }}
+            {% endif %}
         </h2>
         <p style="color: #64748b; margin-bottom: 2rem;">
-            {% if is_course %}
+            {% if is_content %}
+                Please provide a reason for rejecting the {{ content_type|lower }} "{{ lesson.title }}{{ quiz.title }}{{ assignment.title }}".
+            {% elif is_course %}
                 Please provide a reason for rejecting the course "{{ course.title }}".
             {% else %}
                 Please provide a reason for declining {{ target_user.full_name|default:target_user.username }}.
             {% endif %}
-            This will be recorded and potentially shown to the user.
+            This will be recorded and sent to the teacher.
         </p>
 
         <form method="POST">
@@ -29,7 +37,7 @@
             </div>
             
             <div style="display: flex; gap: 1rem; justify-content: flex-end;">
-                <a href="{% if is_course %}{% url 'pending_courses' %}{% elif target_user.user_type == 'TEACHER' %}{% url 'pending_teachers' %}{% else %}{% url 'pending_users' %}{% endif %}" class="btn" style="background: #f1f5f9; color: #64748b; text-decoration: none;">Cancel</a>
+                <a href="{% if is_content %}{% url 'admin_view_course_content' lesson.course.id|default:quiz.course.id|default:assignment.course.id %}{% elif is_course %}{% url 'pending_courses' %}{% elif target_user.user_type == 'TEACHER' %}{% url 'pending_teachers' %}{% else %}{% url 'pending_users' %}{% endif %}" class="btn" style="background: #f1f5f9; color: #64748b; text-decoration: none;">Cancel</a>
                 <button type="submit" class="btn" style="background: #ef4444; color: white; border: none; cursor: pointer;">Submit Rejection</button>
             </div>
         </form>

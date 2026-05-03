@@ -48,4 +48,6 @@ urlpatterns = [
     path('deletion-requests/<int:request_id>/verify/', views.verify_deletion_request, name='verify_deletion_request'),
     path('deletion-requests/<int:request_id>/approve/', views.approve_deletion_request, name='approve_deletion_request'),
     path('deletion-requests/<int:request_id>/reject/', views.reject_deletion_request, name='reject_deletion_request'),
+    path('quizzes/<int:quiz_id>/delete/', views.delete_quiz, name='delete_quiz'),
+    path('assignments/<int:assignment_id>/delete/', views.delete_assignment, name='delete_assignment'),
 ]
