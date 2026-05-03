@@ -84,6 +84,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'elearning_project.wsgi.application'
 
 
+# SSL/Proxy Configuration for Render
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+
 # Database - Environment Variable based (Supabase)
 DATABASES = {
     'default': dj_database_url.parse(

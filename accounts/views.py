@@ -289,14 +289,14 @@ def teacher_login_view(request):
     return render(request, 'accounts/teacher_login.html')
 
 from accounts.models import Course, Lesson, Enrollment
-
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def dashboard_view(request):
     # Check for access
-    if request.user.user_type not in ['STUDENT', 'TEACHER']:
+    is_unlocked = request.session.get('student_view_unlocked')
+    if request.user.user_type not in ['STUDENT', 'TEACHER'] and not is_unlocked:
         messages.error(request, "Please use the appropriate portal.")
         return redirect('admin_dashboard') if request.user.is_staff else redirect('login')
 
