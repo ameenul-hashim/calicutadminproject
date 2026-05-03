@@ -647,7 +647,14 @@ def logout_view(request):
         
     user_type = request.user.user_type
     
-    # Always perform a real logout
+    # Check if teacher is logging out from student view area
+    # If they are in student dashboard/player, 'logout' acts as 'Back to Teacher Panel'
+    referer = request.META.get('HTTP_REFERER', '')
+    if user_type == 'TEACHER' and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer):
+        messages.info(request, "Exited student view. Welcome back to Teacher Dashboard.")
+        return redirect('teacher_dashboard')
+
+    # Always perform a real logout for other cases
     logout(request)
     
     # Redirect to the appropriate login page based on user type
