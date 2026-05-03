@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission, Notification, ChatMessage, PasswordResetOTP
 from django.contrib.auth.decorators import user_passes_test, login_required
+from django.views.decorators.cache import cache_control
 import re
 from accounts.utils.supabase_storage import upload_pdf
 import random
@@ -156,7 +157,14 @@ def teacher_signup_view(request):
 
     return render(request, 'accounts/teacher_signup.html')
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def login_view(request):
+    if request.user.is_authenticated:
+        if request.user.user_type == 'STUDENT':
+            return redirect('dashboard')
+        elif request.user.user_type == 'TEACHER':
+            return redirect('teacher_dashboard')
+
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -199,7 +207,11 @@ def login_view(request):
             
     return render(request, 'accounts/login.html')
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_login_view(request):
+    if request.user.is_authenticated and request.user.user_type == 'TEACHER':
+        return redirect('teacher_dashboard')
+        
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
@@ -221,9 +233,9 @@ def teacher_login_view(request):
 
 from accounts.models import Course, Lesson, Enrollment
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@login_required
 def dashboard_view(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     
     # Check for access: Allow Students and Teachers (for preview)
     if request.user.user_type not in ['STUDENT', 'TEACHER']:
@@ -260,6 +272,7 @@ def dashboard_view(request):
     }
     return render(request, 'accounts/dashboard.html', context)
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_dashboard(request):
     courses = Course.objects.filter(teacher=request.user)
@@ -276,6 +289,7 @@ def teacher_dashboard(request):
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type in ['STUDENT', 'TEACHER'], login_url='login')
 def student_explore(request):
     # Enrolled course IDs to exclude
@@ -293,12 +307,14 @@ def student_explore(request):
         'search_query': search_query
     })
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def explore_courses(request):
     # Other teachers' courses for viewing
     other_courses = Course.objects.exclude(teacher=request.user).filter(is_approved=True).select_related('teacher').prefetch_related('lessons')
     return render(request, 'teacher_portal/explore_courses.html', {'other_courses': other_courses})
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def view_other_course(request, course_id):
     # This is for viewing OTHER teachers' courses
@@ -309,6 +325,7 @@ def view_other_course(request, course_id):
         'lessons': lessons
     })
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
     courses = Course.objects.filter(teacher=request.user)

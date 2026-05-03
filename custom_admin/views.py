@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from accounts.models import CustomUser
 from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.cache import cache_control
 from django.db.models import Q
 import re
 from accounts.models import Notification, Enrollment
@@ -11,7 +12,11 @@ from accounts.utils.supabase_storage import upload_pdf
 def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
+    if request.user.is_authenticated and request.user.is_staff:
+        return redirect('admin_dashboard')
+        
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
