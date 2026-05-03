@@ -40,7 +40,7 @@
         .sidebar::-webkit-scrollbar { display: none; }
 
         .main-stage { 
-            margin-left: 260px; /* Offset for fixed sidebar */
+            margin-left: 260px;
             flex: 1;
             height: 100vh;
             overflow-y: auto;
@@ -48,13 +48,17 @@
             position: relative;
             scroll-behavior: smooth;
             width: calc(100% - 260px);
+            display: flex;
+            flex-direction: column;
         }
         .main-content {
-            padding: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
+            padding: 2.5rem;
             width: 100%;
             box-sizing: border-box;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
         }
 
         /* Mobile Responsive */
