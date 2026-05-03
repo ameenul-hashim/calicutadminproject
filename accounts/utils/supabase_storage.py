@@ -5,11 +5,15 @@ import uuid
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
-
-
 def upload_pdf(file):
     try:
+        if not SUPABASE_URL or not SUPABASE_KEY:
+            print("❌ Supabase credentials not found in environment variables.")
+            return None
+
+        # Initialize client inside the function to prevent startup crashes
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
         print("📁 FILE RECEIVED IN UPLOAD FUNCTION:", file)
 
         if not file:
