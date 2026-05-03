@@ -24,6 +24,8 @@ def pending_counts(request):
         
         # Unread admin notifications
         context['unread_admin_notifs'] = Notification.objects.filter(user=request.user, is_read=False).count()
+        if request.session.get('student_view_unlocked'):
+            context['unread_student_notifs'] = context['unread_admin_notifs']
 
     elif request.user.user_type == 'TEACHER':
         # Teacher might want to see rejected courses or pending approvals

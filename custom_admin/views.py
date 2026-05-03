@@ -20,7 +20,7 @@ def admin_student_view_auth(request):
         # Check if password is correct for current admin user
         user = authenticate(username=request.user.username, password=password)
         if user is not None:
-            request.session['admin_student_view_authenticated'] = True
+            request.session['student_view_unlocked'] = True
             request.session.modified = True
             return redirect('admin_student_view')
         else:
@@ -30,7 +30,7 @@ def admin_student_view_auth(request):
 @user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_student_view(request):
-    if not request.session.get('admin_student_view_authenticated'):
+    if not request.session.get('student_view_unlocked'):
         return redirect('admin_student_view_auth')
     
     from accounts.models import Course, Enrollment, Notification
@@ -56,8 +56,8 @@ def admin_student_view(request):
 
 @user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
 def admin_student_logout(request):
-    if 'admin_student_view_authenticated' in request.session:
-        del request.session['admin_student_view_authenticated']
+    if 'student_view_unlocked' in request.session:
+        del request.session['student_view_unlocked']
     return redirect('admin_dashboard')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
