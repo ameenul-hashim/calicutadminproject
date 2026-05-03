@@ -38,9 +38,13 @@
                                 {{ course.teacher.full_name|default:course.teacher.username }}
                             </td>
                             <td style="padding: 1rem;">
-                                {% if course.is_approved %}
+                                {% if course.status == 'PUBLISHED' or course.is_approved %}
                                     <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #dcfce7; color: #15803d;">
                                         Approved
+                                    </span>
+                                {% elif course.status == 'REJECTED' %}
+                                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fee2e2; color: #b91c1c;">
+                                        Rejected
                                     </span>
                                 {% else %}
                                     <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fef9c3; color: #854d0e;">

@@ -731,6 +731,7 @@ def admin_delete_course_secure(request, course_id):
             course_title = course.title
             course.delete()
             messages.success(request, f"Course '{course_title}' has been successfully deleted.")
+            return redirect('admin_content')
         else:
             messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
             
