@@ -237,6 +237,15 @@
     </style>
 </head>
 <body>
+    {% if is_admin_preview %}
+    <div style="background: #1e293b; color: white; padding: 0.75rem 2rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 2000; font-size: 0.9rem;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <span style="background: #ef4444; padding: 0.2rem 0.6rem; border-radius: 0.4rem; font-weight: 700; font-size: 0.75rem;">ADMIN PREVIEW</span>
+            <span>You are viewing the dashboard as it appears to students.</span>
+        </div>
+        <a href="{% url 'admin_student_logout' %}" style="color: white; text-decoration: none; font-weight: 600; background: rgba(255,255,255,0.1); padding: 0.4rem 1rem; border-radius: 0.5rem; transition: all 0.2s;">Exit Preview</a>
+    </div>
+    {% endif %}
     <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
         ☰
     </button>
@@ -257,7 +266,11 @@
             </ul>
 
             <div style="padding-top: 2rem; border-top: 1px solid #f1f5f9;">
-                <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
+                {% if is_admin_preview %}
+                    <a href="{% url 'admin_student_logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Exit Preview</a>
+                {% else %}
+                    <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
+                {% endif %}
             </div>
         </aside>
 

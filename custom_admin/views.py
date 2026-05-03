@@ -12,6 +12,54 @@ from accounts.utils.supabase_storage import upload_pdf
 def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
 
+@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def admin_student_view_auth(request):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        # Check if password is correct for current admin user
+        user = authenticate(username=request.user.username, password=password)
+        if user is not None:
+            request.session['admin_student_view_authenticated'] = True
+            request.session.modified = True
+            return redirect('admin_student_view')
+        else:
+            messages.error(request, "Invalid admin password. Access denied.")
+    return render(request, 'custom_admin/admin_student_view_auth.html')
+
+@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def admin_student_view(request):
+    if not request.session.get('admin_student_view_authenticated'):
+        return redirect('admin_student_view_auth')
+    
+    from accounts.models import Course, Enrollment, Notification
+    from django.db.models import Count, Sum
+    
+    # Adapt dashboard logic for admin preview
+    courses = Course.objects.all().annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category')[:12]
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).only('id', 'title', 'thumbnail', 'category').select_related('teacher')[:10]
+    
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:5]
+    unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()
+
+    context = {
+        'courses': courses,
+        'explore_courses': explore_courses,
+        'total_lessons': courses.aggregate(total=Sum('lesson_count'))['total'] or 0,
+        'notifications': notifications,
+        'unread_student_notifs': unread_notifications_count,
+        'is_admin_preview': True,
+        'user': request.user # Ensure correct user is passed
+    }
+    return render(request, 'accounts/dashboard.html', context)
+
+@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
+def admin_student_logout(request):
+    if 'admin_student_view_authenticated' in request.session:
+        del request.session['admin_student_view_authenticated']
+    return redirect('admin_dashboard')
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
     if request.user.is_authenticated and request.user.is_staff:
