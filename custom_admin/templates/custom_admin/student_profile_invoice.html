@@ -44,9 +44,9 @@
             <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Bill To:</h3>
             <div style="display: flex; align-items: center; gap: 1.5rem;">
                 {% if student.profile_photo %}
-                    <img src="{{ student.profile_photo.url }}" style="width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid #e2e8f0;">
+                    <img src="{{ student.profile_photo.url }}" style="width: 100px; height: 130px; border-radius: 0.5rem; object-fit: cover; border: 2px solid #e2e8f0;">
                 {% else %}
-                    <div style="width: 70px; height: 70px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #94a3b8; border: 2px solid #e2e8f0;">👤</div>
+                    <div style="width: 100px; height: 130px; border-radius: 0.5rem; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #94a3b8; border: 2px solid #e2e8f0;">👤</div>
                 {% endif %}
                 <div>
                     <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ student.full_name|default:student.username }}</h4>
