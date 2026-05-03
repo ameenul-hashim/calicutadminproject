@@ -15,4 +15,7 @@ typing-extensions==4.12.2
 
 # Stable Supabase stack
 supabase==1.2.0
-pydantic==1.10.13
+pydantic==2.13.3
+pydantic-core==2.46.3
+annotated-types==0.7.0
+typing-inspection==0.4.2
