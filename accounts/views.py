@@ -11,6 +11,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
+from django.db.models import Count, Sum
 
 def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
@@ -327,7 +328,7 @@ def dashboard_view(request):
         'page_obj': page_obj,
         'explore_courses': explore_courses,
         'search_query': search_query,
-        'total_lessons': sum(c.lesson_count for c in courses),
+        'total_lessons': courses.aggregate(total=Sum('lesson_count'))['total'] or 0,
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count,
     }
@@ -374,8 +375,15 @@ def student_explore(request):
     if search_query:
         explore_courses = explore_courses.filter(title__icontains=search_query)
         
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(explore_courses, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     return render(request, 'accounts/explore_courses.html', {
-        'explore_courses': explore_courses,
+        'explore_courses': page_obj,
+        'page_obj': page_obj,
         'search_query': search_query
     })
 
@@ -383,8 +391,18 @@ def student_explore(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def explore_courses(request):
     # Other teachers' courses for viewing
-    other_courses = Course.objects.exclude(teacher=request.user).filter(is_approved=True).select_related('teacher').prefetch_related('lessons')
-    return render(request, 'teacher_portal/explore_courses.html', {'other_courses': other_courses})
+    other_courses_qs = Course.objects.exclude(teacher=request.user).filter(is_approved=True).select_related('teacher').prefetch_related('lessons').order_by('-created_at')
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(other_courses_qs, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'teacher_portal/explore_courses.html', {
+        'other_courses': page_obj,
+        'page_obj': page_obj
+    })
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')

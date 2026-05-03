@@ -4,7 +4,7 @@ from django.contrib import messages
 from accounts.models import CustomUser
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
-from django.db.models import Q
+from django.db.models import Q, Count
 import re
 from accounts.models import Notification, Enrollment
 from accounts.utils.supabase_storage import upload_pdf
