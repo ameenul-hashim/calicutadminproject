@@ -99,6 +99,25 @@
                     </span>
                 </div>
                 <p style="color: #64748b; font-size: 0.9rem;">Timer: {{ quiz.timer_minutes }} mins • {{ quiz.questions.count }} Questions</p>
+                
+                <details style="margin-top: 1rem;">
+                    <summary style="font-size: 0.85rem; font-weight: 700; color: #4f46e5; cursor: pointer; outline: none; display: flex; align-items: center; gap: 0.25rem;">
+                        <span>👁️</span> View Quiz Questions
+                    </summary>
+                    <div style="margin-top: 1rem; border-top: 1px dashed #e2e8f0; padding-top: 1rem; max-height: 300px; overflow-y: auto;">
+                        {% for q in quiz.questions.all %}
+                        <div style="margin-bottom: 1.5rem; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #f1f5f9;">
+                            <p style="margin: 0 0 0.5rem 0; font-weight: 600; font-size: 0.85rem; color: #1e293b;">Q{{ forloop.counter }}: {{ q.text }}</p>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                                <div style="font-size: 0.75rem; color: #64748b; padding: 0.3rem; border-radius: 0.25rem; {% if q.correct_option == '1' %}background: #dcfce7; color: #15803d; font-weight: 700;{% else %}background: white;{% endif %}">1. {{ q.option1 }}</div>
+                                <div style="font-size: 0.75rem; color: #64748b; padding: 0.3rem; border-radius: 0.25rem; {% if q.correct_option == '2' %}background: #dcfce7; color: #15803d; font-weight: 700;{% else %}background: white;{% endif %}">2. {{ q.option2 }}</div>
+                                <div style="font-size: 0.75rem; color: #64748b; padding: 0.3rem; border-radius: 0.25rem; {% if q.correct_option == '3' %}background: #dcfce7; color: #15803d; font-weight: 700;{% else %}background: white;{% endif %}">3. {{ q.option3 }}</div>
+                                <div style="font-size: 0.75rem; color: #64748b; padding: 0.3rem; border-radius: 0.25rem; {% if q.correct_option == '4' %}background: #dcfce7; color: #15803d; font-weight: 700;{% else %}background: white;{% endif %}">4. {{ q.option4 }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </details>
             </div>
             <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.5rem;">
                 <div style="display: flex; gap: 0.75rem;">
@@ -134,9 +153,15 @@
                         {{ assignment.status }}
                     </span>
                 </div>
-                <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">{{ assignment.description|truncatewords:20 }}</p>
+                
+                <div style="background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; margin-bottom: 1rem; max-height: 150px; overflow-y: auto; border: 1px solid #f1f5f9;">
+                    <p style="color: #475569; font-size: 0.85rem; margin: 0; white-space: pre-line;">{{ assignment.description }}</p>
+                </div>
+
                 {% if assignment.file %}
-                    <a href="{{ assignment.file.url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.85rem; font-weight: 600;">📎 View Attachment</a>
+                    <a href="{{ assignment.file.url }}" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #fffbeb; color: #92400e; text-decoration: none; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; border: 1px solid #fef3c7;">
+                        <span>📎</span> View Assignment File
+                    </a>
                 {% endif %}
             </div>
             <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.5rem;">
