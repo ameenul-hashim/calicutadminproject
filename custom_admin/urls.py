@@ -3,7 +3,7 @@ from . import views
 from django.shortcuts import redirect
 
 urlpatterns = [
-    path('login/', views.admin_login_view, name='admin_login'),
+    path('portal-secure-access/', views.admin_login_view, name='admin_login'),
     path('logout/', views.admin_logout, name='admin_logout'),
     path('dashboard/', views.admin_dashboard, name='admin_dashboard'),
     path('students/', views.manage_students, name='manage_students'),

@@ -60,7 +60,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'accounts.middleware.PreventBackCacheMiddleware',
+    'accounts.middleware.PortalSecurityMiddleware',
 ]
 
 ROOT_URLCONF = 'elearning_project.urls'
@@ -183,4 +183,13 @@ X_FRAME_OPTIONS = 'SAMEORIGIN'
 # Email Configuration
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'support@edustream.com'
+
+# Performance Caching
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
 

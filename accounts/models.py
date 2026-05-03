@@ -12,8 +12,8 @@ class CustomUser(AbstractUser):
         ('ACTIVE', 'Active'),
         ('BLOCKED', 'Blocked'),
     )
-    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='STUDENT')
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE')
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='STUDENT', db_index=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE', db_index=True)
     full_name = models.CharField(max_length=255, blank=True)
     profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
     proof_pdf = models.URLField(max_length=1000, blank=True, null=True)
@@ -34,6 +34,7 @@ class Course(models.Model):
     )
     LEVEL_CHOICES = (
         ('BEGINNER', 'Beginner'),
+        ('INTERMEDIATE', 'Intermediate'),
         ('ADVANCED', 'Advanced'),
     )
     teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='courses')
@@ -44,8 +45,8 @@ class Course(models.Model):
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='BEGINNER')
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     intro_video = models.FileField(upload_to='course_intro/', null=True, blank=True)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
-    is_approved = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT', db_index=True)
+    is_approved = models.BooleanField(default=False, db_index=True)
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_courses')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -61,7 +62,8 @@ class Lesson(models.Model):
     notes = models.FileField(upload_to='lessons/notes/', null=True, blank=True)
     pdf_url = models.URLField(max_length=1000, null=True, blank=True, help_text="Supabase PDF URL")
     order = models.PositiveIntegerField(default=1)
-    is_approved = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
+    is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -151,7 +153,7 @@ class Report(models.Model):
 class Notification(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='notifications')
     message = models.TextField()
-    is_read = models.BooleanField(default=False)
+    is_read = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

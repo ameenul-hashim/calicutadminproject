@@ -300,62 +300,73 @@ from accounts.models import Course, Lesson
 
 @user_passes_test(is_admin, login_url='admin_login')
 def analytics_view(request):
-    # Stats Cards
-    total_students = CustomUser.objects.filter(user_type='STUDENT').count()
-    total_teachers = CustomUser.objects.filter(user_type='TEACHER').count()
-    total_courses = Course.objects.count()
-    total_lessons = Lesson.objects.count()
-
-    # Month-wise Data (Simple aggregation for Chart.js)
-    def get_monthly_data(queryset, date_field='created_at'):
-        data = [0] * 12
-        counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=models.Count('id'))
-        for entry in counts:
-            if entry['month']:
-                data[entry['month']-1] = entry['count']
-        return data
-
-    student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'), 'date_joined')
-    teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'), 'date_joined')
-    course_data = get_monthly_data(Course.objects.all())
-
-    # Approval Stats
-    approval_stats = {
-        'approved': Course.objects.filter(status='PUBLISHED').count(),
-        'rejected': Course.objects.filter(status='REJECTED').count(),
-        'pending': Course.objects.filter(status='PENDING').count(),
-    }
+    from django.core.cache import cache
     
-    # Teacher Performance (Top Uploaders)
-    from django.db.models import Count
-    top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
-    teacher_performance_labels = [t.username for t in top_teachers]
-    teacher_performance_data = [t.num_courses for t in top_teachers]
+    # Try to get cached stats
+    cache_key = 'admin_analytics_stats'
+    context = cache.get(cache_key)
     
-    # Course Enrollments
-    top_courses = Course.objects.annotate(enrollment_count=Count('enrollments')).select_related('teacher').order_by('-enrollment_count')[:5]
+    if not context:
+        # Stats Cards
+        total_students = CustomUser.objects.filter(user_type='STUDENT').count()
+        total_teachers = CustomUser.objects.filter(user_type='TEACHER').count()
+        total_courses = Course.objects.count()
+        total_lessons = Lesson.objects.count()
 
-    pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
-    pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
+        # Month-wise Data
+        def get_monthly_data(queryset, date_field='created_at'):
+            data = [0] * 12
+            counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=models.Count('id'))
+            for entry in counts:
+                if entry['month']:
+                    data[entry['month']-1] = entry['count']
+            return data
 
-    context = {
-        'total_students': total_students,
-        'total_teachers': total_teachers,
-        'total_courses': total_courses,
-        'total_lessons': total_lessons,
-        'student_data': student_data,
-        'teacher_data': teacher_data,
-        'course_data': course_data,
-        'approval_stats': approval_stats,
-        'teacher_perf_labels': teacher_performance_labels,
-        'teacher_perf_data': teacher_performance_data,
-        'top_courses': top_courses,
-        'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
-        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
-        'pending_students_count': pending_students_count,
-        'pending_teachers_count': pending_teachers_count,
-    }
+        student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'), 'date_joined')
+        teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'), 'date_joined')
+        course_data = get_monthly_data(Course.objects.all())
+
+        # Approval Stats
+        approval_stats = {
+            'approved': Course.objects.filter(status='PUBLISHED').count(),
+            'rejected': Course.objects.filter(status='REJECTED').count(),
+            'pending': Course.objects.filter(status='PENDING').count(),
+        }
+        
+        # Teacher Performance
+        top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
+        teacher_performance_labels = [t.username for t in top_teachers]
+        teacher_performance_data = [t.num_courses for t in top_teachers]
+        
+        # Course Enrollments
+        top_courses = Course.objects.annotate(enrollment_count=Count('enrollments')).select_related('teacher').order_by('-enrollment_count')[:5]
+
+        pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
+        pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
+
+        context = {
+            'total_students': total_students,
+            'total_teachers': total_teachers,
+            'total_courses': total_courses,
+            'total_lessons': total_lessons,
+            'student_data': student_data,
+            'teacher_data': teacher_data,
+            'course_data': course_data,
+            'approval_stats': approval_stats,
+            'teacher_perf_labels': teacher_performance_labels,
+            'teacher_perf_data': teacher_performance_data,
+            'top_courses': top_courses,
+            'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+            'pending_students_count': pending_students_count,
+            'pending_teachers_count': pending_teachers_count,
+        }
+        # Cache for 5 minutes
+        cache.set(cache_key, context, 300)
+
+    # These shouldn't be cached as they are user-specific/time-sensitive
+    context['notifications'] = Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10]
+    context['unread_notifications_count'] = Notification.objects.filter(user=request.user, is_read=False).count()
+    
     return render(request, 'custom_admin/analytics.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')

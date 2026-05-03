@@ -244,12 +244,12 @@ def dashboard_view(request):
         return redirect('admin_dashboard') if request.user.is_staff else redirect('login')
 
     if request.user.user_type == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons'))
+        courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'status', 'category')
     else:
-        courses = Course.objects.filter(enrollments__user=request.user).annotate(lesson_count=Count('lessons'))
+        courses = Course.objects.filter(enrollments__user=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category')
     
-    enrolled_ids = courses.values_list('id', flat=True)
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price')[:10]
+    enrolled_ids = list(courses.values_list('id', flat=True))
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price', 'category').select_related('teacher')[:10]
     
     search_query = request.GET.get('search', '')
     if search_query:
@@ -272,16 +272,19 @@ def dashboard_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_dashboard(request):
-    courses = Course.objects.filter(teacher=request.user).only('id', 'title', 'status', 'created_at')
+    courses = Course.objects.filter(teacher=request.user).only('id', 'title', 'status', 'created_at', 'thumbnail')
     total_students = Enrollment.objects.filter(course__teacher=request.user).count()
+    
+    # Efficient aggregation
+    recent_courses = courses.order_by('-created_at')[:5]
     
     context = {
         'total_courses': courses.count(),
         'published_courses': courses.filter(status='PUBLISHED').count(),
         'pending_courses': courses.filter(status='PENDING').count(),
         'total_students': total_students,
-        'recent_courses': courses.order_by('-created_at')[:5],
-        'notifications': Notification.objects.filter(user=request.user, is_read=False).only('id', 'message')[:10],
+        'recent_courses': recent_courses,
+        'notifications': Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
@@ -385,10 +388,14 @@ def edit_course(request, course_id):
         if request.FILES.get('thumbnail'):
             course.thumbnail = request.FILES.get('thumbnail')
         
-        # If it was rejected, we might want to keep it in rejected state until they click submit?
-        # Or automatically move to draft? Let's keep it as is, but inform them they need to submit.
+        # If it was rejected or published, editing it should ideally keep it in draft/pending review
+        # For now, let's clear the rejection reason if they edit it
+        if course.status == 'REJECTED':
+            course.status = 'DRAFT'
+            course.rejection_reason = ""
+            
         course.save()
-        messages.success(request, "Course updated successfully!")
+        messages.success(request, f"Course '{course.title}' updated successfully!")
         return redirect('my_courses')
     
     return render(request, 'teacher_portal/edit_course.html', {'course': course})
@@ -508,14 +515,16 @@ def delete_lesson(request, lesson_id):
 def submit_course_approval(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     if course.lessons.exists():
-        is_resubmission = course.rejection_reason not in [None, '']
+        is_resubmission = course.rejection_reason not in [None, ''] or course.status == 'REJECTED'
+        old_status = course.status
+        
         course.status = 'PENDING'
-        # Keep old rejection reason so admin can see it during review
         course.save()
+        
         if is_resubmission:
             messages.success(request, f"Course '{course.title}' re-submitted for admin approval.")
             notify_admins(f"🔁 RE-SUBMISSION: Teacher {request.user.username} re-submitted course '{course.title}' for approval after rejection.")
-        elif course.status == 'PUBLISHED' or course.is_approved:
+        elif old_status == 'PUBLISHED' or course.is_approved:
             messages.success(request, f"New content for '{course.title}' submitted for admin review.")
             notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added new content to course '{course.title}' for review.")
         else:
@@ -530,32 +539,20 @@ def logout_view(request):
         return redirect('login')
         
     user_type = request.user.user_type
-    referer = request.META.get('HTTP_REFERER', '')
     
-    # If Teacher is logging out from their OWN portal, do a real logout
-    if user_type == 'TEACHER' and '/teacher/' in referer:
-        logout(request)
+    # Always perform a real logout
+    logout(request)
+    
+    # Redirect to the appropriate login page based on user type
+    if user_type == 'TEACHER':
         messages.success(request, "Teacher logged out successfully.")
         return redirect('teacher_login')
-        
-    # If Admin is logging out from their OWN portal (though they have admin_logout, let's be safe)
-    if user_type == 'ADMIN' and '/customadmin/' in referer:
-        logout(request)
+    elif user_type == 'ADMIN' or getattr(request.user, 'is_staff', False):
         messages.success(request, "Admin logged out successfully.")
         return redirect('admin_login')
-    
-    # If Admin or Teacher is 'logging out' from student view, just send them back to their portal
-    if user_type == 'ADMIN' or request.user.is_staff:
-        messages.info(request, "Returning to Admin Panel.")
-        return redirect('admin_dashboard')
-    elif user_type == 'TEACHER':
-        messages.info(request, "Returning to Teacher Dashboard.")
-        return redirect('teacher_dashboard')
-        
-    # Real logout for students
-    logout(request)
-    messages.success(request, "You have been logged out successfully. Have a great day!")
-    return redirect('login')
+    else:
+        messages.success(request, "You have been logged out successfully. Have a great day!")
+        return redirect('login')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
 def enroll_course(request, course_id):
@@ -684,10 +681,12 @@ def grade_submission(request, submission_id):
         messages.success(request, f"Graded {submission.student.username}'s submission: {grade}")
     return redirect('view_submissions', assignment_id=submission.assignment.id)
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def profile_view(request):
     return render(request, 'accounts/profile.html', {'user': request.user})
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def edit_profile(request):
     if request.method == 'POST':
@@ -857,6 +856,7 @@ def mark_all_notifications_read(request):
     Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def all_notifications(request):
     from django.shortcuts import render
@@ -887,8 +887,8 @@ def get_unread_counts(request):
 
 def forgot_password(request):
     if request.method == 'POST':
-        email = request.POST.get('email')
-        user = CustomUser.objects.filter(email=email).first()
+        identifier = request.POST.get('identifier') # Can be username or email
+        user = CustomUser.objects.filter(Q(email=identifier) | Q(username=identifier)).first()
         
         if user:
             # Generate 6-digit OTP
@@ -903,8 +903,8 @@ def forgot_password(request):
             
             try:
                 send_mail(subject, message, email_from, recipient_list)
-                messages.success(request, "OTP has been sent to your email.")
-                request.session['reset_email'] = email
+                messages.success(request, f"OTP has been sent to your registered email: {user.email}")
+                request.session['reset_email'] = user.email
                 return redirect('verify_otp')
             except Exception as e:
                 messages.error(request, "Error sending email. Please try again later.")
