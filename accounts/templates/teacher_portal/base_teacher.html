@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --sidebar-width: {% if request.resolver_match.url_name == 'teacher_dashboard' %}0px{% else %}280px{% endif %};
+            --sidebar-width: {% if request.resolver_match.url_name in 'teacher_dashboard,course_lessons,my_courses,create_course,edit_course,teacher_analytics' %}0px{% else %}280px{% endif %};
             --teacher-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
         }
         body { font-family: 'Inter', sans-serif; background: #e0f7fa; margin: 0; }
@@ -22,7 +22,7 @@
             padding: 2rem 1.5rem;
             position: fixed;
             height: 100vh;
-            display: flex;
+            display: {% if request.resolver_match.url_name in 'teacher_dashboard,course_lessons,my_courses,create_course,edit_course,teacher_analytics' %}none{% else %}flex{% endif %};
             flex-direction: column;
             z-index: 100;
         }
@@ -62,7 +62,7 @@
     </button>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        {% if request.resolver_match.url_name != 'teacher_dashboard' %}
+        {% if request.resolver_match.url_name not in 'teacher_dashboard,course_lessons,my_courses,create_course,edit_course,teacher_analytics' %}
         <aside class="sidebar">
             <div class="logo-area">EduStream <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
             
