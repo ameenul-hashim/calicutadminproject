@@ -365,11 +365,26 @@
 
             <main class="main-content">
                 {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem;">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
+                    <div id="alert-container">
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem; transition: opacity 0.5s ease-out;">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <script>
+                        // Auto-dismiss messages after 5 seconds
+                        setTimeout(function() {
+                            const alerts = document.querySelectorAll('#alert-container .alert');
+                            alerts.forEach(function(alert) {
+                                alert.style.opacity = '0'; // Fade out
+                                setTimeout(() => {
+                                    alert.style.display = 'none'; // Remove from flow
+                                }, 500); // Wait for fade transition
+                            });
+                        }, 5000); // 5000 milliseconds = 5 seconds
+                    </script>
                 {% endif %}
 
                 {% block content %}{% endblock %}
