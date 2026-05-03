@@ -435,8 +435,11 @@ def submit_course_approval(request, course_id):
     return redirect('my_courses')
 
 def logout_view(request):
+    user_type = getattr(request.user, 'user_type', None)
     logout(request)
     messages.success(request, "You have been logged out successfully. Have a great day!")
+    if user_type == 'TEACHER':
+        return redirect('teacher_login')
     return redirect('login')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
@@ -856,6 +859,8 @@ def reset_password(request):
                 del request.session['reset_email']
                 
                 messages.success(request, "Password reset successful! Please login with your new password.")
+                if user.user_type == 'TEACHER':
+                    return redirect('teacher_login')
                 return redirect('login')
                 
     return render(request, 'accounts/reset_password.html')
