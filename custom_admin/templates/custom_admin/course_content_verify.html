@@ -8,8 +8,24 @@
 {% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 2rem; display: flex; justify-content: flex-start; align-items: center;">
-    <a href="{% url 'admin_content' %}" class="view-btn" style="text-decoration: none; color: #64748b; font-weight: 600;">&larr; Back to Courses</a>
+<div style="margin-bottom: 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+    <div style="display: flex; justify-content: flex-start; align-items: center;">
+        <a href="{% url 'admin_content' %}" class="view-btn" style="text-decoration: none; color: #64748b; font-weight: 600;">&larr; Back to Courses</a>
+    </div>
+
+    <!-- Course Overview Card -->
+    <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.5rem; display: flex; align-items: center; gap: 2rem;">
+        {% if course.thumbnail %}
+            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="width: 180px; height: 120px; border-radius: 0.75rem; object-fit: cover; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+        {% else %}
+            <div style="width: 180px; height: 120px; background: #f1f5f9; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.9rem;">No Thumbnail</div>
+        {% endif %}
+        <div>
+            <span style="display: inline-block; padding: 0.25rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase;">{{ course.category }}</span>
+            <h2 style="margin: 0; color: #1e293b; font-size: 1.5rem;">{{ course.title }}</h2>
+            <p style="margin: 0.5rem 0 0 0; color: #64748b; font-size: 0.95rem;">Created by <span style="font-weight: 600; color: #4f46e5;">{{ course.teacher.full_name|default:course.teacher.username }}</span> • {{ lessons.count }} Lessons</p>
+        </div>
+    </div>
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
