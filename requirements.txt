@@ -10,12 +10,10 @@ Pillow==10.4.0
 psycopg2-binary==2.9.9
 requests==2.32.3
 sqlparse==0.5.1
-
-# Stable Supabase stack
-supabase==1.0.3
-postgrest==0.10.6
-gotrue==1.0.3
-pydantic==1.10.13
-
 whitenoise==6.7.0
 typing-extensions==4.12.2
+
+# This version of Supabase is the "Goldilocks" version 
+# It works with Pydantic v1 (No Rust needed!)
+supabase==1.2.0
+pydantic==1.10.13
