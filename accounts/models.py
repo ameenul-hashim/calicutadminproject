@@ -64,6 +64,7 @@ class Lesson(models.Model):
     order = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
+    rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -84,6 +85,7 @@ class Assignment(models.Model):
     file = models.FileField(upload_to='assignments/', null=True, blank=True)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False)
+    rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Submission(models.Model):
@@ -99,6 +101,7 @@ class Quiz(models.Model):
     timer_minutes = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False)
+    rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 class Question(models.Model):

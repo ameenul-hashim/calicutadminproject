@@ -568,12 +568,16 @@ def approve_lesson(request, lesson_id):
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
-    lesson.status = 'REJECTED'
-    lesson.is_approved = False
-    lesson.save()
-    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been rejected.")
-    messages.warning(request, f"Lesson '{lesson.title}' rejected.")
-    return redirect('admin_view_course_content', course_id=lesson.course.id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        lesson.status = 'REJECTED'
+        lesson.is_approved = False
+        lesson.rejection_reason = reason
+        lesson.save()
+        create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been rejected. Reason: {reason}")
+        messages.warning(request, f"Lesson '{lesson.title}' rejected.")
+        return redirect('admin_view_course_content', course_id=lesson.course.id)
+    return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_quiz(request, quiz_id):
@@ -589,11 +593,25 @@ def approve_quiz(request, quiz_id):
 def reject_quiz(request, quiz_id):
     from accounts.models import Quiz
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    quiz.status = 'REJECTED'
-    quiz.is_approved = False
-    quiz.save()
-    messages.warning(request, f"Quiz '{quiz.title}' rejected.")
-    return redirect('admin_view_course_content', course_id=quiz.course.id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        quiz.status = 'REJECTED'
+        quiz.is_approved = False
+        quiz.rejection_reason = reason
+        quiz.save()
+        create_notification(quiz.course.teacher, f"Your quiz '{quiz.title}' in course '{quiz.course.title}' has been rejected. Reason: {reason}")
+        messages.warning(request, f"Quiz '{quiz.title}' rejected.")
+        return redirect('admin_view_course_content', course_id=quiz.course.id)
+    return render(request, 'custom_admin/decline_reason.html', {'quiz': quiz, 'is_content': True, 'content_type': 'Quiz'})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def delete_quiz(request, quiz_id):
+    from accounts.models import Quiz
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    course_id = quiz.course.id
+    quiz.delete()
+    messages.error(request, "Quiz permanently deleted.")
+    return redirect('admin_view_course_content', course_id=course_id)
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_assignment(request, assignment_id):
@@ -609,11 +627,25 @@ def approve_assignment(request, assignment_id):
 def reject_assignment(request, assignment_id):
     from accounts.models import Assignment
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    assignment.status = 'REJECTED'
-    assignment.is_approved = False
-    assignment.save()
-    messages.warning(request, f"Assignment '{assignment.title}' rejected.")
-    return redirect('admin_view_course_content', course_id=assignment.course.id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        assignment.status = 'REJECTED'
+        assignment.is_approved = False
+        assignment.rejection_reason = reason
+        assignment.save()
+        create_notification(assignment.course.teacher, f"Your assignment '{assignment.title}' in course '{assignment.course.title}' has been rejected. Reason: {reason}")
+        messages.warning(request, f"Assignment '{assignment.title}' rejected.")
+        return redirect('admin_view_course_content', course_id=assignment.course.id)
+    return render(request, 'custom_admin/decline_reason.html', {'assignment': assignment, 'is_content': True, 'content_type': 'Assignment'})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def delete_assignment(request, assignment_id):
+    from accounts.models import Assignment
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    course_id = assignment.course.id
+    assignment.delete()
+    messages.error(request, "Assignment permanently deleted.")
+    return redirect('admin_view_course_content', course_id=course_id)
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_submissions(request, assignment_id):
