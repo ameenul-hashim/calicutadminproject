@@ -4,9 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EduStream Teacher Dashboard - Manage your courses, track student progress, and view analytics.">
+    <meta name="theme-color" content="#ffffff">
     <title>Teacher Dashboard | EduStream</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
         :root {
             --sidebar-width: 280px;
@@ -135,7 +140,7 @@
             <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
                 <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ user.profile_photo.url }}" alt="Profile Photo" width="70" height="70" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
                         <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
                     {% endif %}
