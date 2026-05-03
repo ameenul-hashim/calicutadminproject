@@ -294,6 +294,8 @@ def create_student_admin(request):
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
+        elif proof_file.size > 200 * 1024:
+            messages.error(request, "The student proof must be below 200KB.")
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
@@ -336,6 +338,8 @@ def create_teacher_admin(request):
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
+        elif proof_file.size > 200 * 1024:
+            messages.error(request, "The teacher proof must be below 200KB.")
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)

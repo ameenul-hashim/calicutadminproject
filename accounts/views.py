@@ -41,10 +41,10 @@ def signup_view(request):
             messages.error(request, "Only PDF files are accepted for student proof.")
             return render(request, 'accounts/signup.html')
 
-        # Check file size constraint (between 100kb and 200kb)
+        # Check file size constraint (max 200kb)
         file_size_kb = proof_file.size / 1024
-        if not (100 <= file_size_kb <= 200):
-            messages.error(request, "The uploaded proof must be between 100KB and 200KB. If it is larger, please compress it under 150KB.")
+        if file_size_kb > 200:
+            messages.error(request, "The uploaded proof must be below 200KB. Please compress the file and try again.")
             return render(request, 'accounts/signup.html')
 
         # Upload PDF to Supabase
@@ -112,10 +112,10 @@ def teacher_signup_view(request):
             messages.error(request, "Only PDF files are accepted for teacher proof.")
             return render(request, 'accounts/teacher_signup.html')
 
-        # Check file size constraint (between 100kb and 200kb)
+        # Check file size constraint (max 200kb)
         file_size_kb = proof_file.size / 1024
-        if not (100 <= file_size_kb <= 200):
-            messages.error(request, "The uploaded proof must be between 100KB and 200KB. If it is larger, please compress it under 150KB.")
+        if file_size_kb > 200:
+            messages.error(request, "The uploaded proof must be below 200KB. Please compress the file and try again.")
             return render(request, 'accounts/teacher_signup.html')
 
         # Upload PDF to Supabase
