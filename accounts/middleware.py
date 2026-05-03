@@ -6,9 +6,8 @@ class PreventBackCacheMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        # Add headers to prevent caching for all responses
-        # Cache-Control: no-cache, no-store, must-revalidate, max-age=0
-        add_never_cache_headers(response)
-        response['Pragma'] = 'no-cache'
-        response['Expires'] = '0'
+        # Add strict headers to prevent caching for all responses
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response["Pragma"] = "no-cache"
+        response["Expires"] = "Sat, 01 Jan 2000 00:00:00 GMT"
         return response
