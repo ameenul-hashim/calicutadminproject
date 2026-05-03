@@ -165,6 +165,8 @@ def login_view(request):
             return redirect('dashboard')
         elif request.user.user_type == 'TEACHER':
             return redirect('teacher_dashboard')
+        elif request.user.user_type == 'ADMIN':
+            return redirect('admin_dashboard')
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -177,12 +179,10 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            if user.user_type != 'STUDENT':
-                messages.error(request, "This login is for students only. Teachers please use the Teacher Login page.")
-            elif user.status == 'ACTIVE':
+            if user.status == 'ACTIVE' or user.user_type == 'ADMIN':
                 # Concurrent login restriction for students
                 from django.contrib.sessions.models import Session
-                if user.current_session_key:
+                if user.user_type == 'STUDENT' and user.current_session_key:
                     try:
                         old_session = Session.objects.get(session_key=user.current_session_key)
                         old_session.delete()
@@ -197,8 +197,15 @@ def login_view(request):
                 user.current_session_key = request.session.session_key
                 user.save()
                 
-                messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
-                return redirect('dashboard')
+                if user.user_type == 'ADMIN':
+                    messages.success(request, f"Welcome, Admin {user.full_name}!")
+                    return redirect('admin_dashboard')
+                elif user.user_type == 'TEACHER':
+                    messages.success(request, f"Welcome back, {user.full_name}! Teacher portal loaded.")
+                    return redirect('teacher_dashboard')
+                else:
+                    messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
+                    return redirect('dashboard')
             elif user.status == 'PENDING':
                 messages.error(request, "Your student account is pending approval.")
             elif user.status == 'BLOCKED':
