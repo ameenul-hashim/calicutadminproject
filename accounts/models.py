@@ -82,6 +82,7 @@ class Assignment(models.Model):
     description = models.TextField()
     deadline = models.DateTimeField()
     file = models.FileField(upload_to='assignments/', null=True, blank=True)
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -96,6 +97,7 @@ class Quiz(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quizzes')
     title = models.CharField(max_length=255)
     timer_minutes = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 

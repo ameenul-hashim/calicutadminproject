@@ -556,56 +556,64 @@ def edit_user_admin(request, user_id):
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
-def toggle_lesson_approval(request, lesson_id):
+def approve_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id)
-    if lesson.is_approved:
-        lesson.is_approved = False
-        msg = "rejected"
-    else:
-        lesson.is_approved = True
-        msg = "approved"
+    lesson.status = 'APPROVED'
+    lesson.is_approved = True
     lesson.save()
-    
-    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been {msg}.")
-    
-    if msg == "approved":
-        # Notify enrolled students
-        enrollments = Enrollment.objects.filter(course=lesson.course)
-        teacher_name = lesson.course.teacher.full_name or lesson.course.teacher.username
-        for e in enrollments:
-            create_notification(e.user, f"{teacher_name} added content {lesson.title}")
-    
-    from accounts.models import ApprovalLog
-    ApprovalLog.objects.create(
-        content_type='LESSON',
-        object_id=lesson.id,
-        status='APPROVED' if lesson.is_approved else 'REJECTED',
-        reviewed_by=request.user,
-        comments=f"Lesson {msg} by admin."
-    )
-    
-    messages.success(request, f"Lesson '{lesson.title}' content has been {msg}.")
-    return redirect('admin_content')
+    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
+    messages.success(request, f"Lesson '{lesson.title}' approved.")
+    return redirect('admin_view_course_content', course_id=lesson.course.id)
 
 @user_passes_test(is_admin, login_url='admin_login')
-def toggle_quiz_approval(request, quiz_id):
+def reject_lesson(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+    lesson.status = 'REJECTED'
+    lesson.is_approved = False
+    lesson.save()
+    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been rejected.")
+    messages.warning(request, f"Lesson '{lesson.title}' rejected.")
+    return redirect('admin_view_course_content', course_id=lesson.course.id)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def approve_quiz(request, quiz_id):
     from accounts.models import Quiz
     quiz = get_object_or_404(Quiz, id=quiz_id)
-    quiz.is_approved = not quiz.is_approved
+    quiz.status = 'APPROVED'
+    quiz.is_approved = True
     quiz.save()
-    msg = "approved" if quiz.is_approved else "rejected"
-    messages.success(request, f"Quiz '{quiz.title}' has been {msg}.")
-    return redirect('admin_content')
+    messages.success(request, f"Quiz '{quiz.title}' approved.")
+    return redirect('admin_view_course_content', course_id=quiz.course.id)
 
 @user_passes_test(is_admin, login_url='admin_login')
-def toggle_assignment_approval(request, assignment_id):
+def reject_quiz(request, quiz_id):
+    from accounts.models import Quiz
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    quiz.status = 'REJECTED'
+    quiz.is_approved = False
+    quiz.save()
+    messages.warning(request, f"Quiz '{quiz.title}' rejected.")
+    return redirect('admin_view_course_content', course_id=quiz.course.id)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def approve_assignment(request, assignment_id):
     from accounts.models import Assignment
     assignment = get_object_or_404(Assignment, id=assignment_id)
-    assignment.is_approved = not assignment.is_approved
+    assignment.status = 'APPROVED'
+    assignment.is_approved = True
     assignment.save()
-    msg = "approved" if assignment.is_approved else "rejected"
-    messages.success(request, f"Assignment '{assignment.title}' has been {msg}.")
-    return redirect('admin_content')
+    messages.success(request, f"Assignment '{assignment.title}' approved.")
+    return redirect('admin_view_course_content', course_id=assignment.course.id)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def reject_assignment(request, assignment_id):
+    from accounts.models import Assignment
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    assignment.status = 'REJECTED'
+    assignment.is_approved = False
+    assignment.save()
+    messages.warning(request, f"Assignment '{assignment.title}' rejected.")
+    return redirect('admin_view_course_content', course_id=assignment.course.id)
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_submissions(request, assignment_id):

@@ -4,7 +4,7 @@
 
 {% block header_title %}
     <h1>Verify Course Content</h1>
-    <p style="color: #64748b;">Review lessons, videos, and notes for "{{ course.title }}".</p>
+    <p style="color: #64748b;">Review lessons, quizzes, and assignments for "{{ course.title }}".</p>
 {% endblock %}
 
 {% block content %}
@@ -23,7 +23,7 @@
         <div>
             <span style="display: inline-block; padding: 0.25rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase;">{{ course.category }}</span>
             <h2 style="margin: 0; color: #1e293b; font-size: 1.5rem;">{{ course.title }}</h2>
-            <p style="margin: 0.5rem 0 1rem 0; color: #64748b; font-size: 0.95rem;">Created by <span style="font-weight: 600; color: #4f46e5;">{{ course.teacher.full_name|default:course.teacher.username }}</span> • {{ lessons.count }} Lessons</p>
+            <p style="margin: 0.5rem 0 1rem 0; color: #64748b; font-size: 0.95rem;">Created by <span style="font-weight: 600; color: #4f46e5;">{{ course.teacher.full_name|default:course.teacher.username }}</span></p>
             <button onclick="openDeleteModal('{{ course.id }}', '{{ course.title|escapejs }}')" style="background: #ef4444; color: white; padding: 0.6rem 1.2rem; border-radius: 0.6rem; border: none; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
                 <span>🗑️</span> Delete Course Permanently
             </button>
@@ -31,29 +31,142 @@
     </div>
 </div>
 
-<!-- Secure Delete Modal -->
+<div style="margin-bottom: 3rem;">
+    <h2 style="margin-bottom: 1.5rem; color: #1e293b; border-left: 4px solid #3b82f6; padding-left: 1rem;">Lessons</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        {% for lesson in lessons %}
+        <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="padding: 1.5rem; flex-grow: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ lesson.title }}</h3>
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-weight: 700; background: {% if lesson.status == 'APPROVED' %}#dcfce7; color: #15803d;{% elif lesson.status == 'REJECTED' %}#fee2e2; color: #b91c1c;{% else %}#fef3c7; color: #b45309;{% endif %}">
+                        {{ lesson.status }}
+                    </span>
+                </div>
+                
+                {% if lesson.video_file %}
+                <div style="margin-bottom: 1rem;">
+                    <video controls style="width: 100%; border-radius: 0.5rem; background: black;">
+                        <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                    </video>
+                </div>
+                {% elif lesson.video_url %}
+                <div style="margin-bottom: 1rem; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+                    <a href="{{ lesson.video_url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📺</span> Watch External Video &nearr;
+                    </a>
+                </div>
+                {% endif %}
+
+                {% if lesson.notes %}
+                <div style="margin-bottom: 1rem;">
+                    <a href="{{ lesson.notes.url }}" target="_blank" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: #f0f9ff; color: #0369a1; text-decoration: none; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; border: 1px solid #bae6fd;">
+                        <span>📄</span> View PDF Notes
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 0.75rem;">
+                <form action="{% url 'approve_lesson' lesson.id %}" method="post" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" style="width: 100%; background: #10b981; color: white; border: none; padding: 0.6rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">Approve</button>
+                </form>
+                <form action="{% url 'reject_lesson' lesson.id %}" method="post" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" style="width: 100%; background: #ef4444; color: white; border: none; padding: 0.6rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">Reject</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <p style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0;">No lessons found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div style="margin-bottom: 3rem;">
+    <h2 style="margin-bottom: 1.5rem; color: #1e293b; border-left: 4px solid #8b5cf6; padding-left: 1rem;">Quizzes</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        {% for quiz in quizzes %}
+        <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="padding: 1.5rem; flex-grow: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ quiz.title }}</h3>
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-weight: 700; background: {% if quiz.status == 'APPROVED' %}#dcfce7; color: #15803d;{% elif quiz.status == 'REJECTED' %}#fee2e2; color: #b91c1c;{% else %}#fef3c7; color: #b45309;{% endif %}">
+                        {{ quiz.status }}
+                    </span>
+                </div>
+                <p style="color: #64748b; font-size: 0.9rem;">Timer: {{ quiz.timer_minutes }} mins • {{ quiz.questions.count }} Questions</p>
+            </div>
+            <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 0.75rem;">
+                <form action="{% url 'approve_quiz' quiz.id %}" method="post" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" style="width: 100%; background: #10b981; color: white; border: none; padding: 0.6rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer;">Approve</button>
+                </form>
+                <form action="{% url 'reject_quiz' quiz.id %}" method="post" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" style="width: 100%; background: #ef4444; color: white; border: none; padding: 0.6rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer;">Reject</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <p style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0;">No quizzes found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div style="margin-bottom: 3rem;">
+    <h2 style="margin-bottom: 1.5rem; color: #1e293b; border-left: 4px solid #f59e0b; padding-left: 1rem;">Assignments</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem;">
+        {% for assignment in assignments %}
+        <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <div style="padding: 1.5rem; flex-grow: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ assignment.title }}</h3>
+                    <span style="font-size: 0.7rem; padding: 0.2rem 0.5rem; border-radius: 0.25rem; font-weight: 700; background: {% if assignment.status == 'APPROVED' %}#dcfce7; color: #15803d;{% elif assignment.status == 'REJECTED' %}#fee2e2; color: #b91c1c;{% else %}#fef3c7; color: #b45309;{% endif %}">
+                        {{ assignment.status }}
+                    </span>
+                </div>
+                <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 1rem;">{{ assignment.description|truncatewords:20 }}</p>
+                {% if assignment.file %}
+                    <a href="{{ assignment.file.url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.85rem; font-weight: 600;">📎 View Attachment</a>
+                {% endif %}
+            </div>
+            <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 0.75rem;">
+                <form action="{% url 'approve_assignment' assignment.id %}" method="post" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" style="width: 100%; background: #10b981; color: white; border: none; padding: 0.6rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer;">Approve</button>
+                </form>
+                <form action="{% url 'reject_assignment' assignment.id %}" method="post" style="flex: 1;">
+                    {% csrf_token %}
+                    <button type="submit" style="width: 100%; background: #ef4444; color: white; border: none; padding: 0.6rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer;">Reject</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <p style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 2rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0;">No assignments found.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Secure Delete Modal (Keep as is) -->
 <div id="secureDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
     <div style="background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
             <h3 style="margin: 0; font-size: 1.25rem; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">⚠️ Secure Course Deletion</h3>
             <button onclick="closeDeleteModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
         </div>
-        
-        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">
-            You are about to permanently delete <strong id="deleteCourseName" style="color: #1e293b;"></strong>. This action cannot be undone. To proceed, please verify your admin credentials.
-        </p>
-        
+        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">You are about to permanently delete <strong id="deleteCourseName" style="color: #1e293b;"></strong>. This action cannot be undone.</p>
         <form id="secureDeleteForm" method="POST" action="">
             {% csrf_token %}
             <div class="form-group" style="margin-bottom: 1rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Username</label>
-                <input type="text" name="admin_username" required autocomplete="new-username" style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none; font-size: 0.95rem;">
+                <input type="text" name="admin_username" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
             </div>
             <div class="form-group" style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
-                <input type="password" name="admin_password" required autocomplete="new-password" style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none; font-size: 0.95rem;">
+                <input type="password" name="admin_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
             </div>
-            
             <div style="display: flex; gap: 1rem;">
                 <button type="button" onclick="closeDeleteModal()" style="flex: 1; padding: 0.8rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
                 <button type="submit" style="flex: 1; padding: 0.8rem; border: none; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Delete Course</button>
@@ -72,76 +185,5 @@
         document.getElementById('secureDeleteModal').style.display = 'none';
     }
 </script>
-
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-    {% for lesson in lessons %}
-    <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column;">
-        <div style="padding: 1.5rem; flex-grow: 1;">
-            <h3 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 1.2rem; color: #1e293b;">{{ lesson.title }}</h3>
-            
-            {% if lesson.video_file %}
-            <div style="margin-top: 1rem; margin-bottom: 1rem;">
-                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Video File:</p>
-                <video controls style="width: 100%; border-radius: 0.5rem;">
-                    <source src="{{ lesson.video_file.url }}" type="video/mp4">
-                    Your browser does not support the video tag.
-                </video>
-            </div>
-            {% endif %}
-
-            {% if lesson.video_url %}
-            <div style="margin-top: 1rem; margin-bottom: 1rem;">
-                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Video URL:</p>
-                <a href="{{ lesson.video_url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.9rem;">Watch External Video &nearr;</a>
-            </div>
-            {% endif %}
-
-            {% if lesson.notes %}
-            <div style="margin-top: 1rem; margin-bottom: 1rem;">
-                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Notes:</p>
-                <a href="{{ lesson.notes.url }}" target="_blank" class="view-btn" style="display: inline-block; padding: 0.4rem 0.8rem; background: #eef2ff; color: #4f46e5; text-decoration: none; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600;">View PDF</a>
-            </div>
-            {% endif %}
-            
-            {% if lesson.multiple_notes.all %}
-            <div style="margin-top: 1rem; margin-bottom: 1rem;">
-                <p style="font-weight: 600; font-size: 0.9rem; color: #475569; margin-bottom: 0.5rem;">Additional Notes:</p>
-                <ul style="list-style: none; padding: 0; margin: 0;">
-                    {% for note in lesson.multiple_notes.all %}
-                    <li style="margin-bottom: 0.5rem;">
-                        <a href="{{ note.file.url }}" target="_blank" style="color: #3b82f6; text-decoration: none; font-size: 0.85rem;">{{ note.title|default:"Attachment" }} &nearr;</a>
-                    </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-        </div>
-        
-        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
-            <div style="display: flex; flex-direction: column;">
-                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.025em; color: #94a3b8; font-weight: 700;">Status</span>
-                <span style="font-size: 0.85rem; font-weight: 700; color: {% if lesson.is_approved %}#10b981{% else %}#f59e0b{% endif %};">
-                    {% if lesson.is_approved %}APPROVED{% else %}PENDING{% endif %}
-                </span>
-            </div>
-            
-            <div style="display: flex; gap: 0.5rem;">
-                <form action="{% url 'toggle_lesson_approval' lesson.id %}" method="post" style="margin: 0;">
-                    {% csrf_token %}
-                    {% if not lesson.is_approved %}
-                        <button type="submit" class="view-btn" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">Approve</button>
-                    {% else %}
-                        <button type="submit" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">Reject/Revoke</button>
-                    {% endif %}
-                </form>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: white; border-radius: 1rem; border: 1px dashed #cbd5e1;">
-        <p style="color: #64748b; margin: 0;">No lessons have been added to this course yet.</p>
-    </div>
-    {% endfor %}
-</div>
 
 {% endblock %}

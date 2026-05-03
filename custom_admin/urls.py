@@ -13,7 +13,19 @@ urlpatterns = [
     path('pending/courses/', views.pending_courses_view, name='pending_courses'),
     path('course/approve/<int:course_id>/', views.approve_course, name='approve_course'),
     path('course/reject/<int:course_id>/', views.reject_course, name='reject_course'),
-    path('lesson/toggle/<int:lesson_id>/', views.toggle_lesson_approval, name='toggle_lesson_approval'),
+    
+    # Lesson actions
+    path('lesson/approve/<int:lesson_id>/', views.approve_lesson, name='approve_lesson'),
+    path('lesson/reject/<int:lesson_id>/', views.reject_lesson, name='reject_lesson'),
+    
+    # Quiz actions
+    path('quiz/approve/<int:quiz_id>/', views.approve_quiz, name='approve_quiz'),
+    path('quiz/reject/<int:quiz_id>/', views.reject_quiz, name='reject_quiz'),
+    
+    # Assignment actions
+    path('assignment/approve/<int:assignment_id>/', views.approve_assignment, name='approve_assignment'),
+    path('assignment/reject/<int:assignment_id>/', views.reject_assignment, name='reject_assignment'),
+
     path('user/accept/<int:user_id>/', views.accept_user, name='accept_user'),
     path('user/decline/<int:user_id>/', views.decline_user, name='decline_user'),
     path('user/toggle/<int:user_id>/', views.toggle_user_status, name='toggle_user_status'),
@@ -29,8 +41,6 @@ urlpatterns = [
     path('analytics/', views.analytics_view, name='admin_analytics'),
     path('content/', views.content_management_view, name='admin_content'),
     path('course/delete/secure/<int:course_id>/', views.admin_delete_course_secure, name='admin_delete_course_secure'),
-    path('quiz/toggle/<int:quiz_id>/', views.toggle_quiz_approval, name='toggle_quiz_approval'),
-    path('assignment/toggle/<int:assignment_id>/', views.toggle_assignment_approval, name='toggle_assignment_approval'),
     path('assignment/<int:assignment_id>/submissions/', views.admin_view_submissions, name='admin_view_submissions'),
     path('quiz/<int:quiz_id>/attempts/', views.admin_view_quiz_attempts, name='admin_view_quiz_attempts'),
     path('course/<int:course_id>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
