@@ -164,9 +164,9 @@ def login_view(request):
         if request.user.user_type == 'STUDENT':
             return redirect('dashboard')
         elif request.user.user_type == 'TEACHER':
-            return redirect('teacher_dashboard')
+            return redirect('teacher_login')
         elif request.user.user_type == 'ADMIN':
-            return redirect('admin_dashboard')
+            return redirect('admin_login')
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -179,10 +179,14 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
-            if user.status == 'ACTIVE' or user.user_type == 'ADMIN':
+            if user.user_type != 'STUDENT':
+                messages.error(request, "This login is for students only. Teachers and Admins please use their respective login pages.")
+                return render(request, 'accounts/login.html')
+
+            if user.status == 'ACTIVE':
                 # Concurrent login restriction for students
                 from django.contrib.sessions.models import Session
-                if user.user_type == 'STUDENT' and user.current_session_key:
+                if user.current_session_key:
                     try:
                         old_session = Session.objects.get(session_key=user.current_session_key)
                         old_session.delete()
@@ -197,15 +201,8 @@ def login_view(request):
                 user.current_session_key = request.session.session_key
                 user.save()
                 
-                if user.user_type == 'ADMIN':
-                    messages.success(request, f"Welcome, Admin {user.full_name}!")
-                    return redirect('admin_dashboard')
-                elif user.user_type == 'TEACHER':
-                    messages.success(request, f"Welcome back, {user.full_name}! Teacher portal loaded.")
-                    return redirect('teacher_dashboard')
-                else:
-                    messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
-                    return redirect('dashboard')
+                messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
+                return redirect('dashboard')
             elif user.status == 'PENDING':
                 messages.error(request, "Your student account is pending approval.")
             elif user.status == 'BLOCKED':
@@ -273,8 +270,13 @@ def teacher_view_auth(request):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_login_view(request):
-    if request.user.is_authenticated and request.user.user_type == 'TEACHER':
-        return redirect('teacher_dashboard')
+    if request.user.is_authenticated:
+        if request.user.user_type == 'TEACHER':
+            return redirect('teacher_dashboard')
+        elif request.user.user_type == 'STUDENT':
+            return redirect('login')
+        elif request.user.user_type == 'ADMIN':
+            return redirect('admin_login')
         
     if request.method == 'POST':
         username = request.POST.get('username')
