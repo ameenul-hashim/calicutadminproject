@@ -56,18 +56,24 @@
             {% endif %}
         </div>
         
-        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.85rem; font-weight: 600; color: {% if lesson.is_approved %}#10b981{% else %}#f59e0b{% endif %};">
-                {% if lesson.is_approved %}Approved{% else %}Pending{% endif %}
-            </span>
-            <form action="{% url 'toggle_lesson_approval' lesson.id %}" method="post" style="margin: 0;">
-                {% csrf_token %}
-                {% if lesson.is_approved %}
-                    <button type="submit" class="view-btn" style="background: #fee2e2; color: #ef4444; border: none; padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Revoke</button>
-                {% else %}
-                    <button type="submit" class="view-btn" style="background: #dcfce7; color: #10b981; border: none; padding: 0.4rem 0.8rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Approve</button>
-                {% endif %}
-            </form>
+        <div style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; gap: 0.5rem;">
+            <div style="display: flex; flex-direction: column;">
+                <span style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.025em; color: #94a3b8; font-weight: 700;">Status</span>
+                <span style="font-size: 0.85rem; font-weight: 700; color: {% if lesson.is_approved %}#10b981{% else %}#f59e0b{% endif %};">
+                    {% if lesson.is_approved %}APPROVED{% else %}PENDING{% endif %}
+                </span>
+            </div>
+            
+            <div style="display: flex; gap: 0.5rem;">
+                <form action="{% url 'toggle_lesson_approval' lesson.id %}" method="post" style="margin: 0;">
+                    {% csrf_token %}
+                    {% if not lesson.is_approved %}
+                        <button type="submit" class="view-btn" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">Approve</button>
+                    {% else %}
+                        <button type="submit" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">Reject/Revoke</button>
+                    {% endif %}
+                </form>
+            </div>
         </div>
     </div>
     {% empty %}
