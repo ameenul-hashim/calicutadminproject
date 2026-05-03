@@ -197,7 +197,10 @@
         <main class="main-content">
             <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
                 <div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="javascript:history.back()" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; color: #64748b; text-decoration: none; font-size: 1.2rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f1f5f9'; this.style.color='#0ea5e9';" onmouseout="this.style.background='white'; this.style.color='#64748b';">←</a>
                     {% block header_title %}<h1>Welcome Admin</h1>{% endblock %}
+                </div>
                 </div>
 
                 <div style="display: flex; align-items: center; gap: 2rem;">
