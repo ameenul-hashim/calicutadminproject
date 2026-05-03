@@ -25,6 +25,8 @@
             height: 100vh;
             display: flex;
             flex-direction: column;
+            z-index: 1000;
+            transition: transform 0.3s ease;
         }
         .logo-area { font-size: 1.5rem; font-weight: 800; color: #0ea5e9; margin-bottom: 3rem; display: flex; align-items: center; gap: 0.5rem; }
         .nav-list { list-style: none; padding: 0; flex: 1; }
@@ -48,7 +50,50 @@
             flex: 1;
             margin-left: var(--sidebar-width);
             padding: 2rem 3rem;
+            transition: all 0.3s ease;
         }
+
+        /* Mobile Responsive Adjustments */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 1.5rem;
+            }
+            .top-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1.5rem;
+            }
+            .search-wrapper {
+                width: 100% !important;
+            }
+            .mobile-toggle {
+                display: flex !important;
+                position: fixed;
+                bottom: 2rem;
+                right: 2rem;
+                background: #0ea5e9;
+                color: white;
+                width: 3.5rem;
+                height: 3.5rem;
+                border-radius: 50%;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+                z-index: 1001;
+                cursor: pointer;
+                border: none;
+                font-size: 1.5rem;
+            }
+        }
+        .mobile-toggle { display: none; }
+
         .top-header {
             display: flex;
             justify-content: space-between;
@@ -339,6 +384,9 @@
                 {% endfor %}
             </div>
 
+            <!-- Mobile Toggle Button -->
+            <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+
             </div>
         </main>
     </div>
@@ -348,6 +396,13 @@
     function toggleSidebar() {
         document.querySelector('.sidebar').classList.toggle('active');
     }
+
+    // Close sidebar when clicking main content on mobile
+    document.querySelector('.main-content').addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+            document.querySelector('.sidebar').classList.remove('active');
+        }
+    });
     </script>
 </body>
 </html>
