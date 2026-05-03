@@ -315,6 +315,7 @@ def dashboard_view(request):
     notifications = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')[:5]
     unread_notifications_count = request.user.notifications.filter(is_read=False).count()
 
+    # Build initial context
     context = {
         'courses': courses,
         'explore_courses': explore_courses,
@@ -323,6 +324,11 @@ def dashboard_view(request):
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count,
     }
+    # Update context to use paginated courses
+    context.update({
+        'courses': page_obj,
+        'page_obj': page_obj,
+    })
     return render(request, 'accounts/dashboard.html', context)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -334,13 +340,21 @@ def teacher_dashboard(request):
     # Efficient aggregation
     recent_courses = courses.order_by('-created_at')[:5]
     
+    # Pagination for courses
+    from django.core.paginator import Paginator
+    paginator = Paginator(courses, 20)  # 20 courses per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
     context = {
         'total_courses': courses.count(),
         'published_courses': courses.filter(status='PUBLISHED').count(),
         'pending_courses': courses.filter(status='PENDING').count(),
         'total_students': total_students,
         'recent_courses': recent_courses,
-        'notifications': Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10],
+        'courses': page_obj,
+        'page_obj': page_obj,
+        'notifications': Notification.objects.filter(user=request.user).order_by('-created_at')[:10],
         'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
@@ -384,8 +398,16 @@ def view_other_course(request, course_id):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
-    courses = Course.objects.filter(teacher=request.user)
-    return render(request, 'teacher_portal/my_courses.html', {'courses': courses})
+    courses_qs = Course.objects.filter(teacher=request.user).order_by('-created_at')
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(courses_qs, 12)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'teacher_portal/my_courses.html', {
+        'courses': page_obj,
+        'page_obj': page_obj
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def delete_course(request, course_id):
@@ -723,8 +745,16 @@ def view_quiz_results(request, quiz_id):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def view_submissions(request, assignment_id):
     assignment = get_object_or_404(Assignment, id=assignment_id, course__teacher=request.user)
-    submissions = assignment.submissions.all().select_related('student')
-    return render(request, 'teacher_portal/view_submissions.html', {'assignment': assignment, 'submissions': submissions})
+    submissions_qs = assignment.submissions.all().select_related('student')
+    # Pagination for submissions
+    from django.core.paginator import Paginator
+    paginator = Paginator(submissions_qs, 20)  # 20 submissions per page
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'teacher_portal/view_submissions.html', {
+        'assignment': assignment,
+        'submissions': page_obj,
+    })
 
 # ====== TEACHER: Grade a Submission ======
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
