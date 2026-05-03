@@ -24,7 +24,7 @@
                             <td style="padding: 1rem;">
                                 <div style="display: flex; align-items: center; gap: 1rem;">
                                     {% if course.thumbnail %}
-                                        <img src="{{ course.thumbnail.url }}" alt="thumb" style="width: 60px; height: 60px; border-radius: 0.5rem; object-fit: cover;">
+                                        <img src="{{ course.thumbnail.url }}" alt="Course thumbnail: {{ course.title }}" width="60" height="60" loading="lazy" style="border-radius: 0.5rem; object-fit: cover;">
                                     {% else %}
                                         <div style="width: 60px; height: 60px; background: #e2e8f0; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #94a3b8;">No Img</div>
                                     {% endif %}

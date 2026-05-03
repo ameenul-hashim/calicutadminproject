@@ -4,9 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore and enroll in new courses at EduStream. Expand your knowledge with our expertly crafted content.">
+    <meta name="theme-color" content="#ffffff">
     <title>Explore Courses | EduStream</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <style>
         :root { --sidebar-width: 280px; --primary-blue: #0ea5e9; --primary-gradient: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); }
         body { font-family: 'Inter', sans-serif; background: #e0f7fa; margin: 0; }
@@ -36,7 +41,7 @@
             <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
                 <div style="width: 60px; height: 60px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white;">
                     {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ user.profile_photo.url }}" alt="Profile Photo" width="60" height="60" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
                         <div style="width: 100%; height: 100%; background: var(--primary-gradient); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
                     {% endif %}
@@ -71,7 +76,7 @@
                 <div class="subject-card">
                     <div style="height: 180px; background: #f1f5f9; position: relative;">
                         {% if course.thumbnail %}
-                            <img src="{{ course.thumbnail.url }}" style="width: 100%; height: 100%; object-fit: cover;" alt="Course Thumbnail">
+                            <img src="{{ course.thumbnail.url }}" alt="Course Thumbnail: {{ course.title }}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
                         {% else %}
                             <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: var(--primary-gradient); color: white; font-weight: 700; font-size: 1.5rem;">{{ course.title|slice:":2"|upper }}</div>
                         {% endif %}
@@ -84,7 +89,7 @@
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
                             <div style="width: 32px; height: 32px; border-radius: 50%; overflow: hidden; background: #e2e8f0;">
                                 {% if course.teacher.profile_photo %}
-                                    <img src="{{ course.teacher.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="{{ course.teacher.profile_photo.url }}" alt="Teacher Profile Photo" width="32" height="32" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
                                 {% endif %}
                             </div>
                             <span style="font-size: 0.85rem; color: #475569; font-weight: 500;">{{ course.teacher.full_name|default:course.teacher.username }}</span>
