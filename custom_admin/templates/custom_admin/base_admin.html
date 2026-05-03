@@ -361,10 +361,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="header-bottom">
-                    {% block header_actions %}{% endblock %}
-                </div>
             </header>
 
             <main class="main-content">
@@ -375,6 +371,10 @@
                         </div>
                     {% endfor %}
                 {% endif %}
+
+                <div style="margin-bottom: 1.5rem;">
+                    {% block header_actions %}{% endblock %}
+                </div>
 
                 {% block content %}{% endblock %}
             </main>
