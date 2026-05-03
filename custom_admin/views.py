@@ -36,8 +36,10 @@ def admin_student_view(request):
     from accounts.models import Course, Enrollment, Notification
     from django.db.models import Count, Sum
     
-    # Adapt dashboard logic for admin preview
-    courses = Course.objects.all().annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:12]
+    # Adapt dashboard logic for admin preview - Only show active approved courses and their approved lesson counts
+    courses = Course.objects.filter(status='PUBLISHED', is_approved=True).annotate(
+        lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
+    ).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:12]
     explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:10]
     
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:5]

@@ -310,9 +310,9 @@ def dashboard_view(request):
         return redirect('admin_dashboard') if request.user.is_staff else redirect('login')
 
     if request.user.user_type == 'TEACHER':
-        courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
+        courses = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     else:
-        courses = Course.objects.filter(enrollments__user=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        courses = Course.objects.filter(enrollments__user=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     enrolled_ids = list(courses.values_list('id', flat=True))
     explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price', 'category', 'teacher').select_related('teacher')[:10]
@@ -838,10 +838,12 @@ def course_player(request, course_id):
             return redirect('teacher_dashboard')
     
     # Teachers and Admins can see all lessons, students see only approved ones
+    # Admins/Teachers can see PENDING lessons (for preview/verification), but NEVER REJECTED ones in the player.
+    # Students see ONLY APPROVED lessons.
     if request.user.user_type in ['TEACHER', 'ADMIN'] or request.user.is_superuser:
-        lessons = course.lessons.all().order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
     else:
-        lessons = course.lessons.filter(is_approved=True).order_by('order')
+        lessons = course.lessons.filter(is_approved=True, status='APPROVED').order_by('order')
     
     context = {
         'course': course,
