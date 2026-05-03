@@ -514,6 +514,201 @@ def admin_view_quiz_attempts(request, quiz_id):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_id):
+    context = {
+        'total_students': total_students,
+        'total_teachers': total_teachers,
+        'total_courses': total_courses,
+        'total_lessons': total_lessons,
+        'student_data': student_data,
+        'teacher_data': teacher_data,
+        'course_data': course_data,
+        'approval_stats': approval_stats,
+        'teacher_perf_labels': teacher_performance_labels,
+        'teacher_perf_data': teacher_performance_data,
+        'top_courses': top_courses,
+        'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
+        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+        'pending_students_count': pending_students_count,
+        'pending_teachers_count': pending_teachers_count,
+    }
+    return render(request, 'custom_admin/analytics.html', context)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def content_management_view(request):
+    courses = Course.objects.all().prefetch_related('lessons', 'quizzes', 'quizzes__questions', 'assignments', 'assignments__submissions')
+    return render(request, 'custom_admin/content_management.html', {'courses': courses})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def pending_courses_view(request):
+    courses = Course.objects.filter(status='PENDING').prefetch_related('lessons').order_by('-created_at')
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    return render(request, 'custom_admin/pending_courses.html', {
+        'courses': courses,
+        'notifications': notifications,
+        'unread_notifications_count': unread_count,
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def approve_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    course.status = 'PUBLISHED'
+    course.is_approved = True
+    course.approved_by = request.user
+    course.rejection_reason = ""
+    course.save()
+    
+    # Auto-approve all current lessons in the course
+    course.lessons.update(is_approved=True)
+
+    create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
+    
+    # Notify all active students about new course
+    students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
+    teacher_name = course.teacher.full_name or course.teacher.username
+    for student in students:
+        create_notification(student, f"{teacher_name} added course {course.title}")
+
+    
+    ApprovalLog.objects.create(
+        content_type='COURSE',
+        object_id=course.id,
+        status='APPROVED',
+        reviewed_by=request.user,
+        comments="Course published."
+    )
+    
+    messages.success(request, f"Course '{course.title}' has been approved and published!")
+    return redirect('pending_courses')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def reject_course(request, course_id):
+    course = get_object_or_404(Course, id=course_id)
+    if request.method == 'POST':
+        reason = request.POST.get('reason', '')
+        course.status = 'REJECTED'
+        course.is_approved = False
+        course.rejection_reason = reason
+        course.save()
+        
+        create_notification(course.teacher, f"Your course '{course.title}' was rejected. Reason: {reason}")
+        
+        ApprovalLog.objects.create(
+            content_type='COURSE',
+            object_id=course.id,
+            status='REJECTED',
+            reviewed_by=request.user,
+            comments=reason
+        )
+        
+        messages.warning(request, f"Course '{course.title}' has been rejected.")
+        return redirect('pending_courses')
+        
+    return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def edit_user_admin(request, user_id):
+    user = get_object_or_404(CustomUser, id=user_id)
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        fullname = request.POST.get('fullname')
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        if not all([username, email, fullname]):
+            messages.error(request, "All fields are required for updating.")
+        elif password and (password != confirm_password):
+            messages.error(request, "Passwords do not match.")
+        elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
+        elif CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
+            messages.error(request, "This username is already taken by another user. Please use a unique username.")
+        elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
+            messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
+        else:
+            user.username = username
+            user.email = email
+            user.full_name = fullname
+            if password:
+                user.set_password(password)
+            user.save()
+            messages.success(request, f"User {user.username} data updated successfully!")
+            if user.user_type == 'TEACHER':
+                return redirect('manage_teachers')
+            return redirect('manage_students')
+            
+    return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def toggle_lesson_approval(request, lesson_id):
+    lesson = get_object_or_404(Lesson, id=lesson_id)
+    if lesson.is_approved:
+        lesson.is_approved = False
+        msg = "rejected"
+    else:
+        lesson.is_approved = True
+        msg = "approved"
+    lesson.save()
+    
+    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been {msg}.")
+    
+    if msg == "approved":
+        # Notify enrolled students
+        enrollments = Enrollment.objects.filter(course=lesson.course)
+        teacher_name = lesson.course.teacher.full_name or lesson.course.teacher.username
+        for e in enrollments:
+            create_notification(e.user, f"{teacher_name} added content {lesson.title}")
+    
+    from accounts.models import ApprovalLog
+    ApprovalLog.objects.create(
+        content_type='LESSON',
+        object_id=lesson.id,
+        status='APPROVED' if lesson.is_approved else 'REJECTED',
+        reviewed_by=request.user,
+        comments=f"Lesson {msg} by admin."
+    )
+    
+    messages.success(request, f"Lesson '{lesson.title}' content has been {msg}.")
+    return redirect('admin_content')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def toggle_quiz_approval(request, quiz_id):
+    from accounts.models import Quiz
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    quiz.is_approved = not quiz.is_approved
+    quiz.save()
+    msg = "approved" if quiz.is_approved else "rejected"
+    messages.success(request, f"Quiz '{quiz.title}' has been {msg}.")
+    return redirect('admin_content')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def toggle_assignment_approval(request, assignment_id):
+    from accounts.models import Assignment
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    assignment.is_approved = not assignment.is_approved
+    assignment.save()
+    msg = "approved" if assignment.is_approved else "rejected"
+    messages.success(request, f"Assignment '{assignment.title}' has been {msg}.")
+    return redirect('admin_content')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_view_submissions(request, assignment_id):
+    from accounts.models import Assignment
+    assignment = get_object_or_404(Assignment, id=assignment_id)
+    submissions = assignment.submissions.all().select_related('student')
+    return render(request, 'custom_admin/admin_view_submissions.html', {'assignment': assignment, 'submissions': submissions})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_view_quiz_attempts(request, quiz_id):
+    from accounts.models import Quiz
+    quiz = get_object_or_404(Quiz, id=quiz_id)
+    attempts = quiz.attempts.all().select_related('student')
+    return render(request, 'custom_admin/admin_view_quiz_attempts.html', {'quiz': quiz, 'attempts': attempts})
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_view_course_content(request, course_id):
     from accounts.models import Course, Lesson
     course = get_object_or_404(Course, id=course_id)
     lessons = course.lessons.all().order_by('order')
@@ -521,6 +716,25 @@ def admin_view_course_content(request, course_id):
         'course': course,
         'lessons': lessons
     })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_delete_course_secure(request, course_id):
+    from accounts.models import Course
+    if request.method == 'POST':
+        username = request.POST.get('admin_username')
+        password = request.POST.get('admin_password')
+        
+        # Verify credentials
+        user = authenticate(request, username=username, password=password)
+        if user is not None and user == request.user and user.is_staff:
+            course = get_object_or_404(Course, id=course_id)
+            course_title = course.title
+            course.delete()
+            messages.success(request, f"Course '{course_title}' has been successfully deleted.")
+        else:
+            messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
+            
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 def admin_logout(request):
     logout(request)
@@ -539,6 +753,19 @@ def manage_deletion_requests(request):
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count
     })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def verify_deletion_request(request, request_id):
+    from accounts.models import DeletionRequest, Lesson
+    del_request = get_object_or_404(DeletionRequest, id=request_id)
+    if del_request.item_type == 'Lesson':
+        lesson = Lesson.objects.filter(id=del_request.item_id).first()
+        if lesson:
+            messages.info(request, f"Verifying deletion request for Lesson: {lesson.title}. Please review the course content.")
+            return redirect('admin_view_course_content', course_id=lesson.course.id)
+        else:
+            messages.error(request, "The lesson could not be found. It may have already been deleted.")
+    return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_deletion_request(request, request_id):

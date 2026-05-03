@@ -48,6 +48,7 @@
                     <td style="color: #64748b;">{{ req.created_at|date:"M d, Y" }}</td>
                     <td>
                         <div style="display: flex; gap: 0.5rem;">
+                            <a href="{% url 'verify_deletion_request' req.id %}" class="view-btn" style="background: #3b82f6; color: white; border: none;">Verify / View</a>
                             <a href="{% url 'approve_deletion_request' req.id %}" class="view-btn" style="background: #10b981; color: white; border: none;" onclick="return confirm('Are you sure you want to approve this deletion? The item will be permanently deleted.');">Approve</a>
                             <a href="{% url 'reject_deletion_request' req.id %}" class="view-btn" style="background: #ef4444; color: white; border: none;">Reject</a>
                         </div>
