@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Q
 import re
 from accounts.models import Notification, Enrollment
+from accounts.utils.supabase_storage import upload_pdf
 
 def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
@@ -223,6 +224,12 @@ def create_student_admin(request):
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
         else:
+            # Upload PDF to Supabase
+            pdf_url = upload_pdf(proof_file)
+            if not pdf_url:
+                messages.error(request, "Failed to upload student proof to Supabase.")
+                return render(request, 'custom_admin/create_student.html')
+
             CustomUser.objects.create_user(
                 username=username,
                 email=email,
@@ -231,7 +238,7 @@ def create_student_admin(request):
                 is_active=True,
                 status='ACTIVE',
                 user_type='STUDENT',
-                proof_file=proof_file
+                proof_pdf=pdf_url
             )
             messages.success(request, f"Student {username} created successfully!")
             return redirect('manage_students')
@@ -259,6 +266,12 @@ def create_teacher_admin(request):
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
         else:
+            # Upload PDF to Supabase
+            pdf_url = upload_pdf(proof_file)
+            if not pdf_url:
+                messages.error(request, "Failed to upload teacher proof to Supabase.")
+                return render(request, 'custom_admin/create_teacher.html')
+
             CustomUser.objects.create_user(
                 username=username,
                 email=email,
@@ -268,7 +281,7 @@ def create_teacher_admin(request):
                 is_staff=True,
                 status='ACTIVE',
                 user_type='TEACHER',
-                proof_file=proof_file
+                proof_pdf=pdf_url
             )
             messages.success(request, f"Teacher {username} created successfully!")
             return redirect('manage_teachers')

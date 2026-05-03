@@ -186,11 +186,11 @@
             </div>
         </div>
 
-        {% if user.proof_file %}
+        {% if user.proof_pdf %}
         <div style="margin-top: 2rem; background: white; padding: 2rem; border-radius: 1.5rem; border: 1px solid #e2e8f0;">
             <h3 style="margin-top: 0; font-size: 1.1rem; color: var(--text-main);">Verification Documents</h3>
             <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Your identity proof used during registration.</p>
-            <a href="{{ user.proof_file.url }}" target="_blank" class="btn-profile btn-outline" style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
+            <a href="{{ user.proof_pdf }}" target="_blank" class="btn-profile btn-outline" style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem;">
                 📄 View Registered Proof (PDF)
             </a>
         </div>
