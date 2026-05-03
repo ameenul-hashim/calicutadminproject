@@ -28,6 +28,9 @@ def signup_view(request):
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
 
+        print("🧾 REQUEST FILES:", request.FILES)
+        print("📄 PROOF FILE:", proof_file)
+
         if not all([username, email, fullname, password, confirm_password, proof_file]):
             messages.error(request, "All fields including student proof (PDF) are required.")
             return render(request, 'accounts/signup.html')
@@ -89,6 +92,9 @@ def teacher_signup_view(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
+
+        print("🧾 REQUEST FILES:", request.FILES)
+        print("📄 PROOF FILE:", proof_file)
 
         if not all([username, email, fullname, password, confirm_password, proof_file]):
             messages.error(request, "All fields including teacher proof (PDF) are required.")

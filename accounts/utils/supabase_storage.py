@@ -1,44 +1,47 @@
-import requests
+from supabase import create_client
 import os
 import uuid
-from dotenv import load_dotenv
-
-load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-BUCKET = "calicutadminpanelpdf"
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 def upload_pdf(file):
-    if not SUPABASE_URL or not SUPABASE_KEY:
-        print("Supabase credentials not found in .env")
-        return None
-
     try:
-        # Generate a unique name
-        file_extension = file.name.split('.')[-1]
-        unique_name = f"{uuid.uuid4()}.{file_extension}"
-        
-        # Determine folder based on file type or just root
-        url = f"{SUPABASE_URL}/storage/v1/object/{BUCKET}/{unique_name}"
+        print("📁 FILE RECEIVED IN UPLOAD FUNCTION:", file)
 
-        headers = {
-            "Authorization": f"Bearer {SUPABASE_KEY}",
-            "Content-Type": "application/pdf"
-        }
-
-        # Read file content
-        file_content = file.read()
-        
-        response = requests.put(url, headers=headers, data=file_content)
-
-        if response.status_code in [200, 201]:
-            # Construct public URL
-            return f"{SUPABASE_URL}/storage/v1/object/public/{BUCKET}/{unique_name}"
-        else:
-            print(f"Supabase Upload Error: {response.status_code} - {response.text}")
+        if not file:
+            print("❌ No file received")
             return None
-            
+
+        file_ext = file.name.split('.')[-1]
+        file_path = f"documents/{uuid.uuid4()}.{file_ext}"
+
+        print("📂 FILE PATH:", file_path)
+
+        # IMPORTANT
+        file.seek(0)
+
+        file_content = file.read()
+
+        print("📦 FILE SIZE:", len(file_content))
+
+        response = supabase.storage.from_("calicutadminpanelpdf").upload(
+            file_path,
+            file_content,
+            {"content-type": "application/pdf"}
+        )
+
+        print("✅ UPLOAD RESPONSE:", response)
+
+        public_url = supabase.storage.from_("calicutadminpanelpdf").get_public_url(file_path)
+
+        print("🌐 PUBLIC URL:", public_url)
+
+        return public_url
+
     except Exception as e:
-        print(f"Exception during Supabase upload: {e}")
+        print("💥 UPLOAD ERROR:", str(e))
         return None
