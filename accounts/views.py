@@ -208,6 +208,62 @@ def login_view(request):
     return render(request, 'accounts/login.html')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@login_required
+def student_view_auth(request):
+    """
+    Step-up authentication for Admins/Teachers accessing the Student View.
+    They must re-enter their own password to unlock the student view session.
+    """
+    if request.user.user_type == 'STUDENT':
+        return redirect('dashboard')
+
+    if request.session.get('student_view_unlocked'):
+        next_url = request.session.get('next_student_url', 'dashboard')
+        return redirect(next_url)
+
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        user = authenticate(request, username=request.user.username, password=password)
+        if user is not None and user == request.user:
+            request.session['student_view_unlocked'] = True
+            next_url = request.session.pop('next_student_url', 'dashboard')
+            messages.success(request, "Student View access granted.")
+            return redirect(next_url)
+        else:
+            messages.error(request, "Incorrect password. Please try again.")
+
+    return render(request, 'accounts/student_view_auth.html')
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@login_required
+def teacher_view_auth(request):
+    """
+    Step-up authentication for Admins accessing the Teacher View.
+    They must re-enter their own password to unlock the teacher view session.
+    """
+    if request.user.user_type == 'TEACHER':
+        return redirect('teacher_dashboard')
+
+    if request.session.get('teacher_view_unlocked'):
+        next_url = request.session.get('next_teacher_url', 'teacher_dashboard')
+        return redirect(next_url)
+
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        user = authenticate(request, username=request.user.username, password=password)
+        if user is not None and user == request.user:
+            request.session['teacher_view_unlocked'] = True
+            next_url = request.session.pop('next_teacher_url', 'teacher_dashboard')
+            messages.success(request, "Teacher View access granted.")
+            return redirect(next_url)
+        else:
+            messages.error(request, "Incorrect password. Please try again.")
+
+    return render(request, 'accounts/teacher_view_auth.html')
+
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_login_view(request):
     if request.user.is_authenticated and request.user.user_type == 'TEACHER':
         return redirect('teacher_dashboard')

@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Access | EduStream Teacher Portal</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+    <div class="glass-card" style="width: 100%; max-width: 420px; padding: 2rem;">
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <span style="font-size: 3rem;">👨‍🏫</span>
+            <h1 style="margin: 0.5rem 0 0.25rem; font-size: 1.5rem;">Access Teacher Panel</h1>
+            <p style="color: #64748b; margin: 0; font-size: 0.9rem;">Verify your identity to continue</p>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1rem;">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div style="text-align: center; margin-bottom: 1.5rem; background: #f0fdf4; padding: 0.75rem 1rem; border-radius: 0.5rem; border: 1px solid #bbf7d0;">
+            <p style="margin: 0; font-size: 0.85rem; color: #15803d;">Logged in as: <strong>{{ request.user.username }}</strong> ({{ request.user.user_type }})</p>
+        </div>
+
+        <form method="POST" novalidate>
+            {% csrf_token %}
+            <div style="position: relative; margin-bottom: 1.5rem;">
+                <label for="password" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
+                <input type="password" name="password" id="password" required autofocus
+                    style="width: 100%; padding: 0.85rem 2.5rem 0.85rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: border-color 0.2s;"
+                    onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e2e8f0'">
+                <span onclick="togglePass()" style="position: absolute; right: 12px; top: 38px; cursor: pointer; color: #94a3b8;">
+                    <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </span>
+            </div>
+
+            <div style="display: flex; gap: 0.75rem;">
+                <a href="javascript:history.back()"
+                    style="flex: 1; text-align: center; padding: 0.85rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; color: #64748b; text-decoration: none; font-weight: 600; font-size: 0.9rem;">
+                    Cancel
+                </a>
+                <button type="submit"
+                    style="flex: 1.5; padding: 0.85rem; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: opacity 0.2s;"
+                    onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+                    🔓 Unlock Teacher View
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function togglePass() {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('eye-icon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                input.type = 'password';
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        }
+    </script>
+</body>
+</html>

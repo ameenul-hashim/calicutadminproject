@@ -23,6 +23,8 @@ class PortalSecurityMiddleware:
             'reset_password',
             'logout',
             'admin_logout',
+            'student_view_auth',
+            'teacher_view_auth',
         ]
         
         # Check if the current URL is in public_url_names
@@ -65,6 +67,19 @@ class PortalSecurityMiddleware:
                 if not request.session.get('student_view_unlocked'):
                     request.session['next_student_url'] = path
                     return redirect('student_view_auth')
+                    
+            # --- Teacher View Step-Up Authentication for Admins ---
+            teacher_url_names = [
+                'teacher_dashboard', 'my_courses', 'create_course', 'edit_course', 'delete_course',
+                'course_lessons', 'add_lesson', 'edit_lesson', 'delete_lesson', 'submit_course_approval',
+                'create_quiz', 'add_questions', 'create_assignment', 'view_quiz_results', 'view_submissions',
+                'grade_submission', 'view_other_course', 'teacher_explore', 'teacher_analytics'
+            ]
+            
+            if url_name in teacher_url_names and (request.user.user_type == 'ADMIN' or request.user.is_superuser):
+                if not request.session.get('teacher_view_unlocked'):
+                    request.session['next_teacher_url'] = path
+                    return redirect('teacher_view_auth')
 
         response = self.get_response(request)
         
