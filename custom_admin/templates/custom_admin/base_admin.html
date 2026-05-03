@@ -17,10 +17,12 @@
         }
         .sidebar { 
             width: 280px; 
-            background: #ffffff; /* White sidebar */
+            background: #ffffff; 
             border-right: 1px solid #b2ebf2; 
             padding: 2rem 1.5rem; 
             position: fixed; 
+            top: 0;
+            left: 0;
             height: 100vh; 
             overflow-y: auto; 
             transition: transform 0.3s ease;
@@ -28,11 +30,10 @@
         }
         .main-content { 
             margin-left: 280px; 
-            padding: 2.5rem; 
-            flex: 1; 
-            transition: margin 0.3s ease; 
+            padding: 2rem 3rem; 
+            width: calc(100% - 280px);
             min-height: 100vh; 
-            background: transparent;
+            box-sizing: border-box;
         }
         
         /* Glass Card Styles - Global */
