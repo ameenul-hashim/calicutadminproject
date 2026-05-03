@@ -39,16 +39,22 @@
                                 {{ course.teacher.full_name|default:course.teacher.username }}
                             </td>
                             <td style="padding: 1rem;">
-                                {% if course.rejection_reason %}
-                                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fee2e2; color: #b91c1c;">
-                                        🔁 Re-submitted
-                                    </span>
-                                    <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444; max-width: 200px;">
-                                        <strong>Prior Issue:</strong> {{ course.rejection_reason }}
-                                    </div>
+                                {% if course.status == 'PENDING' %}
+                                    {% if course.rejection_reason %}
+                                        <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fee2e2; color: #b91c1c;">
+                                            🔁 Re-submitted
+                                        </span>
+                                        <div style="margin-top: 0.5rem; font-size: 0.75rem; color: #ef4444; max-width: 200px;">
+                                            <strong>Prior Issue:</strong> {{ course.rejection_reason }}
+                                        </div>
+                                    {% else %}
+                                        <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #ecfdf5; color: #059669;">
+                                            🆕 New Course
+                                        </span>
+                                    {% endif %}
                                 {% else %}
-                                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #ecfdf5; color: #059669;">
-                                        🆕 New Request
+                                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #e0f2fe; color: #0369a1;">
+                                        📦 New Content
                                     </span>
                                 {% endif %}
                             </td>

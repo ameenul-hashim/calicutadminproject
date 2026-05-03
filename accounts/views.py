@@ -427,6 +427,9 @@ def submit_course_approval(request, course_id):
         if is_resubmission:
             messages.success(request, f"Course '{course.title}' re-submitted for admin approval.")
             notify_admins(f"🔁 RE-SUBMISSION: Teacher {request.user.username} re-submitted course '{course.title}' for approval after rejection.")
+        elif course.status == 'PUBLISHED' or course.is_approved:
+            messages.success(request, f"New content for '{course.title}' submitted for admin review.")
+            notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added new content to course '{course.title}' for review.")
         else:
             messages.success(request, "Course submitted for admin approval.")
             notify_admins(f"📚 NEW SUBMISSION: Teacher {request.user.username} submitted course '{course.title}' for approval.")

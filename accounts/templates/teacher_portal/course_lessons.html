@@ -38,9 +38,11 @@
                         <a href="{% url 'add_lesson' course.id %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
                     </div>
                 </div>
-                {% if course.status == 'DRAFT' %}
-                <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
-                {% endif %}
+                {% with pending_lessons=course.lessons.all|dictsort:"is_approved" %}
+                    {% if course.status == 'DRAFT' or course.status == 'REJECTED' or course.lessons.filter(is_approved=False).exists or course.quizzes.filter(is_approved=False).exists or course.assignments.filter(is_approved=False).exists %}
+                    <a href="{% url 'submit_course_approval' course.id %}" class="btn" style="background: #10b981; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">Submit for Approval</a>
+                    {% endif %}
+                {% endwith %}
             </header>
 
             {% if messages %}

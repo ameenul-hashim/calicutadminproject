@@ -346,7 +346,13 @@ def content_management_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
-    courses = Course.objects.filter(status='PENDING').prefetch_related('lessons').order_by('-created_at')
+    # Show courses that are PENDING approval OR courses that are PUBLISHED but have new unapproved content
+    courses = Course.objects.filter(
+        Q(status='PENDING') | 
+        Q(lessons__is_approved=False) |
+        Q(quizzes__is_approved=False) |
+        Q(assignments__is_approved=False)
+    ).prefetch_related('lessons', 'quizzes', 'assignments').distinct().order_by('-created_at')
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     return render(request, 'custom_admin/pending_courses.html', {
