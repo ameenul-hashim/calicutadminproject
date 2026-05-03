@@ -801,33 +801,50 @@ def manage_deletion_requests(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def verify_deletion_request(request, request_id):
-    from accounts.models import DeletionRequest, Lesson
+    from accounts.models import DeletionRequest, Lesson, Course
     del_request = get_object_or_404(DeletionRequest, id=request_id)
     if del_request.item_type == 'Lesson':
         lesson = Lesson.objects.filter(id=del_request.item_id).first()
         if lesson:
-            messages.info(request, f"Verifying deletion request for Lesson: {lesson.title}. Please review the course content.")
+            messages.info(request, f"Verifying deletion request for Lesson: {lesson.title}.")
             return redirect('admin_view_course_content', course_id=lesson.course.id)
-        else:
-            messages.error(request, "The lesson could not be found. It may have already been deleted.")
+    elif del_request.item_type == 'Course':
+        course = Course.objects.filter(id=del_request.item_id).first()
+        if course:
+            messages.info(request, f"Verifying deletion request for Course: {course.title}.")
+            return redirect('admin_view_course_content', course_id=course.id)
+            
+    messages.error(request, "The item could not be found or verified.")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_deletion_request(request, request_id):
-    from accounts.models import DeletionRequest, Lesson
+    from accounts.models import DeletionRequest, Lesson, Course
     del_request = get_object_or_404(DeletionRequest, id=request_id)
+    
+    if del_request.status != 'PENDING':
+        messages.error(request, "This request has already been processed.")
+        return redirect('manage_deletion_requests')
+
+    success_msg = f"{del_request.item_type} '{del_request.item_name}' deleted successfully."
     
     if del_request.item_type == 'Lesson':
         lesson = Lesson.objects.filter(id=del_request.item_id).first()
         if lesson:
             lesson.delete()
-            messages.success(request, f"Lesson '{del_request.item_name}' deleted successfully.")
-            create_notification(del_request.teacher, f"Your request to delete lesson '{del_request.item_name}' has been APPROVED and the lesson is deleted.")
         else:
-            messages.warning(request, f"Lesson '{del_request.item_name}' could not be found. It may have already been deleted.")
+            messages.warning(request, "Item already gone.")
+    elif del_request.item_type == 'Course':
+        course = Course.objects.filter(id=del_request.item_id).first()
+        if course:
+            course.delete()
+        else:
+            messages.warning(request, "Item already gone.")
     
     del_request.status = 'APPROVED'
     del_request.save()
+    messages.success(request, success_msg)
+    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
