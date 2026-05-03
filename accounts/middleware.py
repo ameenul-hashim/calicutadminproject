@@ -53,6 +53,18 @@ class PortalSecurityMiddleware:
                     logout(request)
                     messages.error(request, status_msg)
                     return redirect('login')
+                    
+            # --- Student View Step-Up Authentication for Admin/Teachers ---
+            student_url_names = [
+                'dashboard', 'student_explore', 'course_player', 'profile', 
+                'edit_profile', 'all_notifications', 'enroll_course', 
+                'take_quiz', 'submit_assignment'
+            ]
+            
+            if url_name in student_url_names and (request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser):
+                if not request.session.get('student_view_unlocked'):
+                    request.session['next_student_url'] = path
+                    return redirect('student_view_auth')
 
         response = self.get_response(request)
         
