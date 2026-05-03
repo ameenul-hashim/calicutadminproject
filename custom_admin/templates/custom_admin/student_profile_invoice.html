@@ -53,6 +53,9 @@
                     <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.95rem;">{{ student.email }}</p>
                     <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Student ID: #STU-{{ student.id|stringformat:"05d" }}</p>
                     <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Joined: {{ student.date_joined|date:"M d, Y" }}</p>
+                    {% if student.proof_file %}
+                    <a href="{{ student.proof_file.url }}" target="_blank" class="no-print" style="display: inline-block; margin-top: 0.5rem; font-size: 0.8rem; color: #0ea5e9; text-decoration: none; font-weight: 600; border: 1px solid #0ea5e9; padding: 0.2rem 0.5rem; border-radius: 0.3rem;">📄 View ID Proof</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -128,7 +131,7 @@
 <style>
     @media print {
         body { background: white !important; }
-        .sidebar, .view-btn, header, .notification-wrapper, .mobile-toggle { display: none !important; }
+        .sidebar, .view-btn, header, .notification-wrapper, .mobile-toggle, .no-print { display: none !important; }
         .main-content { margin-left: 0 !important; padding: 0 !important; width: 100% !important; }
         #printable-area { border: none !important; box-shadow: none !important; margin: 0 !important; width: 100% !important; }
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
