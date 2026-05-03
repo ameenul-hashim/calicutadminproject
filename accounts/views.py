@@ -439,6 +439,19 @@ def logout_view(request):
         return redirect('login')
         
     user_type = request.user.user_type
+    referer = request.META.get('HTTP_REFERER', '')
+    
+    # If Teacher is logging out from their OWN portal, do a real logout
+    if user_type == 'TEACHER' and '/teacher/' in referer:
+        logout(request)
+        messages.success(request, "Teacher logged out successfully.")
+        return redirect('teacher_login')
+        
+    # If Admin is logging out from their OWN portal (though they have admin_logout, let's be safe)
+    if user_type == 'ADMIN' and '/customadmin/' in referer:
+        logout(request)
+        messages.success(request, "Admin logged out successfully.")
+        return redirect('admin_login')
     
     # If Admin or Teacher is 'logging out' from student view, just send them back to their portal
     if user_type == 'ADMIN':
