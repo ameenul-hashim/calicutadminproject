@@ -13,56 +13,78 @@
             background: #e0f7fa; 
             margin: 0; 
             color: #1e293b;
-            min-height: 100vh;
+            overflow: hidden; /* Prevent body scroll */
+            height: 100vh;
         }
-        .admin-wrapper {
+        .admin-layout {
             display: flex;
-            min-height: 100vh;
-            width: 100%;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
         }
         .sidebar { 
             width: 260px; 
             background: #ffffff; 
             border-right: 1px solid #e2e8f0; 
-            padding: 2rem 1.2rem; 
-            position: sticky;
-            top: 0;
-            height: 100vh; 
-            overflow-y: auto; 
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
             flex-shrink: 0;
-            z-index: 100;
+            z-index: 50;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            position: relative;
         }
-        .main-content { 
+        .main-stage { 
             flex: 1;
-            padding: 2rem;
-            max-width: calc(100% - 260px);
-            box-sizing: border-box;
+            height: 100vh;
+            overflow-y: auto;
             background: #e0f7fa;
+            position: relative;
+            scroll-behavior: smooth;
+        }
+        .main-content {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
         }
 
-        /* Mobile Responsive Adjustments */
+        /* Mobile Responsive */
         @media (max-width: 1024px) {
             .sidebar {
-                transform: translateX(-100%);
-                z-index: 2000;
+                position: fixed;
+                left: -260px;
+                top: 0;
+                bottom: 0;
             }
             .sidebar.active {
-                transform: translateX(0);
-                box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+                left: 0;
+                box-shadow: 20px 0 25px -5px rgba(0, 0, 0, 0.1);
             }
             .main-content {
-                margin-left: 0;
-                width: 100%;
-                padding: 5rem 1.25rem 2rem;
+                padding: 5rem 1rem 2rem;
             }
-            .mobile-toggle {
-                display: flex !important;
-            }
-            header {
-                flex-direction: column;
-                align-items: flex-start !important;
-                gap: 1rem;
-            }
+            .mobile-toggle { display: flex !important; }
+        }
+
+        .mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 60;
+            background: #0ea5e9;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 0.75rem;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(14, 165, 233, 0.2);
         }
 
         /* Glass Card Styles - Global */
@@ -110,7 +132,38 @@
         .dropdown-container.active { display: block; }
         .notif-dropdown.active { display: block !important; }
         
-        h1, h2, h3, h4 { color: #1e293b; margin: 0; }
+        /* Loading Spinner */
+        #page-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #f1f5f9;
+            z-index: 1000;
+            display: none;
+        }
+        #page-loader .progress {
+            height: 100%;
+            background: #0ea5e9;
+            width: 0;
+            transition: width 0.4s ease;
+            box-shadow: 0 0 10px rgba(14, 165, 233, 0.5);
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            padding: 1.25rem 2rem;
+            margin: -2rem -2rem 2.5rem -2rem;
+            border-bottom: 1px solid #e2e8f0;
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         
         .view-btn {
             background: rgba(255, 255, 255, 0.05);
@@ -132,17 +185,22 @@
     {% block extra_css %}{% endblock %}
 </head>
 <body>
+    <div id="page-loader"><div class="progress"></div></div>
+    
     <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
         ☰
     </button>
 
-    <div class="admin-wrapper">
+    <div class="admin-layout">
         <aside class="sidebar">
-            <h2 style="color: #1e293b; margin-bottom: 2.5rem; padding: 0 1rem; font-weight: 800; font-size: 1.5rem;">
-                EduStream <span style="color: #0ea5e9;">Admin</span>
-            </h2>
+            <div style="padding: 2.5rem 1.5rem 1rem;">
+                <h2 style="color: #1e293b; margin-bottom: 2.5rem; font-weight: 800; font-size: 1.5rem; line-height: 1.2;">
+                    EduStream <br>
+                    <span style="color: #0ea5e9;">Admin</span>
+                </h2>
+            </div>
             
-            <nav>
+            <nav style="padding: 0 1.2rem 2rem;">
                 <!-- 1. Manage Students -->
                 <div class="nav-group">
                     <button class="nav-link dropdown-btn" onclick="toggleDropdown('student-drop')">
@@ -220,12 +278,13 @@
             </nav>
         </aside>
 
-        <main class="main-content">
-            <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <a href="javascript:history.back()" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; color: #64748b; text-decoration: none; font-size: 1.2rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f1f5f9'; this.style.color='#0ea5e9';" onmouseout="this.style.background='white'; this.style.color='#64748b';">←</a>
-                    {% block header_title %}<h1>Welcome Admin</h1>{% endblock %}
-                </div>
+        <div class="main-stage">
+            <main class="main-content">
+                <header style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <a href="javascript:history.back()" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; color: #64748b; text-decoration: none; font-size: 1.2rem; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);" onmouseover="this.style.background='#f1f5f9'; this.style.color='#0ea5e9';" onmouseout="this.style.background='white'; this.style.color='#64748b';">←</a>
+                        {% block header_title %}<h1>Welcome Admin</h1>{% endblock %}
+                    </div>
 
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
                     <!-- Notification Bell -->
@@ -286,7 +345,8 @@
             {% endif %}
 
             {% block content %}{% endblock %}
-        </main>
+            </main>
+        </div>
     </div>
 
     <script>
@@ -312,9 +372,17 @@
             dropdown.addEventListener('click', (e) => e.stopPropagation());
         }
 
+        // Page loader logic
+        window.addEventListener('beforeunload', () => {
+            const loader = document.getElementById('page-loader');
+            const progress = loader.querySelector('.progress');
+            loader.style.display = 'block';
+            setTimeout(() => { progress.style.width = '70%'; }, 10);
+        });
+
         // Close sidebar when clicking main content on mobile
-        document.querySelector('.main-content').addEventListener('click', () => {
-            if (window.innerWidth <= 768) {
+        document.querySelector('.main-stage').addEventListener('click', () => {
+            if (window.innerWidth <= 1024) {
                 document.querySelector('.sidebar').classList.remove('active');
             }
         });

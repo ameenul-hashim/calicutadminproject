@@ -40,7 +40,7 @@ def admin_dashboard(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_students(request):
     search_query = request.GET.get('search', '')
-    users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
+    users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True).only('id', 'username', 'email', 'full_name', 'profile_photo', 'status', 'date_joined')
     if search_query:
         users = users.filter(
             Q(username__icontains=search_query) | 
@@ -48,7 +48,8 @@ def manage_students(request):
             Q(full_name__icontains=search_query)
         )
     
-    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    # Fast notification fetch
+    notifications = Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
     return render(request, 'custom_admin/manage_students.html', {
@@ -85,7 +86,7 @@ def admin_student_profile(request, user_id):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_teachers(request):
     search_query = request.GET.get('search', '')
-    users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True)
+    users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses').only('id', 'username', 'email', 'full_name', 'profile_photo', 'status')
     if search_query:
         users = users.filter(
             Q(username__icontains=search_query) | 
