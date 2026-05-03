@@ -528,6 +528,48 @@ def admin_logout(request):
     return redirect('admin_login')
 
 
+@user_passes_test(is_admin, login_url='admin_login')
+def manage_deletion_requests(request):
+    from accounts.models import DeletionRequest
+    requests = DeletionRequest.objects.filter(status='PENDING')
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    return render(request, 'custom_admin/manage_deletion_requests.html', {
+        'requests': requests,
+        'notifications': notifications,
+        'unread_notifications_count': unread_notifications_count
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def approve_deletion_request(request, request_id):
+    from accounts.models import DeletionRequest, Lesson
+    del_request = get_object_or_404(DeletionRequest, id=request_id)
+    
+    if del_request.item_type == 'Lesson':
+        lesson = Lesson.objects.filter(id=del_request.item_id).first()
+        if lesson:
+            lesson.delete()
+            messages.success(request, f"Lesson '{del_request.item_name}' deleted successfully.")
+            create_notification(del_request.teacher, f"Your request to delete lesson '{del_request.item_name}' has been APPROVED and the lesson is deleted.")
+        else:
+            messages.warning(request, f"Lesson '{del_request.item_name}' could not be found. It may have already been deleted.")
+    
+    del_request.status = 'APPROVED'
+    del_request.save()
+    return redirect('manage_deletion_requests')
+
+@user_passes_test(is_admin, login_url='admin_login')
+def reject_deletion_request(request, request_id):
+    from accounts.models import DeletionRequest
+    del_request = get_object_or_404(DeletionRequest, id=request_id)
+    
+    del_request.status = 'REJECTED'
+    del_request.save()
+    messages.success(request, f"Deletion request for '{del_request.item_name}' rejected.")
+    create_notification(del_request.teacher, f"Your request to delete '{del_request.item_name}' has been REJECTED by admin.")
+    
+    return redirect('manage_deletion_requests')
+
 def error_404(request, exception):
     return render(request, '404.html', status=404)
 

@@ -171,6 +171,13 @@
                     </div>
                 </div>
 
+                <!-- 3.5 Deletion Requests -->
+                <div class="nav-group">
+                    <a href="{% url 'manage_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_deletion_requests' %}active{% endif %}" style="color: #ef4444;">
+                        🗑️ Deletion Requests
+                    </a>
+                </div>
+
                 <!-- 4. Student View -->
                 <div class="nav-group">
                     <a href="{% url 'dashboard' %}" target="_blank" class="nav-link" style="color: #6366f1; border: 1px dashed #6366f1;">👁️ Student View</a>

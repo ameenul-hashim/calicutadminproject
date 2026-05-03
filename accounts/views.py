@@ -396,8 +396,24 @@ def edit_lesson(request, lesson_id):
 def delete_lesson(request, lesson_id):
     lesson = get_object_or_404(Lesson, id=lesson_id, course__teacher=request.user)
     course_id = lesson.course.id
-    lesson.delete()
-    messages.success(request, "Lesson deleted successfully.")
+    
+    from .models import DeletionRequest
+    existing_request = DeletionRequest.objects.filter(
+        teacher=request.user, item_type='Lesson', item_id=lesson.id, status='PENDING'
+    ).first()
+    
+    if existing_request:
+        messages.info(request, "A deletion request for this lesson is already pending admin approval.")
+    else:
+        DeletionRequest.objects.create(
+            teacher=request.user,
+            item_type='Lesson',
+            item_id=lesson.id,
+            item_name=f"{lesson.title} (Course: {lesson.course.title})"
+        )
+        messages.success(request, "Deletion request sent to admin. The lesson will be removed once approved.")
+        notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete lesson '{lesson.title}'.")
+        
     return redirect('course_lessons', course_id=course_id)
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')

@@ -29,5 +29,8 @@ urlpatterns = [
     path('assignment/<int:assignment_id>/submissions/', views.admin_view_submissions, name='admin_view_submissions'),
     path('quiz/<int:quiz_id>/attempts/', views.admin_view_quiz_attempts, name='admin_view_quiz_attempts'),
     path('course/<int:course_id>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
+    path('deletion-requests/', views.manage_deletion_requests, name='manage_deletion_requests'),
+    path('deletion-requests/<int:request_id>/approve/', views.approve_deletion_request, name='approve_deletion_request'),
+    path('deletion-requests/<int:request_id>/reject/', views.reject_deletion_request, name='reject_deletion_request'),
     path('manage_students/', lambda r: redirect('manage_students')),
 ]
