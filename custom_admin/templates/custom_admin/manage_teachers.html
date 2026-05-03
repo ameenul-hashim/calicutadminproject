@@ -12,7 +12,12 @@
 {% block content %}
             <form method="GET" style="margin-bottom: 2rem; display: flex; gap: 1rem;">
                 <input type="text" name="search" style="flex: 1; padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.7); backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.5); border-radius: 0.75rem; font-family: inherit; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);" placeholder="Search teachers..." value="{{ search_query }}">
-                <button type="submit" class="view-btn" style="background: #6366f1; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 0.75rem; cursor: pointer; font-weight: 600;">Search</button>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button type="submit" class="view-btn" style="background: #6366f1; color: white; border: none; padding: 0.8rem 1.5rem; border-radius: 0.75rem; cursor: pointer; font-weight: 600;">Search</button>
+                    {% if search_query %}
+                        <a href="{% url 'manage_teachers' %}" class="view-btn" style="background: #ef4444; color: white; text-decoration: none; padding: 0.8rem 1.5rem; border-radius: 0.75rem; font-weight: 600; display: flex; align-items: center; justify-content: center;">Clear</a>
+                    {% endif %}
+                </div>
             </form>
 
             <div class="glass-card" style="border-radius: 1rem; overflow: hidden;">
