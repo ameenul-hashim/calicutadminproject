@@ -1,12 +1,14 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from accounts.models import CustomUser
+from accounts.models import CustomUser, Notification, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
+from django.db.models.functions import ExtractMonth
+from django.utils import timezone
+from datetime import timedelta
 import re
-from accounts.models import Notification, Enrollment
 from accounts.utils.supabase_storage import upload_pdf
 
 def limit_notifications(user):
@@ -83,7 +85,7 @@ def admin_dashboard(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_students(request):
     search_query = request.GET.get('search', '')
-    users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True).only('id', 'username', 'email', 'full_name', 'profile_photo', 'status', 'date_joined')
+    users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
     if search_query:
         users = users.filter(
             Q(username__icontains=search_query) | 
@@ -112,10 +114,9 @@ def manage_students(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_student_profile(request, user_id):
     student = get_object_or_404(CustomUser, id=user_id, user_type='STUDENT')
-    enrollments = Enrollment.objects.filter(user=student).select_related('course').only('id', 'enrolled_at', 'course__title', 'course__price', 'course__thumbnail')
+    enrollments = Enrollment.objects.filter(user=student).select_related('course')
     
     # Calculate balance (Total course prices) using DB aggregation
-    from django.db.models import Sum
     current_balance = enrollments.aggregate(total=Sum('course__price'))['total'] or 0
     
     # Calculate Yesterday Balance (Enrollments from yesterday)
@@ -136,7 +137,7 @@ def admin_student_profile(request, user_id):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_teachers(request):
     search_query = request.GET.get('search', '')
-    users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses').only('id', 'username', 'email', 'full_name', 'profile_photo', 'status')
+    users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses')
     if search_query:
         users = users.filter(
             Q(username__icontains=search_query) | 
@@ -157,10 +158,8 @@ def manage_teachers(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_teacher_profile(request, user_id):
-    from accounts.models import Course, Enrollment
-    from django.db.models import Sum
     teacher = get_object_or_404(CustomUser, id=user_id, user_type='TEACHER')
-    courses = Course.objects.filter(teacher=teacher).only('id', 'title', 'price', 'status')
+    courses = Course.objects.filter(teacher=teacher)
     
     # Calculate Total Revenue (Enrollments for all teacher's courses) using DB aggregation
     all_enrollments = Enrollment.objects.filter(course__in=courses)
@@ -191,8 +190,7 @@ def pending_teachers_view(request):
     pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True)
     return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
 
-from django.utils import timezone
-from accounts.models import ApprovalLog
+    return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def accept_user(request, user_id):
@@ -349,10 +347,6 @@ def create_teacher_admin(request):
             
     return render(request, 'custom_admin/create_teacher.html')
 
-from django.db.models.functions import ExtractMonth
-from django.db import models
-from accounts.models import Course, Lesson
-
 @user_passes_test(is_admin, login_url='admin_login')
 def analytics_view(request):
     from django.core.cache import cache
@@ -371,7 +365,7 @@ def analytics_view(request):
         # Month-wise Data
         def get_monthly_data(queryset, date_field='created_at'):
             data = [0] * 12
-            counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=models.Count('id'))
+            counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=Count('id'))
             for entry in counts:
                 if entry['month']:
                     data[entry['month']-1] = entry['count']
@@ -419,14 +413,14 @@ def analytics_view(request):
         cache.set(cache_key, context, 300)
 
     # These shouldn't be cached as they are user-specific/time-sensitive
-    context['notifications'] = Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10]
+    context['notifications'] = Notification.objects.filter(user=request.user, is_read=False)[:10]
     context['unread_notifications_count'] = Notification.objects.filter(user=request.user, is_read=False).count()
     
     return render(request, 'custom_admin/analytics.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    courses = Course.objects.filter(status='PUBLISHED').prefetch_related('lessons').only('id', 'title', 'teacher__username', 'status', 'created_at')
+    courses = Course.objects.filter(status='PUBLISHED').select_related('teacher').prefetch_related('lessons')
     # Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(courses, 20)
@@ -595,7 +589,6 @@ def admin_view_course_content(request, course_id):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_course_secure(request, course_id):
-    from accounts.models import Course
     if request.method == 'POST':
         username = request.POST.get('admin_username')
         password = request.POST.get('admin_password')
@@ -615,7 +608,6 @@ def admin_delete_course_secure(request, course_id):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_lesson_secure(request, lesson_id):
-    from accounts.models import Lesson
     if request.method == 'POST':
         username = request.POST.get('admin_username')
         password = request.POST.get('admin_password')
@@ -682,7 +674,6 @@ def admin_logout(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
-    from accounts.models import DeletionRequest
     requests = DeletionRequest.objects.filter(status='PENDING')
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -694,7 +685,6 @@ def manage_deletion_requests(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def verify_deletion_request(request, request_id):
-    from accounts.models import DeletionRequest, Lesson, Course
     del_request = get_object_or_404(DeletionRequest, id=request_id)
     if del_request.item_type == 'Lesson':
         lesson = Lesson.objects.filter(id=del_request.item_id).first()
@@ -712,7 +702,6 @@ def verify_deletion_request(request, request_id):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_deletion_request(request, request_id):
-    from accounts.models import DeletionRequest, Lesson, Course
     del_request = get_object_or_404(DeletionRequest, id=request_id)
     
     if del_request.status != 'PENDING':
@@ -742,7 +731,6 @@ def approve_deletion_request(request, request_id):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_deletion_request(request, request_id):
-    from accounts.models import DeletionRequest
     del_request = get_object_or_404(DeletionRequest, id=request_id)
     
     del_request.status = 'REJECTED'
