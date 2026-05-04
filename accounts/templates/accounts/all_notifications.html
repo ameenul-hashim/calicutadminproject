@@ -14,16 +14,36 @@
         .header h1 { margin: 0; color: #1e293b; font-size: 1.8rem; font-weight: 700; }
         .back-link { text-decoration: none; color: #64748b; font-weight: 600; font-size: 0.9rem; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; }
         .back-link:hover { background: #f1f5f9; }
-        .card { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; }
-        .notif-item { padding: 1rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+        .card { 
+            background: white; 
+            border-radius: 1rem; 
+            border: 1px solid #e2e8f0; 
+            overflow-y: auto; 
+            max-height: 70vh; 
+            position: relative;
+        }
+        .notif-header-sticky {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
+            z-index: 10;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .notif-list {
+            margin-bottom: 80px; /* Buffer for last row */
+        }
+        .notif-item { padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
         .notif-item:last-child { border-bottom: none; }
         .notif-item.unread { background: #f0f9ff; }
-        .notif-message { color: #1e293b; font-size: 0.9rem; line-height: 1.5; flex: 1; }
+        .notif-message { color: #1e293b; font-size: 0.95rem; line-height: 1.5; flex: 1; font-weight: 500; }
         .notif-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; min-width: 110px; }
         .notif-time { font-size: 0.75rem; color: #94a3b8; white-space: nowrap; }
-        .mark-read-btn { font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 600; white-space: nowrap; }
         .read-badge { font-size: 0.7rem; background: #dcfce7; color: #15803d; padding: 0.2rem 0.5rem; border-radius: 2rem; font-weight: 600; }
-        .empty { text-align: center; padding: 3rem; color: #94a3b8; font-size: 1rem; }
+        .empty { text-align: center; padding: 5rem 2rem; color: #94a3b8; font-size: 1rem; }
     </style>
 </head>
 <body>
@@ -37,19 +57,29 @@
         </div>
 
         <div class="card">
-            {% if notifications %}
-                {% for notif in notifications %}
-                <div class="notif-item {% if not notif.is_read %}unread{% endif %}">
-                    <div class="notif-message">{{ notif.message }}</div>
-                    <div class="notif-meta">
-                        <span class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</span>
-                        <span class="read-badge">✓ Read</span>
+            <div class="notif-header-sticky">
+                <span style="font-weight: 700; color: #475569; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Notification History</span>
+                <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">{{ notifications.count }} Total</span>
+            </div>
+            
+            <div class="notif-list">
+                {% if notifications %}
+                    {% for notif in notifications %}
+                    <div class="notif-item {% if not notif.is_read %}unread{% endif %}">
+                        <div class="notif-message">{{ notif.message }}</div>
+                        <div class="notif-meta">
+                            <span class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</span>
+                            <span class="read-badge">✓ Read</span>
+                        </div>
                     </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div class="empty">No notifications found.</div>
-            {% endif %}
+                    {% endfor %}
+                {% else %}
+                    <div class="empty">
+                        <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📭</span>
+                        No notifications found.
+                    </div>
+                {% endif %}
+            </div>
         </div>
     </div>
 </body>
