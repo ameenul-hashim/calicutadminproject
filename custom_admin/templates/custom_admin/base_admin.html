@@ -402,13 +402,7 @@
             </header>
 
             <main class="main-content">
-                {% if messages %}
-                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-                    <script>
-                        document.addEventListener("DOMContentLoaded", function() {
-                            {% for message in messages %}
-                                Swal.fire({
-                                    icon: '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}success{% endif %}',
+                {% include 'includes/messages.html' %}',
                                     title: '{% if message.tags == "error" %}Error{% elif message.tags == "warning" %}Warning{% elif message.tags == "info" %}Info{% else %}Success!{% endif %}',
                                     text: "{{ message }}",
                                     timer: 3000,

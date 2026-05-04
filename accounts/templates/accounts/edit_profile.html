@@ -33,11 +33,7 @@
         <h1 class="title">Update Profile Photo</h1>
         <p class="subtitle">Upload your passport-size photo to keep your profile professional.</p>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem;">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
+        {% include 'includes/messages.html' %}
 
         <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}

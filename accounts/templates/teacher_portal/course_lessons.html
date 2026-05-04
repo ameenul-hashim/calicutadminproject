@@ -59,11 +59,7 @@
                 {% endif %}
             </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             <div class="lessons-list">
                 {% for lesson in lessons %}

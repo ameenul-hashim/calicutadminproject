@@ -59,11 +59,7 @@
             <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">+ Create Course</a>
         </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             <div class="course-grid">
                 {% for course in courses %}

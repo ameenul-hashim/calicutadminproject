@@ -28,11 +28,7 @@
             </nav>
         </aside>
         <main class="main-content">
-            {% if messages %}
-                {% for message in messages %}
-                    <div style="background: #ecfdf5; color: #10b981; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             <h1>Submissions: {{ assignment.title }}</h1>
             <p style="color: #64748b; margin-bottom: 2rem;">{{ assignment.course.title }} • Deadline: {{ assignment.deadline|date:"M d, Y h:i A" }} • {{ submissions.count }} submission(s)</p>

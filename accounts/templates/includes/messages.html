@@ -1,0 +1,87 @@
+{% if messages %}
+<div class="toast-container" id="toast-container">
+    {% for message in messages %}
+        <div class="toast-message toast-{{ message.tags }}">
+            <span>{{ message }}</span>
+            <button onclick="this.parentElement.style.display='none'" class="toast-close">&times;</button>
+        </div>
+    {% endfor %}
+</div>
+
+<style>
+    .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none; /* Let clicks pass through empty space */
+    }
+    .toast-message {
+        min-width: 300px;
+        max-width: 400px;
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        font-weight: 500;
+        pointer-events: auto; /* Re-enable clicks for the toast itself */
+        animation: slideInRight 0.3s ease-out forwards;
+        border-left: 5px solid #3b82f6; /* Default blue border */
+        color: #1e293b;
+    }
+    .toast-success { border-left-color: #10b981; }
+    .toast-error { border-left-color: #ef4444; }
+    .toast-warning { border-left-color: #f59e0b; }
+    .toast-info { border-left-color: #3b82f6; }
+    
+    .toast-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #94a3b8;
+        padding: 0;
+        margin-left: 15px;
+        line-height: 1;
+    }
+    .toast-close:hover { color: #475569; }
+
+    @keyframes slideInRight {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes fadeOutRight {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+    }
+    
+    .toast-hide {
+        animation: fadeOutRight 0.4s ease-in forwards;
+    }
+</style>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const toasts = document.querySelectorAll('.toast-message');
+        toasts.forEach(toast => {
+            // Auto hide after 5 seconds
+            setTimeout(() => {
+                toast.classList.add('toast-hide');
+                // Remove from DOM after animation completes
+                setTimeout(() => {
+                    toast.remove();
+                }, 400);
+            }, 5000);
+        });
+    });
+</script>
+{% endif %}

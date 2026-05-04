@@ -34,13 +34,7 @@
                 </div>
             </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             <form method="GET" class="search-bar">
                 <input type="text" name="search" class="search-input" placeholder="Search by username" value="{{ search_query }}">
