@@ -16,7 +16,7 @@
         
         {% include 'includes/messages.html' %}
 
-        <form method="POST">
+        <form method="POST" id="loginForm" novalidate>
             {% csrf_token %}
             <div class="input-group">
                 <label for="username">Admin Username</label>
@@ -29,7 +29,7 @@
                     <svg id="eye-icon-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </span>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">Admin Login</button>
+            <button type="submit" id="loginBtn" class="btn btn-primary" style="width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Admin Login</button>
         </form>
         
         <p style="text-align: center; margin-top: 1.5rem;">
@@ -49,6 +49,20 @@
                 icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
         }
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const username = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            if(username.trim() !== '' && pass.trim() !== '') {
+                const btn = document.getElementById('loginBtn');
+                btn.innerHTML = 'Verifying... <div class="loader" style="width:16px;height:16px;border:3px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 1s ease-in-out infinite;"></div>';
+                btn.style.opacity = '0.8';
+                btn.style.pointerEvents = 'none';
+            }
+        });
     </script>
+    <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
 </body>
 </html>
