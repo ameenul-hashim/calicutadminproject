@@ -662,7 +662,6 @@ def enroll_course(request, course_id):
         Enrollment.objects.create(user=request.user, course=course)
         messages.success(request, f"Successfully enrolled in {course.title}!")
         create_notification(request.user, f"Welcome! You have successfully enrolled in '{course.title}'.")
-        create_notification(course.teacher, f"New student enrolled in your course '{course.title}': {request.user.username}")
     return redirect('course_player', course_id=course.id)
 
 
