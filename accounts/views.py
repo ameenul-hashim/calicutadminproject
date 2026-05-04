@@ -639,32 +639,21 @@ def logout_view(request):
         return redirect('login')
         
     user_type = request.user.user_type
+    is_staff = getattr(request.user, 'is_staff', False)
     
-    # Check if teacher is logging out from student view area
-    # If they are in student dashboard/player, 'logout' acts as 'Back to Teacher Panel'
-    referer = request.META.get('HTTP_REFERER', '')
-    
-    if user_type == 'TEACHER' and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer) and '/teacher/' not in referer:
-        messages.info(request, "Exited student view. Welcome back to Teacher Dashboard.")
-        return redirect('teacher_dashboard')
-        
-    if getattr(request.user, 'is_staff', False) and user_type != 'TEACHER' and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer) and '/customadmin/' not in referer:
-        messages.info(request, "Exited student view. Welcome back to Admin Dashboard.")
-        return redirect('admin_dashboard')
-
-    # Always perform a real logout for other cases
-    request.session.flush() # Completely destroy the session and cookies
+    # Perform a complete logout and flush
+    request.session.flush()
     logout(request)
     
     # Redirect to the appropriate login page based on user type
     if user_type == 'TEACHER':
-        messages.success(request, "Teacher logged out successfully.")
+        messages.success(request, "Teacher logged out successfully. Sessions cleared.")
         return redirect('teacher_login')
-    elif getattr(request.user, 'is_staff', False) or user_type == 'ADMIN':
-        messages.success(request, "Admin logged out successfully.")
+    elif is_staff or user_type == 'ADMIN':
+        messages.success(request, "Admin logged out successfully. Sessions cleared.")
         return redirect('admin_login')
     else:
-        messages.success(request, "You have been logged out successfully. Have a great day!")
+        messages.success(request, "You have been logged out successfully. Sessions cleared.")
         return redirect('login')
 
 @user_passes_test(lambda u: u.is_authenticated and (u.user_type in ['STUDENT', 'TEACHER'] or getattr(u, 'is_staff', False)), login_url='login')
