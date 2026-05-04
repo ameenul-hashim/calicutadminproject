@@ -438,7 +438,7 @@ def analytics_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    courses = Course.objects.all().prefetch_related('lessons').only('id', 'title', 'teacher__username', 'status', 'created_at')
+    courses = Course.objects.filter(status='PUBLISHED').prefetch_related('lessons').only('id', 'title', 'teacher__username', 'status', 'created_at')
     # Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(courses, 20)
