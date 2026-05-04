@@ -364,9 +364,6 @@
                                         {{ notif.message }}
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
                                             <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                                            {% if not notif.is_read %}
-                                                <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
-                                            {% endif %}
                                         </div>
                                     </div>
                                 {% empty %}
