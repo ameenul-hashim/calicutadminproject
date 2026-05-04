@@ -296,8 +296,13 @@
                 <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link"><span>👤</span> Profile</a></li>
             </ul>
 
-            <div style="padding-top: 2rem; border-top: 1px solid #f1f5f9;">
+            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+                {% if user.user_type == 'TEACHER' %}
+                    <a href="{% url 'teacher_dashboard' %}" class="nav-link" style="color: #6366f1; font-weight: 600; background: #f5f3ff; margin-bottom: 0.5rem;"><span>🔙</span> Back to Teacher Panel</a>
+                {% endif %}
+                
                 {% if is_admin_preview %}
+                    <a href="{% url 'admin_dashboard' %}" class="nav-link" style="color: #0ea5e9; font-weight: 600; background: #f0f9ff; margin-bottom: 0.5rem;"><span>🔙</span> Back to Admin Panel</a>
                     <a href="{% url 'admin_student_logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Exit Preview</a>
                 {% else %}
                     <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
