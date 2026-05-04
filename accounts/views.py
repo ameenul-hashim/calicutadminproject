@@ -537,6 +537,7 @@ def edit_lesson(request, lesson_id):
         
         # Reset approval status on edit
         lesson.is_approved = False
+        lesson.status = 'PENDING'
         lesson.save()
         
         messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
