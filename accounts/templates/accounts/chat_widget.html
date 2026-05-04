@@ -141,7 +141,7 @@
 </div>
 
 <script>
-    let currentReceiverId = null;
+    let currentReceiverUid = null;
     let chatSocket = null;
     let countsInterval = null;
 
@@ -195,7 +195,7 @@
         document.getElementById('chat-messages').style.display = 'none';
         document.getElementById('chat-footer').style.display = 'none';
         document.getElementById('chat-back-btn').style.display = 'none';
-        currentReceiverId = null;
+        currentReceiverUid = null;
         if (chatSocket) {
             chatSocket.close();
             chatSocket = null;
@@ -221,14 +221,14 @@
                             <div style="font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${u.last_message}</div>
                         </div>
                     `;
-                    item.onclick = () => openChat(u.id, u.name);
+                    item.onclick = () => openChat(u.uid, u.name);
                     list.appendChild(item);
                 });
             });
     }
 
-    function openChat(userId, userName) {
-        currentReceiverId = userId;
+    function openChat(userUid, userName) {
+        currentReceiverUid = userUid;
         document.getElementById('chat-title').innerText = userName;
         document.getElementById('chat-user-list').style.display = 'none';
         document.getElementById('chat-messages').style.display = 'flex';
@@ -240,8 +240,8 @@
         loadMessages();
 
         // Initialize WebSocket
-        const currentUserId = "{{ request.user.id }}";
-        const roomName = [currentUserId, userId].sort((a, b) => a - b).join('_');
+        const currentUserUid = "{{ request.user.uid }}";
+        const roomName = [currentUserUid, userUid].sort().join('_');
         const wsStart = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         const wsUrl = wsStart + window.location.host + '/ws/chat/' + roomName + '/';
 
@@ -251,7 +251,7 @@
 
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            appendMessage(data.message, data.sender_id == currentUserId, data.timestamp);
+            appendMessage(data.message, data.sender_uid == currentUserUid, data.timestamp);
         };
 
         chatSocket.onclose = function(e) {
@@ -260,8 +260,8 @@
     }
 
     function loadMessages() {
-        if (!currentReceiverId) return;
-        fetch(`/chat/messages/${currentReceiverId}/`)
+        if (!currentReceiverUid) return;
+        fetch(`/chat/messages/${currentReceiverUid}/`)
             .then(res => res.json())
             .then(data => {
                 const box = document.getElementById('chat-messages');
@@ -293,11 +293,11 @@
     function sendMessage() {
         const input = document.getElementById('chat-input-field');
         const text = input.value.trim();
-        if (!text || !currentReceiverId || !chatSocket) return;
+        if (!text || !currentReceiverUid || !chatSocket) return;
 
         chatSocket.send(json_dumps({
             'message': text,
-            'receiver_id': currentReceiverId
+            'receiver_uid': currentReceiverUid
         }));
         
         input.value = '';

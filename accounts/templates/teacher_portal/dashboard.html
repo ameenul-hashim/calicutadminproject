@@ -258,7 +258,7 @@
                                 </td>
                                 <td style="padding: 1rem 0;">{{ course.lesson_count }}</td>
                                 <td style="padding: 1rem 0;">
-                                    <a href="{% url 'course_lessons' course.id %}" style="color: #6366f1; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Manage Content</a>
+                                    <a href="{% url 'course_lessons' course.uid %}" style="color: #6366f1; text-decoration: none; font-size: 0.9rem; font-weight: 600;">Manage Content</a>
                                 </td>
                             </tr>
                             {% empty %}

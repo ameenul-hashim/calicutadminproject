@@ -96,8 +96,8 @@
                             <span style="font-size: 0.85rem; color: #475569; font-weight: 500;">{{ course.teacher.full_name|default:course.teacher.username }}</span>
                         </div>
 
-                        <form action="{% url 'enroll_course' course.id %}" method="POST">
-                            {% csrf_token %}
+                        <form action="{% url 'enroll_course' course.uid %}" method="POST">
+{% csrf_token %}
                             <button type="submit" class="btn-enroll">Enroll Now</button>
                         </form>
                     </div>

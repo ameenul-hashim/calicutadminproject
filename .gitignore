@@ -24,3 +24,8 @@ media/
 # OS
 .DS_Store
 Thumbs.db
+
+# Backups & Dumps
+*.dump
+*.sql
+*.bak

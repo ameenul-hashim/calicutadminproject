@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+import uuid
 
 class CustomUser(AbstractUser):
     USER_TYPE_CHOICES = (
@@ -21,6 +22,7 @@ class CustomUser(AbstractUser):
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
     approved_at = models.DateTimeField(null=True, blank=True)
     current_session_key = models.CharField(max_length=40, null=True, blank=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     def __str__(self):
         return f"{self.username} ({self.user_type})"
@@ -50,6 +52,7 @@ class Course(models.Model):
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_courses')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     def __str__(self):
         return self.title
@@ -64,6 +67,8 @@ class Lesson(models.Model):
     is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
     rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
 
     class Meta:
         ordering = ['order']
@@ -109,6 +114,7 @@ class Notification(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -119,6 +125,7 @@ class ChatMessage(models.Model):
     message = models.TextField()
     is_read = models.BooleanField(default=False, db_index=True)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     class Meta:
         ordering = ['timestamp']
@@ -140,6 +147,7 @@ class DeletionRequest(models.Model):
     reason = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     created_at = models.DateTimeField(auto_now_add=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     class Meta:
         ordering = ['-created_at']

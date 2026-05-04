@@ -335,24 +335,28 @@ def dashboard_view(request):
     if search_query:
         courses = courses.filter(title__icontains=search_query)
 
-    # Filter notifications for students: only new courses and content in enrolled courses
-    if request.user.user_type == 'STUDENT' and not is_admin:
-        notifications_qs = request.user.notifications.filter(
-            Q(message__icontains="added course") | 
-            Q(message__icontains="New content added to your course")
-        ).order_by('-created_at')
-    else:
-        notifications_qs = request.user.notifications.all().order_by('-created_at')
+    # Objective 1: Dynamic Messages instead of DB saving for Students
+    platform_updates = []
+    yesterday = timezone.now() - timedelta(hours=24)
+    
+    # 1. New Courses added to Explore
+    new_courses = Course.objects.filter(is_approved=True, status='PUBLISHED', created_at__gte=yesterday).only('title')
+    for c in new_courses:
+        platform_updates.append(f"🚀 New Course Added: '{c.title}' is now available in the Explore area!")
 
-    unread_notifications_qs = notifications_qs.filter(is_read=False).only('id', 'message', 'created_at')
-    notifications = list(unread_notifications_qs[:5])
-    unread_notifications_count = unread_notifications_qs.count()
+    # 2. New Content in Enrolled Courses
+    if request.user.is_authenticated and request.user.user_type == 'STUDENT':
+        new_lessons = Lesson.objects.filter(
+            course__enrollments__user=request.user,
+            status='APPROVED',
+            created_at__gte=yesterday
+        ).select_related('course').only('title', 'course__title')
+        for l in new_lessons:
+            platform_updates.append(f"📖 Content Released: New lesson '{l.title}' added to your course '{l.course.title}'.")
 
-    # Pagination for courses
-    from django.core.paginator import Paginator
-    paginator = Paginator(courses, 12)  # 12 courses per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    # Add platform updates to Django messages so they appear in the dashboard message card
+    for update in platform_updates:
+        messages.info(request, update)
 
     # Build initial context
     context = {
@@ -360,8 +364,7 @@ def dashboard_view(request):
         'page_obj': page_obj,
         'search_query': search_query,
         'total_lessons': sum(c.lesson_count for c in courses),
-        'is_admin': is_admin,
-        # Objective 1: No DB notification queries for students
+        'is_admin_preview': is_unlocked,
     }
     return render(request, 'accounts/dashboard.html', context)
 
@@ -446,9 +449,9 @@ def explore_courses(request):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def view_other_course(request, course_id):
+def view_other_course(request, course_uid):
     # This is for viewing OTHER teachers' courses
-    course = get_object_or_404(Course.objects.select_related('teacher'), id=course_id, is_approved=True)
+    course = get_object_or_404(Course.objects.select_related('teacher'), uid=course_uid, is_approved=True)
     lessons = course.lessons.all().order_by('order')
     return render(request, 'teacher_portal/view_other_course.html', {
         'course': course,
@@ -474,9 +477,9 @@ def my_courses(request):
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def delete_course(request, course_id):
+def delete_course(request, course_uid):
     from .models import DeletionRequest, Course
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     
     existing_request = DeletionRequest.objects.filter(
         teacher=request.user, item_type='Course', item_id=course.id, status='PENDING'
@@ -495,6 +498,13 @@ def delete_course(request, course_id):
         notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete course '{course.title}'.")
         
     return redirect('my_courses')
+
+@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
+def admin_student_logout(request):
+    if 'student_view_unlocked' in request.session:
+        del request.session['student_view_unlocked']
+    messages.success(request, "Exited student view. Returned to admin dashboard.")
+    return redirect('admin_dashboard')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def create_course(request):
@@ -515,13 +525,13 @@ def create_course(request):
             status='DRAFT'
         )
         messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
-        return redirect('course_lessons', course_id=course.id)
+        return redirect('course_lessons', course_uid=course.uid)
     
     return render(request, 'teacher_portal/create_course.html')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def edit_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+def edit_course(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
         course.title = request.POST.get('title')
         course.description = request.POST.get('description')
@@ -543,8 +553,8 @@ def edit_course(request, course_id):
     return render(request, 'teacher_portal/edit_course.html', {'course': course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def course_lessons(request, course_id):
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+def course_lessons(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved').order_by('order')
     has_pending_content = lessons.filter(status='PENDING').exists()
     any_lesson_rejected = lessons.filter(status='REJECTED').exists()
@@ -557,8 +567,8 @@ def course_lessons(request, course_id):
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def add_lesson(request, course_id):
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+def add_lesson(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
         title = request.POST.get('title')
         video_url = request.POST.get('video_url')
@@ -573,13 +583,13 @@ def add_lesson(request, course_id):
             
         messages.success(request, "Lesson added successfully!")
         notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added a new lesson '{title}' to course '{course.title}'.")
-        return redirect('course_lessons', course_id=course.id)
+        return redirect('course_lessons', course_uid=course.uid)
     
     return render(request, 'teacher_portal/add_lesson.html', {'course': course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def edit_lesson(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id, course__teacher=request.user)
+def edit_lesson(request, lesson_uid):
+    lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
         lesson.title = request.POST.get('title')
         lesson.video_url = request.POST.get('video_url')
@@ -595,14 +605,14 @@ def edit_lesson(request, lesson_id):
         
         messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
         notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}' in course '{lesson.course.title}'.")
-        return redirect('course_lessons', course_id=lesson.course.id)
+        return redirect('course_lessons', course_uid=lesson.course.uid)
     
     return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def delete_lesson(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id, course__teacher=request.user)
-    course_id = lesson.course.id
+def delete_lesson(request, lesson_uid):
+    lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
+    course_uid = lesson.course.uid
     
     from .models import DeletionRequest
     existing_request = DeletionRequest.objects.filter(
@@ -621,11 +631,11 @@ def delete_lesson(request, lesson_id):
         messages.success(request, "Deletion request sent to admin. The lesson will be removed once approved.")
         notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete lesson '{lesson.title}'.")
         
-    return redirect('course_lessons', course_id=course_id)
+    return redirect('course_lessons', course_uid=course_uid)
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def submit_course_approval(request, course_id):
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
+def submit_course_approval(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     lessons = course.lessons.all()
     
     if lessons.exists():
@@ -686,15 +696,15 @@ def logout_view(request):
         return redirect('login')
 
 @user_passes_test(lambda u: u.is_authenticated and (u.user_type in ['STUDENT', 'TEACHER'] or getattr(u, 'is_staff', False)), login_url='login')
-def enroll_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id, status='PUBLISHED', is_approved=True)
+def enroll_course(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, status='PUBLISHED', is_approved=True)
     if Enrollment.objects.filter(user=request.user, course=course).exists():
         messages.info(request, f"You are already enrolled in {course.title}.")
     else:
         Enrollment.objects.create(user=request.user, course=course)
         messages.success(request, f"Successfully enrolled in {course.title}!")
         create_notification(request.user, f"Welcome! You have successfully enrolled in '{course.title}'.")
-    return redirect('course_player', course_id=course.id)
+    return redirect('course_player', course_uid=course.uid)
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -718,8 +728,8 @@ def edit_profile(request):
     return render(request, 'accounts/edit_profile.html', {'user': request.user})
 
 @login_required
-def course_player(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+def course_player(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid)
 
     # === ACCESS CONTROL ===
     # Admin (is_staff): Always allowed, sees all non-rejected content
@@ -752,9 +762,9 @@ def course_player(request, course_id):
 @login_required
 def send_chat_message(request):
     if request.method == 'POST':
-        receiver_id = request.POST.get('receiver_id')
+        receiver_uid = request.POST.get('receiver_uid')
         message_text = request.POST.get('message')
-        receiver = get_object_or_404(CustomUser, id=receiver_id)
+        receiver = get_object_or_404(CustomUser, uid=receiver_uid)
         
         msg = ChatMessage.objects.create(sender=request.user, receiver=receiver, message=message_text)
         
@@ -768,13 +778,13 @@ def send_chat_message(request):
     return JsonResponse({'status': 'error'}, status=400)
 
 @login_required
-def get_chat_messages(request, other_user_id):
-    other_user = get_object_or_404(CustomUser, id=other_user_id)
+def get_chat_messages(request, other_user_uid):
+    other_user = get_object_or_404(CustomUser, uid=other_user_uid)
     from django.db.models import Q
     messages = ChatMessage.objects.filter(
         (Q(sender=request.user) & Q(receiver=other_user)) |
         (Q(sender=other_user) & Q(receiver=request.user))
-    ).select_related('sender').only('sender__id', 'sender__username', 'message', 'timestamp').order_by('timestamp')
+    ).select_related('sender').only('sender__uid', 'sender__username', 'message', 'timestamp').order_by('timestamp')
     
     # Mark as read
     messages.filter(receiver=request.user, is_read=False).update(is_read=True)
@@ -782,7 +792,7 @@ def get_chat_messages(request, other_user_id):
     data = []
     for m in messages:
         data.append({
-            'sender_id': m.sender.id,
+            'sender_uid': m.sender.uid,
             'sender_name': m.sender.username,
             'message': m.message,
             'timestamp': m.timestamp.strftime('%H:%M'),
@@ -798,9 +808,9 @@ def get_chat_list(request):
     # For Admin: list all teachers with messages
     # For Teacher: list all admins
     if request.user.user_type == 'ADMIN' or request.user.is_superuser:
-        users = CustomUser.objects.filter(user_type='TEACHER').only('id', 'full_name', 'username', 'profile_photo')
+        users = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'profile_photo')
     else:
-        users = CustomUser.objects.filter(is_superuser=True).only('id', 'full_name', 'username', 'profile_photo')
+        users = CustomUser.objects.filter(is_superuser=True).only('uid', 'full_name', 'username', 'profile_photo')
         
     data = []
     for u in users:
@@ -812,7 +822,7 @@ def get_chat_list(request):
         unread_count = ChatMessage.objects.filter(sender=u, receiver=request.user, is_read=False).count()
         
         data.append({
-            'id': u.id,
+            'uid': u.uid,
             'name': u.full_name or u.username,
             'last_message': last_msg.message if last_msg else "No messages yet",
             'unread_count': unread_count,
@@ -823,10 +833,10 @@ def get_chat_list(request):
     return JsonResponse({'users': data})
 
 @login_required
-def mark_notification_read(request, notif_id):
+def mark_notification_read(request, notif_uid):
     from .models import Notification
     # Objective 4: Mark as Read -> DELETE from DB
-    notif = get_object_or_404(Notification, id=notif_id, user=request.user)
+    notif = get_object_or_404(Notification, uid=notif_uid, user=request.user)
     notif.delete()
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         from django.http import JsonResponse

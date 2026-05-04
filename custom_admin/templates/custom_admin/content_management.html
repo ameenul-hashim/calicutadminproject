@@ -39,20 +39,20 @@
             </div>
 
             <div style="border-top: 1px solid #f1f5f9; padding-top: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                <a href="{% url 'admin_view_course_content' course.id %}" style="text-align: center; background: #eef2ff; color: #4f46e5; padding: 0.6rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem; font-weight: 700; transition: all 0.2s;">
+                <a href="{% url 'admin_view_course_content' course.uid %}" style="text-align: center; background: #eef2ff; color: #4f46e5; padding: 0.6rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem; font-weight: 700; transition: all 0.2s;">
                     Verify Content Details
                 </a>
                 
                 <div style="display: flex; gap: 0.75rem;">
-                    <button onclick="document.getElementById('reject-form-{{ course.id }}').style.display='block'" style="flex: 1; background: #fef3c7; color: #b45309; padding: 0.6rem; border-radius: 0.5rem; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                    <button onclick="document.getElementById('reject-form-{{ course.uid }}').style.display='block'" style="flex: 1; background: #fef3c7; color: #b45309; padding: 0.6rem; border-radius: 0.5rem; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
                         Revoke / Reject
                     </button>
-                    <button onclick="openDeleteModal('{{ course.id }}', '{{ course.title|escapejs }}')" style="flex: 1; background: #fee2e2; color: #b91c1c; padding: 0.6rem; border-radius: 0.5rem; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                    <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="flex: 1; background: #fee2e2; color: #b91c1c; padding: 0.6rem; border-radius: 0.5rem; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
                         Delete Course
                     </button>
                 </div>
 
-                <form id="reject-form-{{ course.id }}" method="POST" action="{% url 'reject_course' course.id %}" style="display: none; margin-top: 0.5rem;">
+                <form id="reject-form-{{ course.uid }}" method="POST" action="{% url 'reject_course' course.uid %}" style="display: none; margin-top: 0.5rem;">
                     {% csrf_token %}
                     <textarea name="reason" placeholder="Reason for revoking approval..." required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
                     <button type="submit" style="width: 100%; background: #b45309; color: white; border: none; font-size: 0.85rem; font-weight: 700; padding: 0.6rem; border-radius: 0.5rem; cursor: pointer;">
@@ -116,9 +116,9 @@
 </div>
 
 <script>
-    function openDeleteModal(courseId, courseTitle) {
+    function openDeleteModal(courseUid, courseTitle) {
         document.getElementById('deleteCourseName').innerText = courseTitle;
-        document.getElementById('secureDeleteForm').action = "/customadmin/course/delete/secure/" + courseId + "/";
+        document.getElementById('secureDeleteForm').action = "/customadmin/course/delete/secure/" + courseUid + "/";
         document.getElementById('secureDeleteModal').style.display = 'flex';
     }
     function closeDeleteModal() {

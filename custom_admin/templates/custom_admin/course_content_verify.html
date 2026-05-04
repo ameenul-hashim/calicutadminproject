@@ -25,7 +25,7 @@
             <h2 style="margin: 0; color: #1e293b; font-size: 1.5rem;">{{ course.title }}</h2>
             <p style="margin: 0.5rem 0 1rem 0; color: #64748b; font-size: 0.95rem;">Created by <span style="font-weight: 600; color: #4f46e5;">{{ course.teacher.full_name|default:course.teacher.username }}</span></p>
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                <form action="{% url 'approve_course' course.id %}" method="post">
+                <form action="{% url 'approve_course' course.uid %}" method="post">
                     {% csrf_token %}
                     <button type="submit" style="background: #10b981; color: white; padding: 0.6rem 1.2rem; border-radius: 0.6rem; border: none; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
                         <span>✅</span> Approve Course
@@ -36,12 +36,12 @@
                     <span>⚠️</span> Reject Course
                 </button>
                 
-                <button onclick="openDeleteModal('{{ course.id }}', '{{ course.title|escapejs }}')" style="background: #ef4444; color: white; padding: 0.6rem 1.2rem; border-radius: 0.6rem; border: none; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="background: #ef4444; color: white; padding: 0.6rem 1.2rem; border-radius: 0.6rem; border: none; font-size: 0.9rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
                     <span>🗑️</span> Delete Course
                 </button>
             </div>
             
-            <form id="rejectCourseForm" action="{% url 'reject_course' course.id %}" method="post" style="display: none; margin-top: 1rem; width: 100%; max-width: 400px;">
+            <form id="rejectCourseForm" action="{% url 'reject_course' course.uid %}" method="post" style="display: none; margin-top: 1rem; width: 100%; max-width: 400px;">
                 {% csrf_token %}
                 <textarea name="reason" placeholder="Reason for rejection..." required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; margin-bottom: 0.5rem; font-family: inherit; resize: vertical; min-height: 80px; box-sizing: border-box;"></textarea>
                 <button type="submit" style="background: #b45309; color: white; border: none; padding: 0.6rem 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; width: 100%;">Submit Rejection</button>
@@ -104,7 +104,7 @@
             <div style="padding: 1.25rem 1.75rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.75rem;">
                 <div style="display: flex; gap: 0.75rem;">
                     {% if lesson.status != 'APPROVED' %}
-                    <form action="{% url 'approve_lesson' lesson.id %}" method="post" style="flex: 1;">
+                    <form action="{% url 'approve_lesson' lesson.uid %}" method="post" style="flex: 1;">
                         {% csrf_token %}
                         <button type="submit" style="width: 100%; background: #10b981; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
                             Approve
@@ -113,7 +113,7 @@
                     {% endif %}
                     
                     {% if lesson.status != 'REJECTED' %}
-                    <button onclick="document.getElementById('reject-lesson-form-{{ lesson.id }}').style.display = document.getElementById('reject-lesson-form-{{ lesson.id }}').style.display === 'none' ? 'block' : 'none';" style="flex: 1; background: #f59e0b; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);">
+                    <button onclick="document.getElementById('reject-lesson-form-{{ lesson.uid }}').style.display = document.getElementById('reject-lesson-form-{{ lesson.uid }}').style.display === 'none' ? 'block' : 'none';" style="flex: 1; background: #f59e0b; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);">
                         Reject
                     </button>
                     {% else %}
@@ -122,12 +122,12 @@
                     </div>
                     {% endif %}
 
-                    <button onclick="openLessonDeleteModal('{{ lesson.id }}', '{{ lesson.title|escapejs }}')" style="flex: 1; background: #ef4444; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                    <button onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" style="flex: 1; background: #ef4444; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
                         Delete
                     </button>
                 </div>
 
-                <form id="reject-lesson-form-{{ lesson.id }}" method="POST" action="{% url 'reject_lesson' lesson.id %}" style="display: none; margin-top: 0.5rem;">
+                <form id="reject-lesson-form-{{ lesson.uid }}" method="POST" action="{% url 'reject_lesson' lesson.uid %}" style="display: none; margin-top: 0.5rem;">
                     {% csrf_token %}
                     <textarea name="reason" placeholder="Explain the reason for rejection..." required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
                     <button type="submit" style="width: 100%; background: #b45309; color: white; border: none; font-size: 0.9rem; font-weight: 700; padding: 0.75rem; border-radius: 0.5rem; cursor: pointer;">
@@ -174,9 +174,9 @@
 </div>
 
 <script>
-    function openDeleteModal(courseId, courseTitle) {
+    function openDeleteModal(courseUid, courseTitle) {
         document.getElementById('deleteCourseName').innerText = courseTitle;
-        document.getElementById('secureDeleteForm').action = "/customadmin/course/delete/secure/" + courseId + "/";
+        document.getElementById('secureDeleteForm').action = "/customadmin/course/delete/secure/" + courseUid + "/";
         document.getElementById('secureDeleteModal').style.display = 'flex';
     }
     function closeDeleteModal() {
@@ -184,9 +184,9 @@
         document.getElementById('secureDeleteForm').reset();
     }
 
-    function openLessonDeleteModal(lessonId, lessonTitle) {
+    function openLessonDeleteModal(lessonUid, lessonTitle) {
         document.getElementById('deleteLessonName').innerText = lessonTitle;
-        document.getElementById('secureLessonDeleteForm').action = "/customadmin/lesson/delete/secure/" + lessonId + "/";
+        document.getElementById('secureLessonDeleteForm').action = "/customadmin/lesson/delete/secure/" + lessonUid + "/";
         document.getElementById('secureLessonDeleteModal').style.display = 'flex';
     }
     function closeLessonDeleteModal() {
