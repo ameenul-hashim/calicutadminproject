@@ -48,9 +48,9 @@
                     <td style="color: #64748b;">{{ req.created_at|date:"M d, Y" }}</td>
                     <td>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <a href="{% url 'verify_deletion_request' req.id %}" class="view-btn" style="background: #eef2ff; color: #4f46e5; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">View Content</a>
-                            <a href="{% url 'approve_deletion_request' req.id %}" class="view-btn" onclick="return confirm('Are you sure you want to PERMANENTLY DELETE this {{ req.item_type }}? This cannot be undone.')" style="background: #10b981; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Approve Delete</a>
-                            <a href="{% url 'reject_deletion_request' req.id %}" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Reject</a>
+                            <a href="{% url 'verify_deletion_request' req.uid %}" class="view-btn" style="background: #eef2ff; color: #4f46e5; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">View Content</a>
+                            <a href="{% url 'approve_deletion_request' req.uid %}" class="view-btn" onclick="return confirm('Are you sure you want to PERMANENTLY DELETE this {{ req.item_type }}? This cannot be undone.')" style="background: #10b981; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Approve Delete</a>
+                            <a href="{% url 'reject_deletion_request' req.uid %}" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Reject</a>
                         </div>
                     </td>
                 </tr>

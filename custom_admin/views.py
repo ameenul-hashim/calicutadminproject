@@ -112,8 +112,8 @@ def manage_students(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
-def admin_student_profile(request, user_id):
-    student = get_object_or_404(CustomUser, id=user_id, user_type='STUDENT')
+def admin_student_profile(request, user_uid):
+    student = get_object_or_404(CustomUser, uid=user_uid, user_type='STUDENT')
     enrollments = Enrollment.objects.filter(user=student).select_related('course')
     
     # Calculate balance (Total course prices) using DB aggregation
@@ -157,8 +157,8 @@ def manage_teachers(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
-def admin_teacher_profile(request, user_id):
-    teacher = get_object_or_404(CustomUser, id=user_id, user_type='TEACHER')
+def admin_teacher_profile(request, user_uid):
+    teacher = get_object_or_404(CustomUser, uid=user_uid, user_type='TEACHER')
     courses = Course.objects.filter(teacher=teacher)
     
     # Calculate Total Revenue (Enrollments for all teacher's courses) using DB aggregation
@@ -193,8 +193,8 @@ def pending_teachers_view(request):
     return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
-def accept_user(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
+def accept_user(request, user_uid):
+    user = get_object_or_404(CustomUser, uid=user_uid)
     user.status = 'ACTIVE'
     user.is_active = True
     user.approved_by = request.user
@@ -218,8 +218,8 @@ def accept_user(request, user_id):
     return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
-def decline_user(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
+def decline_user(request, user_uid):
+    user = get_object_or_404(CustomUser, uid=user_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason', '')
         user.status = 'BLOCKED'
@@ -245,8 +245,8 @@ def decline_user(request, user_id):
     return render(request, 'custom_admin/decline_reason.html', {'target_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
-def toggle_user_status(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
+def toggle_user_status(request, user_uid):
+    user = get_object_or_404(CustomUser, uid=user_uid)
     if user.status == 'ACTIVE':
         user.status = 'BLOCKED'
         user.is_active = False
@@ -447,8 +447,8 @@ def pending_courses_view(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
-def approve_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+def approve_course(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid)
     course.status = 'PUBLISHED'
     course.is_approved = True
     course.approved_by = request.user
@@ -479,8 +479,8 @@ def approve_course(request, course_id):
     return redirect('pending_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')
-def reject_course(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+def reject_course(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason', '')
         course.status = 'REJECTED'
@@ -504,8 +504,8 @@ def reject_course(request, course_id):
     return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
 
 @user_passes_test(is_admin, login_url='admin_login')
-def edit_user_admin(request, user_id):
-    user = get_object_or_404(CustomUser, id=user_id)
+def edit_user_admin(request, user_uid):
+    user = get_object_or_404(CustomUser, uid=user_uid)
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -519,9 +519,9 @@ def edit_user_admin(request, user_id):
             messages.error(request, "Passwords do not match.")
         elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
             messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
-        elif CustomUser.objects.filter(username=username).exclude(id=user_id).exists():
+        elif CustomUser.objects.filter(username=username).exclude(uid=user_uid).exists():
             messages.error(request, "This username is already taken by another user. Please use a unique username.")
-        elif CustomUser.objects.filter(email=email).exclude(id=user_id).exists():
+        elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
             messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
         else:
             user.username = username
@@ -538,8 +538,8 @@ def edit_user_admin(request, user_id):
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
-def approve_lesson(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
+def approve_lesson(request, lesson_uid):
+    lesson = get_object_or_404(Lesson, uid=lesson_uid)
     lesson.status = 'APPROVED'
     lesson.is_approved = True
     lesson.save()
@@ -552,11 +552,11 @@ def approve_lesson(request, lesson_id):
             create_notification(enrollment.user, f"New content added to your course '{lesson.course.title}': {lesson.title}")
 
     messages.success(request, f"Lesson '{lesson.title}' approved.")
-    return redirect('admin_view_course_content', course_id=lesson.course.id)
+    return redirect('admin_view_course_content', course_uid=lesson.course.uid)
 
 @user_passes_test(is_admin, login_url='admin_login')
-def reject_lesson(request, lesson_id):
-    lesson = get_object_or_404(Lesson, id=lesson_id)
+def reject_lesson(request, lesson_uid):
+    lesson = get_object_or_404(Lesson, uid=lesson_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason')
         lesson.status = 'REJECTED'
@@ -565,13 +565,13 @@ def reject_lesson(request, lesson_id):
         lesson.save()
         create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been rejected. Reason: {reason}")
         messages.warning(request, f"Lesson '{lesson.title}' rejected.")
-        return redirect('admin_view_course_content', course_id=lesson.course.id)
+        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
 
 @user_passes_test(is_admin, login_url='admin_login')
-def admin_view_course_content(request, course_id):
-    course = get_object_or_404(Course, id=course_id)
+def admin_view_course_content(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid)
     # Hide REJECTED content from admin view until it's resubmitted (PENDING)
     lessons = course.lessons.exclude(status='REJECTED').order_by('order')
     
@@ -588,7 +588,7 @@ def admin_view_course_content(request, course_id):
 
 
 @user_passes_test(is_admin, login_url='admin_login')
-def admin_delete_course_secure(request, course_id):
+def admin_delete_course_secure(request, course_uid):
     if request.method == 'POST':
         username = request.POST.get('admin_username')
         password = request.POST.get('admin_password')
@@ -596,7 +596,7 @@ def admin_delete_course_secure(request, course_id):
         # Verify credentials
         user = authenticate(request, username=username, password=password)
         if user is not None and user == request.user and user.is_staff:
-            course = get_object_or_404(Course, id=course_id)
+            course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
             course.delete()
             messages.success(request, f"Course '{course_title}' has been successfully deleted.")
@@ -607,7 +607,7 @@ def admin_delete_course_secure(request, course_id):
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
-def admin_delete_lesson_secure(request, lesson_id):
+def admin_delete_lesson_secure(request, lesson_uid):
     if request.method == 'POST':
         username = request.POST.get('admin_username')
         password = request.POST.get('admin_password')
@@ -615,20 +615,20 @@ def admin_delete_lesson_secure(request, lesson_id):
         # Verify credentials
         user = authenticate(request, username=username, password=password)
         if user is not None and user == request.user and user.is_staff:
-            lesson = get_object_or_404(Lesson, id=lesson_id)
+            lesson = get_object_or_404(Lesson, uid=lesson_uid)
             lesson_title = lesson.title
-            course_id = lesson.course.id
+            course_uid = lesson.course.uid
             lesson.delete()
             messages.success(request, f"Lesson '{lesson_title}' has been successfully deleted.")
-            return redirect('admin_view_course_content', course_id=course_id)
+            return redirect('admin_view_course_content', course_uid=course_uid)
         else:
             messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
-def delete_user_admin(request, user_id):
-    target_user = get_object_or_404(CustomUser, id=user_id)
+def delete_user_admin(request, user_uid):
+    target_user = get_object_or_404(CustomUser, uid=user_uid)
     
     if request.method == 'POST':
         username = request.POST.get('admin_username')
@@ -684,25 +684,25 @@ def manage_deletion_requests(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
-def verify_deletion_request(request, request_id):
-    del_request = get_object_or_404(DeletionRequest, id=request_id)
+def verify_deletion_request(request, request_uid):
+    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
     if del_request.item_type == 'Lesson':
         lesson = Lesson.objects.filter(id=del_request.item_id).first()
         if lesson:
             messages.info(request, f"Verifying deletion request for Lesson: {lesson.title}.")
-            return redirect('admin_view_course_content', course_id=lesson.course.id)
+            return redirect('admin_view_course_content', course_uid=lesson.course.uid)
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
             messages.info(request, f"Verifying deletion request for Course: {course.title}.")
-            return redirect('admin_view_course_content', course_id=course.id)
+            return redirect('admin_view_course_content', course_uid=course.uid)
             
     messages.error(request, "The item could not be found or verified.")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
-def approve_deletion_request(request, request_id):
-    del_request = get_object_or_404(DeletionRequest, id=request_id)
+def approve_deletion_request(request, request_uid):
+    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
     
     if del_request.status != 'PENDING':
         messages.error(request, "This request has already been processed.")
@@ -723,18 +723,16 @@ def approve_deletion_request(request, request_id):
         else:
             messages.warning(request, "Item already gone.")
     
-    del_request.status = 'APPROVED'
-    del_request.save()
+    del_request.delete() # Objective: Free up space after processing
     messages.success(request, success_msg)
     create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
-def reject_deletion_request(request, request_id):
-    del_request = get_object_or_404(DeletionRequest, id=request_id)
+def reject_deletion_request(request, request_uid):
+    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
     
-    del_request.status = 'REJECTED'
-    del_request.save()
+    del_request.delete() # Objective: Free up space
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected.")
     create_notification(del_request.teacher, f"Your request to delete '{del_request.item_name}' has been REJECTED by admin.")
     
