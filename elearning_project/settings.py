@@ -32,13 +32,13 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
-    "edustreamcalicut.onrender.com",
+    "calicutadmin.onrender.com",
     "localhost",
     "127.0.0.1",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://edustreamcalicut.onrender.com"
+    "https://calicutadmin.onrender.com"
 ]
 
 
@@ -110,7 +110,7 @@ CHANNEL_LAYERS = {
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
-# Database - Environment Variable based (Supabase)
+# Database - Render PostgreSQL (primary) | Supabase kept as backup in .env
 DATABASES = {
     'default': dj_database_url.parse(
         os.getenv('DATABASE_URL'),
