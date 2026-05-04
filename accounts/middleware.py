@@ -54,7 +54,8 @@ class PortalSecurityMiddleware:
                     status_msg = "Your account is pending admin approval." if request.user.status == 'PENDING' else "Your account has been blocked."
                     logout(request)
                     messages.error(request, status_msg)
-                    return redirect('login')
+                    if url_name != 'login':
+                        return redirect('login')
                     
             # --- Student View Step-Up Authentication for Admin/Teachers ---
             student_url_names = [
@@ -65,8 +66,9 @@ class PortalSecurityMiddleware:
             
             if url_name in student_url_names and (request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser):
                 if not request.session.get('student_view_unlocked'):
-                    request.session['next_student_url'] = path
-                    return redirect('student_view_auth')
+                    if url_name != 'student_view_auth':
+                        request.session['next_student_url'] = path
+                        return redirect('student_view_auth')
                     
             # --- Teacher View Step-Up Authentication for Admins ---
             teacher_url_names = [
@@ -78,8 +80,9 @@ class PortalSecurityMiddleware:
             
             if url_name in teacher_url_names and (request.user.user_type == 'ADMIN' or request.user.is_superuser):
                 if not request.session.get('teacher_view_unlocked'):
-                    request.session['next_teacher_url'] = path
-                    return redirect('teacher_view_auth')
+                    if url_name != 'teacher_view_auth':
+                        request.session['next_teacher_url'] = path
+                        return redirect('teacher_view_auth')
 
         response = self.get_response(request)
         
