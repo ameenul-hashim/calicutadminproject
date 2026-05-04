@@ -399,7 +399,12 @@ def student_explore(request):
     enrolled_ids = Enrollment.objects.filter(user=request.user).values_list('course_id', flat=True)
     
     # All approved and published courses not yet enrolled
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).select_related('teacher').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).order_by('-created_at')
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True)\
+        .exclude(id__in=enrolled_ids)\
+        .select_related('teacher')\
+        .annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED')))\
+        .only('id', 'title', 'thumbnail', 'category', 'teacher__username', 'teacher__full_name')\
+        .order_by('-created_at')
     
     search_query = request.GET.get('search', '')
     if search_query:
@@ -421,7 +426,11 @@ def student_explore(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def explore_courses(request):
     # Other teachers' courses for viewing
-    other_courses_qs = Course.objects.exclude(teacher=request.user).filter(is_approved=True).select_related('teacher').prefetch_related('lessons').order_by('-created_at')
+    other_courses_qs = Course.objects.exclude(teacher=request.user)\
+        .filter(is_approved=True)\
+        .select_related('teacher')\
+        .only('id', 'title', 'status', 'created_at', 'thumbnail', 'teacher__username', 'teacher__full_name')\
+        .order_by('-created_at')
     
     # Pagination
     from django.core.paginator import Paginator
@@ -438,7 +447,7 @@ def explore_courses(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def view_other_course(request, course_id):
     # This is for viewing OTHER teachers' courses
-    course = get_object_or_404(Course, id=course_id, is_approved=True)
+    course = get_object_or_404(Course.objects.select_related('teacher'), id=course_id, is_approved=True)
     lessons = course.lessons.all().order_by('order')
     return render(request, 'teacher_portal/view_other_course.html', {
         'course': course,
@@ -451,7 +460,7 @@ def my_courses(request):
     from django.db.models import Count, Q
     courses_qs = Course.objects.filter(teacher=request.user).annotate(
         rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED'))
-    ).order_by('-created_at')
+    ).only('id', 'title', 'status', 'created_at', 'thumbnail').order_by('-created_at')
     
     # Pagination
     from django.core.paginator import Paginator
@@ -535,7 +544,7 @@ def edit_course(request, course_id):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
-    lessons = course.lessons.all().order_by('order')
+    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved').order_by('order')
     has_pending_content = lessons.filter(status='PENDING').exists()
     any_lesson_rejected = lessons.filter(status='REJECTED').exists()
     
@@ -729,7 +738,7 @@ def course_player(request, course_id):
             messages.error(request, "You are not enrolled in this course.")
             return redirect('student_explore')
         # Filter: Students see Approved content only in production, but user wants uploaded content visible
-        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
 
     context = {
         'course': course,
@@ -764,7 +773,7 @@ def get_chat_messages(request, other_user_id):
     messages = ChatMessage.objects.filter(
         (Q(sender=request.user) & Q(receiver=other_user)) |
         (Q(sender=other_user) & Q(receiver=request.user))
-    ).order_by('timestamp')
+    ).select_related('sender').only('sender__id', 'sender__username', 'message', 'timestamp').order_by('timestamp')
     
     # Mark as read
     messages.filter(receiver=request.user, is_read=False).update(is_read=True)
@@ -788,9 +797,9 @@ def get_chat_list(request):
     # For Admin: list all teachers with messages
     # For Teacher: list all admins
     if request.user.user_type == 'ADMIN' or request.user.is_superuser:
-        users = CustomUser.objects.filter(user_type='TEACHER')
+        users = CustomUser.objects.filter(user_type='TEACHER').only('id', 'full_name', 'username', 'profile_photo')
     else:
-        users = CustomUser.objects.filter(is_superuser=True)
+        users = CustomUser.objects.filter(is_superuser=True).only('id', 'full_name', 'username', 'profile_photo')
         
     data = []
     for u in users:
@@ -830,7 +839,7 @@ def teacher_analytics_view(request):
     from django.utils import timezone
     
     # Get courses provided by this teacher
-    courses = Course.objects.filter(teacher=request.user).annotate(enroll_count=Count('enrollments')).order_by('-enroll_count')
+    courses = Course.objects.filter(teacher=request.user).annotate(enroll_count=Count('enrollments')).only('id', 'title').order_by('-enroll_count')
     
     course_labels = [c.title for c in courses]
     course_data = [c.enroll_count for c in courses]
