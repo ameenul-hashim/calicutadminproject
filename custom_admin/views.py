@@ -583,7 +583,8 @@ def reject_lesson(request, lesson_id):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_id):
     course = get_object_or_404(Course, id=course_id)
-    lessons = course.lessons.all().order_by('order')
+    # Hide REJECTED content from admin view until it's resubmitted (PENDING)
+    lessons = course.lessons.exclude(status='REJECTED').order_by('order')
     
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -641,6 +642,19 @@ def delete_user_admin(request, user_id):
             
     return render(request, 'custom_admin/delete_user_confirm.html', {
         'target_user': target_user
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_all_notifications(request):
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
+    unread_count = notifications.filter(is_read=False).count()
+    
+    # Mark all as read when viewing
+    notifications.update(is_read=True)
+    
+    return render(request, 'custom_admin/all_notifications.html', {
+        'all_notifications': notifications,
+        'unread_notifications_count': 0,
     })
 
 def admin_logout(request):
