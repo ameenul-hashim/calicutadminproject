@@ -306,13 +306,9 @@ def dashboard_view(request):
         # Real Student - show only their enrolled courses
         courses = Course.objects.filter(enrollments__user=request.user, is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
-    enrolled_ids = list(courses.values_list('id', flat=True))
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'price', 'category', 'teacher').select_related('teacher')[:10]
-    
     search_query = request.GET.get('search', '')
     if search_query:
         courses = courses.filter(title__icontains=search_query)
-        explore_courses = explore_courses.filter(title__icontains=search_query)
 
     # Use prefetch_related for notifications to avoid extra queries
     notifications_qs = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')
@@ -329,7 +325,6 @@ def dashboard_view(request):
     context = {
         'courses': page_obj,
         'page_obj': page_obj,
-        'explore_courses': explore_courses,
         'search_query': search_query,
         'total_lessons': courses.aggregate(total=Sum('lesson_count'))['total'] or 0,
         'notifications': notifications,
