@@ -582,8 +582,9 @@ def submit_course_approval(request, course_id):
         is_resubmission = course.rejection_reason not in [None, ''] or course.status == 'REJECTED'
         old_status = course.status
         
-        course.status = 'PENDING'
-        course.save()
+        if old_status != 'PUBLISHED':
+            course.status = 'PENDING'
+            course.save()
         
         if is_resubmission:
             messages.success(request, f"Course '{course.title}' re-submitted for admin approval.")
@@ -635,7 +636,7 @@ def enroll_course(request, course_id):
         messages.success(request, f"Successfully enrolled in {course.title}!")
         create_notification(request.user, f"Welcome! You have successfully enrolled in '{course.title}'.")
         create_notification(course.teacher, f"New student enrolled in your course '{course.title}': {request.user.username}")
-    return redirect('dashboard')
+    return redirect('course_player', course_id=course.id)
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
