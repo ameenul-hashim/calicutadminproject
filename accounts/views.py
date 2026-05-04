@@ -309,7 +309,7 @@ def dashboard_view(request):
     if request.user.user_type == 'TEACHER':
         courses = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     else:
-        courses = Course.objects.filter(enrollments__user=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        courses = Course.objects.filter(enrollments__user=request.user, is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     enrolled_ids = list(courses.values_list('id', flat=True))
     explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'price', 'category', 'teacher').select_related('teacher')[:10]
@@ -836,17 +836,21 @@ def course_player(request, course_id):
             messages.error(request, "You do not have permission to view this course.")
             return redirect('teacher_dashboard')
     
-    # Teachers and Admins can see all lessons, students see only approved ones
-    # Admins/Teachers can see PENDING lessons (for preview/verification), but NEVER REJECTED ones in the player.
-    # Students see ONLY APPROVED lessons.
+    # Teachers and Admins can see all content, students see only approved ones
     if request.user.user_type in ['TEACHER', 'ADMIN'] or request.user.is_superuser:
         lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
+        quizzes = course.quizzes.exclude(status='REJECTED').order_by('created_at')
+        assignments = course.assignments.exclude(status='REJECTED').order_by('created_at')
     else:
         lessons = course.lessons.filter(is_approved=True, status='APPROVED').prefetch_related('multiple_notes').order_by('order')
+        quizzes = course.quizzes.filter(is_approved=True, status='APPROVED').order_by('created_at')
+        assignments = course.assignments.filter(is_approved=True, status='APPROVED').order_by('created_at')
     
     context = {
         'course': course,
         'lessons': lessons,
+        'quizzes': quizzes,
+        'assignments': assignments,
         'first_lesson': lessons.first() if lessons.exists() else None,
     }
     return render(request, 'accounts/course_player.html', context)
