@@ -56,13 +56,6 @@
                         {% endif %}
                     </div>
                     <div class="input-group">
-                        <label for="notes">Study Notes (PDF)</label>
-                        <input type="file" name="notes" id="notes" accept=".pdf" multiple>
-                        {% if lesson.notes %}
-                            <p class="helper-text">Current file: {{ lesson.notes.name|slice:"14:" }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="input-group">
                         <label for="order">Lesson Order Number</label>
                         <input type="number" name="order" id="order" value="{{ lesson.order }}" required>
                     </div>

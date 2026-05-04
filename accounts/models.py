@@ -59,8 +59,6 @@ class Lesson(models.Model):
     title = models.CharField(max_length=255)
     video_url = models.URLField(max_length=500, null=True, blank=True, help_text="YouTube or other video link")
     video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
-    notes = models.FileField(upload_to='lessons/notes/', null=True, blank=True)
-    pdf_url = models.URLField(max_length=1000, null=True, blank=True, help_text="Supabase PDF URL")
     order = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
@@ -69,13 +67,6 @@ class Lesson(models.Model):
 
     class Meta:
         ordering = ['order']
-
-class LessonNote(models.Model):
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='multiple_notes')
-    file = models.FileField(upload_to='lessons/notes/')
-    pdf_url = models.URLField(max_length=1000, null=True, blank=True)
-    title = models.CharField(max_length=255, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class LiveClass(models.Model):
