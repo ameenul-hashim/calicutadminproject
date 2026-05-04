@@ -185,13 +185,10 @@ def login_view(request):
 
             if user.status == 'ACTIVE':
                 # Concurrent login restriction for students
+                # Efficiently handle concurrent login restriction
                 from django.contrib.sessions.models import Session
                 if user.current_session_key:
-                    try:
-                        old_session = Session.objects.get(session_key=user.current_session_key)
-                        old_session.delete()
-                    except Session.DoesNotExist:
-                        pass
+                    Session.objects.filter(session_key=user.current_session_key).delete()
                 
                 login(request, user)
                 
@@ -199,7 +196,7 @@ def login_view(request):
                 if not request.session.session_key:
                     request.session.save()
                 user.current_session_key = request.session.session_key
-                user.save()
+                user.save(update_fields=['current_session_key'])
                 
                 messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
                 return redirect('dashboard')
@@ -315,15 +312,17 @@ def dashboard_view(request):
         courses = Course.objects.filter(enrollments__user=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     enrolled_ids = list(courses.values_list('id', flat=True))
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).only('id', 'title', 'thumbnail', 'price', 'category', 'teacher').select_related('teacher')[:10]
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'price', 'category', 'teacher').select_related('teacher')[:10]
     
     search_query = request.GET.get('search', '')
     if search_query:
         courses = courses.filter(title__icontains=search_query)
         explore_courses = explore_courses.filter(title__icontains=search_query)
 
-    notifications = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')[:5]
-    unread_notifications_count = request.user.notifications.filter(is_read=False).count()
+    # Use prefetch_related for notifications to avoid extra queries
+    notifications_qs = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')
+    notifications = list(notifications_qs[:5])
+    unread_notifications_count = notifications_qs.count()
 
     # Pagination for courses
     from django.core.paginator import Paginator
@@ -346,7 +345,7 @@ def dashboard_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_dashboard(request):
-    courses = Course.objects.filter(teacher=request.user).only('id', 'title', 'status', 'created_at', 'thumbnail')
+    courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'status', 'created_at', 'thumbnail')
     total_students = Enrollment.objects.filter(course__teacher=request.user).count()
     
     # Efficient aggregation
@@ -378,7 +377,7 @@ def student_explore(request):
     enrolled_ids = Enrollment.objects.filter(user=request.user).values_list('course_id', flat=True)
     
     # All approved and published courses not yet enrolled
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).order_by('-created_at')
+    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).exclude(id__in=enrolled_ids).select_related('teacher').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).order_by('-created_at')
     
     search_query = request.GET.get('search', '')
     if search_query:
@@ -841,9 +840,9 @@ def course_player(request, course_id):
     # Admins/Teachers can see PENDING lessons (for preview/verification), but NEVER REJECTED ones in the player.
     # Students see ONLY APPROVED lessons.
     if request.user.user_type in ['TEACHER', 'ADMIN'] or request.user.is_superuser:
-        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
     else:
-        lessons = course.lessons.filter(is_approved=True, status='APPROVED').order_by('order')
+        lessons = course.lessons.filter(is_approved=True, status='APPROVED').prefetch_related('multiple_notes').order_by('order')
     
     context = {
         'course': course,

@@ -1,8 +1,15 @@
+from django.core.cache import cache
 from accounts.models import CustomUser, Course, DeletionRequest, Notification
 
 def pending_counts(request):
     if not request.user.is_authenticated:
         return {}
+    
+    # Use cache to avoid heavy DB queries on every page load
+    cache_key = f"pending_counts_{request.user.id}_{request.user.user_type}"
+    cached_context = cache.get(cache_key)
+    if cached_context:
+        return cached_context
     
     context = {}
     
@@ -28,7 +35,6 @@ def pending_counts(request):
             context['unread_student_notifs'] = context['unread_admin_notifs']
 
     elif request.user.user_type == 'TEACHER':
-        # Teacher might want to see rejected courses or pending approvals
         context['teacher_pending_approvals'] = Course.objects.filter(teacher=request.user, status='PENDING').count()
         context['teacher_rejected_courses'] = Course.objects.filter(teacher=request.user, status='REJECTED').count()
         context['unread_teacher_notifs'] = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -36,4 +42,6 @@ def pending_counts(request):
     elif request.user.user_type == 'STUDENT':
         context['unread_student_notifs'] = Notification.objects.filter(user=request.user, is_read=False).count()
 
+    # Cache for 60 seconds
+    cache.set(cache_key, context, 60)
     return context
