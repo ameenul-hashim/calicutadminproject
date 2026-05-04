@@ -474,7 +474,7 @@ def approve_course(request, course_id):
     course.save()
     
     # Auto-approve all current lessons in the course
-    course.lessons.update(is_approved=True)
+    course.lessons.update(is_approved=True, status='APPROVED')
 
     create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
     
