@@ -314,10 +314,18 @@ def dashboard_view(request):
     if search_query:
         courses = courses.filter(title__icontains=search_query)
 
-    # Use prefetch_related for notifications to avoid extra queries
-    notifications_qs = request.user.notifications.filter(is_read=False).only('id', 'message', 'created_at')
-    notifications = list(notifications_qs[:5])
-    unread_notifications_count = notifications_qs.count()
+    # Filter notifications for students: only new courses and content in enrolled courses
+    if request.user.user_type == 'STUDENT' and not is_admin:
+        notifications_qs = request.user.notifications.filter(
+            Q(message__icontains="added course") | 
+            Q(message__icontains="New content added to your course")
+        ).order_by('-created_at')
+    else:
+        notifications_qs = request.user.notifications.all().order_by('-created_at')
+
+    unread_notifications_qs = notifications_qs.filter(is_read=False).only('id', 'message', 'created_at')
+    notifications = list(unread_notifications_qs[:5])
+    unread_notifications_count = unread_notifications_qs.count()
 
     # Pagination for courses
     from django.core.paginator import Paginator
@@ -332,7 +340,7 @@ def dashboard_view(request):
         'search_query': search_query,
         'total_lessons': sum(c.lesson_count for c in courses),
         'notifications': notifications,
-        'unread_notifications_count': unread_notifications_count,
+        'unread_student_notifs': unread_notifications_count,
         'is_admin': is_admin,
     }
     return render(request, 'accounts/dashboard.html', context)
@@ -857,7 +865,18 @@ def mark_all_notifications_read(request):
 @login_required
 def all_notifications(request):
     from django.shortcuts import render
-    notifications = request.user.notifications.all().order_by('-created_at')
+    from django.db.models import Q
+    
+    notifications_qs = request.user.notifications.all().order_by('-created_at')
+    
+    # Filter for Students
+    if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
+        notifications_qs = notifications_qs.filter(
+            Q(message__icontains="added course") | 
+            Q(message__icontains="New content added to your course")
+        )
+    
+    notifications = notifications_qs
     
     # Mark all as read when viewing this page
     request.user.notifications.filter(is_read=False).update(is_read=True)
@@ -877,7 +896,16 @@ def get_unread_counts(request):
     from .models import Notification, ChatMessage
     from django.db.models import Q
     
-    notif_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    notif_qs = Notification.objects.filter(user=request.user, is_read=False)
+    
+    # Filter for Students
+    if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
+        notif_qs = notif_qs.filter(
+            Q(message__icontains="added course") | 
+            Q(message__icontains="New content added to your course")
+        )
+        
+    notif_count = notif_qs.count()
     chat_count = ChatMessage.objects.filter(receiver=request.user, is_read=False).count()
     
     return JsonResponse({

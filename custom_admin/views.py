@@ -531,6 +531,13 @@ def approve_lesson(request, lesson_id):
     lesson.is_approved = True
     lesson.save()
     create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
+    
+    # Notify students enrolled in this course about new content
+    enrollments = Enrollment.objects.filter(course=lesson.course).select_related('user')
+    for enrollment in enrollments:
+        if enrollment.user.status == 'ACTIVE':
+            create_notification(enrollment.user, f"New content added to your course '{lesson.course.title}': {lesson.title}")
+
     messages.success(request, f"Lesson '{lesson.title}' approved.")
     return redirect('admin_view_course_content', course_id=lesson.course.id)
 
