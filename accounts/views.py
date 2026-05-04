@@ -213,8 +213,7 @@ def student_view_auth(request):
 
     if request.method == 'POST':
         password = request.POST.get('password')
-        user = authenticate(request, username=request.user.username, password=password)
-        if user is not None and user == request.user:
+        if request.user.check_password(password):
             request.session['student_view_unlocked'] = True
             next_url = request.session.pop('next_student_url', 'dashboard')
             messages.success(request, "Student View access granted.")
