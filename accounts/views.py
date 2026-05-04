@@ -294,7 +294,7 @@ def dashboard_view(request):
     
     if request.user.user_type not in ['STUDENT', 'TEACHER'] and not is_unlocked:
         messages.error(request, "Please use the appropriate portal.")
-        return redirect('admin_dashboard') if is_admin else redirect('login')
+        return redirect('login')
 
     if request.user.user_type == 'TEACHER' and not is_admin:
         # Teacher viewing their own courses in student layout
