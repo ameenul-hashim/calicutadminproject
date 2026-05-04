@@ -8,35 +8,35 @@
 {% endblock %}
 
 {% block content %}
-<div style="background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
-        <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">Notification History</h3>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">{{ all_notifications.count }} Total Notifications</span>
-    </div>
+    <div class="table-responsive" style="max-height: 75vh;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; position: sticky; top: 0; z-index: 20;">
+            <h3 style="margin: 0; color: #1e293b; font-size: 1.1rem;">Notification History</h3>
+            <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">{{ all_notifications.count }} Total Notifications</span>
+        </div>
 
-    <div style="display: flex; flex-direction: column;">
-        {% for notif in all_notifications %}
-        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; position: relative;">
-            <div style="display: flex; align-items: flex-start; gap: 1rem;">
-                <div style="width: 40px; height: 40px; background: {% if 'NEW' in notif.message %}#dcfce7{% elif 'UPDATE' in notif.message or 'RE-SUBMISSION' in notif.message %}#fef3c7{% else %}#eef2ff{% endif %}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
-                    {% if 'NEW' in notif.message %}🌱{% elif 'UPDATE' in notif.message or 'RE-SUBMISSION' in notif.message %}🔁{% else %}🔔{% endif %}
-                </div>
-                <div style="flex: 1;">
-                    <p style="margin: 0; color: #1e293b; font-size: 1rem; line-height: 1.5; font-weight: 500;">{{ notif.message }}</p>
-                    <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-size: 0.8rem; color: #94a3b8; display: flex; align-items: center; gap: 0.25rem;">
-                            <span>🕒</span> {{ notif.created_at|date:"M d, Y" }} at {{ notif.created_at|time:"H:i" }} ({{ notif.created_at|timesince }} ago)
-                        </span>
+        <div style="display: flex; flex-direction: column; margin-bottom: 80px;">
+            {% for notif in all_notifications %}
+            <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; transition: background 0.2s; position: relative;">
+                <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                    <div style="width: 40px; height: 40px; background: {% if 'NEW' in notif.message %}#dcfce7{% elif 'UPDATE' in notif.message or 'RE-SUBMISSION' in notif.message %}#fef3c7{% else %}#eef2ff{% endif %}; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; flex-shrink: 0;">
+                        {% if 'NEW' in notif.message %}🌱{% elif 'UPDATE' in notif.message or 'RE-SUBMISSION' in notif.message %}🔁{% else %}🔔{% endif %}
+                    </div>
+                    <div style="flex: 1;">
+                        <p style="margin: 0; color: #1e293b; font-size: 1rem; line-height: 1.5; font-weight: 500;">{{ notif.message }}</p>
+                        <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 0.8rem; color: #94a3b8; display: flex; align-items: center; gap: 0.25rem;">
+                                <span>🕒</span> {{ notif.created_at|date:"M d, Y" }} at {{ notif.created_at|time:"H:i" }} ({{ notif.created_at|timesince }} ago)
+                            </span>
+                        </div>
                     </div>
                 </div>
             </div>
+            {% empty %}
+            <div style="padding: 5rem 2rem; text-align: center; color: #94a3b8;">
+                <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📭</span>
+                <p style="font-size: 1.1rem; font-weight: 500;">No notifications yet.</p>
+            </div>
+            {% endfor %}
         </div>
-        {% empty %}
-        <div style="padding: 5rem 2rem; text-align: center; color: #94a3b8;">
-            <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📭</span>
-            <p style="font-size: 1.1rem; font-weight: 500;">No notifications yet.</p>
-        </div>
-        {% endfor %}
     </div>
-</div>
 {% endblock %}
