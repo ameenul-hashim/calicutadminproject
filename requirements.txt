@@ -13,6 +13,10 @@ sqlparse==0.5.1
 whitenoise==6.7.0
 typing-extensions==4.14.1
 
+# Real-time WebSocket stack
+channels==4.3.2
+daphne==4.2.1
+
 # Stable Supabase stack
 supabase==1.2.0
 pydantic==2.13.3
