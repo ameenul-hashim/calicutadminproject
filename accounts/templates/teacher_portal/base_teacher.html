@@ -79,18 +79,20 @@
         <aside class="sidebar">
             <div class="logo-area">EduStream <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
             
-            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
-                <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9;">
+                <div style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 1rem; border: 3px solid #e0f2fe; overflow: hidden; background: #f8fafc; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                     {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ user.profile_photo.url }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
-                        <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
+                        <span style="font-size: 2rem;">👤</span>
                     {% endif %}
                 </div>
-                <h4 style="margin: 0; color: #1e293b; font-size: 0.95rem;">{{ user.full_name|default:user.username }}</h4>
-                <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.75rem;">{{ user.email }}</p>
-                <a href="{% url 'edit_profile' %}" style="display: inline-block; margin-top: 0.75rem; font-size: 0.7rem; color: #6366f1; text-decoration: none; font-weight: 600; text-transform: uppercase;">Profile</a>
+                <h3 style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin: 0;">{{ user.full_name|default:user.username }}</h3>
+                <p style="font-size: 0.75rem; font-weight: 600; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem;">
+                    Instructor
+                </p>
             </div>
+
 
             <nav class="nav-list">
                 <a href="{% url 'teacher_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_dashboard' %}active{% endif %}">🏠 Dashboard</a>

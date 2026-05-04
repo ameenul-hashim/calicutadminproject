@@ -313,7 +313,9 @@
                 {% if user.user_type == 'TEACHER' %}
                     <li class="nav-item"><a href="{% url 'teacher_dashboard' %}" class="nav-link" style="background: #eef2ff; color: #6366f1; border: 1px solid #c7d2fe;"><span>👨‍🏫</span> Teacher Portal</a></li>
                 {% endif %}
+                {% if user.user_type == 'STUDENT' %}
                 <li class="nav-item"><a href="{% url 'profile' %}" class="nav-link"><span>👤</span> Profile</a></li>
+                {% endif %}
             </ul>
 
             <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
