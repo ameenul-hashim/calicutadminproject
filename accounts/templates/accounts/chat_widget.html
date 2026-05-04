@@ -142,7 +142,7 @@
 
 <script>
     let currentReceiverId = null;
-    let chatInterval = null;
+    let chatSocket = null;
     let countsInterval = null;
 
     // Polling for total unread counts (chat + notifications)
@@ -182,7 +182,10 @@
         if (win.classList.contains('active')) {
             loadUserList();
         } else {
-            clearInterval(chatInterval);
+            if (chatSocket) {
+                chatSocket.close();
+                chatSocket = null;
+            }
         }
     }
 
@@ -193,7 +196,10 @@
         document.getElementById('chat-footer').style.display = 'none';
         document.getElementById('chat-back-btn').style.display = 'none';
         currentReceiverId = null;
-        clearInterval(chatInterval);
+        if (chatSocket) {
+            chatSocket.close();
+            chatSocket = null;
+        }
 
         fetch('/chat/list/')
             .then(res => res.json())
@@ -230,8 +236,27 @@
         document.getElementById('chat-back-btn').style.display = 'inline';
         document.getElementById('chat-back-btn').onclick = loadUserList;
 
+        // Load historical messages first
         loadMessages();
-        chatInterval = setInterval(loadMessages, 3000);
+
+        // Initialize WebSocket
+        const currentUserId = "{{ request.user.id }}";
+        const roomName = [currentUserId, userId].sort((a, b) => a - b).join('_');
+        const wsStart = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const wsUrl = wsStart + window.location.host + '/ws/chat/' + roomName + '/';
+
+        if (chatSocket) chatSocket.close();
+        
+        chatSocket = new WebSocket(wsUrl);
+
+        chatSocket.onmessage = function(e) {
+            const data = JSON.parse(e.data);
+            appendMessage(data.message, data.sender_id == currentUserId, data.timestamp);
+        };
+
+        chatSocket.onclose = function(e) {
+            console.error('Chat socket closed unexpectedly');
+        };
     }
 
     function loadMessages() {
@@ -240,44 +265,47 @@
             .then(res => res.json())
             .then(data => {
                 const box = document.getElementById('chat-messages');
-                const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 1;
-                
                 box.innerHTML = '';
                 data.messages.forEach(m => {
-                    const msgDiv = document.createElement('div');
-                    msgDiv.className = `msg ${m.is_me ? 'me' : 'other'}`;
-                    msgDiv.innerHTML = `
-                        ${m.message}
-                        <span class="msg-time">${m.timestamp}</span>
-                    `;
-                    box.appendChild(msgDiv);
+                    appendMessage(m.message, m.is_me, m.timestamp);
                 });
-
-                if (wasAtBottom) {
-                    box.scrollTop = box.scrollHeight;
-                }
+                box.scrollTop = box.scrollHeight;
             });
+    }
+
+    function appendMessage(text, isMe, timestamp) {
+        const box = document.getElementById('chat-messages');
+        const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 2;
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `msg ${isMe ? 'me' : 'other'}`;
+        msgDiv.innerHTML = `
+            ${text}
+            <span class="msg-time">${timestamp}</span>
+        `;
+        box.appendChild(msgDiv);
+
+        if (wasAtBottom || isMe) {
+            box.scrollTop = box.scrollHeight;
+        }
     }
 
     function sendMessage() {
         const input = document.getElementById('chat-input-field');
         const text = input.value.trim();
-        if (!text || !currentReceiverId) return;
+        if (!text || !currentReceiverId || !chatSocket) return;
 
-        const formData = new FormData();
-        formData.append('receiver_id', currentReceiverId);
-        formData.append('message', text);
-        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+        chatSocket.send(json_dumps({
+            'message': text,
+            'receiver_id': currentReceiverId
+        }));
+        
+        input.value = '';
+    }
 
-        fetch('/chat/send/', {
-            method: 'POST',
-            body: formData
-        })
-        .then(res => res.json())
-        .then(data => {
-            input.value = '';
-            loadMessages();
-        });
+    // Helper for JSON.stringify in Django templates
+    function json_dumps(obj) {
+        return JSON.stringify(obj);
     }
 
     document.getElementById('chat-input-field').addEventListener('keypress', function(e) {

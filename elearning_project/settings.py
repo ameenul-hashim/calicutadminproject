@@ -45,12 +45,14 @@ CSRF_TRUSTED_ORIGINS = [
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     'accounts',
     'custom_admin',
     'cloudinary_storage',
@@ -94,6 +96,14 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'elearning_project.wsgi.application'
+ASGI_APPLICATION = 'elearning_project.asgi.application'
+
+# Channel Layer for real-time messaging
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # SSL/Proxy Configuration for Render
