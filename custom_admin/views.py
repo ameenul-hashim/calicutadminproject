@@ -111,17 +111,17 @@ def manage_students(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_student_profile(request, user_id):
     student = get_object_or_404(CustomUser, id=user_id, user_type='STUDENT')
-    enrollments = Enrollment.objects.filter(user=student).select_related('course')
+    enrollments = Enrollment.objects.filter(user=student).select_related('course').only('id', 'enrolled_at', 'course__title', 'course__price', 'course__thumbnail')
     
-    # Calculate balance (Total course prices)
-    current_balance = sum(e.course.price for e in enrollments)
+    # Calculate balance (Total course prices) using DB aggregation
+    from django.db.models import Sum
+    current_balance = enrollments.aggregate(total=Sum('course__price'))['total'] or 0
     
     # Calculate Yesterday Balance (Enrollments from yesterday)
     from django.utils import timezone
     from datetime import timedelta
     yesterday = timezone.now().date() - timedelta(days=1)
-    yesterday_enrollments = enrollments.filter(enrolled_at__date=yesterday)
-    yesterday_balance = sum(e.course.price for e in yesterday_enrollments)
+    yesterday_balance = enrollments.filter(enrolled_at__date=yesterday).aggregate(total=Sum('course__price'))['total'] or 0
     
     return render(request, 'custom_admin/student_profile_invoice.html', {
         'student': student,
@@ -157,19 +157,19 @@ def manage_teachers(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_teacher_profile(request, user_id):
     from accounts.models import Course, Enrollment
+    from django.db.models import Sum
     teacher = get_object_or_404(CustomUser, id=user_id, user_type='TEACHER')
-    courses = Course.objects.filter(teacher=teacher)
+    courses = Course.objects.filter(teacher=teacher).only('id', 'title', 'price', 'status')
     
-    # Calculate Total Revenue (Enrollments for all teacher's courses)
+    # Calculate Total Revenue (Enrollments for all teacher's courses) using DB aggregation
     all_enrollments = Enrollment.objects.filter(course__in=courses)
-    current_balance = sum(e.course.price for e in all_enrollments)
+    current_balance = all_enrollments.aggregate(total=Sum('course__price'))['total'] or 0
     
     # Calculate Yesterday Revenue
     from django.utils import timezone
     from datetime import timedelta
     yesterday = timezone.now().date() - timedelta(days=1)
-    yesterday_enrollments = all_enrollments.filter(enrolled_at__date=yesterday)
-    yesterday_balance = sum(e.course.price for e in yesterday_enrollments)
+    yesterday_balance = all_enrollments.filter(enrolled_at__date=yesterday).aggregate(total=Sum('course__price'))['total'] or 0
     
     return render(request, 'custom_admin/teacher_profile_invoice.html', {
         'teacher': teacher,
