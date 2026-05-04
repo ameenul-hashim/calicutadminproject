@@ -56,6 +56,7 @@ def admin_login_view(request):
 def is_admin(user):
     return user.is_authenticated and user.is_staff
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_dashboard(request):
     # Redirect to students list by default or provide overview
@@ -655,8 +656,9 @@ def admin_all_notifications(request):
     })
 
 def admin_logout(request):
+    request.session.flush()
     logout(request)
-    messages.success(request, "Admin logged out successfully!")
+    messages.success(request, "Admin logged out successfully! Sessions cleared.")
     return redirect('admin_login')
 
 
