@@ -155,27 +155,30 @@
             width: 100%;
             overflow-x: auto;
             overflow-y: auto;
-            max-height: 65vh; /* Slightly reduced height for better viewport fit */
+            max-height: 65vh; 
             -webkit-overflow-scrolling: touch;
-            margin-bottom: 1.5rem;
-            border-radius: 0.75rem;
+            margin-bottom: 2rem;
+            border-radius: 1rem;
             border: 1px solid #e2e8f0;
             background: white;
             position: relative;
+            scrollbar-width: thin;
+            scrollbar-color: #cbd5e1 #f8fafc;
         }
-        /* Ensure the last row is fully viewable with extra space at bottom */
+        /* Fix: Add a dedicated spacer at the bottom of the table to ensure last row visibility */
         .table-responsive table {
-            margin-bottom: 4rem !important; 
+            margin-bottom: 80px !important; /* Large buffer for last row */
+            width: 100%;
         }
         .table thead th {
-            background: #f8fafc;
-            color: #64748b;
+            background: #f1f5f9; /* More distinct gray-blue */
+            color: #475569;
             font-weight: 700;
             text-transform: uppercase;
             font-size: 0.75rem;
             letter-spacing: 0.05em;
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 2px solid #e2e8f0;
             position: sticky;
             top: 0;
             z-index: 10;
