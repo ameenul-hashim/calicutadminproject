@@ -14,11 +14,12 @@ from datetime import timedelta
 from django.db.models import Count, Sum, Q
 
 def limit_notifications(user):
-    """Keep only the 50 most recent notifications per user."""
+    """Limit notifications: 10 for Teachers, 50 for Admins."""
     from .models import Notification
+    limit = 10 if user.user_type == 'TEACHER' else 50
     qs = Notification.objects.filter(user=user).order_by('-created_at')
-    if qs.count() > 50:
-        ids_to_keep = qs.values_list('id', flat=True)[:50]
+    if qs.count() > limit:
+        ids_to_keep = qs.values_list('id', flat=True)[:limit]
         Notification.objects.filter(user=user).exclude(id__in=ids_to_keep).delete()
 
 def create_notification(user, message):
