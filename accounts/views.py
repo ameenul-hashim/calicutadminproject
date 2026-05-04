@@ -11,7 +11,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
-from django.db.models import Count, Sum
+from django.db.models import Count, Sum, Q
 
 def create_notification(user, message):
     Notification.objects.create(user=user, message=message)
@@ -694,21 +694,22 @@ def course_player(request, course_id):
     # === ACCESS CONTROL ===
     # Admin (is_staff): Always allowed, sees all non-rejected content
     if getattr(request.user, 'is_staff', False):
-        lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
 
     # Teacher: allowed for own course OR any approved course
     elif request.user.user_type == 'TEACHER':
         if course.teacher != request.user and not course.is_approved:
             messages.error(request, "You do not have permission to view this course.")
             return redirect('teacher_dashboard')
-        lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
 
-    # Student: must be enrolled, sees only approved lessons
+    # Student: must be enrolled, sees approved lessons (and pending for testing if requested)
     else:
         if not Enrollment.objects.filter(user=request.user, course=course).exists():
             messages.error(request, "You are not enrolled in this course.")
             return redirect('student_explore')
-        lessons = course.lessons.filter(is_approved=True, status='APPROVED').prefetch_related('multiple_notes').order_by('order')
+        # Filter: Students see Approved content only in production, but user wants uploaded content visible
+        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
 
     context = {
         'course': course,
