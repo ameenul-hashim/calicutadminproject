@@ -39,4 +39,5 @@ urlpatterns = [
     path('deletion-requests/<int:request_id>/verify/', views.verify_deletion_request, name='verify_deletion_request'),
     path('deletion-requests/<int:request_id>/approve/', views.approve_deletion_request, name='approve_deletion_request'),
     path('deletion-requests/<int:request_id>/reject/', views.reject_deletion_request, name='reject_deletion_request'),
+    path('notifications/', views.admin_all_notifications, name='admin_all_notifications'),
 ]

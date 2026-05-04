@@ -520,10 +520,11 @@ def add_lesson(request, course_id):
             title=title,
             video_url=video_url,
             video_file=video_file,
-            order=order
+            order=request.POST.get('order', course.lessons.count() + 1)
         )
             
         messages.success(request, "Lesson added successfully!")
+        notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added a new lesson '{title}' to course '{course.title}'.")
         return redirect('course_lessons', course_id=course.id)
     
     return render(request, 'teacher_portal/add_lesson.html', {'course': course})
@@ -545,6 +546,7 @@ def edit_lesson(request, lesson_id):
         lesson.save()
         
         messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
+        notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}' in course '{lesson.course.title}'.")
         return redirect('course_lessons', course_id=lesson.course.id)
     
     return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})

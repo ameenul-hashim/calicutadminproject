@@ -349,7 +349,7 @@
                                     <h4 style="margin: 0;">Notifications</h4>
                                     <div style="display: flex; gap: 0.5rem;">
                                         <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none;">Mark All Read</a>
-                                        <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
+                                        <a href="{% url 'admin_all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
                                     </div>
                                 </div>
                                 {% for notif in notifications %}
@@ -380,25 +380,22 @@
 
             <main class="main-content">
                 {% if messages %}
-                    <div id="alert-container">
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem; transition: opacity 0.5s ease-out;">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    </div>
-                    
+                    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
                     <script>
-                        // Auto-dismiss messages after 5 seconds
-                        setTimeout(function() {
-                            const alerts = document.querySelectorAll('#alert-container .alert');
-                            alerts.forEach(function(alert) {
-                                alert.style.opacity = '0'; // Fade out
-                                setTimeout(() => {
-                                    alert.style.display = 'none'; // Remove from flow
-                                }, 500); // Wait for fade transition
-                            });
-                        }, 5000); // 5000 milliseconds = 5 seconds
+                        document.addEventListener("DOMContentLoaded", function() {
+                            {% for message in messages %}
+                                Swal.fire({
+                                    icon: '{% if message.tags == "error" %}error{% elif message.tags == "warning" %}warning{% elif message.tags == "info" %}info{% else %}success{% endif %}',
+                                    title: '{% if message.tags == "error" %}Error{% elif message.tags == "warning" %}Warning{% elif message.tags == "info" %}Info{% else %}Success!{% endif %}',
+                                    text: "{{ message }}",
+                                    timer: 3000,
+                                    timerProgressBar: true,
+                                    showConfirmButton: false,
+                                    toast: true,
+                                    position: 'top-end'
+                                });
+                            {% endfor %}
+                        });
                     </script>
                 {% endif %}
 
