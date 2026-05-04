@@ -138,7 +138,7 @@
         <!-- Header -->
         <header class="player-header">
             <div style="display: flex; align-items: center; gap: 2rem;">
-                <a href="{% if request.user.user_type == 'STUDENT' %}{% url 'dashboard' %}{% else %}{% url 'teacher_dashboard' %}{% endif %}" class="back-btn">← Back</a>
+                <a href="{% if is_admin %}{% url 'admin_dashboard' %}{% elif request.user.user_type == 'TEACHER' %}{% url 'teacher_dashboard' %}{% else %}{% url 'dashboard' %}{% endif %}" class="back-btn">← Back</a>
                 <span style="font-weight: 600; color: #f1f5f9; font-size: 1.1rem;">{{ course.title }}</span>
             </div>
             <div style="display: flex; gap: 1rem;">

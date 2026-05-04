@@ -290,13 +290,16 @@ from django.db.models import Count, Q, Sum
 def dashboard_view(request):
     # Check for access
     is_unlocked = request.session.get('student_view_unlocked')
+    is_admin = getattr(request.user, 'is_staff', False)
+    
     if request.user.user_type not in ['STUDENT', 'TEACHER'] and not is_unlocked:
         messages.error(request, "Please use the appropriate portal.")
-        return redirect('admin_dashboard') if request.user.is_staff else redirect('login')
+        return redirect('admin_dashboard') if is_admin else redirect('login')
 
-    if request.user.user_type == 'TEACHER':
+    if request.user.user_type == 'TEACHER' and not is_admin:
         courses = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     else:
+        # Student OR Admin in student view - show enrolled courses
         courses = Course.objects.filter(enrollments__user=request.user, is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     enrolled_ids = list(courses.values_list('id', flat=True))
@@ -327,6 +330,7 @@ def dashboard_view(request):
         'total_lessons': courses.aggregate(total=Sum('lesson_count'))['total'] or 0,
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count,
+        'is_admin': is_admin,
     }
     return render(request, 'accounts/dashboard.html', context)
 
@@ -666,27 +670,31 @@ def edit_profile(request):
 @login_required
 def course_player(request, course_id):
     course = get_object_or_404(Course, id=course_id)
-    
-    # Check access: Admin can always view, Teacher can view if they own it or if it's approved, Student must be enrolled
-    if request.user.user_type == 'STUDENT' or (getattr(request.user, 'is_staff', False) and not Enrollment.objects.filter(user=request.user, course=course).exists() and not course.is_approved):
-        # Allow admins to view without enrollment if course is approved, otherwise they need to enroll or it's an error.
-        # Actually, let's just make Admin act like a student here if they are in student view.
-        get_object_or_404(Enrollment, user=request.user, course=course)
+
+    # === ACCESS CONTROL ===
+    # Admin (is_staff): Always allowed, sees all non-rejected content
+    if getattr(request.user, 'is_staff', False):
+        lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
+
+    # Teacher: allowed for own course OR any approved course
     elif request.user.user_type == 'TEACHER':
         if course.teacher != request.user and not course.is_approved:
             messages.error(request, "You do not have permission to view this course.")
             return redirect('teacher_dashboard')
-    
-    # Teachers and Admins can see all content, students see only approved ones
-    if request.user.user_type in ['TEACHER', 'ADMIN'] or request.user.is_superuser:
         lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
+
+    # Student: must be enrolled, sees only approved lessons
     else:
+        if not Enrollment.objects.filter(user=request.user, course=course).exists():
+            messages.error(request, "You are not enrolled in this course.")
+            return redirect('student_explore')
         lessons = course.lessons.filter(is_approved=True, status='APPROVED').prefetch_related('multiple_notes').order_by('order')
-    
+
     context = {
         'course': course,
         'lessons': lessons,
         'first_lesson': lessons.first() if lessons.exists() else None,
+        'is_admin': getattr(request.user, 'is_staff', False),
     }
     return render(request, 'accounts/course_player.html', context)
 
