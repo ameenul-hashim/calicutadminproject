@@ -214,25 +214,32 @@
         const playerContainer = document.getElementById('playerContainer');
         playerContainer.style.display = 'block';
         
-        // Destroy existing player if it exists
         if (player) {
             player.destroy();
         }
 
         const playerElement = document.getElementById('player');
-        
+        const controls = [
+            'play-large', 'restart', 'rewind', 'play', 'fast-forward', 'progress', 
+            'current-time', 'duration', 'mute', 'volume', 'captions', 'settings', 
+            'pip', 'airplay', 'fullscreen'
+        ];
+        const settings = ['quality', 'speed', 'loop'];
+
         if (type === 'youtube') {
             playerElement.setAttribute('data-plyr-provider', 'youtube');
             playerElement.setAttribute('data-plyr-embed-id', source);
             player = new Plyr('#player', {
-                settings: ['quality', 'speed'],
+                controls,
+                settings,
                 youtube: { noCookie: false, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
             });
         } else {
             // HTML5 Video
             playerElement.innerHTML = `<video playsinline controls><source src="${source}" type="video/mp4"></video>`;
             player = new Plyr(playerElement.querySelector('video'), {
-                settings: ['quality', 'speed']
+                controls,
+                settings
             });
         }
     }
