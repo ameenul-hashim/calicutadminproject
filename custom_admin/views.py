@@ -17,14 +17,20 @@ def create_notification(user, message):
 def admin_student_view_auth(request):
     if request.method == 'POST':
         password = request.POST.get('password')
-        # Check if password is correct for current admin user
+        # Try authenticating with username
         user = authenticate(username=request.user.username, password=password)
+        
+        # If that fails and the user has an email, try authenticating with email
+        if user is None and request.user.email:
+            user = authenticate(username=request.user.email, password=password)
+            
         if user is not None:
             request.session['student_view_unlocked'] = True
             request.session.modified = True
+            messages.success(request, "Secure access granted. Welcome to Student View!")
             return redirect('dashboard')
         else:
-            messages.error(request, "Invalid admin password. Access denied.")
+            messages.error(request, "Authentication failed. Please ensure you are using your correct Admin password.")
     return render(request, 'custom_admin/admin_student_view_auth.html')
 
 
