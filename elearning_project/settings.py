@@ -32,8 +32,13 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+# Automatically add Render host if available
+if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+    ALLOWED_HOSTS.append(os.getenv('RENDER_EXTERNAL_HOSTNAME'))
 
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
+if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
+    CSRF_TRUSTED_ORIGINS.append(f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}")
 
 
 # Application definition
@@ -103,16 +108,10 @@ DATABASES = {
     )
 }
 
-# Production Security Settings
-# Check if we are running on the live Render domain
-RENDER_DOMAIN = 'calicutadmin.onrender.com'
-
 if not DEBUG:
-    # Only redirect to HTTPS if we are not on localhost
-    IS_LOCALHOST = any(h in os.getenv('ALLOWED_HOSTS', '') for h in ['localhost', '127.0.0.1'])
-    SECURE_SSL_REDIRECT = not IS_LOCALHOST
-    SESSION_COOKIE_SECURE = not IS_LOCALHOST
-    CSRF_COOKIE_SECURE = not IS_LOCALHOST
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
