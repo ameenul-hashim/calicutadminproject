@@ -27,13 +27,7 @@
                 <h1>Create New User</h1>
             </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             <div class="glass-card" style="max-width: 600px; background: white;">
                 <form method="POST" novalidate>

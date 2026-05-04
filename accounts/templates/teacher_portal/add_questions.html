@@ -39,11 +39,7 @@
                 <p style="color: #64748b;">Current Questions: <strong>{{ quiz.questions.count }}</strong></p>
             </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div style="background: #ecfdf5; color: #10b981; padding: 1rem; border-radius: 0.75rem; margin-bottom: 2rem;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 2rem;">
                 <div class="form-card" style="margin: 0;">

@@ -117,11 +117,7 @@
         <h2>Secure Access Confirmation</h2>
         <p>Please enter your admin password to access the Student View.</p>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
+        {% include 'includes/messages.html' %}
 
         <form method="POST">
             {% csrf_token %}

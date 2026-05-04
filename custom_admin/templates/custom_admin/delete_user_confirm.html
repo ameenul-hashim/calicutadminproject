@@ -13,13 +13,7 @@
             This action cannot be undone. Please enter your administrator credentials to proceed.
         </p>
 
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}" style="margin-bottom: 1.5rem; padding: 1rem; border-radius: 0.75rem; background: #fee2e2; color: #b91c1c; font-size: 0.9rem;">
-                    {{ message }}
-                </div>
-            {% endfor %}
-        {% endif %}
+        {% include 'includes/messages.html' %}
 
         <form method="POST" autocomplete="off">
             {% csrf_token %}

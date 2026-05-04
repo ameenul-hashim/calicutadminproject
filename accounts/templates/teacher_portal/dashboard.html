@@ -212,11 +212,7 @@
                 </style>
             </header>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem;">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
             {% block main_content %}
             <div class="stats-grid">

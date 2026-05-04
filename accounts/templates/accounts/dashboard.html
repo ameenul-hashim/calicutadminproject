@@ -427,13 +427,7 @@
                 .notif-dropdown.active { display: block !important; }
             </style>
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="alert alert-{{ message.tags }}" style="margin-bottom: 2rem; padding: 1rem; border-radius: 1rem;">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            {% endif %}
+            {% include 'includes/messages.html' %}
 
 
             <h2 style="margin-bottom: 2rem; color: #1e293b; font-size: 1.4rem;">Your Enrolled Courses</h2>
