@@ -34,6 +34,7 @@ urlpatterns = [
     path('analytics/', views.analytics_view, name='admin_analytics'),
     path('content/', views.content_management_view, name='admin_content'),
     path('course/delete/secure/<int:course_id>/', views.admin_delete_course_secure, name='admin_delete_course_secure'),
+    path('lesson/delete/secure/<int:lesson_id>/', views.admin_delete_lesson_secure, name='admin_delete_lesson_secure'),
     path('course/<int:course_id>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
     path('deletion-requests/', views.manage_deletion_requests, name='manage_deletion_requests'),
     path('deletion-requests/<int:request_id>/verify/', views.verify_deletion_request, name='verify_deletion_request'),
