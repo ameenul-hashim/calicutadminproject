@@ -286,7 +286,7 @@ from accounts.models import Course, Lesson, Enrollment
 from django.db.models import Count, Q, Sum
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
-@login_required
+@login_required(login_url='login')
 def dashboard_view(request):
     # Check for access
     is_unlocked = request.session.get('student_view_unlocked')
@@ -653,7 +653,7 @@ def logout_view(request):
         messages.success(request, "You have been logged out successfully. Have a great day!")
         return redirect('login')
 
-@user_passes_test(lambda u: u.is_authenticated and (u.user_type == 'STUDENT' or getattr(u, 'is_staff', False)), login_url='login')
+@user_passes_test(lambda u: u.is_authenticated and (u.user_type in ['STUDENT', 'TEACHER'] or getattr(u, 'is_staff', False)), login_url='login')
 def enroll_course(request, course_id):
     course = get_object_or_404(Course, id=course_id, status='PUBLISHED', is_approved=True)
     if Enrollment.objects.filter(user=request.user, course=course).exists():
