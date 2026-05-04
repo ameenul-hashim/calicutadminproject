@@ -619,6 +619,27 @@ def admin_delete_course_secure(request, course_id):
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
+def admin_delete_lesson_secure(request, lesson_id):
+    from accounts.models import Lesson
+    if request.method == 'POST':
+        username = request.POST.get('admin_username')
+        password = request.POST.get('admin_password')
+        
+        # Verify credentials
+        user = authenticate(request, username=username, password=password)
+        if user is not None and user == request.user and user.is_staff:
+            lesson = get_object_or_404(Lesson, id=lesson_id)
+            lesson_title = lesson.title
+            course_id = lesson.course.id
+            lesson.delete()
+            messages.success(request, f"Lesson '{lesson_title}' has been successfully deleted.")
+            return redirect('admin_view_course_content', course_id=course_id)
+        else:
+            messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
+            
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+
+@user_passes_test(is_admin, login_url='admin_login')
 def delete_user_admin(request, user_id):
     target_user = get_object_or_404(CustomUser, id=user_id)
     

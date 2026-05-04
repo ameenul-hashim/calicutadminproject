@@ -101,25 +101,39 @@
                 {% endif %}
             </div>
             
-            <div style="padding: 1.25rem 1.75rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; gap: 1rem;">
-                {% if lesson.status != 'APPROVED' %}
-                <form action="{% url 'approve_lesson' lesson.id %}" method="post" style="flex: 1;">
+            <div style="padding: 1.25rem 1.75rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; gap: 0.75rem;">
+                    {% if lesson.status != 'APPROVED' %}
+                    <form action="{% url 'approve_lesson' lesson.id %}" method="post" style="flex: 1;">
+                        {% csrf_token %}
+                        <button type="submit" style="width: 100%; background: #10b981; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
+                            Approve
+                        </button>
+                    </form>
+                    {% endif %}
+                    
+                    {% if lesson.status != 'REJECTED' %}
+                    <button onclick="document.getElementById('reject-lesson-form-{{ lesson.id }}').style.display = document.getElementById('reject-lesson-form-{{ lesson.id }}').style.display === 'none' ? 'block' : 'none';" style="flex: 1; background: #f59e0b; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.2);">
+                        Reject
+                    </button>
+                    {% else %}
+                    <div style="flex: 1; text-align: center; color: #ef4444; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 1.5px dashed #fecdd3; border-radius: 0.75rem; padding: 0.75rem;">
+                        Waiting for Fix
+                    </div>
+                    {% endif %}
+
+                    <button onclick="openLessonDeleteModal('{{ lesson.id }}', '{{ lesson.title|escapejs }}')" style="flex: 1; background: #ef4444; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
+                        Delete
+                    </button>
+                </div>
+
+                <form id="reject-lesson-form-{{ lesson.id }}" method="POST" action="{% url 'reject_lesson' lesson.id %}" style="display: none; margin-top: 0.5rem;">
                     {% csrf_token %}
-                    <button type="submit" style="width: 100%; background: #10b981; color: white; border: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">
-                        Approve
+                    <textarea name="reason" placeholder="Explain the reason for rejection..." required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                    <button type="submit" style="width: 100%; background: #b45309; color: white; border: none; font-size: 0.9rem; font-weight: 700; padding: 0.75rem; border-radius: 0.5rem; cursor: pointer;">
+                        Submit Rejection
                     </button>
                 </form>
-                {% endif %}
-                
-                {% if lesson.status != 'REJECTED' %}
-                <a href="{% url 'reject_lesson' lesson.id %}" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #ef4444; color: white; text-decoration: none; padding: 0.75rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">
-                    Reject
-                </a>
-                {% else %}
-                <div style="flex: 1; text-align: center; color: #ef4444; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; justify-content: center; border: 1.5px dashed #fecdd3; border-radius: 0.75rem; padding: 0.75rem;">
-                    Waiting for Fix
-                </div>
-                {% endif %}
             </div>
         </div>
         {% empty %}
@@ -167,7 +181,44 @@
     }
     function closeDeleteModal() {
         document.getElementById('secureDeleteModal').style.display = 'none';
+        document.getElementById('secureDeleteForm').reset();
+    }
+
+    function openLessonDeleteModal(lessonId, lessonTitle) {
+        document.getElementById('deleteLessonName').innerText = lessonTitle;
+        document.getElementById('secureLessonDeleteForm').action = "/customadmin/lesson/delete/secure/" + lessonId + "/";
+        document.getElementById('secureLessonDeleteModal').style.display = 'flex';
+    }
+    function closeLessonDeleteModal() {
+        document.getElementById('secureLessonDeleteModal').style.display = 'none';
+        document.getElementById('secureLessonDeleteForm').reset();
     }
 </script>
+
+<!-- Secure Lesson Delete Modal -->
+<div id="secureLessonDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0; font-size: 1.25rem; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">⚠️ Secure Lesson Deletion</h3>
+            <button onclick="closeLessonDeleteModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        </div>
+        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">You are about to permanently delete the lesson <strong id="deleteLessonName" style="color: #1e293b;"></strong>. This action cannot be undone.</p>
+        <form id="secureLessonDeleteForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Username</label>
+                <input type="text" name="admin_username" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
+                <input type="password" name="admin_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="closeLessonDeleteModal()" style="flex: 1; padding: 0.8rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
+                <button type="submit" style="flex: 1; padding: 0.8rem; border: none; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Delete Lesson</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 {% endblock %}
