@@ -44,13 +44,14 @@
             height: 100vh;
             flex-shrink: 0;
             z-index: 50;
-            position: fixed; /* Fixed position for sidebar */
+            position: fixed;
             top: 0;
             left: 0;
-            overflow-y: auto; /* Allow sidebar itself to scroll if menu is long */
-            scrollbar-width: none; /* Hide scrollbar for sidebar */
+            overflow-y: auto;
         }
-        .sidebar::-webkit-scrollbar { display: none; }
+        .sidebar::-webkit-scrollbar { width: 4px; }
+        .sidebar::-webkit-scrollbar-track { background: transparent; }
+        .sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
 
         .main-stage { 
             margin-left: 260px;
@@ -145,10 +146,16 @@
         }
 
         .table {
-            color: #1e293b !important; /* Fixed: dark text for white bg */
+            color: #1e293b !important;
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
+        }
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 1rem;
         }
         .table thead th {
             background: #f8fafc;
@@ -400,7 +407,6 @@
                 {% endif %}
 
                 {% block content %}{% endblock %}
-            </main>
             </main>
         </div>
     </div>
