@@ -359,7 +359,7 @@ def teacher_dashboard(request):
     return render(request, 'teacher_portal/dashboard.html', context)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
-@user_passes_test(lambda u: u.is_authenticated and u.user_type in ['STUDENT', 'TEACHER'], login_url='login')
+@user_passes_test(lambda u: u.is_authenticated and (u.user_type in ['STUDENT', 'TEACHER'] or getattr(u, 'is_staff', False)), login_url='login')
 def student_explore(request):
     # Enrolled course IDs to exclude
     enrolled_ids = Enrollment.objects.filter(user=request.user).values_list('course_id', flat=True)
@@ -611,6 +611,10 @@ def logout_view(request):
     if user_type == 'TEACHER' and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer) and '/teacher/' not in referer:
         messages.info(request, "Exited student view. Welcome back to Teacher Dashboard.")
         return redirect('teacher_dashboard')
+        
+    if getattr(request.user, 'is_staff', False) and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer) and '/customadmin/' not in referer:
+        messages.info(request, "Exited student view. Welcome back to Admin Dashboard.")
+        return redirect('admin_dashboard')
 
     # Always perform a real logout for other cases
     logout(request)
@@ -626,7 +630,7 @@ def logout_view(request):
         messages.success(request, "You have been logged out successfully. Have a great day!")
         return redirect('login')
 
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
+@user_passes_test(lambda u: u.is_authenticated and (u.user_type == 'STUDENT' or getattr(u, 'is_staff', False)), login_url='login')
 def enroll_course(request, course_id):
     course = get_object_or_404(Course, id=course_id, status='PUBLISHED', is_approved=True)
     if Enrollment.objects.filter(user=request.user, course=course).exists():
@@ -664,7 +668,9 @@ def course_player(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     
     # Check access: Admin can always view, Teacher can view if they own it or if it's approved, Student must be enrolled
-    if request.user.user_type == 'STUDENT':
+    if request.user.user_type == 'STUDENT' or (getattr(request.user, 'is_staff', False) and not Enrollment.objects.filter(user=request.user, course=course).exists() and not course.is_approved):
+        # Allow admins to view without enrollment if course is approved, otherwise they need to enroll or it's an error.
+        # Actually, let's just make Admin act like a student here if they are in student view.
         get_object_or_404(Enrollment, user=request.user, course=course)
     elif request.user.user_type == 'TEACHER':
         if course.teacher != request.user and not course.is_approved:

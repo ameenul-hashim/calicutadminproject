@@ -22,45 +22,14 @@ def admin_student_view_auth(request):
         if user is not None:
             request.session['student_view_unlocked'] = True
             request.session.modified = True
-            return redirect('admin_student_view')
+            return redirect('dashboard')
         else:
             messages.error(request, "Invalid admin password. Access denied.")
     return render(request, 'custom_admin/admin_student_view_auth.html')
 
-@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
-def admin_student_view(request):
-    if not request.session.get('student_view_unlocked'):
-        return redirect('admin_student_view_auth')
-    
-    from accounts.models import Course, Enrollment, Notification
-    from django.db.models import Count, Sum
-    
-    # Adapt dashboard logic for admin preview - Only show active approved courses and their approved lesson counts
-    courses = Course.objects.filter(status='PUBLISHED', is_approved=True).annotate(
-        lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
-    ).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:12]
-    explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')[:10]
-    
-    notifications = Notification.objects.filter(user=request.user, is_read=False)[:5]
-    unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()
 
-    context = {
-        'courses': courses,
-        'explore_courses': explore_courses,
-        'total_lessons': courses.aggregate(total=Sum('lesson_count'))['total'] or 0,
-        'notifications': notifications,
-        'unread_student_notifs': unread_notifications_count,
-        'is_admin_preview': True,
-        'user': request.user # Ensure correct user is passed
-    }
-    return render(request, 'accounts/dashboard.html', context)
 
-@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
-def admin_student_logout(request):
-    if 'student_view_unlocked' in request.session:
-        del request.session['student_view_unlocked']
-    return redirect('admin_student_view_auth')
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
