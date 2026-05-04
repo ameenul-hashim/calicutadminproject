@@ -318,10 +318,28 @@
                 </div>
                 <div style="display: flex; align-items: center; gap: 1.5rem;">
                     <!-- Search Bar -->
-                    <form method="GET" class="search-wrapper" style="width: 300px; margin: 0;">
-                        <input type="text" name="search" class="search-input" placeholder="Search courses..." value="{{ search_query }}">
-                        <button type="submit" class="search-btn">Search</button>
+                    <form method="GET" class="search-wrapper" style="width: 380px; margin: 0; display: flex; gap: 0.5rem;">
+                        <div style="position: relative; flex: 1;">
+                            <input type="text" name="search" class="search-input" placeholder="Search courses..." value="{{ search_query }}" style="width: 100%;">
+                            {% if search_query %}
+                                <a href="{% url 'dashboard' %}" style="position: absolute; right: 4.5rem; top: 50%; transform: translateY(-50%); text-decoration: none; color: #94a3b8; font-size: 1.2rem; font-weight: 700;" title="Clear Search">✕</a>
+                            {% endif %}
+                            <button type="submit" class="search-btn">Search</button>
+                        </div>
+                        {% if search_query %}
+                            <a href="{% url 'dashboard' %}" class="view-btn" style="background: #64748b; color: white; padding: 0.4rem 1rem; border-radius: 0.7rem; font-size: 0.85rem; display: flex; align-items: center; white-space: nowrap;">Show All</a>
+                        {% endif %}
                     </form>
+
+                    {% if search_query %}
+                    <script>
+                        // Auto-refresh to show all courses after 8 seconds of searching
+                        setTimeout(function() {
+                            console.log("Auto-refreshing to show all courses...");
+                            window.location.href = "{% url 'dashboard' %}";
+                        }, 8000);
+                    </script>
+                    {% endif %}
 
                     <!-- Notification Bell -->
                     <div class="notification-wrapper" style="position: relative; cursor: pointer;">
