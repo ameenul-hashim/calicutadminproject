@@ -75,6 +75,9 @@
                             <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#94a3b8;">No Thumbnail</div>
                         {% endif %}
                         <span class="status-badge status-{{ course.status|lower }}">{{ course.get_status_display }}</span>
+                        {% if course.rejected_lessons_count > 0 %}
+                            <span class="status-badge" style="top: 3rem; background: #ef4444; color: white;">⚠️ Needs Fix</span>
+                        {% endif %}
                     </div>
                     <div class="course-info">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.1rem; color: #1e293b;">{{ course.title }}</h3>
@@ -86,8 +89,8 @@
                                 <a href="{% url 'course_player' course.id %}" style="padding: 0.4rem 0.8rem; background: #ecfdf5; color: #059669; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">View</a>
                                 <a href="{% url 'edit_course' course.id %}" style="padding: 0.4rem 0.8rem; background: #f1f5f9; color: #64748b; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">Edit</a>
                                 <a href="{% url 'course_lessons' course.id %}" style="padding: 0.4rem 0.8rem; background: #eef2ff; color: #6366f1; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">Lessons</a>
-                                {% if course.status == 'DRAFT' or course.status == 'REJECTED' %}
-                                <a href="{% url 'submit_course_approval' course.id %}" style="padding: 0.4rem 0.8rem; background: #6366f1; color: white; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 600;">Submit</a>
+                                {% if course.status == 'DRAFT' or course.status == 'REJECTED' or course.rejected_lessons_count > 0 %}
+                                <a href="{% url 'submit_course_approval' course.id %}" style="padding: 0.4rem 0.8rem; background: #10b981; color: white; text-decoration: none; border-radius: 0.4rem; font-size: 0.8rem; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Resubmit</a>
                                 {% endif %}
                             </div>
                         </div>
