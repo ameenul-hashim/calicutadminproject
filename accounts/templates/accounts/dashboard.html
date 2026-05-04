@@ -291,6 +291,7 @@
             </div>
 
             <!-- Profile Section -->
+            {% if user.user_type == 'STUDENT' %}
             <div style="text-align: center; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid #f1f5f9;">
                 <div style="width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 1rem; border: 3px solid #e0f2fe; overflow: hidden; background: #f8fafc; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
                     {% if user.profile_photo %}
@@ -301,9 +302,10 @@
                 </div>
                 <h3 style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin: 0;">{{ user.full_name }}</h3>
                 <p style="font-size: 0.75rem; font-weight: 600; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem;">
-                    {% if user.user_type == 'TEACHER' %}Instructor{% else %}Student{% endif %}
+                    Student
                 </p>
             </div>
+            {% endif %}
             
             <ul class="nav-list">
                 <li class="nav-item"><a href="{% url 'dashboard' %}" class="nav-link active"><span>🏠</span> Dashboard</a></li>
