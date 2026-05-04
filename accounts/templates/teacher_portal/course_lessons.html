@@ -51,24 +51,38 @@
 
             <div class="lessons-list">
                 {% for lesson in lessons %}
-                <div class="lesson-card">
-                    <div style="display: flex; align-items: center; gap: 1.5rem;">
-                        <div style="width: 40px; height: 40px; background: #eef2ff; color: #6366f1; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ lesson.order }}</div>
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ lesson.title }}</h3>
-                            <div style="display: flex; gap: 1rem; margin-top: 0.3rem;">
-                                {% if lesson.video_url %}<span style="font-size: 0.8rem; color: #94a3b8;">🎥 Video URL Added</span>{% endif %}
-                                {% if lesson.notes %}<span style="font-size: 0.8rem; color: #94a3b8;">📄 Notes Uploaded</span>{% endif %}
+                <div class="lesson-card" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 1.5rem;">
+                            <div style="width: 40px; height: 40px; background: #eef2ff; color: #6366f1; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700;">{{ lesson.order }}</div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b;">{{ lesson.title }}</h3>
+                                <div style="display: flex; gap: 1rem; margin-top: 0.3rem;">
+                                    {% if lesson.video_url %}<span style="font-size: 0.8rem; color: #94a3b8;">🎥 Video URL Added</span>{% endif %}
+                                    {% if lesson.video_file %}<span style="font-size: 0.8rem; color: #94a3b8;">🎞️ Video File Uploaded</span>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <span style="font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 1rem; font-weight: 700;
+                                {% if lesson.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;
+                                {% elif lesson.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;
+                                {% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
+                                {{ lesson.status }}
+                            </span>
+                            <div style="display: flex; gap: 0.75rem; border-left: 1px solid #e2e8f0; padding-left: 1rem;">
+                                <a href="{% url 'edit_lesson' lesson.id %}" style="color: #6366f1; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Edit</a>
+                                <a href="{% url 'delete_lesson' lesson.id %}" onclick="return confirm('Are you sure you want to delete this lesson?')" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Delete</a>
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        <span style="font-size: 0.75rem; padding: 0.2rem 0.6rem; border-radius: 1rem; {% if lesson.is_approved %}background: #ecfdf5; color: #10b981;{% else %}background: #fef2f2; color: #ef4444;{% endif %}">{% if lesson.is_approved %}Approved{% else %}Pending{% endif %}</span>
-                        <div style="display: flex; gap: 0.5rem; border-left: 1px solid #e2e8f0; padding-left: 1rem;">
-                            <a href="{% url 'edit_lesson' lesson.id %}" style="color: #6366f1; text-decoration: none; font-size: 0.85rem; font-weight: 600;">Edit</a>
-                            <a href="{% url 'delete_lesson' lesson.id %}" onclick="return confirm('Are you sure you want to delete this lesson?')" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 600;">Delete</a>
-                        </div>
+                    
+                    {% if lesson.status == 'REJECTED' and lesson.rejection_reason %}
+                    <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.85rem; color: #c53030;">
+                        <strong style="display: block; margin-bottom: 0.25rem;">Admin Feedback:</strong>
+                        {{ lesson.rejection_reason }}
                     </div>
+                    {% endif %}
                 </div>
                 {% empty %}
                 <div style="text-align: center; padding: 3rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; color: #94a3b8;">
