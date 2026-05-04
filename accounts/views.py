@@ -645,6 +645,7 @@ def logout_view(request):
         return redirect('admin_dashboard')
 
     # Always perform a real logout for other cases
+    request.session.flush() # Completely destroy the session and cookies
     logout(request)
     
     # Redirect to the appropriate login page based on user type

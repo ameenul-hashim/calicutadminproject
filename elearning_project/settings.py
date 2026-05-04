@@ -126,6 +126,9 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
 SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
+# Strict Session Management
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
