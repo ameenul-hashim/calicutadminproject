@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Quiz, Question, QuizAttempt, Assignment, Submission, Notification, ChatMessage, PasswordResetOTP
+from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Notification, ChatMessage, PasswordResetOTP
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
@@ -41,11 +41,7 @@ def signup_view(request):
             messages.error(request, "Only PDF files are accepted for student proof.")
             return render(request, 'accounts/signup.html')
 
-        # Check file size constraint (max 200kb)
-        file_size_kb = proof_file.size / 1024
-        if file_size_kb > 200:
-            messages.error(request, "The uploaded proof must be below 200KB. Please compress the file and try again.")
-            return render(request, 'accounts/signup.html')
+        # No size constraint needed
 
         # Upload PDF to Supabase
         pdf_url = upload_pdf(proof_file)
@@ -112,11 +108,7 @@ def teacher_signup_view(request):
             messages.error(request, "Only PDF files are accepted for teacher proof.")
             return render(request, 'accounts/teacher_signup.html')
 
-        # Check file size constraint (max 200kb)
-        file_size_kb = proof_file.size / 1024
-        if file_size_kb > 200:
-            messages.error(request, "The uploaded proof must be below 200KB. Please compress the file and try again.")
-            return render(request, 'accounts/teacher_signup.html')
+        # No size constraint needed
 
         # Upload PDF to Supabase
         pdf_url = upload_pdf(proof_file)
@@ -511,17 +503,9 @@ def course_lessons(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
     lessons = course.lessons.all()
     
-    # Check for any unapproved content
-    has_pending_lessons = course.lessons.filter(is_approved=False).exists()
-    has_pending_quizzes = course.quizzes.filter(is_approved=False).exists()
-    has_pending_assignments = course.assignments.filter(is_approved=False).exists()
-    
-    has_pending_content = has_pending_lessons or has_pending_quizzes or has_pending_assignments
-    
     return render(request, 'teacher_portal/course_lessons.html', {
         'course': course, 
         'lessons': lessons,
-        'has_pending_content': has_pending_content
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -681,123 +665,6 @@ def enroll_course(request, course_id):
         create_notification(course.teacher, f"New student enrolled in your course '{course.title}': {request.user.username}")
     return redirect('dashboard')
 
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def create_quiz(request, course_id):
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        timer_minutes = request.POST.get('timer_minutes', 0)
-        quiz = Quiz.objects.create(course=course, title=title, timer_minutes=timer_minutes)
-        messages.success(request, "Quiz created successfully! Now add some questions.")
-        return redirect('add_questions', quiz_id=quiz.id)
-    return render(request, 'teacher_portal/create_quiz.html', {'course': course})
-
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def add_questions(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, course__teacher=request.user)
-    if request.method == 'POST':
-        text = request.POST.get('text')
-        option1 = request.POST.get('option1')
-        option2 = request.POST.get('option2')
-        option3 = request.POST.get('option3')
-        option4 = request.POST.get('option4')
-        correct_answer = request.POST.get('correct_answer')
-        
-        Question.objects.create(
-            quiz=quiz, text=text, option1=option1, option2=option2, option3=option3, option4=option4, correct_answer=correct_answer
-        )
-        messages.success(request, "Question added!")
-        return redirect('add_questions', quiz_id=quiz.id)
-    return render(request, 'teacher_portal/add_questions.html', {'quiz': quiz})
-
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def create_assignment(request, course_id):
-    course = get_object_or_404(Course, id=course_id, teacher=request.user)
-    if request.method == 'POST':
-        title = request.POST.get('title')
-        description = request.POST.get('description')
-        deadline = request.POST.get('deadline')
-        file = request.FILES.get('file')
-        
-        Assignment.objects.create(
-            course=course, title=title, description=description, deadline=deadline, file=file
-        )
-        messages.success(request, "Assignment created successfully!")
-        return redirect('course_lessons', course_id=course.id) # Or a dedicated assignments page
-    return render(request, 'teacher_portal/create_assignment.html', {'course': course})
-
-# ====== STUDENT: Take Quiz ======
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
-def take_quiz(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, is_approved=True)
-    # Check if already attempted
-    if QuizAttempt.objects.filter(quiz=quiz, student=request.user).exists():
-        attempt = QuizAttempt.objects.get(quiz=quiz, student=request.user)
-        messages.info(request, f"You have already taken this quiz. Score: {attempt.score}/{attempt.total_questions}")
-        return render(request, 'accounts/quiz_result.html', {'attempt': attempt, 'quiz': quiz})
-    
-    if request.method == 'POST':
-        questions = quiz.questions.all()
-        score = 0
-        total = questions.count()
-        for q in questions:
-            answer = request.POST.get(f'question_{q.id}')
-            if answer and answer.strip() == q.correct_answer.strip():
-                score += 1
-        QuizAttempt.objects.create(quiz=quiz, student=request.user, score=score, total_questions=total)
-        messages.success(request, f"Quiz submitted! You scored {score}/{total}.")
-        attempt = QuizAttempt.objects.get(quiz=quiz, student=request.user)
-        return render(request, 'accounts/quiz_result.html', {'attempt': attempt, 'quiz': quiz})
-    
-    return render(request, 'accounts/take_quiz.html', {'quiz': quiz})
-
-# ====== STUDENT: Submit Assignment ======
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'STUDENT', login_url='login')
-def submit_assignment(request, assignment_id):
-    assignment = get_object_or_404(Assignment, id=assignment_id, is_approved=True)
-    existing = Submission.objects.filter(assignment=assignment, student=request.user).first()
-    
-    if request.method == 'POST' and not existing:
-        file = request.FILES.get('file')
-        if file:
-            Submission.objects.create(assignment=assignment, student=request.user, file=file)
-            messages.success(request, "Assignment submitted successfully!")
-        else:
-            messages.error(request, "Please attach a file to submit.")
-        return redirect('submit_assignment', assignment_id=assignment.id)
-    
-    return render(request, 'accounts/submit_assignment.html', {
-        'assignment': assignment,
-        'existing': existing,
-    })
-
-# ====== TEACHER: View Quiz Results ======
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def view_quiz_results(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, course__teacher=request.user)
-    attempts = quiz.attempts.all().select_related('student')
-    return render(request, 'teacher_portal/quiz_results.html', {'quiz': quiz, 'attempts': attempts})
-
-# ====== TEACHER: View Assignment Submissions ======
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def view_submissions(request, assignment_id):
-    assignment = get_object_or_404(Assignment, id=assignment_id, course__teacher=request.user)
-    submissions_qs = assignment.submissions.all().select_related('student')
-    # Pagination for submissions
-    from django.core.paginator import Paginator
-    paginator = Paginator(submissions_qs, 20)  # 20 submissions per page
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'teacher_portal/view_submissions.html', {
-        'assignment': assignment,
-        'submissions': page_obj,
-    })
-
-# ====== TEACHER: Grade a Submission ======
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def grade_submission(request, submission_id):
-    submission = get_object_or_404(Submission, id=submission_id, assignment__course__teacher=request.user)
-    if request.method == 'POST':
         grade = request.POST.get('grade')
         submission.grade = grade
         submission.save()
@@ -839,18 +706,12 @@ def course_player(request, course_id):
     # Teachers and Admins can see all content, students see only approved ones
     if request.user.user_type in ['TEACHER', 'ADMIN'] or request.user.is_superuser:
         lessons = course.lessons.exclude(status='REJECTED').prefetch_related('multiple_notes').order_by('order')
-        quizzes = course.quizzes.exclude(status='REJECTED').order_by('created_at')
-        assignments = course.assignments.exclude(status='REJECTED').order_by('created_at')
     else:
         lessons = course.lessons.filter(is_approved=True, status='APPROVED').prefetch_related('multiple_notes').order_by('order')
-        quizzes = course.quizzes.filter(is_approved=True, status='APPROVED').order_by('created_at')
-        assignments = course.assignments.filter(is_approved=True, status='APPROVED').order_by('created_at')
     
     context = {
         'course': course,
         'lessons': lessons,
-        'quizzes': quizzes,
-        'assignments': assignments,
         'first_lesson': lessons.first() if lessons.exists() else None,
     }
     return render(request, 'accounts/course_player.html', context)
