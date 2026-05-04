@@ -297,9 +297,13 @@ def dashboard_view(request):
         return redirect('admin_dashboard') if is_admin else redirect('login')
 
     if request.user.user_type == 'TEACHER' and not is_admin:
+        # Teacher viewing their own courses in student layout
         courses = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
+    elif is_admin and is_unlocked:
+        # Admin in Student View - show all approved courses as if enrolled for testing
+        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     else:
-        # Student OR Admin in student view - show enrolled courses
+        # Real Student - show only their enrolled courses
         courses = Course.objects.filter(enrollments__user=request.user, is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     enrolled_ids = list(courses.values_list('id', flat=True))
