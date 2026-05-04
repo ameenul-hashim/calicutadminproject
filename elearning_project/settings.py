@@ -31,16 +31,15 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
-# Automatically add Render host and wildcard for onrender.com
-ALLOWED_HOSTS.append('.onrender.com')
-if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
-    ALLOWED_HOSTS.append(os.getenv('RENDER_EXTERNAL_HOSTNAME'))
+ALLOWED_HOSTS = [
+    "edustreamcalicut.onrender.com",
+    "localhost",
+    "127.0.0.1",
+]
 
-CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:8000').split(',')
-if os.getenv('RENDER_EXTERNAL_HOSTNAME'):
-    CSRF_TRUSTED_ORIGINS.append(f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}")
-CSRF_TRUSTED_ORIGINS.append('https://*.onrender.com')
+CSRF_TRUSTED_ORIGINS = [
+    "https://edustreamcalicut.onrender.com"
+]
 
 
 # Application definition
@@ -111,9 +110,9 @@ DATABASES = {
 }
 
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
