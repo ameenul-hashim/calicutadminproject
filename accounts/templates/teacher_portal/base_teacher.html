@@ -152,9 +152,10 @@
                             <div id="notif-items-container">
                                 {% for notif in notifications %}
                                     <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
-                                        {{ notif.message }}
+                                        <div style="padding-right: 20px;">{{ notif.message }}</div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
                                             <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
+                                            <a href="{% url 'mark_notification_read' notif.id %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Clear</a>
                                         </div>
                                     </div>
                                 {% empty %}
