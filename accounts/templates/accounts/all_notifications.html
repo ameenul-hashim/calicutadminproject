@@ -43,11 +43,7 @@
                     <div class="notif-message">{{ notif.message }}</div>
                     <div class="notif-meta">
                         <span class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</span>
-                        {% if not notif.is_read %}
-                            <a href="{% url 'mark_notification_read' notif.id %}" class="mark-read-btn">Mark as read</a>
-                        {% else %}
-                            <span class="read-badge">✓ Read</span>
-                        {% endif %}
+                        <span class="read-badge">✓ Read</span>
                     </div>
                 </div>
                 {% endfor %}

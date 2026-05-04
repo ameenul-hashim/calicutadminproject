@@ -326,7 +326,7 @@ def dashboard_view(request):
         'courses': page_obj,
         'page_obj': page_obj,
         'search_query': search_query,
-        'total_lessons': courses.aggregate(total=Sum('lesson_count'))['total'] or 0,
+        'total_lessons': sum(c.lesson_count for c in courses),
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count,
         'is_admin': is_admin,
@@ -854,8 +854,13 @@ def all_notifications(request):
     from django.shortcuts import render
     notifications = request.user.notifications.all().order_by('-created_at')
     
+    # Mark all as read when viewing this page
+    request.user.notifications.filter(is_read=False).update(is_read=True)
+    
     # Determine base template based on user type
     base_template = 'custom_admin/base_admin.html' if (request.user.user_type == 'ADMIN' or request.user.is_superuser) else 'accounts/base.html'
+    if request.user.user_type == 'TEACHER' and not request.user.is_superuser:
+        base_template = 'teacher_portal/base_teacher.html'
     
     return render(request, 'accounts/all_notifications.html', {
         'notifications': notifications,
