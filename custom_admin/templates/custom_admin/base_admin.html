@@ -155,11 +155,17 @@
             width: 100%;
             overflow-x: auto;
             overflow-y: auto;
-            max-height: 70vh; /* Limit height for internal scroll */
+            max-height: 65vh; /* Slightly reduced height for better viewport fit */
             -webkit-overflow-scrolling: touch;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
             border-radius: 0.75rem;
             border: 1px solid #e2e8f0;
+            background: white;
+            position: relative;
+        }
+        /* Ensure the last row is fully viewable with extra space at bottom */
+        .table-responsive table {
+            margin-bottom: 4rem !important; 
         }
         .table thead th {
             background: #f8fafc;
