@@ -18,13 +18,6 @@ urlpatterns = [
     path('lesson/approve/<int:lesson_id>/', views.approve_lesson, name='approve_lesson'),
     path('lesson/reject/<int:lesson_id>/', views.reject_lesson, name='reject_lesson'),
     
-    # Quiz actions
-    path('quiz/approve/<int:quiz_id>/', views.approve_quiz, name='approve_quiz'),
-    path('quiz/reject/<int:quiz_id>/', views.reject_quiz, name='reject_quiz'),
-    
-    # Assignment actions
-    path('assignment/approve/<int:assignment_id>/', views.approve_assignment, name='approve_assignment'),
-    path('assignment/reject/<int:assignment_id>/', views.reject_assignment, name='reject_assignment'),
 
     path('user/accept/<int:user_id>/', views.accept_user, name='accept_user'),
     path('user/decline/<int:user_id>/', views.decline_user, name='decline_user'),
@@ -41,13 +34,9 @@ urlpatterns = [
     path('analytics/', views.analytics_view, name='admin_analytics'),
     path('content/', views.content_management_view, name='admin_content'),
     path('course/delete/secure/<int:course_id>/', views.admin_delete_course_secure, name='admin_delete_course_secure'),
-    path('assignment/<int:assignment_id>/submissions/', views.admin_view_submissions, name='admin_view_submissions'),
-    path('quiz/<int:quiz_id>/attempts/', views.admin_view_quiz_attempts, name='admin_view_quiz_attempts'),
     path('course/<int:course_id>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
     path('deletion-requests/', views.manage_deletion_requests, name='manage_deletion_requests'),
     path('deletion-requests/<int:request_id>/verify/', views.verify_deletion_request, name='verify_deletion_request'),
     path('deletion-requests/<int:request_id>/approve/', views.approve_deletion_request, name='approve_deletion_request'),
     path('deletion-requests/<int:request_id>/reject/', views.reject_deletion_request, name='reject_deletion_request'),
-    path('quizzes/<int:quiz_id>/delete/', views.delete_quiz, name='delete_quiz'),
-    path('assignments/<int:assignment_id>/delete/', views.delete_assignment, name='delete_assignment'),
 ]

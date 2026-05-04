@@ -296,8 +296,6 @@ def create_student_admin(request):
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
-        elif proof_file.size > 200 * 1024:
-            messages.error(request, "The student proof must be below 200KB.")
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
@@ -340,8 +338,6 @@ def create_teacher_admin(request):
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
-        elif proof_file.size > 200 * 1024:
-            messages.error(request, "The teacher proof must be below 200KB.")
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
@@ -442,7 +438,7 @@ def analytics_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    courses = Course.objects.all().prefetch_related('lessons', 'quizzes', 'assignments').only('id', 'title', 'teacher__username', 'status', 'created_at')
+    courses = Course.objects.all().prefetch_related('lessons').only('id', 'title', 'teacher__username', 'status', 'created_at')
     # Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(courses, 20)
@@ -458,10 +454,8 @@ def pending_courses_view(request):
     # Show courses that are PENDING approval OR courses that are PUBLISHED but have new unapproved content
     courses = Course.objects.filter(
         Q(status='PENDING') | 
-        Q(lessons__is_approved=False) |
-        Q(quizzes__is_approved=False) |
-        Q(assignments__is_approved=False)
-    ).prefetch_related('lessons', 'quizzes', 'assignments').distinct().order_by('-created_at')
+        Q(lessons__is_approved=False)
+    ).prefetch_related('lessons').distinct().order_by('-created_at')
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     return render(request, 'custom_admin/pending_courses.html', {
@@ -585,105 +579,11 @@ def reject_lesson(request, lesson_id):
         return redirect('admin_view_course_content', course_id=lesson.course.id)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
-@user_passes_test(is_admin, login_url='admin_login')
-def approve_quiz(request, quiz_id):
-    from accounts.models import Quiz
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    quiz.status = 'APPROVED'
-    quiz.is_approved = True
-    quiz.save()
-    messages.success(request, f"Quiz '{quiz.title}' approved.")
-    return redirect('admin_view_course_content', course_id=quiz.course.id)
-
-@user_passes_test(is_admin, login_url='admin_login')
-def reject_quiz(request, quiz_id):
-    from accounts.models import Quiz
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    if request.method == 'POST':
-        reason = request.POST.get('reason')
-        quiz.status = 'REJECTED'
-        quiz.is_approved = False
-        quiz.rejection_reason = reason
-        quiz.save()
-        create_notification(quiz.course.teacher, f"Your quiz '{quiz.title}' in course '{quiz.course.title}' has been rejected. Reason: {reason}")
-        messages.warning(request, f"Quiz '{quiz.title}' rejected.")
-        return redirect('admin_view_course_content', course_id=quiz.course.id)
-    return render(request, 'custom_admin/decline_reason.html', {'quiz': quiz, 'is_content': True, 'content_type': 'Quiz'})
-
-@user_passes_test(is_admin, login_url='admin_login')
-def delete_quiz(request, quiz_id):
-    from accounts.models import Quiz
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    course_id = quiz.course.id
-    quiz.delete()
-    messages.error(request, "Quiz permanently deleted.")
-    return redirect('admin_view_course_content', course_id=course_id)
-
-@user_passes_test(is_admin, login_url='admin_login')
-def approve_assignment(request, assignment_id):
-    from accounts.models import Assignment
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    assignment.status = 'APPROVED'
-    assignment.is_approved = True
-    assignment.save()
-    messages.success(request, f"Assignment '{assignment.title}' approved.")
-    return redirect('admin_view_course_content', course_id=assignment.course.id)
-
-@user_passes_test(is_admin, login_url='admin_login')
-def reject_assignment(request, assignment_id):
-    from accounts.models import Assignment
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    if request.method == 'POST':
-        reason = request.POST.get('reason')
-        assignment.status = 'REJECTED'
-        assignment.is_approved = False
-        assignment.rejection_reason = reason
-        assignment.save()
-        create_notification(assignment.course.teacher, f"Your assignment '{assignment.title}' in course '{assignment.course.title}' has been rejected. Reason: {reason}")
-        messages.warning(request, f"Assignment '{assignment.title}' rejected.")
-        return redirect('admin_view_course_content', course_id=assignment.course.id)
-    return render(request, 'custom_admin/decline_reason.html', {'assignment': assignment, 'is_content': True, 'content_type': 'Assignment'})
-
-@user_passes_test(is_admin, login_url='admin_login')
-def delete_assignment(request, assignment_id):
-    from accounts.models import Assignment
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    course_id = assignment.course.id
-    assignment.delete()
-    messages.error(request, "Assignment permanently deleted.")
-    return redirect('admin_view_course_content', course_id=course_id)
-
-@user_passes_test(is_admin, login_url='admin_login')
-def admin_view_submissions(request, assignment_id):
-    from accounts.models import Assignment
-    assignment = get_object_or_404(Assignment, id=assignment_id)
-    submissions_qs = assignment.submissions.all().select_related('student')
-    
-    # Pagination
-    from django.core.paginator import Paginator
-    paginator = Paginator(submissions_qs, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    return render(request, 'custom_admin/admin_view_submissions.html', {
-        'assignment': assignment, 
-        'submissions': page_obj,
-        'page_obj': page_obj
-    })
-
-@user_passes_test(is_admin, login_url='admin_login')
-def admin_view_quiz_attempts(request, quiz_id):
-    from accounts.models import Quiz
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    attempts = quiz.attempts.all().select_related('student')
-    return render(request, 'custom_admin/admin_view_quiz_attempts.html', {'quiz': quiz, 'attempts': attempts})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_id):
     course = get_object_or_404(Course, id=course_id)
     lessons = course.lessons.all().order_by('order')
-    quizzes = course.quizzes.all()
-    assignments = course.assignments.all()
     
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -691,8 +591,6 @@ def admin_view_course_content(request, course_id):
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
         'lessons': lessons,
-        'quizzes': quizzes,
-        'assignments': assignments,
         'notifications': notifications,
         'unread_notifications_count': unread_count,
     })

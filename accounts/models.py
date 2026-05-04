@@ -77,48 +77,6 @@ class LessonNote(models.Model):
     title = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
-class Assignment(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='assignments')
-    title = models.CharField(max_length=255)
-    description = models.TextField()
-    deadline = models.DateTimeField()
-    file = models.FileField(upload_to='assignments/', null=True, blank=True)
-    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
-    is_approved = models.BooleanField(default=False)
-    rejection_reason = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class Submission(models.Model):
-    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='submissions')
-    file = models.FileField(upload_to='submissions/')
-    grade = models.CharField(max_length=10, blank=True)
-    submitted_at = models.DateTimeField(auto_now_add=True)
-
-class Quiz(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quizzes')
-    title = models.CharField(max_length=255)
-    timer_minutes = models.PositiveIntegerField(default=0)
-    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
-    is_approved = models.BooleanField(default=False)
-    rejection_reason = models.TextField(blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-class Question(models.Model):
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
-    text = models.TextField()
-    option1 = models.CharField(max_length=255)
-    option2 = models.CharField(max_length=255)
-    option3 = models.CharField(max_length=255)
-    option4 = models.CharField(max_length=255)
-    correct_answer = models.CharField(max_length=255)
-
-class QuizAttempt(models.Model):
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
-    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='quiz_attempts')
-    score = models.IntegerField(default=0)
-    total_questions = models.IntegerField(default=0)
-    submitted_at = models.DateTimeField(auto_now_add=True)
 
 class LiveClass(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='live_classes')
