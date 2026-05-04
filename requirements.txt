@@ -1,4 +1,4 @@
-asgiref==3.8.1
+asgiref==3.9.0
 cloudinary==1.44.2
 dj-database-url==2.3.0
 Django==5.1.1
