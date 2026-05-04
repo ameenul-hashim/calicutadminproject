@@ -640,7 +640,7 @@ def logout_view(request):
         messages.info(request, "Exited student view. Welcome back to Teacher Dashboard.")
         return redirect('teacher_dashboard')
         
-    if getattr(request.user, 'is_staff', False) and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer) and '/customadmin/' not in referer:
+    if getattr(request.user, 'is_staff', False) and user_type != 'TEACHER' and ('/dashboard/' in referer or '/course/' in referer or '/student/explore/' in referer) and '/customadmin/' not in referer:
         messages.info(request, "Exited student view. Welcome back to Admin Dashboard.")
         return redirect('admin_dashboard')
 
