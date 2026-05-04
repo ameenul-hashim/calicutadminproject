@@ -167,18 +167,6 @@
                                 🎥 Watch Video
                             </div>
                             {% endif %}
-                            {% if lesson.notes %}
-                            <div class="sub-item notes-link" 
-                                 onclick="playContent(this, 'notes', '{{ lesson.title|escapejs }}', '', '', '{{ lesson.notes.url }}')">
-                                📄 Main Notes (PDF)
-                            </div>
-                            {% endif %}
-                            {% for note in lesson.multiple_notes.all %}
-                            <div class="sub-item notes-link" 
-                                 onclick="playContent(this, 'notes', '{{ note.title|default:"Study Material"|escapejs }}', '', '', '{{ note.file.url }}')">
-                                📄 {{ note.title|default:"Study Note"|truncatechars:20 }}
-                            </div>
-                            {% endfor %}
                         </div>
                     </div>
                     {% endfor %}
@@ -316,15 +304,6 @@
                 externalLink.style.display = 'block';
                 actionArea.style.display = 'flex';
             }
-        } else if (type === 'notes') {
-            pdfViewer.src = notesUrl; 
-            pdfViewer.style.display = 'block';
-            
-            externalLink.href = notesUrl;
-            externalLink.style.display = 'block';
-            downloadBtn.href = notesUrl;
-            downloadBtn.style.display = 'block';
-            actionArea.style.display = 'flex';
         }
     }
 

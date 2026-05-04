@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, LessonNote, Enrollment, Notification, ChatMessage, PasswordResetOTP
+from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, PasswordResetOTP
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
@@ -37,11 +37,9 @@ def signup_view(request):
             messages.error(request, "All fields including student proof (PDF) are required.")
             return render(request, 'accounts/signup.html')
 
-        if not proof_file.name.endswith('.pdf'):
-            messages.error(request, "Only PDF files are accepted for student proof.")
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Student proof file size must be below 200 KB.")
             return render(request, 'accounts/signup.html')
-
-        # No size constraint needed
 
         # Upload PDF to Supabase
         pdf_url = upload_pdf(proof_file)
@@ -104,11 +102,9 @@ def teacher_signup_view(request):
             messages.error(request, "All fields including teacher proof (PDF) are required.")
             return render(request, 'accounts/teacher_signup.html')
 
-        if not proof_file.name.endswith('.pdf'):
-            messages.error(request, "Only PDF files are accepted for teacher proof.")
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Teacher proof file size must be below 200 KB.")
             return render(request, 'accounts/teacher_signup.html')
-
-        # No size constraint needed
 
         # Upload PDF to Supabase
         pdf_url = upload_pdf(proof_file)
@@ -515,9 +511,6 @@ def add_lesson(request, course_id):
         title = request.POST.get('title')
         video_url = request.POST.get('video_url')
         video_file = request.FILES.get('video_file')
-        notes = request.FILES.get('notes')
-        order = request.POST.get('order', 1)
-        
         lesson = Lesson.objects.create(
             course=course,
             title=title,
@@ -525,22 +518,8 @@ def add_lesson(request, course_id):
             video_file=video_file,
             order=order
         )
-        
-        # Handle multiple notes
-        notes_files = request.FILES.getlist('notes')
-        for f in notes_files:
-            # Upload to Supabase if PDF
-            if f.name.endswith('.pdf'):
-                pdf_url = upload_pdf(f)
-                f.seek(0) # IMPORTANT: Seek back to start after reading for Supabase
-                if pdf_url:
-                    LessonNote.objects.create(lesson=lesson, file=f, title=f.name, pdf_url=pdf_url)
-                else:
-                    LessonNote.objects.create(lesson=lesson, file=f, title=f.name)
-            else:
-                LessonNote.objects.create(lesson=lesson, file=f, title=f.name)
             
-        messages.success(request, "Lesson and notes added successfully!")
+        messages.success(request, "Lesson added successfully!")
         return redirect('course_lessons', course_id=course.id)
     
     return render(request, 'teacher_portal/add_lesson.html', {'course': course})
@@ -553,20 +532,6 @@ def edit_lesson(request, lesson_id):
         lesson.video_url = request.POST.get('video_url')
         if request.FILES.get('video_file'):
             lesson.video_file = request.FILES.get('video_file')
-        
-        # Handle multiple notes (add new ones)
-        notes_files = request.FILES.getlist('notes')
-        if notes_files:
-            for f in notes_files:
-                if f.name.endswith('.pdf'):
-                    pdf_url = upload_pdf(f)
-                    f.seek(0) # IMPORTANT: Seek back to start after reading for Supabase
-                    if pdf_url:
-                        LessonNote.objects.create(lesson=lesson, file=f, title=f.name, pdf_url=pdf_url)
-                    else:
-                        LessonNote.objects.create(lesson=lesson, file=f, title=f.name)
-                else:
-                    LessonNote.objects.create(lesson=lesson, file=f, title=f.name)
                 
         lesson.order = request.POST.get('order', 1)
         
@@ -665,11 +630,6 @@ def enroll_course(request, course_id):
         create_notification(course.teacher, f"New student enrolled in your course '{course.title}': {request.user.username}")
     return redirect('dashboard')
 
-        grade = request.POST.get('grade')
-        submission.grade = grade
-        submission.save()
-        messages.success(request, f"Graded {submission.student.username}'s submission: {grade}")
-    return redirect('view_submissions', assignment_id=submission.assignment.id)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
