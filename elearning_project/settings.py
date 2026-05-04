@@ -54,6 +54,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.middleware.gzip.GZipMiddleware',
+    'django.middleware.http.ConditionalGetMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -62,6 +64,10 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'accounts.middleware.PortalSecurityMiddleware',
 ]
+
+# Performance Tweaks
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
 
 ROOT_URLCONF = 'elearning_project.urls'
 
@@ -98,16 +104,27 @@ DATABASES = {
 }
 
 # Production Security Settings
+# Check if we are running on the live Render domain
+RENDER_DOMAIN = 'calicutadmin.onrender.com'
+
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+    # Only redirect to HTTPS if we are not on localhost
+    IS_LOCALHOST = any(h in os.getenv('ALLOWED_HOSTS', '') for h in ['localhost', '127.0.0.1'])
+    SECURE_SSL_REDIRECT = not IS_LOCALHOST
+    SESSION_COOKIE_SECURE = not IS_LOCALHOST
+    CSRF_COOKIE_SECURE = not IS_LOCALHOST
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 31536000  # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
     X_FRAME_OPTIONS = 'DENY'
+
+# Browser Compatibility Settings (Fixes Chrome/Safari issues)
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
 
 
 # Password validation
