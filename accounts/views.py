@@ -241,8 +241,7 @@ def teacher_view_auth(request):
 
     if request.method == 'POST':
         password = request.POST.get('password')
-        user = authenticate(request, username=request.user.username, password=password)
-        if user is not None and user == request.user:
+        if request.user.check_password(password):
             request.session['teacher_view_unlocked'] = True
             next_url = request.session.pop('next_teacher_url', 'teacher_dashboard')
             messages.success(request, "Teacher View access granted.")

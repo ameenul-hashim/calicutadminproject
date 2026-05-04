@@ -17,14 +17,8 @@ def create_notification(user, message):
 def admin_student_view_auth(request):
     if request.method == 'POST':
         password = request.POST.get('password')
-        # Try authenticating with username
-        user = authenticate(username=request.user.username, password=password)
-        
-        # If that fails and the user has an email, try authenticating with email
-        if user is None and request.user.email:
-            user = authenticate(username=request.user.email, password=password)
-            
-        if user is not None:
+        # Robust verification using the current user's check_password method
+        if request.user.check_password(password):
             request.session['student_view_unlocked'] = True
             request.session.modified = True
             messages.success(request, "Secure access granted. Welcome to Student View!")
