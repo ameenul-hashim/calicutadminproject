@@ -202,10 +202,16 @@ def login_view(request):
 def student_view_auth(request):
     """
     Step-up authentication for Admins/Teachers accessing the Student View.
-    They must re-enter their own password to unlock the student view session.
+    Teachers now get direct, password-free access once logged into their panel.
     """
     if request.user.user_type == 'STUDENT':
         return redirect('dashboard')
+
+    # Direct access for Teachers as requested
+    if request.user.user_type == 'TEACHER':
+        request.session['student_view_unlocked'] = True
+        next_url = request.session.pop('next_student_url', 'dashboard')
+        return redirect(next_url)
 
     if request.session.get('student_view_unlocked'):
         next_url = request.session.get('next_student_url', 'dashboard')
