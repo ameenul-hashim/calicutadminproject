@@ -13,10 +13,30 @@ from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count, Sum, Q
 
+def limit_notifications(user):
+    """Keep only the 50 most recent notifications per user."""
+    from .models import Notification
+    qs = Notification.objects.filter(user=user).order_by('-created_at')
+    if qs.count() > 50:
+        ids_to_keep = qs.values_list('id', flat=True)[:50]
+        Notification.objects.filter(user=user).exclude(id__in=ids_to_keep).delete()
+
 def create_notification(user, message):
-    Notification.objects.create(user=user, message=message)
+    from .models import Notification
+    # Objective 1: No DB storage for Students
+    if user.user_type == 'STUDENT':
+        return # Skip DB creation for students
+        
+    # Objective 3: Keep notifications only for important Admin/Teacher events
+    important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
+    is_important = any(word in message.lower() for word in important_keywords)
+    
+    if is_important:
+        Notification.objects.create(user=user, message=message)
+        limit_notifications(user) # Objective 5: Limit DB size
 
 def notify_admins(message):
+    from .models import CustomUser
     admins = CustomUser.objects.filter(user_type='ADMIN')
     for admin in admins:
         create_notification(admin, message)
@@ -339,9 +359,8 @@ def dashboard_view(request):
         'page_obj': page_obj,
         'search_query': search_query,
         'total_lessons': sum(c.lesson_count for c in courses),
-        'notifications': notifications,
-        'unread_student_notifs': unread_notifications_count,
         'is_admin': is_admin,
+        # Objective 1: No DB notification queries for students
     }
     return render(request, 'accounts/dashboard.html', context)
 
@@ -795,11 +814,13 @@ def get_chat_list(request):
 
 @login_required
 def mark_notification_read(request, notif_id):
-    from django.shortcuts import get_object_or_404, redirect
     from .models import Notification
+    # Objective 4: Mark as Read -> DELETE from DB
     notif = get_object_or_404(Notification, id=notif_id, user=request.user)
-    notif.is_read = True
-    notif.save()
+    notif.delete()
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        return JsonResponse({"status": "deleted"})
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -847,7 +868,8 @@ def teacher_analytics_view(request):
 def mark_all_notifications_read(request):
     from django.shortcuts import redirect
     from .models import Notification
-    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    # Objective 4: Mass cleanup
+    Notification.objects.filter(user=request.user).delete()
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)

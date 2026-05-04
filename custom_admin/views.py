@@ -9,8 +9,25 @@ import re
 from accounts.models import Notification, Enrollment
 from accounts.utils.supabase_storage import upload_pdf
 
+def limit_notifications(user):
+    """Keep only the 50 most recent notifications per user."""
+    qs = Notification.objects.filter(user=user).order_by('-created_at')
+    if qs.count() > 50:
+        ids_to_keep = qs.values_list('id', flat=True)[:50]
+        Notification.objects.filter(user=user).exclude(id__in=ids_to_keep).delete()
+
 def create_notification(user, message):
-    Notification.objects.create(user=user, message=message)
+    # Objective 1: No DB storage for Students
+    if user.user_type == 'STUDENT':
+        return
+        
+    # Objective 3: Keep notifications only for important Admin/Teacher events
+    important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
+    is_important = any(word in message.lower() for word in important_keywords)
+    
+    if is_important:
+        Notification.objects.create(user=user, message=message)
+        limit_notifications(user)
 
 @user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)

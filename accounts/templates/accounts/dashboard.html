@@ -392,36 +392,7 @@
                     </script>
                     {% endif %}
 
-                    <!-- Notification Bell -->
-                    <div class="notification-wrapper" style="position: relative; cursor: pointer;">
-                        <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative; padding: 5px;">
-                            🔔
-                            <span id="notif-count-badge" style="position: absolute; top: -2px; right: -2px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_student_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_student_notifs }}</span>
-                        </div>
-                        
-                        <!-- Notification Dropdown -->
-                        <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 100%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; z-index: 1000; display: none; padding: 1rem; margin-top: 1rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
-                                <h4 style="margin: 0;">Notifications</h4>
-                                <div style="display: flex; gap: 0.5rem;">
-                                    <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none;">Mark All Read</a>
-                                    <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none;">View All</a>
-                                </div>
-                            </div>
-                            <div id="notif-items-container">
-                                {% for notif in notifications %}
-                                    <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
-                                        {{ notif.message }}
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
-                                            <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                                        </div>
-                                    </div>
-                                {% empty %}
-                                    <div style="text-align: center; padding: 1.5rem; color: #94a3b8; font-size: 0.9rem;">No notifications.</div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
+                    <!-- Notification System Removed for Students (Objective 1) -->
                 </div>
             </header>
 
@@ -429,7 +400,38 @@
                 .notif-dropdown.active { display: block !important; }
             </style>
 
-            {% include 'includes/messages.html' %}
+            {% if messages %}
+            <!-- Dashboard Message Card (Objective 7) -->
+            <div id="dashboard-message-card" style="background: white; border-radius: 1.25rem; border: 1px solid #e0f2fe; padding: 1.5rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; color: #0ea5e9;">
+                    <span style="font-size: 1.2rem;">📢</span>
+                    <h4 style="margin: 0; font-weight: 700;">Platform Updates</h4>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    {% for message in messages %}
+                        <div style="padding: 0.75rem 1rem; background: #f0f9ff; border-left: 4px solid #0ea5e9; border-radius: 0.5rem; font-size: 0.9rem; color: #1e293b; font-weight: 500;">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+                <p style="margin-top: 1rem; font-size: 0.75rem; color: #94a3b8;">These alerts will disappear automatically in 15 seconds.</p>
+            </div>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+        const toasts = document.querySelectorAll('.toast-message');
+        toasts.forEach(toast => {
+            // Objective 2: Show for 15 seconds as requested
+            setTimeout(() => {
+                toast.classList.add('toast-hide');
+                // Remove from DOM after animation completes
+                setTimeout(() => {
+                    toast.remove();
+                }, 400);
+            }, 15000);
+        });
+    });
+</script>
+            {% endif %}
 
 
             <h2 style="margin-bottom: 2rem; color: #1e293b; font-size: 1.4rem;">Your Enrolled Courses</h2>
