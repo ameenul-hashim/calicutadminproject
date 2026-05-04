@@ -418,7 +418,11 @@ def view_other_course(request, course_id):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
-    courses_qs = Course.objects.filter(teacher=request.user).order_by('-created_at')
+    from django.db.models import Count, Q
+    courses_qs = Course.objects.filter(teacher=request.user).annotate(
+        rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED'))
+    ).order_by('-created_at')
+    
     # Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(courses_qs, 12)
@@ -582,25 +586,41 @@ def delete_lesson(request, lesson_id):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def submit_course_approval(request, course_id):
     course = get_object_or_404(Course, id=course_id, teacher=request.user)
-    if course.lessons.exists():
-        is_resubmission = course.rejection_reason not in [None, ''] or course.status == 'REJECTED'
-        old_status = course.status
+    lessons = course.lessons.all()
+    
+    if lessons.exists():
+        # Identify what exactly is being resubmitted
+        rejected_lessons = lessons.filter(status='REJECTED')
+        pending_lessons = lessons.filter(status='PENDING')
         
-        if old_status != 'PUBLISHED':
+        # Reset rejected lessons to pending
+        if rejected_lessons.exists():
+            rejected_lessons.update(status='PENDING', is_approved=False)
+        
+        old_status = course.status
+        is_course_rejection_fix = (old_status == 'REJECTED')
+        
+        # Only change course status if it's not already published
+        if old_status in ['DRAFT', 'REJECTED']:
             course.status = 'PENDING'
             course.save()
-        
-        if is_resubmission:
-            messages.success(request, f"Course '{course.title}' re-submitted for admin approval.")
-            notify_admins(f"🔁 RE-SUBMISSION: Teacher {request.user.username} re-submitted course '{course.title}' for approval after rejection.")
-        elif old_status == 'PUBLISHED' or course.is_approved:
-            messages.success(request, f"New content for '{course.title}' submitted for admin review.")
-            notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added new content to course '{course.title}' for review.")
+            
+        # Messaging and Notifications
+        if is_course_rejection_fix:
+            messages.success(request, f"Course '{course.title}' has been re-submitted after rejection.")
+            notify_admins(f"🔁 COURSE RESUBMISSION: Teacher {request.user.username} fixed and re-submitted the entire course '{course.title}'.")
+        elif rejected_lessons.exists():
+            messages.success(request, "Rejected lessons have been resubmitted for approval.")
+            notify_admins(f"🔁 LESSON RESUBMISSION: Teacher {request.user.username} resubmitted rejected lessons in course '{course.title}'.")
+        elif pending_lessons.exists():
+            messages.success(request, "New content submitted for review.")
+            notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} submitted new content for course '{course.title}'.")
         else:
-            messages.success(request, "Course submitted for admin approval.")
-            notify_admins(f"📚 NEW SUBMISSION: Teacher {request.user.username} submitted course '{course.title}' for approval.")
+            messages.info(request, "All content is already under review or approved.")
+            
     else:
         messages.error(request, "Please add at least one lesson before submitting for approval.")
+        
     return redirect('my_courses')
 
 def logout_view(request):
