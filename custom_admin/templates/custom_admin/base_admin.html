@@ -403,22 +403,11 @@
             </header>
 
             <main class="main-content">
-                {% include 'includes/messages.html' %}',
-                                    title: '{% if message.tags == "error" %}Error{% elif message.tags == "warning" %}Warning{% elif message.tags == "info" %}Info{% else %}Success!{% endif %}',
-                                    text: "{{ message }}",
-                                    timer: 3000,
-                                    timerProgressBar: true,
-                                    showConfirmButton: false,
-                                    toast: true,
-                                    position: 'top-end'
-                                });
-                            {% endfor %}
-                        });
-                    </script>
-                {% endif %}
+                {% include 'includes/messages.html' %}
 
                 {% block content %}{% endblock %}
             </main>
+
         </div>
     </div>
 
