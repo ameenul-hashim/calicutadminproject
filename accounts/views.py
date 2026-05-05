@@ -56,11 +56,11 @@ def signup_view(request):
         print("📄 PROOF FILE:", proof_file)
 
         if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including student proof (PDF) are required.")
+            messages.error(request, "All fields including verification document (PDF) are required.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if proof_file.size > 200 * 1024:
-            messages.error(request, "Student proof file size must be below 200 KB.")
+            messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         # Upload verification document
@@ -108,10 +108,10 @@ def signup_view(request):
         from accounts.utils.supabase_storage import upload_user_proof
         if not upload_user_proof(user, proof_file):
             user.delete() # Rollback user creation
-            messages.error(request, "Failed to upload verification document. Please check your connection.")
+            messages.error(request, "Failed to upload your document. Please check your connection.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        messages.success(request, "Student registration successful! Your proof is pending admin approval.")
+        messages.success(request, "✅ Registration successful! Your document is pending review.")
         notify_admins(f"New student registration: {username}. Approval needed.")
         return redirect('login')
 
@@ -127,11 +127,11 @@ def teacher_signup_view(request):
         proof_file = request.FILES.get('proof_file')
 
         if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including teacher proof (PDF) are required.")
+            messages.error(request, "All fields including verification document (PDF) are required.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if proof_file.size > 200 * 1024:
-            messages.error(request, "Teacher proof file size must be below 200 KB.")
+            messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if CustomUser.objects.filter(username=username).exists():
@@ -166,10 +166,10 @@ def teacher_signup_view(request):
         from accounts.utils.supabase_storage import upload_user_proof
         if not upload_user_proof(user, proof_file):
             user.delete()
-            messages.error(request, "Failed to upload verification document. Please check your connection.")
+            messages.error(request, "Failed to upload your document. Please check your connection.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        messages.success(request, "Teacher registration successful! Please wait for admin approval.")
+        messages.success(request, "✅ Registration successful! Please wait for review.")
         notify_admins(f"New teacher registration: {username}. Approval needed.")
         return redirect('teacher_login')
 
