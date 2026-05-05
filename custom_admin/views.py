@@ -191,7 +191,7 @@ def accept_user(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     
     from accounts.utils.cloudinary_helpers import approve_user
-    approve_user(user) # Sets status to ACTIVE
+    approve_user(user, request.user) # Sets status to ACTIVE and logs action
     
     user.is_active = True
     user.approved_by = request.user
@@ -221,7 +221,7 @@ def decline_user(request, user_uid):
         reason = request.POST.get('reason', '')
         
         from accounts.utils.cloudinary_helpers import reject_user
-        reject_user(user) # Deletes PDF and sets status to REJECTED
+        reject_user(user, request.user) # Deletes PDF, sets status to REJECTED, and logs action
         
         user.is_active = False
         user.rejection_reason = reason
