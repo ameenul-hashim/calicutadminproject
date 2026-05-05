@@ -73,14 +73,14 @@
     document.addEventListener("DOMContentLoaded", function() {
         const toasts = document.querySelectorAll('.toast-message');
         toasts.forEach(toast => {
-            // Auto hide after 15 seconds as requested
+            // Auto hide after 35 seconds as requested
             setTimeout(() => {
                 toast.classList.add('toast-hide');
                 // Remove from DOM after animation completes
                 setTimeout(() => {
                     toast.remove();
                 }, 400);
-            }, 15000);
+            }, 35000);
         });
     });
 </script>
