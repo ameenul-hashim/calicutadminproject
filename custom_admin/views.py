@@ -413,7 +413,16 @@ def analytics_view(request):
         teacher_performance_data = [t.num_courses for t in top_teachers]
         
         # Course Enrollments
-        top_courses = Course.objects.annotate(enrollment_count=Count('enrollments')).select_related('teacher').order_by('-enrollment_count')[:5]
+        top_courses = Course.objects.annotate(
+            enrollment_count=Count('enrollments'),
+            lesson_count=Count('lessons')
+        ).select_related('teacher').order_by('-enrollment_count')[:5]
+
+        # Top Educators (by total content uploaded)
+        top_educators = CustomUser.objects.filter(user_type='TEACHER').annotate(
+            total_content=Count('courses__lessons'),
+            total_courses=Count('courses', distinct=True)
+        ).order_by('-total_content')[:5]
 
         pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
         pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
@@ -430,6 +439,7 @@ def analytics_view(request):
             'teacher_perf_labels': teacher_performance_labels,
             'teacher_perf_data': teacher_performance_data,
             'top_courses': top_courses,
+            'top_educators': top_educators,
             'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
             'pending_students_count': pending_students_count,
             'pending_teachers_count': pending_teachers_count,
