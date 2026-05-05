@@ -218,26 +218,38 @@ def decline_user(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason', '')
+        user_type = user.user_type
+        username = user.username
         
-        from accounts.utils.cloudinary_helpers import reject_user
-        reject_user(user, request.user) # Deletes PDF, sets status to REJECTED, and logs action
-        
-        user.is_active = False
-        user.rejection_reason = reason
-        user.save()
-        
-        create_notification(user, f"Your account registration was declined. Reason: {reason}")
-        
+        # Log the rejection before deletion
         ApprovalLog.objects.create(
-            content_type=user.user_type,
-            object_id=user.id,
+            content_type=user_type,
+            object_id=0, # Object will be deleted, use 0 or dummy
             status='REJECTED',
             reviewed_by=request.user,
-            comments=reason
+            comments=f"User {username} rejected and deleted. Reason: {reason}"
         )
         
-        messages.warning(request, f"{user.user_type.title()} {user.username} has been declined.")
-        if user.user_type == 'TEACHER':
+        # Explicitly delete files from cloud storage
+        if getattr(user, 'image_public_id', None):
+            try:
+                import cloudinary.uploader
+                cloudinary.uploader.destroy(user.image_public_id)
+            except Exception:
+                pass
+                
+        if getattr(user, 'pdf_path', None):
+            try:
+                from accounts.utils.supabase_storage import delete_pdf
+                delete_pdf(user.pdf_path)
+            except Exception:
+                pass
+                
+        # Delete user from DB
+        user.delete()
+        
+        messages.warning(request, f"{user_type.title()} {username} has been rejected and deleted.")
+        if user_type == 'TEACHER':
             return redirect('pending_teachers')
         return redirect('pending_users')
         
@@ -285,7 +297,7 @@ def create_student_admin(request):
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
             if not pdf_url:
-                messages.error(request, "Failed to upload student proof to Supabase.")
+                messages.error(request, "Failed to upload student proof to storage.")
                 return render(request, 'custom_admin/create_student.html')
 
             CustomUser.objects.create_user(
@@ -327,7 +339,7 @@ def create_teacher_admin(request):
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
             if not pdf_url:
-                messages.error(request, "Failed to upload teacher proof to Supabase.")
+                messages.error(request, "Failed to upload teacher proof to storage.")
                 return render(request, 'custom_admin/create_teacher.html')
 
             CustomUser.objects.create_user(
@@ -537,7 +549,7 @@ def edit_user_admin(request, user_uid):
                     if update_image(user, profile_photo, folder="edustream/profiles"):
                         messages.success(request, "Profile photo updated successfully!")
                     else:
-                        messages.error(request, "Failed to update profile photo in Cloudinary.")
+                        messages.error(request, "Failed to update profile photo in storage.")
                 
             user.save()
             messages.success(request, f"User {user.username} data updated successfully!")

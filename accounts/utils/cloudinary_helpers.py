@@ -78,37 +78,6 @@ def delete_image(instance):
     logger.info(f"PERMANENT DATA POLICY: Preserving image {getattr(instance, 'image_public_id', 'unknown')}")
     pass
 
-
-def upload_pdf(instance, pdf_file):
-    """
-    Uploads a PDF to Supabase Storage securely.
-    Sets status to PENDING.
-    """
-    try:
-        # Validate PDF content
-        content = pdf_file.read()
-        pdf_file.seek(0)
-        validate_pdf(pdf_file)
-        
-        # Define destination path in Supabase (Aligned with documents/ folder)
-        destination_path = f"documents/user_{instance.id}_{instance.uid}.pdf"
-        
-        with transaction.atomic():
-            path = supabase_upload(destination_path, content, destination_path)
-            if not path:
-                raise Exception("Supabase upload failed")
-            
-            instance.pdf_path = path
-            instance.status = "PENDING"
-            instance.save()
-            return True
-    except ValueError as e:
-        logger.error(f"Validation Error: {e}")
-        return False
-    except Exception as e:
-        logger.error(f"Failed to upload PDF to Supabase: {e}")
-        return False
-
 def approve_user(instance, admin_user):
     """
     Approves a user account and keeps their PDF.

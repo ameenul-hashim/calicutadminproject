@@ -57,13 +57,13 @@ def signup_view(request):
 
         if not all([username, email, fullname, password, confirm_password, proof_file]):
             messages.error(request, "All fields including student proof (PDF) are required.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if proof_file.size > 200 * 1024:
             messages.error(request, "Student proof file size must be below 200 KB.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Upload PDF to Cloudinary
+        # Upload verification document
         # Note: We create the user first in memory, or upload first and assign later.
         # Since upload_pdf expects an instance, we will delay upload until user is created,
         # or we rewrite upload_pdf to return url/public_id. 
@@ -75,23 +75,23 @@ def signup_view(request):
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not re.match(email_regex, email):
             messages.error(request, "The email address you entered is not in a valid format.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "This username is already taken. Please choose another one.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
         
         if CustomUser.objects.filter(email=email).exists():
             messages.error(request, "This email is already registered. Please login or use a different email.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
             messages.error(request, "The passwords you entered do not match.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
             messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
-            return render(request, 'accounts/signup.html')
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         # Create student
         user = CustomUser.objects.create_user(
@@ -104,11 +104,12 @@ def signup_view(request):
             user_type='STUDENT',
         )
 
-        from .utils.cloudinary_helpers import upload_pdf
-        if not upload_pdf(user, proof_file):
+        # Upload verification document
+        from accounts.utils.supabase_storage import upload_user_proof
+        if not upload_user_proof(user, proof_file):
             user.delete() # Rollback user creation
-            messages.error(request, "Failed to upload verification document to Cloudinary. Please try again.")
-            return render(request, 'accounts/signup.html')
+            messages.error(request, "Failed to upload verification document. Please check your connection.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         messages.success(request, "Student registration successful! Your proof is pending admin approval.")
         notify_admins(f"New student registration: {username}. Approval needed.")
@@ -125,32 +126,29 @@ def teacher_signup_view(request):
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
 
-        print("🧾 REQUEST FILES:", request.FILES)
-        print("📄 PROOF FILE:", proof_file)
-
         if not all([username, email, fullname, password, confirm_password, proof_file]):
             messages.error(request, "All fields including teacher proof (PDF) are required.")
-            return render(request, 'accounts/teacher_signup.html')
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if proof_file.size > 200 * 1024:
             messages.error(request, "Teacher proof file size must be below 200 KB.")
-            return render(request, 'accounts/teacher_signup.html')
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "This username is already taken.")
-            return render(request, 'accounts/teacher_signup.html')
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
         
         if CustomUser.objects.filter(email=email).exists():
             messages.error(request, "Email already registered.")
-            return render(request, 'accounts/teacher_signup.html')
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
-            return render(request, 'accounts/teacher_signup.html')
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Password strength requirements not met.")
-            return render(request, 'accounts/teacher_signup.html')
+            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         # Create teacher (staff but inactive until approved)
         user = CustomUser.objects.create_user(
@@ -164,11 +162,12 @@ def teacher_signup_view(request):
             user_type='TEACHER',
         )
 
-        from .utils.cloudinary_helpers import upload_pdf
-        if not upload_pdf(user, proof_file):
+        # Upload verification document
+        from accounts.utils.supabase_storage import upload_user_proof
+        if not upload_user_proof(user, proof_file):
             user.delete()
-            messages.error(request, "Failed to upload verification document to Cloudinary. Please try again.")
-            return render(request, 'accounts/teacher_signup.html')
+            messages.error(request, "Failed to upload verification document. Please check your connection.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         messages.success(request, "Teacher registration successful! Please wait for admin approval.")
         notify_admins(f"New teacher registration: {username}. Approval needed.")
@@ -789,7 +788,7 @@ def edit_profile(request):
                 if update_image(request.user, profile_photo, folder="edustream/profiles"):
                     messages.success(request, "Profile photo updated successfully!")
                 else:
-                    messages.error(request, "Failed to upload photo to Cloudinary. Please try again.")
+                    messages.error(request, "Failed to upload photo. Please try again.")
             return redirect('profile')
         else:
             messages.error(request, "Please select a photo to upload.")
