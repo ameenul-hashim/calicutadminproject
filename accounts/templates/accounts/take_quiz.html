@@ -24,7 +24,42 @@
         .submit-btn { background: #6366f1; color: white; padding: 1rem 3rem; border: none; border-radius: 0.75rem; font-weight: 700; font-size: 1rem; cursor: pointer; transition: background 0.2s; }
         .submit-btn:hover { background: #4f46e5; }
         .back-link { display: inline-block; margin-bottom: 1.5rem; color: #6366f1; text-decoration: none; font-weight: 600; }
-    </style>
+    
+        /* RESPONSIVE INJECTIONS */
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
+            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
+            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
+            
+            /* Forms */
+            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
+        }
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
+        table { min-width: 62.5rem; /* 1000px */ }
+        
+        /* Video Player Responsive */
+        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
+        video { width: 100%; height: 100%; }
+        
+        /* Django Messages Toast */
+        .messages { max-width: 24rem; word-wrap: break-word; }
+        @media (max-width: 640px) {
+            .messages { max-width: 90vw; }
+        }
+        </style>
+
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        corePlugins: { preflight: false }
+      }
+    </script>
 </head>
 <body>
     <div class="quiz-container">
@@ -64,5 +99,51 @@
             </div>
         </form>
     </div>
-</body>
+
+    <!-- Mobile Hamburger Toggle -->
+    <button id="mobile-sidebar-toggle" style="display: none; position: fixed; bottom: 20px; right: 20px; z-index: 1001; background: #0ea5e9; color: white; width: 50px; height: 50px; border-radius: 50%; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; align-items: center; justify-content: center; font-size: 24px;">
+        ☰
+    </button>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var toggleBtn = document.getElementById('mobile-sidebar-toggle');
+            var sidebars = document.querySelectorAll('.sidebar, aside');
+            
+            function checkWidth() {
+                if (window.innerWidth <= 1024) {
+                    if (sidebars.length > 0) {
+                        toggleBtn.style.display = 'flex';
+                    }
+                } else {
+                    toggleBtn.style.display = 'none';
+                    sidebars.forEach(function(sb) {
+                        sb.style.display = '';
+                        sb.classList.remove('mobile-active');
+                    });
+                }
+            }
+            
+            checkWidth();
+            window.addEventListener('resize', checkWidth);
+            
+            toggleBtn.addEventListener('click', function() {
+                sidebars.forEach(function(sb) {
+                    if (sb.classList.contains('mobile-active')) {
+                        sb.classList.remove('mobile-active');
+                        sb.style.display = 'none';
+                    } else {
+                        sb.classList.add('mobile-active');
+                        sb.style.display = 'block';
+                        sb.style.position = 'fixed';
+                        sb.style.zIndex = '1000';
+                        sb.style.height = '100vh';
+                        sb.style.left = '0';
+                        sb.style.top = '0';
+                    }
+                });
+            });
+        });
+    </script>
+    </body>
+
 </html>
