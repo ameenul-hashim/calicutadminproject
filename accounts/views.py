@@ -140,12 +140,18 @@ def teacher_signup_view(request):
             messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
+        # Email format validation
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(email_regex, email):
+            messages.error(request, "The email address you entered is not in a valid format.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
         if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "This username is already taken.")
+            messages.error(request, "This username is already taken. Please choose another one.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
         
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email already registered.")
+            messages.error(request, "This email is already registered. Please login or use a different email.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
