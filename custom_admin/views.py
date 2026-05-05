@@ -189,7 +189,10 @@ def pending_teachers_view(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def accept_user(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
-    user.status = 'ACTIVE'
+    
+    from accounts.utils.cloudinary_helpers import approve_user
+    approve_user(user) # Sets status to ACTIVE
+    
     user.is_active = True
     user.approved_by = request.user
     user.approved_at = timezone.now()
@@ -216,7 +219,10 @@ def decline_user(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason', '')
-        user.status = 'BLOCKED'
+        
+        from accounts.utils.cloudinary_helpers import reject_user
+        reject_user(user) # Deletes PDF and sets status to REJECTED
+        
         user.is_active = False
         user.rejection_reason = reason
         user.save()
