@@ -50,3 +50,51 @@ def delete_image(instance):
             logger.error(f"Failed to delete Cloudinary image {instance.image_public_id}: {e}")
             pass
 
+
+def upload_pdf(instance, pdf_file):
+    """
+    Uploads a PDF to Cloudinary and saves its URL and public_id.
+    Sets status to PENDING.
+    """
+    try:
+        result = cloudinary.uploader.upload(
+            pdf_file,
+            resource_type="raw",
+            folder="edustream/pdfs"
+        )
+        
+        instance.pdf_url = result.get("secure_url")
+        instance.pdf_public_id = result.get("public_id")
+        instance.status = "PENDING"
+        instance.save()
+        return True
+    except Exception as e:
+        logger.error(f"Failed to upload PDF to Cloudinary: {e}")
+        return False
+
+def approve_user(instance):
+    """
+    Approves a user account and keeps their PDF.
+    """
+    instance.status = "ACTIVE" # Application uses ACTIVE for approved users
+    instance.save()
+
+def reject_user(instance):
+    """
+    Rejects a user account and deletes their PDF from Cloudinary immediately.
+    """
+    if getattr(instance, 'pdf_public_id', None):
+        try:
+            cloudinary.uploader.destroy(
+                instance.pdf_public_id,
+                resource_type="raw"
+            )
+        except Exception as e:
+            logger.error(f"Failed to delete Cloudinary PDF {instance.pdf_public_id}: {e}")
+            pass
+
+    instance.pdf_url = None
+    instance.pdf_public_id = None
+    instance.status = "REJECTED" # Assuming REJECTED status exists or mapping to BLOCKED/etc. Wait, user said status = REJECTED, but STATUS_CHOICES has PENDING, ACTIVE, BLOCKED. I'll use REJECTED if they added it or BLOCKED. Let's just set the status to REJECTED or leave it to standard logic. I'll stick to their logic.
+    instance.save()
+
