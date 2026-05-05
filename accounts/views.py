@@ -844,9 +844,16 @@ def edit_profile(request):
 def course_player(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
 
+    is_unlocked = request.session.get('student_view_unlocked')
+    is_admin = getattr(request.user, 'is_staff', False)
+
     # === ACCESS CONTROL ===
-    # Admin (is_staff): Always allowed, sees all non-rejected content
-    if getattr(request.user, 'is_staff', False):
+    if is_admin and is_unlocked:
+        # Admin in Student View: Strictly mimic student behavior (APPROVED only)
+        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
+
+    elif is_admin:
+        # Normal Admin: Always allowed, sees all non-rejected content
         lessons = course.lessons.exclude(status='REJECTED').order_by('order')
 
     # Teacher: allowed for own course OR any approved course
@@ -856,7 +863,7 @@ def course_player(request, course_uid):
             return redirect('teacher_dashboard')
         lessons = course.lessons.exclude(status='REJECTED').order_by('order')
 
-    # Student: must be enrolled, sees approved lessons (and pending for testing if requested)
+    # Student: must be enrolled, sees approved lessons
     else:
         if not Enrollment.objects.filter(user=request.user, course=course).exists():
             messages.error(request, "You are not enrolled in this course.")
