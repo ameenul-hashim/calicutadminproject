@@ -153,29 +153,41 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
+            min-width: 1000px; /* Force minimum width for scrolling */
         }
         .table-responsive {
             width: 100%;
             overflow-x: auto;
             overflow-y: auto;
-            max-height: 65vh; 
+            max-height: 70vh; 
             -webkit-overflow-scrolling: touch;
             margin-bottom: 2rem;
             border-radius: 1rem;
             border: 1px solid #e2e8f0;
             background: white;
             position: relative;
-            scrollbar-width: thin;
-            scrollbar-color: #cbd5e1 #f8fafc;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
-        /* Fix: Add a dedicated spacer at the bottom of the table to ensure last row visibility */
-        .table-responsive table {
-            margin-bottom: 80px !important; /* Large buffer for last row */
-            width: 100%;
+        
+        /* Custom Scrollbar for Table */
+        .table-responsive::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
         }
-        .table thead th {
-            background: #1e293b; /* Premium dark slate */
-            color: #ffffff; /* White text for contrast */
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .table thead th, .table tr:first-child th {
+            background: #1e293b !important; /* Premium dark slate */
+            color: #ffffff !important; /* White text for contrast */
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
@@ -184,12 +196,17 @@
             border-bottom: 2px solid #334155;
             position: sticky;
             top: 0;
-            z-index: 10;
+            z-index: 20;
+            text-align: left;
         }
         .table td {
             padding: 1.25rem 1.5rem;
             vertical-align: middle;
             border-bottom: 1px solid #f1f5f9;
+            background: white;
+        }
+        .table tr:hover td {
+            background: #f8fafc;
         }
         .table tr:last-child td {
             border-bottom: none;

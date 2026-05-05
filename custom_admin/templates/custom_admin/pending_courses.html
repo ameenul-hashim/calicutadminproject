@@ -9,14 +9,15 @@
 
 {% block content %}
         <div class="table-responsive">
-                <table class="table" style="width: 100%; border-collapse: collapse; text-align: left; min-width: 800px;">
-                        <tr>
-                            <th>Course Details</th>
-                            <th>Teacher</th>
-                            <th>Request Type</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Course Details</th>
+                        <th>Teacher</th>
+                        <th>Request Type</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
                     <tbody>
                         {% for course in courses %}
                         <tr style="border-bottom: 1px solid #f1f5f9;">
