@@ -52,6 +52,7 @@ class PortalSecurityMiddleware:
             if not request.user.is_superuser:
                 if hasattr(request.user, 'status') and request.user.status != 'ACTIVE':
                     status_msg = "Your account is pending admin approval." if request.user.status == 'PENDING' else "Your account has been blocked."
+                    request.session.flush()
                     logout(request)
                     messages.error(request, status_msg)
                     if url_name != 'login':
