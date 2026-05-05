@@ -24,6 +24,7 @@ class CustomUser(AbstractUser):
     pdf_path = models.CharField(max_length=1000, blank=True, null=True) # New Supabase storage path
     pdf_url = models.URLField(max_length=1000, blank=True, null=True) # Legacy Cloudinary URL
     pdf_public_id = models.CharField(max_length=255, blank=True, null=True) # Legacy Cloudinary ID
+    phone_number = models.CharField(max_length=20, blank=True, null=True, db_index=True)
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
     approved_at = models.DateTimeField(null=True, blank=True)

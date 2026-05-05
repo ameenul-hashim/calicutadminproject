@@ -300,10 +300,11 @@ def create_student_admin(request):
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
+        phone_number = request.POST.get('phone_number')
         proof_file = request.FILES.get('proof_file')
         
-        if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including verification document (PDF) are required.")
+        if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
+            messages.error(request, "All fields including contact number and verification document (PDF) are required.")
         elif password != confirm_password:
             messages.error(request, "Passwords do not match.")
         elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
@@ -312,6 +313,8 @@ def create_student_admin(request):
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
+        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
+            messages.error(request, "This contact number is already registered and in use.")
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
@@ -324,6 +327,7 @@ def create_student_admin(request):
                 email=email,
                 password=password,
                 full_name=fullname,
+                phone_number=phone_number,
                 is_active=True,
                 status='ACTIVE',
                 user_type='STUDENT',
@@ -342,10 +346,11 @@ def create_teacher_admin(request):
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
+        phone_number = request.POST.get('phone_number')
         proof_file = request.FILES.get('proof_file')
         
-        if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including verification document (PDF) are required.")
+        if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
+            messages.error(request, "All fields including contact number and verification document (PDF) are required.")
         elif password != confirm_password:
             messages.error(request, "Passwords do not match.")
         elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
@@ -354,6 +359,8 @@ def create_teacher_admin(request):
             messages.error(request, "Username already exists.")
         elif CustomUser.objects.filter(email=email).exists():
             messages.error(request, "The email is already exist in the database.")
+        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
+            messages.error(request, "This contact number is already registered and in use.")
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
@@ -366,6 +373,7 @@ def create_teacher_admin(request):
                 email=email,
                 password=password,
                 full_name=fullname,
+                phone_number=phone_number,
                 is_active=True,
                 is_staff=True,
                 status='ACTIVE',
@@ -564,6 +572,7 @@ def edit_user_admin(request, user_uid):
         username = request.POST.get('username')
         email = request.POST.get('email')
         fullname = request.POST.get('fullname')
+        phone_number = request.POST.get('phone_number')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         profile_photo = request.FILES.get('profile_photo')
@@ -578,10 +587,13 @@ def edit_user_admin(request, user_uid):
             messages.error(request, "This username is already taken by another user. Please use a unique username.")
         elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
             messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
+        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(uid=user_uid).exclude(status='REJECTED').exists():
+            messages.error(request, "This contact number is already in use by another active account.")
         else:
             user.username = username
             user.email = email
             user.full_name = fullname
+            user.phone_number = phone_number
             if password:
                 user.set_password(password)
             
