@@ -84,12 +84,14 @@ class PortalSecurityMiddleware:
                         request.session['next_teacher_url'] = path
                         return redirect('teacher_view_auth')
 
-        response = self.get_response(request)
-        
-        # Add strict cache control headers for ALL responses to prevent back-button data exposure
-        # and to ensure status checks are always performed against the server.
-        response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        response["Pragma"] = "no-cache"
-        response["Expires"] = "Sat, 01 Jan 2000 00:00:00 GMT"
-        
-        return response
+        try:
+            response = self.get_response(request)
+            
+            # Add strict cache control headers
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response["Pragma"] = "no-cache"
+            response["Expires"] = "Sat, 01 Jan 2000 00:00:00 GMT"
+            
+            return response
+        except Exception:
+            return self.get_response(request)
