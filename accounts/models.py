@@ -32,7 +32,7 @@ class CustomUser(AbstractUser):
 
     @property
     def avatar_url(self):
-        """Returns Cloudinary image URL, falling back to legacy profile_photo."""
+        """Returns Cloudinary image URL, falling back to legacy profile_photo, then a professional default avatar."""
         if self.image:
             return self.image
         if self.profile_photo:
@@ -40,7 +40,8 @@ class CustomUser(AbstractUser):
                 return self.profile_photo.url
             except ValueError:
                 pass
-        return None
+        # High-quality default avatar
+        return "https://res.cloudinary.com/dhegrcgja/image/upload/v1714934521/default_avatar_edu.png"
 
     @property
     def proof_pdf_url(self):

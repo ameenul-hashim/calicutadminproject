@@ -61,7 +61,9 @@
             </div>
 
             <button type="submit" class="btn-save">Update Photo</button>
+            {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
+            {% endif %}
         </form>
     </div>
 </body>
