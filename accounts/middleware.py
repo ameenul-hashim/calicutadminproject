@@ -13,6 +13,7 @@ class PortalSecurityMiddleware:
         
         # Public URL names that don't require authentication
         public_url_names = [
+            'home',
             'login',
             'signup',
             'teacher_login',
@@ -25,6 +26,8 @@ class PortalSecurityMiddleware:
             'admin_logout',
             'student_view_auth',
             'teacher_view_auth',
+            'health_check',
+            'status_page',
         ]
         
         # Check if the current URL is in public_url_names
@@ -117,5 +120,7 @@ class PortalSecurityMiddleware:
             response["Referrer-Policy"] = "same-origin"
             
             return response
-        except Exception:
-            return self.get_response(request)
+        except Exception as e:
+            # If an error occurs in the view, let Django's handler catch it
+            # instead of risking a secondary middleware loop
+            raise e
