@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, PasswordResetOTP
@@ -168,8 +169,6 @@ def teacher_signup_view(request):
     return render(request, 'accounts/teacher_signup.html')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
-from django.http import JsonResponse
-
 def health_check(request):
     """Lightweight health check for Render/Uptime monitoring."""
     return JsonResponse({"status": "healthy", "timestamp": timezone.now().isoformat()})
