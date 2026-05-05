@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     'axes',  # Brute-force protection
+    'django_cleanup.apps.CleanupConfig',  # Auto-delete files
 ]
 
 MIDDLEWARE = [
@@ -77,13 +78,15 @@ AUTHENTICATION_BACKENDS = [
 
 # Axes Configuration
 AXES_FAILURE_LIMIT = 5
+AXES_LOCK_OUT_AT_FAILURE = True
 AXES_COOLOFF_TIME = 1  # 1 hour
 AXES_LOCKOUT_TEMPLATE = 'accounts/lockout.html'
 AXES_RESET_ON_SUCCESS = True
 
-# Performance Tweaks
-DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB
+# Performance & Security Tweaks
+DATA_UPLOAD_MAX_MEMORY_SIZE = 262144  # 256KB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 262144  # 256KB
+RATELIMIT_ENABLE = True
 
 ROOT_URLCONF = 'elearning_project.urls'
 
@@ -156,6 +159,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 31536000
@@ -206,6 +210,7 @@ CLOUDINARY_STORAGE = {
     'CLOUD_NAME': os.getenv("CLOUDINARY_CLOUD_NAME"),
     'API_KEY': os.getenv("CLOUDINARY_API_KEY"),
     'API_SECRET': os.getenv("CLOUDINARY_API_SECRET"),
+    'SECURE': True,
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -228,7 +233,7 @@ else:
 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'support@edustream.com')
 
-# Production Logging
+# Production & Security Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -243,6 +248,11 @@ LOGGING = {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
         },
+        'security_file': {
+            'class': 'logging.FileHandler',
+            'filename': 'security.log',
+            'formatter': 'verbose',
+        },
     },
     'root': {
         'handlers': ['console'],
@@ -252,6 +262,11 @@ LOGGING = {
         'django': {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'propagate': False,
+        },
+        'django.security': {
+            'handlers': ['security_file', 'console'],
+            'level': 'WARNING',
             'propagate': False,
         },
     },
