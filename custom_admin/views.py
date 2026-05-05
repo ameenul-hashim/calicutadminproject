@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from accounts.models import CustomUser, Notification, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest
+from accounts.models import CustomUser, Notification, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
 from django.db.models import Q, Count, Sum
@@ -777,20 +777,33 @@ def enterprise_monitor(request):
 def proxy_pdf_access(request, user_uid):
     """Logs access and redirects to the signed PDF URL."""
     target_user = get_object_or_404(CustomUser, uid=user_uid)
-    pdf_url = target_user.proof_pdf_url
+
+    try:
+        pdf_url = target_user.proof_pdf_url
+    except Exception:
+        pdf_url = None
 
     if pdf_url:
         # Log the access
-        PDFAccessLog.objects.create(
-            user=request.user,
-            pdf_path=target_user.pdf_path or target_user.pdf_url or "Legacy Path",
-            ip_address=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT')
-        )
+        try:
+            pdf_path = (
+                getattr(target_user, 'pdf_path', None)
+                or getattr(target_user, 'pdf_url', None)
+                or str(getattr(target_user, 'proof_pdf', None))
+                or "Legacy Path"
+            )
+            PDFAccessLog.objects.create(
+                user=request.user,
+                pdf_path=pdf_path,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        except Exception:
+            pass  # Never crash on log failure
         return redirect(pdf_url)
-    
-    messages.error(request, "PDF document not found.")
-    return redirect(request.META.get('HTTP_REFERER', 'admin_dashboard'))
+
+    messages.error(request, "PDF document not found or not yet uploaded.")
+    return redirect(request.META.get('HTTP_REFERER') or 'admin_dashboard')
 
 def error_404(request, exception):
     return render(request, '404.html', status=404)
