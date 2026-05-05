@@ -63,11 +63,13 @@ def signup_view(request):
             messages.error(request, "Student proof file size must be below 200 KB.")
             return render(request, 'accounts/signup.html')
 
-        # Upload PDF to Supabase
-        pdf_url = upload_pdf(proof_file)
-        if not pdf_url:
-            messages.error(request, "Failed to upload verification document. Please try again.")
-            return render(request, 'accounts/signup.html')
+        # Upload PDF to Cloudinary
+        # Note: We create the user first in memory, or upload first and assign later.
+        # Since upload_pdf expects an instance, we will delay upload until user is created,
+        # or we rewrite upload_pdf to return url/public_id. 
+        # The user's helper expects an instance: upload_pdf(instance, pdf_file)
+        # So we will handle this after user creation below.
+
 
         # ... (Existing validations)
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
@@ -100,8 +102,14 @@ def signup_view(request):
             is_active=False,
             status='PENDING',
             user_type='STUDENT',
-            proof_pdf=pdf_url
         )
+
+        from .utils.cloudinary_helpers import upload_pdf
+        if not upload_pdf(user, proof_file):
+            user.delete() # Rollback user creation
+            messages.error(request, "Failed to upload verification document to Cloudinary. Please try again.")
+            return render(request, 'accounts/signup.html')
+
         messages.success(request, "Student registration successful! Your proof is pending admin approval.")
         notify_admins(f"New student registration: {username}. Approval needed.")
         return redirect('login')
@@ -126,12 +134,6 @@ def teacher_signup_view(request):
 
         if proof_file.size > 200 * 1024:
             messages.error(request, "Teacher proof file size must be below 200 KB.")
-            return render(request, 'accounts/teacher_signup.html')
-
-        # Upload PDF to Supabase
-        pdf_url = upload_pdf(proof_file)
-        if not pdf_url:
-            messages.error(request, "Failed to upload verification document. Please try again.")
             return render(request, 'accounts/teacher_signup.html')
 
         if CustomUser.objects.filter(username=username).exists():
@@ -160,8 +162,14 @@ def teacher_signup_view(request):
             is_staff=True,
             status='PENDING',
             user_type='TEACHER',
-            proof_pdf=pdf_url
         )
+
+        from .utils.cloudinary_helpers import upload_pdf
+        if not upload_pdf(user, proof_file):
+            user.delete()
+            messages.error(request, "Failed to upload verification document to Cloudinary. Please try again.")
+            return render(request, 'accounts/teacher_signup.html')
+
         messages.success(request, "Teacher registration successful! Please wait for admin approval.")
         notify_admins(f"New teacher registration: {username}. Approval needed.")
         return redirect('teacher_login')
