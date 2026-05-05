@@ -160,8 +160,9 @@
         }
         .table-responsive {
             width: 100%;
+            max-height: calc(100vh - 300px); /* Fill available space but keep header/footer visible */
             overflow-x: auto;
-            overflow-y: visible;
+            overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             margin-bottom: 2rem;
             border-radius: 1rem;
