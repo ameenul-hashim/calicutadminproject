@@ -23,7 +23,6 @@ def validate_pdf(file):
 def update_image(instance, new_image_file, folder="edustream/uploads"):
     """
     Safely updates an image in Cloudinary and the database model.
-    NO-DELETE POLICY: Old images are kept in Cloudinary for archival purposes.
     """
     try:
         # STEP 1: Upload new image
@@ -39,16 +38,24 @@ def update_image(instance, new_image_file, folder="edustream/uploads"):
             logger.error("Cloudinary upload failed: Missing URL or public_id")
             return False
 
-        # STEP 2: NO-DELETE: Old image is NOT destroyed.
-        # if getattr(instance, 'image_public_id', None):
-        #     try:
-        #         cloudinary.uploader.destroy(instance.image_public_id)
-        #     except Exception as e:
-        #         logger.error(f"Failed to delete old Cloudinary image {instance.image_public_id}: {e}")
+        # STEP 2: Delete old image if it exists
+        old_public_id = getattr(instance, 'image_public_id', None)
+        if old_public_id:
+            try:
+                cloudinary.uploader.destroy(old_public_id)
+            except Exception as e:
+                logger.error(f"Failed to delete old Cloudinary image {old_public_id}: {e}")
 
         # STEP 3: Save new values
         instance.image = new_url
         instance.image_public_id = new_public_id
+        
+        # Synchronize with legacy field if it exists
+        if hasattr(instance, 'profile_photo'):
+            instance.profile_photo = new_image_file
+        elif hasattr(instance, 'thumbnail'):
+            instance.thumbnail = new_image_file
+            
         instance.save()
         return True
 

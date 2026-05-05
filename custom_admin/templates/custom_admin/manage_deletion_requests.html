@@ -29,13 +29,11 @@
                 {% for req in requests %}
                 <tr>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 0.75rem;">
-                            {% if req.teacher.profile_photo %}
-                                <img src="{{ req.teacher.profile_photo.url }}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            {% if req.teacher.avatar_url %}
+                                <img src="{{ req.teacher.avatar_url }}" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;">
                             {% else %}
-                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #e0f2fe; color: #0ea5e9; display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                                    {{ req.teacher.username|make_list|first|upper }}
-                                </div>
+                                <div style="width: 40px; height: 40px; border-radius: 50%; background: #f1f5f9; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #94a3b8; border: 1px solid #e2e8f0;">👤</div>
                             {% endif %}
                             <div>
                                 <div style="font-weight: 600;">{{ req.teacher.full_name|default:req.teacher.username }}</div>

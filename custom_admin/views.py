@@ -10,6 +10,7 @@ from django.utils import timezone
 from datetime import timedelta
 import re
 from accounts.utils.supabase_storage import upload_pdf
+from accounts.utils.cloudinary_helpers import update_image
 
 def limit_notifications(user):
     """Limit notifications: 10 for Teachers, 50 for Admins."""
@@ -88,7 +89,7 @@ def manage_students(request):
         )
     
     # Fast notification fetch
-    notifications = Notification.objects.filter(user=request.user, is_read=False).only('id', 'message', 'created_at')[:10]
+    notifications = Notification.objects.filter(user=request.user, is_read=False).only('id', 'uid', 'message', 'created_at')[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
     # Pagination
@@ -183,8 +184,6 @@ def pending_users_view(request):
 def pending_teachers_view(request):
     pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True)
     return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
-
-    return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def accept_user(request, user_uid):
@@ -512,6 +511,7 @@ def edit_user_admin(request, user_uid):
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
+        profile_photo = request.FILES.get('profile_photo')
         
         if not all([username, email, fullname]):
             messages.error(request, "All fields are required for updating.")
@@ -529,6 +529,10 @@ def edit_user_admin(request, user_uid):
             user.full_name = fullname
             if password:
                 user.set_password(password)
+            
+            if profile_photo:
+                update_image(user, profile_photo, folder="edustream/profiles")
+                
             user.save()
             messages.success(request, f"User {user.username} data updated successfully!")
             if user.user_type == 'TEACHER':

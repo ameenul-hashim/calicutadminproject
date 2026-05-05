@@ -441,8 +441,8 @@
                 <a href="{% url 'course_player' course.uid %}" style="text-decoration: none; color: inherit;">
                     <div class="subject-card">
                         <div class="course-thumbnail-wrapper">
-                            {% if course.thumbnail %}
-                                <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" loading="lazy">
+                            {% if course.thumbnail_url %}
+                                <img src="{{ course.thumbnail_url }}" alt="{{ course.title }}" loading="lazy">
                             {% else %}
                                 <div style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; background: var(--primary-gradient); color: white; font-weight: 700; font-size: 1.5rem;">{{ course.title|slice:":2"|upper }}</div>
                             {% endif %}

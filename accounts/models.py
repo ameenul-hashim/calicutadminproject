@@ -82,6 +82,18 @@ class Course(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
+    @property
+    def thumbnail_url(self):
+        """Returns Cloudinary image URL, falling back to legacy thumbnail."""
+        if self.image:
+            return self.image
+        if self.thumbnail:
+            try:
+                return self.thumbnail.url
+            except ValueError:
+                pass
+        return None
+
     def __str__(self):
         return self.title
 

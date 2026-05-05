@@ -137,11 +137,10 @@
         <aside class="sidebar">
             <div class="logo-area">EduStream <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
             
-            <!-- Teacher Profile Quick View -->
-            <div style="text-align: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
+            <!-- Teacher Profile Quick View -->            <div style="text-align: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
                 <div style="width: 60px; height: 60px; border-radius: 50%; margin: 0 auto 0.5rem; border: 3px solid #e0f2fe; overflow: hidden; background: #f8fafc; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
-                    {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% if user.avatar_url %}
+                        <img src="{{ user.avatar_url }}" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
                         <span style="font-size: 2rem;">👤</span>
                     {% endif %}
@@ -194,12 +193,12 @@
                                 </div>
                             </div>
                             {% for notif in notifications %}
-                                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative;">
+                                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
                                     {{ notif.message }}
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
                                         <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
                                         {% if not notif.is_read %}
-                                            <a href="{% url 'mark_notification_read' notif.id %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark as read</a>
+                                            <a href="{% url 'mark_notification_read' notif.uid %}" style="font-size: 0.7rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark Read</a>
                                         {% endif %}
                                     </div>
                                 </div>

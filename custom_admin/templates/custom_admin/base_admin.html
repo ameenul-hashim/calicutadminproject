@@ -9,6 +9,9 @@
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
     <meta name="keywords" content="EduStream, Admin, Platform Management, E-Learning Administration, Course Approval">
     <meta name="author" content="EduStream Platform">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>{% block title %}Admin Panel | EduStream{% endblock %}</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,7 +21,7 @@
     <script>
         // Force refresh if page is loaded from cache (e.g. back button)
         window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
+            if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
                 window.location.reload();
             }
         });
@@ -145,7 +148,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05) !important;
             border-radius: 1.5rem !important;
             color: #1e293b !important;
-            overflow: hidden;
+            /* Remove overflow: hidden to allow table scrollbars to be visible if needed */
         }
 
         .table {
