@@ -43,7 +43,10 @@ def notify_admins(message):
     for admin in admins:
         create_notification(admin, message)
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def signup_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -117,7 +120,10 @@ def signup_view(request):
 
     return render(request, 'accounts/signup.html')
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_signup_view(request):
+    if request.user.is_authenticated:
+        return redirect('teacher_dashboard')
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
@@ -228,6 +234,7 @@ def status_page(request):
         'timestamp': timezone.now()
     })
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def login_view(request):
     if request.user.is_authenticated:
         if request.user.user_type == 'STUDENT':
@@ -780,6 +787,11 @@ def profile_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def edit_profile(request):
+    has_photo = bool(request.user.image) or bool(request.user.profile_photo)
+    if not has_photo and request.method == 'GET':
+        if request.user.user_type in ['STUDENT', 'TEACHER'] and not request.user.is_superuser:
+            messages.info(request, "👋 Welcome! Please upload a profile photo to complete your account setup.")
+
     if request.method == 'POST':
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
@@ -788,7 +800,7 @@ def edit_profile(request):
             else:
                 from .utils.cloudinary_helpers import update_image
                 if update_image(request.user, profile_photo, folder="edustream/profiles"):
-                    messages.success(request, "Profile photo updated successfully!")
+                    messages.success(request, "✅ Profile photo updated successfully!")
                 else:
                     messages.error(request, "Failed to upload photo. Please try again.")
             return redirect('profile')

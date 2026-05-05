@@ -57,6 +57,12 @@ class PortalSecurityMiddleware:
                     messages.error(request, status_msg)
                     if url_name != 'login':
                         return redirect('login')
+            
+            # --- Mandatory Profile Photo Constraint ---
+            if not request.user.is_superuser and request.user.user_type in ['STUDENT', 'TEACHER']:
+                has_photo = bool(request.user.image) or bool(request.user.profile_photo)
+                if not has_photo and url_name != 'edit_profile' and url_name != 'logout':
+                    return redirect('edit_profile')
                     
             # --- Student View Step-Up Authentication for Admin/Teachers ---
             student_url_names = [
