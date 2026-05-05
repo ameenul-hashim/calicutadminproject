@@ -3,96 +3,79 @@
 {% block title %}Content Management | Admin{% endblock %}
 
 {% block header_title %}
-    <h1>Course Details</h1>
-    <p style="color: #64748b;">Manage and moderate all published courses on the platform.</p>
+    <h1>Content Management</h1>
+    <p style="color: #64748b;">Manage and moderate all educational content.</p>
 {% endblock %}
 
 {% block content %}
-<div style="background: white; padding: 1.25rem 1.5rem; border-radius: 1rem; border: 1px solid #e2e8f0; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-    <div style="display: flex; align-items: center; gap: 1rem;">
-        <span style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">Filter by Status:</span>
-        <form method="GET" id="statusFilterForm">
-            <select name="status" onchange="this.form.submit()" style="padding: 0.6rem 1.2rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; outline: none; font-weight: 600; color: #1e293b; background: #f8fafc; cursor: pointer;">
-                <option value="ALL" {% if status_filter == 'ALL' %}selected{% endif %}>All Courses</option>
-                <option value="PUBLISHED" {% if status_filter == 'PUBLISHED' %}selected{% endif %}>Approved (Published)</option>
-                <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Pending Approval</option>
-                <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>Rejected</option>
-            </select>
-        </form>
-    </div>
-    <div style="color: #64748b; font-size: 0.85rem; font-weight: 600;">
-        Showing {{ courses.paginator.count }} courses
-    </div>
-</div>
-
-<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem;">
-    {% for course in courses %}
-    <div style="background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; overflow: hidden; display: flex; flex-direction: column; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-        
-        <div style="height: 160px; background: #f1f5f9; position: relative;">
-            {% if course.thumbnail %}
-                <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}" style="width: 100%; height: 100%; object-fit: cover;">
-            {% else %}
-                <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 0.9rem;">No Thumbnail</div>
-            {% endif %}
-            <div style="position: absolute; top: 1rem; right: 1rem;">
-                <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 700; 
-                    {% if course.status == 'PUBLISHED' %}background: #dcfce7; color: #15803d;
-                    {% elif course.status == 'PENDING' %}background: #fef9c3; color: #854d0e;
-                    {% else %}background: #fee2e2; color: #b91c1c;{% endif %} 
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-transform: uppercase;">
-                    {{ course.status }}
-                </span>
-            </div>
-        </div>
-
-        <div style="padding: 1.5rem; flex-grow: 1; display: flex; flex-direction: column;">
-            <span style="font-size: 0.75rem; font-weight: 700; color: #0369a1; text-transform: uppercase; margin-bottom: 0.5rem;">{{ course.category }}</span>
-            <h3 style="margin: 0 0 0.5rem 0; font-size: 1.15rem; color: #1e293b; line-height: 1.3;">{{ course.title }}</h3>
-            
-            <div style="margin-bottom: 1rem; flex-grow: 1;">
-                <p style="margin: 0; font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem;">
-                    <span>👨‍🏫</span> {{ course.teacher.full_name|default:course.teacher.username }}
-                </p>
-                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #64748b; display: flex; align-items: center; gap: 0.5rem;">
-                    <span>📚</span> {{ course.lessons.count }} Lessons • 👥 {{ course.enrollments.count }} Students
-                </p>
-            </div>
-
-            <div style="border-top: 1px solid #f1f5f9; padding-top: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
-                <a href="{% url 'admin_view_course_content' course.uid %}" style="text-align: center; background: #eef2ff; color: #4f46e5; padding: 0.6rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem; font-weight: 700; transition: all 0.2s;">
-                    Verify Content Details
-                </a>
-                
-                <div style="display: flex; gap: 0.75rem;">
-                    <button onclick="document.getElementById('reject-form-{{ course.uid }}').style.display='block'" style="flex: 1; background: #fef3c7; color: #b45309; padding: 0.6rem; border-radius: 0.5rem; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-                        Revoke / Reject
-                    </button>
-                    <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="flex: 1; background: #fee2e2; color: #b91c1c; padding: 0.6rem; border-radius: 0.5rem; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s;">
-                        Delete Course
-                    </button>
-                </div>
-
-                <form id="reject-form-{{ course.uid }}" method="POST" action="{% url 'reject_course' course.uid %}" style="display: none; margin-top: 0.5rem;">
-                    {% csrf_token %}
-                    <textarea name="reason" placeholder="Reason for revoking approval..." required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 60px;"></textarea>
-                    <button type="submit" style="width: 100%; background: #b45309; color: white; border: none; font-size: 0.85rem; font-weight: 700; padding: 0.6rem; border-radius: 0.5rem; cursor: pointer;">
-                        Confirm Rejection
-                    </button>
-                </form>
-            </div>
+<div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; margin-bottom: 2rem;">
+    <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+        <div style="display: flex; gap: 1rem;">
+            <a href="?status=PUBLISHED" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; {% if status_filter == 'PUBLISHED' %}background: #4f46e5; color: white;{% else %}background: white; color: #64748b; border: 1px solid #e2e8f0;{% endif %}">Published</a>
+            <a href="?status=PENDING" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; {% if status_filter == 'PENDING' %}background: #f59e0b; color: white;{% else %}background: white; color: #64748b; border: 1px solid #e2e8f0;{% endif %}">Pending</a>
+            <a href="?status=REJECTED" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; {% if status_filter == 'REJECTED' %}background: #ef4444; color: white;{% else %}background: white; color: #64748b; border: 1px solid #e2e8f0;{% endif %}">Rejected</a>
+            <a href="?status=ALL" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.9rem; {% if status_filter == 'ALL' %}background: #1e293b; color: white;{% else %}background: white; color: #64748b; border: 1px solid #e2e8f0;{% endif %}">All Courses</a>
         </div>
     </div>
-    {% empty %}
-    <div style="grid-column: 1/-1; text-align: center; padding: 5rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; color: #94a3b8;">
-        <span style="font-size: 3rem; display: block; margin-bottom: 1rem;">📭</span>
-        <p style="font-size: 1.1rem; font-weight: 500;">No published courses found.</p>
-    </div>
-    {% endfor %}
+
+    <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+            <tr style="background: #f1f5f9; text-align: left;">
+                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Course info</th>
+                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Teacher</th>
+                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Lessons</th>
+                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Status</th>
+                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for course in courses %}
+            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                <td style="padding: 1.25rem 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        {% if course.thumbnail %}
+                            <img src="{{ course.thumbnail.url }}" style="width: 60px; height: 40px; border-radius: 0.4rem; object-fit: cover;">
+                        {% else %}
+                            <div style="width: 60px; height: 40px; background: #e2e8f0; border-radius: 0.4rem;"></div>
+                        {% endif %}
+                        <div>
+                            <div style="font-weight: 700; color: #1e293b;">{{ course.title }}</div>
+                            <div style="font-size: 0.75rem; color: #94a3b8;">{{ course.category }}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding: 1.25rem 1.5rem; color: #475569; font-weight: 500;">
+                    {{ course.teacher.username }}
+                </td>
+                <td style="padding: 1.25rem 1.5rem; color: #475569;">
+                    {{ course.lessons.count }} Lessons
+                </td>
+                <td style="padding: 1.25rem 1.5rem;">
+                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+                        {% if course.status == 'PUBLISHED' %}background: #dcfce7; color: #166534;
+                        {% elif course.status == 'PENDING' %}background: #fef3c7; color: #92400e;
+                        {% else %}background: #fee2e2; color: #991b1b;{% endif %}">
+                        {{ course.status }}
+                    </span>
+                </td>
+                <td style="padding: 1.25rem 1.5rem;">
+                    <div style="display: flex; gap: 0.75rem;">
+                        <a href="{% url 'admin_view_course_content' course.uid %}" style="padding: 0.5rem 1rem; background: #eff6ff; color: #3b82f6; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.85rem; border: 1px solid #dbeafe;">Verify Content</a>
+                        <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="padding: 0.5rem 1rem; background: #fef2f2; color: #ef4444; border-radius: 0.6rem; border: 1px solid #fee2e2; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Delete</button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">No courses found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 
 {% if courses.has_other_pages %}
-<div class="pagination" style="margin-top: 3rem; display: flex; justify-content: center; gap: 1rem; align-items: center;">
+<div style="display: flex; justify-content: center; gap: 1rem; align-items: center; margin-top: 2rem;">
     {% if courses.has_previous %}
         <a href="?page={{ courses.previous_page_number }}&status={{ status_filter }}" style="padding: 0.6rem 1.2rem; background: white; border-radius: 0.75rem; text-decoration: none; color: #1e293b; font-weight: 600; border: 1px solid #e2e8f0;">← Previous</a>
     {% endif %}
@@ -114,23 +97,31 @@
         </div>
         
         <p style="color: #475569; font-size: 1rem; margin-bottom: 2rem; line-height: 1.5;">
-            You are about to permanently delete the course <br><strong id="deleteCourseName" style="color: #1e293b; font-size: 1.1rem; display: block; margin-top: 0.5rem;"></strong><br> This action cannot be undone and will remove it completely from both teacher and student portals. To proceed, please verify your admin credentials.
+            You are about to permanently delete the course <br><strong id="deleteCourseName" style="color: #1e293b; font-size: 1.1rem; display: block; margin-top: 0.5rem;"></strong><br> This action cannot be undone. To proceed, please verify your admin credentials.
         </p>
         
         <form id="secureDeleteForm" method="POST" action="">
             {% csrf_token %}
             <div class="form-group" style="margin-bottom: 1.25rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; color: #1e293b; font-size: 0.95rem;">Admin Username</label>
-                <input type="text" name="admin_username" required autocomplete="new-username" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
+                <input type="text" name="admin_username" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div class="form-group" style="margin-bottom: 2rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 700; color: #1e293b; font-size: 0.95rem;">Admin Password</label>
-                <input type="password" name="admin_password" required autocomplete="new-password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; transition: border-color 0.2s;" onfocus="this.style.borderColor='#3b82f6'" onblur="this.style.borderColor='#cbd5e1'">
+                <div style="position: relative;">
+                    <input type="password" id="admin_password_main" name="admin_password" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
+                    <span onclick="toggleDeletePassword('admin_password_main', 'eye-icon-main')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; display: flex; align-items: center; color: #64748b;">
+                        <svg id="eye-icon-main" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </span>
+                </div>
             </div>
             
             <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="closeDeleteModal()" style="flex: 1; padding: 0.85rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.75rem; color: #475569; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">Cancel</button>
-                <button type="submit" style="flex: 1; padding: 0.85rem; border: none; background: #ef4444; color: white; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">Delete Course</button>
+                <button type="button" onclick="closeDeleteModal()" style="flex: 1; padding: 0.85rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.75rem; color: #475569; font-weight: 700; cursor: pointer;">Cancel</button>
+                <button type="submit" style="flex: 1; padding: 0.85rem; border: none; background: #ef4444; color: white; border-radius: 0.75rem; font-weight: 700; cursor: pointer;">Delete Course</button>
             </div>
         </form>
     </div>
@@ -145,6 +136,18 @@
     function closeDeleteModal() {
         document.getElementById('secureDeleteModal').style.display = 'none';
         document.getElementById('secureDeleteForm').reset();
+    }
+
+    function toggleDeletePassword(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+        } else {
+            input.type = "password";
+            icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+        }
     }
 </script>
 {% endblock %}

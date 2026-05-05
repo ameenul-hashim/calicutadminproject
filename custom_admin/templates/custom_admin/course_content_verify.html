@@ -157,9 +157,7 @@
     </div>
 </div>
 
-
-
-<!-- Secure Delete Modal (Keep as is) -->
+<!-- Secure Delete Modal -->
 <div id="secureDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
     <div style="background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -175,11 +173,53 @@
             </div>
             <div class="form-group" style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
-                <input type="password" name="admin_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
+                <div style="position: relative;">
+                    <input type="password" id="admin_password_course" name="admin_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding-right: 2.5rem;">
+                    <span onclick="toggleDeletePassword('admin_password_course', 'eye-icon-course')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; display: flex; align-items: center; color: #64748b;">
+                        <svg id="eye-icon-course" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </span>
+                </div>
             </div>
             <div style="display: flex; gap: 1rem;">
                 <button type="button" onclick="closeDeleteModal()" style="flex: 1; padding: 0.8rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
                 <button type="submit" style="flex: 1; padding: 0.8rem; border: none; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Delete Course</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Secure Lesson Delete Modal -->
+<div id="secureLessonDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0; font-size: 1.25rem; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">⚠️ Secure Lesson Deletion</h3>
+            <button onclick="closeLessonDeleteModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
+        </div>
+        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">You are about to permanently delete the lesson <strong id="deleteLessonName" style="color: #1e293b;"></strong>. This action cannot be undone.</p>
+        <form id="secureLessonDeleteForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom: 1rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Username</label>
+                <input type="text" name="admin_username" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="admin_password_lesson" name="admin_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none; padding-right: 2.5rem;">
+                    <span onclick="toggleDeletePassword('admin_password_lesson', 'eye-icon-lesson')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; display: flex; align-items: center; color: #64748b;">
+                        <svg id="eye-icon-lesson" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="button" onclick="closeLessonDeleteModal()" style="flex: 1; padding: 0.8rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
+                <button type="submit" style="flex: 1; padding: 0.8rem; border: none; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Delete Lesson</button>
             </div>
         </form>
     </div>
@@ -205,32 +245,17 @@
         document.getElementById('secureLessonDeleteModal').style.display = 'none';
         document.getElementById('secureLessonDeleteForm').reset();
     }
+
+    function toggleDeletePassword(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+        } else {
+            input.type = "password";
+            icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+        }
+    }
 </script>
-
-<!-- Secure Lesson Delete Modal -->
-<div id="secureLessonDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
-    <div style="background: white; padding: 2rem; border-radius: 1rem; width: 100%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-            <h3 style="margin: 0; font-size: 1.25rem; color: #ef4444; display: flex; align-items: center; gap: 0.5rem;">⚠️ Secure Lesson Deletion</h3>
-            <button onclick="closeLessonDeleteModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer;">&times;</button>
-        </div>
-        <p style="color: #475569; font-size: 0.95rem; margin-bottom: 1.5rem;">You are about to permanently delete the lesson <strong id="deleteLessonName" style="color: #1e293b;"></strong>. This action cannot be undone.</p>
-        <form id="secureLessonDeleteForm" method="POST" action="">
-            {% csrf_token %}
-            <div class="form-group" style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Username</label>
-                <input type="text" name="admin_username" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
-            </div>
-            <div class="form-group" style="margin-bottom: 1.5rem;">
-                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
-                <input type="password" name="admin_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; outline: none;">
-            </div>
-            <div style="display: flex; gap: 1rem;">
-                <button type="button" onclick="closeLessonDeleteModal()" style="flex: 1; padding: 0.8rem; border: 1px solid #cbd5e1; background: white; border-radius: 0.5rem; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
-                <button type="submit" style="flex: 1; padding: 0.8rem; border: none; background: #ef4444; color: white; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Delete Lesson</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 {% endblock %}
