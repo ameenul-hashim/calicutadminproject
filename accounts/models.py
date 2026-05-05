@@ -21,8 +21,9 @@ class CustomUser(AbstractUser):
     image = models.URLField(max_length=1000, blank=True, null=True)
     image_public_id = models.CharField(max_length=255, blank=True, null=True)
     proof_pdf = models.CharField(max_length=1000, blank=True, null=True) # Legacy Supabase path
-    pdf_url = models.URLField(max_length=1000, blank=True, null=True)
-    pdf_public_id = models.CharField(max_length=255, blank=True, null=True)
+    pdf_path = models.CharField(max_length=1000, blank=True, null=True) # New Supabase storage path
+    pdf_url = models.URLField(max_length=1000, blank=True, null=True) # Legacy Cloudinary URL
+    pdf_public_id = models.CharField(max_length=255, blank=True, null=True) # Legacy Cloudinary ID
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
     approved_at = models.DateTimeField(null=True, blank=True)
@@ -43,11 +44,11 @@ class CustomUser(AbstractUser):
 
     @property
     def proof_pdf_url(self):
-        """Generates a secure signed URL for the user's proof PDF."""
-        if self.pdf_url:
-            return self.pdf_url
+        """Generates a secure signed URL for the user's proof PDF from Supabase."""
+        if not self.pdf_path:
+            return self.pdf_url # Fallback to legacy Cloudinary URL if path missing
         from .utils.supabase_storage import get_signed_url
-        return get_signed_url(self.proof_pdf)
+        return get_signed_url(self.pdf_path)
 
     def __str__(self):
         return f"{self.username} ({self.user_type})"
@@ -181,6 +182,20 @@ class DeletionRequest(models.Model):
 
     def __str__(self):
         return f"{self.item_type} deletion request by {self.teacher.username}"
+
+class PDFAccessLog(models.Model):
+    """Logs every time a user accesses a sensitive PDF."""
+    user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True)
+    pdf_path = models.CharField(max_length=1000)
+    accessed_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-accessed_at']
+
+    def __str__(self):
+        return f"{self.user} accessed {self.pdf_path} at {self.accessed_at}"
 
 # Signals for explicit image cleanup
 from django.db.models.signals import pre_delete

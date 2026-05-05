@@ -41,4 +41,6 @@ urlpatterns = [
     path('deletion-requests/<uuid:request_uid>/approve/', views.approve_deletion_request, name='approve_deletion_request'),
     path('deletion-requests/<uuid:request_uid>/reject/', views.reject_deletion_request, name='reject_deletion_request'),
     path('notifications/', views.admin_all_notifications, name='admin_all_notifications'),
+    path('enterprise-monitor/', views.enterprise_monitor, name='enterprise_monitor'),
+    path('secure-pdf-access/<uuid:user_uid>/', views.proxy_pdf_access, name='proxy_pdf_access'),
 ]

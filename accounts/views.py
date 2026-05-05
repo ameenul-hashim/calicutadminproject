@@ -178,8 +178,56 @@ def teacher_signup_view(request):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def health_check(request):
-    """Lightweight health check for Render/Uptime monitoring."""
-    return JsonResponse({"status": "healthy", "timestamp": timezone.now().isoformat()})
+    """Deep health check for production monitoring."""
+    import time
+    from django.db import connection
+    
+    health_data = {
+        "status": "healthy",
+        "timestamp": timezone.now().isoformat(),
+        "services": {}
+    }
+    
+    # 1. Database Latency
+    try:
+        start = time.time()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        health_data["services"]["database"] = {"status": "up", "latency_ms": round((time.time() - start) * 1000, 2)}
+    except Exception as e:
+        health_data["status"] = "partial_failure"
+        health_data["services"]["database"] = {"status": "down", "error": str(e)}
+
+    # 2. Supabase Connectivity (Lightweight check)
+    try:
+        from accounts.utils.supabase_storage import supabase
+        res = supabase.storage.list_buckets()
+        health_data["services"]["supabase"] = {"status": "up"}
+    except Exception as e:
+        health_data["status"] = "partial_failure"
+        health_data["services"]["supabase"] = {"status": "down", "error": str(e)}
+
+    return JsonResponse(health_data, status=200 if health_data["status"] == "healthy" else 503)
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def status_page(request):
+    """Public status page for stakeholders."""
+    # We use a simplified status for public consumption
+    from django.db import connection
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        status = "OPERATIONAL"
+        color = "success"
+    except:
+        status = "DEGRADED"
+        color = "warning"
+        
+    return render(request, 'accounts/status_page.html', {
+        'status': status,
+        'color': color,
+        'timestamp': timezone.now()
+    })
 
 def login_view(request):
     if request.user.is_authenticated:

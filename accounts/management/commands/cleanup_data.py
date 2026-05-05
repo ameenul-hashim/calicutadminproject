@@ -4,24 +4,24 @@ from django.utils import timezone
 from datetime import timedelta
 
 class Command(BaseCommand):
-    help = 'Optimizes database performance by cleaning up old data'
+    help = 'Validates data integrity (Deletions DISABLED for Zero-Delete Policy)'
 
     def handle(self, *args, **options):
-        self.stdout.write('Starting database cleanup...')
+        self.stdout.write('Starting database integrity scan (Zero-Delete Mode)...')
 
-        # 1. Clean up old Chat Messages
-        # Keep only last 30 days of chat messages OR limit per room (complex without room ID)
-        # We will keep last 60 days to be safe.
+        # 1. Check old Chat Messages
         cleanup_date = timezone.now() - timedelta(days=60)
         old_messages = ChatMessage.objects.filter(timestamp__lt=cleanup_date)
         msg_count = old_messages.count()
-        old_messages.delete()
-        self.stdout.write(self.style.SUCCESS(f'Deleted {msg_count} old chat messages.'))
+        
+        # old_messages.delete() # DISABLED
+        self.stdout.write(self.style.WARNING(f'Found {msg_count} old chat messages. PRESERVED per Zero-Delete Policy.'))
 
-        # 2. Clean up old Notifications (redundant as we have limit_notifications, but good for safety)
+        # 2. Check old Notifications
         old_notifs = Notification.objects.filter(created_at__lt=cleanup_date)
         notif_count = old_notifs.count()
-        old_notifs.delete()
-        self.stdout.write(self.style.SUCCESS(f'Deleted {notif_count} old notifications.'))
+        
+        # old_notifs.delete() # DISABLED
+        self.stdout.write(self.style.WARNING(f'Found {notif_count} old notifications. PRESERVED per Zero-Delete Policy.'))
 
-        self.stdout.write(self.style.SUCCESS('Database optimization cleanup complete!'))
+        self.stdout.write(self.style.SUCCESS('Data integrity scan complete. No data was removed.'))

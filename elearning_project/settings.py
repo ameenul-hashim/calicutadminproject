@@ -53,7 +53,6 @@ INSTALLED_APPS = [
     'cloudinary_storage',
     'cloudinary',
     'axes',  # Brute-force protection
-    'django_cleanup.apps.CleanupConfig',  # Auto-delete files
 ]
 
 MIDDLEWARE = [
