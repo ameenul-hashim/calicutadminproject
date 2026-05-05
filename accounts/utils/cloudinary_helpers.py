@@ -1,26 +1,32 @@
 import cloudinary.uploader
 import logging
 from django.db import transaction
-import magic
+from .supabase_storage import (
+    upload_pdf as supabase_upload, 
+    delete_pdf as supabase_delete,
+    validate_pdf as supabase_validate
+)
 
 logger = logging.getLogger(__name__)
 
 def validate_pdf(file):
     """
-    Validates that a file is actually a PDF using magic numbers.
+    Validates that a file is actually a PDF using the centralized validator.
     """
-    mime = magic.from_buffer(file.read(1024), mime=True)
-    file.seek(0)
-
-    if mime != "application/pdf":
-        raise ValueError("Only valid PDF files are allowed")
+    try:
+        content = file.read()
+        file.seek(0)
+        supabase_validate(content, getattr(file, 'name', None))
+    except Exception as e:
+        raise ValueError(str(e))
 
 def update_image(instance, new_image_file, folder="edustream/uploads"):
     """
     Safely updates an image in Cloudinary and the database model.
+    NO-DELETE POLICY: Old images are kept in Cloudinary for archival purposes.
     """
     try:
-        # STEP 1: Upload new image FIRST (fail-safe)
+        # STEP 1: Upload new image
         upload_result = cloudinary.uploader.upload(
             new_image_file,
             folder=folder
@@ -33,13 +39,12 @@ def update_image(instance, new_image_file, folder="edustream/uploads"):
             logger.error("Cloudinary upload failed: Missing URL or public_id")
             return False
 
-        # STEP 2: Delete old image ONLY after successful upload
-        if getattr(instance, 'image_public_id', None):
-            try:
-                cloudinary.uploader.destroy(instance.image_public_id)
-            except Exception as e:
-                logger.error(f"Failed to delete old Cloudinary image {instance.image_public_id}: {e}")
-                pass  # prevent crash if deletion fails
+        # STEP 2: NO-DELETE: Old image is NOT destroyed.
+        # if getattr(instance, 'image_public_id', None):
+        #     try:
+        #         cloudinary.uploader.destroy(instance.image_public_id)
+        #     except Exception as e:
+        #         logger.error(f"Failed to delete old Cloudinary image {instance.image_public_id}: {e}")
 
         # STEP 3: Save new values
         instance.image = new_url
@@ -53,33 +58,32 @@ def update_image(instance, new_image_file, folder="edustream/uploads"):
 
 def delete_image(instance):
     """
-    Cleans up Cloudinary image when a model is deleted.
+    CLEANUP DISABLED: Images are preserved permanently even if model is deleted.
     """
-    if getattr(instance, 'image_public_id', None):
-        try:
-            cloudinary.uploader.destroy(instance.image_public_id)
-        except Exception as e:
-            logger.error(f"Failed to delete Cloudinary image {instance.image_public_id}: {e}")
-            pass
+    logger.info(f"PERMANENT DATA POLICY: Preserving image {getattr(instance, 'image_public_id', 'unknown')}")
+    pass
 
 
 def upload_pdf(instance, pdf_file):
     """
-    Uploads a PDF to Cloudinary securely using transaction logic.
+    Uploads a PDF to Supabase Storage securely.
     Sets status to PENDING.
     """
     try:
+        # Validate PDF content
+        content = pdf_file.read()
+        pdf_file.seek(0)
         validate_pdf(pdf_file)
         
+        # Define destination path in Supabase (Aligned with documents/ folder)
+        destination_path = f"documents/user_{instance.id}_{instance.uid}.pdf"
+        
         with transaction.atomic():
-            result = cloudinary.uploader.upload(
-                pdf_file,
-                resource_type="raw",
-                folder="edustream/pdfs"
-            )
+            path = supabase_upload(destination_path, content, destination_path)
+            if not path:
+                raise Exception("Supabase upload failed")
             
-            instance.pdf_url = result.get("secure_url")
-            instance.pdf_public_id = result.get("public_id")
+            instance.pdf_path = path
             instance.status = "PENDING"
             instance.save()
             return True
@@ -87,7 +91,7 @@ def upload_pdf(instance, pdf_file):
         logger.error(f"Validation Error: {e}")
         return False
     except Exception as e:
-        logger.error(f"Failed to upload PDF to Cloudinary: {e}")
+        logger.error(f"Failed to upload PDF to Supabase: {e}")
         return False
 
 def approve_user(instance, admin_user):
@@ -100,20 +104,13 @@ def approve_user(instance, admin_user):
 
 def reject_user(instance, admin_user):
     """
-    Rejects a user account and deletes their PDF from Cloudinary immediately.
+    Rejects a user account.
+    NO-DELETE POLICY: PDF is preserved in Supabase even if user is rejected.
     """
-    if getattr(instance, 'pdf_public_id', None):
-        try:
-            cloudinary.uploader.destroy(
-                instance.pdf_public_id,
-                resource_type="raw"
-            )
-        except Exception as e:
-            logger.error(f"Failed to delete Cloudinary PDF {instance.pdf_public_id}: {e}")
-            pass
+    # if instance.pdf_path:
+    #     supabase_delete(instance.pdf_path)
 
-    instance.pdf_url = None
-    instance.pdf_public_id = None
+    # Note: We keep pdf_path to ensure the file remains linked for admin review later
     instance.status = "REJECTED" 
     instance.save()
-    logger.warning(f"ADMIN {admin_user.username} REJECTED USER {instance.id}")
+    logger.warning(f"ADMIN {admin_user.username} REJECTED USER {instance.id} (Data Preserved)")

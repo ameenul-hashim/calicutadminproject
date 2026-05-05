@@ -738,6 +738,60 @@ def reject_deletion_request(request, request_uid):
     
     return redirect('manage_deletion_requests')
 
+from accounts.models import CustomUser, Notification, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
+from axes.models import AccessAttempt
+import os
+
+@user_passes_test(is_admin, login_url='admin_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def enterprise_monitor(request):
+    # 1. Backup Status
+    last_backup_time = "Never"
+    last_backup_status = "STALE"
+    success_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "last_success.txt")
+    if os.path.exists(success_file):
+        with open(success_file, "r") as f:
+            last_backup_time = f.read().strip()
+            last_backup_status = "HEALTHY"
+
+    # 2. Access Logs
+    access_logs = PDFAccessLog.objects.select_related('user').all()[:20]
+
+    # 3. Security Stats
+    blocked_ips_count = AccessAttempt.objects.count()
+
+    # 4. Performance Mock (In a real enterprise app, these would come from Prometheus/CloudWatch)
+    context = {
+        'last_backup_time': last_backup_time,
+        'last_backup_status': last_backup_status,
+        'access_logs': access_logs,
+        'blocked_ips_count': blocked_ips_count,
+        'avg_response_time': 245.5, # Mocked for demo
+        'storage_usage': 124.8, # Mocked for demo
+        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
+        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+    }
+    return render(request, 'custom_admin/enterprise_monitor.html', context)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def proxy_pdf_access(request, user_uid):
+    """Logs access and redirects to the signed PDF URL."""
+    target_user = get_object_or_404(CustomUser, uid=user_uid)
+    pdf_url = target_user.proof_pdf_url
+
+    if pdf_url:
+        # Log the access
+        PDFAccessLog.objects.create(
+            user=request.user,
+            pdf_path=target_user.pdf_path or target_user.pdf_url or "Legacy Path",
+            ip_address=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT')
+        )
+        return redirect(pdf_url)
+    
+    messages.error(request, "PDF document not found.")
+    return redirect(request.META.get('HTTP_REFERER', 'admin_dashboard'))
+
 def error_404(request, exception):
     return render(request, '404.html', status=404)
 
