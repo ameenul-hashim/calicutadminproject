@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SUPABASE_BUCKET = "calicutadminpanelpdf"
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
 
 # Singleton client instance
 _supabase_client = None

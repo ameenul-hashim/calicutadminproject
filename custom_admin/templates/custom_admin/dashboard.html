@@ -77,8 +77,8 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if u.proof_file %}
-                                    <a href="{{ u.proof_file.url }}" target="_blank" style="font-size: 0.8rem; color: #0ea5e9;">View PDF</a>
+                                {% if u.proof_pdf %}
+                                    <a href="{{ u.proof_pdf_url }}" target="_blank" style="font-size: 0.8rem; color: #0ea5e9;">View PDF</a>
                                 {% else %}
                                     -
                                 {% endif %}
