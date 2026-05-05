@@ -114,7 +114,7 @@ def signup_view(request):
             messages.error(request, "Failed to upload your document. Please check your connection.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        messages.success(request, "✅ Registration successful! Your document is pending review.")
+        messages.success(request, "✅ Registration successful! admin approval needed to login please wait for a while or contact admin for login")
         notify_admins(f"New student registration: {username}. Approval needed.")
         return redirect('login')
 
@@ -175,7 +175,7 @@ def teacher_signup_view(request):
             messages.error(request, "Failed to upload your document. Please check your connection.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        messages.success(request, "✅ Registration successful! Please wait for review.")
+        messages.success(request, "✅ Registration successful! admin approval needed to login please wait for a while or contact admin for login")
         notify_admins(f"New teacher registration: {username}. Approval needed.")
         return redirect('teacher_login')
 
@@ -277,7 +277,7 @@ def login_view(request):
                 messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
                 return redirect('dashboard')
             elif user.status == 'PENDING':
-                messages.info(request, "Not approved by admin, please wait")
+                messages.info(request, "admin approval needed to login please wait for a while or contact admin for login")
             elif user.status == 'BLOCKED':
                 messages.error(request, "Your account has been blocked.")
         else:
@@ -368,7 +368,7 @@ def teacher_login_view(request):
                 messages.success(request, "Teacher dashboard logged in successfully!")
                 return redirect('teacher_dashboard')
             elif user.status == 'PENDING':
-                messages.info(request, "Not approved by admin, please wait")
+                messages.info(request, "admin approval needed to login please wait for a while or contact admin for login")
             elif user.status == 'BLOCKED':
                 messages.error(request, "Your account has been blocked.")
         else:

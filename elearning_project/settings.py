@@ -177,6 +177,8 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_COOKIE_NAME = 'edustream_sessionid'
+CSRF_COOKIE_NAME = 'edustream_csrftoken'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
