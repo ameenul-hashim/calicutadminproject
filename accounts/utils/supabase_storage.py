@@ -124,3 +124,34 @@ def delete_pdf(file_path: str):
     except Exception as e:
         logger.error(f"Supabase Deletion Error: {e}")
         return False
+
+def upload_user_proof(instance, pdf_file):
+    """
+    High-level helper to upload a user's verification PDF to Supabase.
+    Updates the model instance with the path and sets status to PENDING.
+    """
+    try:
+        # 1. Read and validate content
+        content = pdf_file.read()
+        pdf_file.seek(0)
+        
+        # 2. Define destination path
+        # Using a consistent naming convention: documents/user_<id>_<uid>.pdf
+        destination_path = f"documents/user_{instance.id}_{instance.uid}.pdf"
+        
+        # 3. Perform upload
+        path = upload_pdf(destination_path, content, destination_path)
+        if not path:
+            return False
+            
+        # 4. Update instance
+        from django.db import transaction
+        with transaction.atomic():
+            instance.pdf_path = path
+            instance.status = "PENDING"
+            instance.save()
+            
+        return True
+    except Exception as e:
+        logger.error(f"Error in upload_user_proof: {e}")
+        return False
