@@ -25,7 +25,7 @@ if SENTRY_DSN:
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev-and-build')
-DEBUG = True # Temporarily enabled to debug 500 errors
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     "calicutadmin.onrender.com",
