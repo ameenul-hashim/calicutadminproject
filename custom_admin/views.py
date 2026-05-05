@@ -301,22 +301,63 @@ def create_student_admin(request):
         
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields including contact number and verification document (PDF) are required.")
-        elif password != confirm_password:
-            messages.error(request, "Passwords do not match.")
-        elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
-        elif CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "Username already exists.")
-        elif CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "The email is already exist in the database.")
-        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "This contact number is already registered and in use.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Verification document file size must be below 200 KB.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # Email format validation
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(email_regex, email):
+            messages.error(request, "The email address you entered is not in a valid format.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if CustomUser.objects.filter(username=username).exists():
+            messages.error(request, "This username is already taken. Please choose another one.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+        
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "This email is already registered. Please use a different email.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # Phone uniqueness check (excluding REJECTED users)
+        if phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
+            messages.error(request, "This contact number is already registered and in use. Please use another one.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if password != confirm_password:
+            messages.error(request, "The passwords you entered do not match.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
             if not pdf_url:
                 messages.error(request, "Failed to upload document.")
-                return render(request, 'custom_admin/create_student.html')
+                return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
 
             CustomUser.objects.create_user(
                 username=username,
@@ -347,22 +388,63 @@ def create_teacher_admin(request):
         
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields including contact number and verification document (PDF) are required.")
-        elif password != confirm_password:
-            messages.error(request, "Passwords do not match.")
-        elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
-        elif CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "Username already exists.")
-        elif CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "The email is already exist in the database.")
-        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "This contact number is already registered and in use.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Verification document file size must be below 200 KB.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # Email format validation
+        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
+        if not re.match(email_regex, email):
+            messages.error(request, "The email address you entered is not in a valid format.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if CustomUser.objects.filter(username=username).exists():
+            messages.error(request, "This username is already taken. Please choose another one.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+        
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "This email is already registered. Please use a different email.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # Phone uniqueness check (excluding REJECTED users)
+        if phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
+            messages.error(request, "This contact number is already registered and in use. Please use another one.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if password != confirm_password:
+            messages.error(request, "The passwords you entered do not match.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
         else:
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
             if not pdf_url:
                 messages.error(request, "Failed to upload document.")
-                return render(request, 'custom_admin/create_teacher.html')
+                return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
 
             CustomUser.objects.create_user(
                 username=username,
