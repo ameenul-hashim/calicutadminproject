@@ -208,7 +208,7 @@ def accept_user(request, user_uid):
         comments="Approved by admin."
     )
     
-    messages.success(request, f"{user.user_type.title()} {user.username} has been approved.")
+    messages.success(request, f"✅ {user.user_type.title()} {user.username} has been approved.")
     if user.user_type == 'TEACHER':
         return redirect('pending_teachers')
     return redirect('pending_users')
@@ -248,7 +248,7 @@ def decline_user(request, user_uid):
         # Delete user from DB
         user.delete()
         
-        messages.warning(request, f"{user_type.title()} {username} has been rejected and deleted.")
+        messages.warning(request, f"{user_type.title()} {username} has been rejected.")
         if user_type == 'TEACHER':
             return redirect('pending_teachers')
         return redirect('pending_users')
@@ -267,7 +267,7 @@ def toggle_user_status(request, user_uid):
         user.is_active = True
         msg = "activated"
     user.save()
-    messages.success(request, f"User {user.username} has been {msg}.")
+    messages.success(request, f"✅ User {user.username} has been {msg}.")
     if user.user_type == 'TEACHER':
         return redirect('manage_teachers')
     return redirect('manage_students')
@@ -284,7 +284,7 @@ def create_student_admin(request):
         proof_file = request.FILES.get('proof_file')
         
         if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including Student Proof (PDF) are required.")
+            messages.error(request, "All fields including verification document (PDF) are required.")
         elif password != confirm_password:
             messages.error(request, "Passwords do not match.")
         elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
@@ -297,7 +297,7 @@ def create_student_admin(request):
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
             if not pdf_url:
-                messages.error(request, "Failed to upload student proof to storage.")
+                messages.error(request, "Failed to upload document.")
                 return render(request, 'custom_admin/create_student.html')
 
             CustomUser.objects.create_user(
@@ -310,7 +310,7 @@ def create_student_admin(request):
                 user_type='STUDENT',
                 proof_pdf=pdf_url
             )
-            messages.success(request, f"Student {username} created successfully!")
+            messages.success(request, f"✅ Account for {username} created successfully!")
             return redirect('manage_students')
             
     return render(request, 'custom_admin/create_student.html')
@@ -326,7 +326,7 @@ def create_teacher_admin(request):
         proof_file = request.FILES.get('proof_file')
         
         if not all([username, email, fullname, password, confirm_password, proof_file]):
-            messages.error(request, "All fields including Teacher Proof (PDF) are required.")
+            messages.error(request, "All fields including verification document (PDF) are required.")
         elif password != confirm_password:
             messages.error(request, "Passwords do not match.")
         elif len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
@@ -339,7 +339,7 @@ def create_teacher_admin(request):
             # Upload PDF to Supabase
             pdf_url = upload_pdf(proof_file)
             if not pdf_url:
-                messages.error(request, "Failed to upload teacher proof to storage.")
+                messages.error(request, "Failed to upload document.")
                 return render(request, 'custom_admin/create_teacher.html')
 
             CustomUser.objects.create_user(
@@ -353,7 +353,7 @@ def create_teacher_admin(request):
                 user_type='TEACHER',
                 proof_pdf=pdf_url
             )
-            messages.success(request, f"Teacher {username} created successfully!")
+            messages.success(request, f"✅ Account for {username} created successfully!")
             return redirect('manage_teachers')
             
     return render(request, 'custom_admin/create_teacher.html')
@@ -547,12 +547,12 @@ def edit_user_admin(request, user_uid):
                     messages.error(request, "Profile photo exceeds 2MB limit.")
                 else:
                     if update_image(user, profile_photo, folder="edustream/profiles"):
-                        messages.success(request, "Profile photo updated successfully!")
+                        messages.success(request, "✅ Profile photo updated successfully!")
                     else:
-                        messages.error(request, "Failed to update profile photo in storage.")
+                        messages.error(request, "Failed to update profile photo.")
                 
             user.save()
-            messages.success(request, f"User {user.username} data updated successfully!")
+            messages.success(request, f"✅ User {user.username} data updated successfully!")
             if user.user_type == 'TEACHER':
                 return redirect('manage_teachers')
             return redirect('manage_students')
@@ -621,7 +621,7 @@ def admin_delete_course_secure(request, course_uid):
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
             course.delete()
-            messages.success(request, f"Course '{course_title}' has been successfully deleted.")
+            messages.success(request, f"✅ {course_title} removed successfully.")
             return redirect('admin_content')
         else:
             messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
@@ -641,10 +641,10 @@ def admin_delete_lesson_secure(request, lesson_uid):
             lesson_title = lesson.title
             course_uid = lesson.course.uid
             lesson.delete()
-            messages.success(request, f"Lesson '{lesson_title}' has been successfully deleted.")
+            messages.success(request, f"✅ {lesson_title} removed successfully.")
             return redirect('admin_view_course_content', course_uid=course_uid)
         else:
-            messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
+            messages.error(request, "Action not allowed. Please verify credentials.")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
@@ -661,14 +661,14 @@ def delete_user_admin(request, user_uid):
         if user is not None and user == request.user and user.is_staff:
             user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
             target_user.delete()
-            messages.success(request, f"User '{user_info}' has been permanently deleted.")
+            messages.success(request, "✅ Action completed.")
             
             # Redirect back to appropriate list
             if target_user.user_type == 'TEACHER':
                 return redirect('manage_teachers')
             return redirect('manage_students')
         else:
-            messages.error(request, "Authentication failed. Incorrect admin credentials.")
+            messages.error(request, "Action not allowed. Please verify credentials.")
             
     return render(request, 'custom_admin/delete_user_confirm.html', {
         'target_user': target_user
@@ -690,7 +690,7 @@ def admin_all_notifications(request):
 def admin_logout(request):
     request.session.flush()
     logout(request)
-    messages.success(request, "Admin logged out successfully! Sessions cleared.")
+    messages.success(request, "✅ Logout successful. Sessions cleared.")
     return redirect('admin_login')
 
 
@@ -711,12 +711,12 @@ def verify_deletion_request(request, request_uid):
     if del_request.item_type == 'Lesson':
         lesson = Lesson.objects.filter(id=del_request.item_id).first()
         if lesson:
-            messages.info(request, f"Verifying deletion request for Lesson: {lesson.title}.")
+            messages.info(request, f"ℹ️ Verifying request for {lesson.title}.")
             return redirect('admin_view_course_content', course_uid=lesson.course.uid)
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
-            messages.info(request, f"Verifying deletion request for Course: {course.title}.")
+            messages.info(request, f"ℹ️ Verifying request for {course.title}.")
             return redirect('admin_view_course_content', course_uid=course.uid)
             
     messages.error(request, "The item could not be found or verified.")
@@ -746,7 +746,7 @@ def approve_deletion_request(request, request_uid):
             messages.warning(request, "Item already gone.")
     
     del_request.delete() # Objective: Free up space after processing
-    messages.success(request, success_msg)
+    messages.success(request, f"✅ {success_msg}")
     create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
     return redirect('manage_deletion_requests')
 
