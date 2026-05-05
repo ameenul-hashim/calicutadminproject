@@ -23,3 +23,8 @@ pydantic==2.13.3
 pydantic-core==2.46.3
 annotated-types==0.7.0
 typing-inspection==0.4.2
+
+# Monitoring and Security
+sentry-sdk==2.13.0
+django-axes==6.5.0
+channels-redis==4.2.1
