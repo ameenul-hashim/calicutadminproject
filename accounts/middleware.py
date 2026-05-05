@@ -64,7 +64,7 @@ class PortalSecurityMiddleware:
             # --- Mandatory Profile Photo Constraint ---
             if not request.user.is_superuser and request.user.user_type in ['STUDENT', 'TEACHER']:
                 has_photo = bool(request.user.image) or bool(request.user.profile_photo)
-                if not has_photo and url_name != 'edit_profile' and url_name != 'logout':
+                if not has_photo and url_name not in ['edit_profile', 'logout', 'student_view_auth', 'teacher_view_auth']:
                     return redirect('edit_profile')
 
             # --- Admin Isolation Hardening ---
@@ -84,7 +84,12 @@ class PortalSecurityMiddleware:
                 'take_quiz', 'submit_assignment'
             ]
             
+            # Apply step-up authentication check for non-student users accessing student areas
             if url_name in student_url_names and (request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser):
+                # Hardening: Ensure session doesn't expire accidentally for admins in student view
+                if request.user.user_type == 'ADMIN' or request.user.is_superuser:
+                    request.session.modified = True
+                
                 if not request.session.get('student_view_unlocked'):
                     if url_name != 'student_view_auth':
                         request.session['next_student_url'] = path
