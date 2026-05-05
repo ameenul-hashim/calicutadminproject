@@ -61,7 +61,13 @@ def signup_view(request):
         phone_number = request.POST.get('phone_number')
 
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields including contact number and verification document (PDF) are required.")
+            messages.error(request, "All fields including contact number and verification document are required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        # Phone number: must be exactly 10 digits
+        phone_digits = phone_number.replace(' ', '').replace('-', '').replace('+', '').replace('(', '').replace(')', '')
+        if not phone_digits.isdigit() or len(phone_digits) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         if proof_file.size > 200 * 1024:
@@ -143,7 +149,13 @@ def teacher_signup_view(request):
         phone_number = request.POST.get('phone_number')
 
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields including contact number and verification document (PDF) are required.")
+            messages.error(request, "All fields including contact number and verification document are required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        # Phone number: must be exactly 10 digits
+        phone_digits = phone_number.replace(' ', '').replace('-', '').replace('+', '').replace('(', '').replace(')', '')
+        if not phone_digits.isdigit() or len(phone_digits) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         if proof_file.size > 200 * 1024:
