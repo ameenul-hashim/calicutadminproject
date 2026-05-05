@@ -29,3 +29,8 @@ Thumbs.db
 *.dump
 *.sql
 *.bak
+
+# Google Drive API
+credentials.json
+token.json
+pdf_backup/
