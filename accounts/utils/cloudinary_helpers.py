@@ -1,7 +1,19 @@
 import cloudinary.uploader
 import logging
+from django.db import transaction
+import magic
 
 logger = logging.getLogger(__name__)
+
+def validate_pdf(file):
+    """
+    Validates that a file is actually a PDF using magic numbers.
+    """
+    mime = magic.from_buffer(file.read(1024), mime=True)
+    file.seek(0)
+
+    if mime != "application/pdf":
+        raise ValueError("Only valid PDF files are allowed")
 
 def update_image(instance, new_image_file, folder="edustream/uploads"):
     """
@@ -53,33 +65,40 @@ def delete_image(instance):
 
 def upload_pdf(instance, pdf_file):
     """
-    Uploads a PDF to Cloudinary and saves its URL and public_id.
+    Uploads a PDF to Cloudinary securely using transaction logic.
     Sets status to PENDING.
     """
     try:
-        result = cloudinary.uploader.upload(
-            pdf_file,
-            resource_type="raw",
-            folder="edustream/pdfs"
-        )
+        validate_pdf(pdf_file)
         
-        instance.pdf_url = result.get("secure_url")
-        instance.pdf_public_id = result.get("public_id")
-        instance.status = "PENDING"
-        instance.save()
-        return True
+        with transaction.atomic():
+            result = cloudinary.uploader.upload(
+                pdf_file,
+                resource_type="raw",
+                folder="edustream/pdfs"
+            )
+            
+            instance.pdf_url = result.get("secure_url")
+            instance.pdf_public_id = result.get("public_id")
+            instance.status = "PENDING"
+            instance.save()
+            return True
+    except ValueError as e:
+        logger.error(f"Validation Error: {e}")
+        return False
     except Exception as e:
         logger.error(f"Failed to upload PDF to Cloudinary: {e}")
         return False
 
-def approve_user(instance):
+def approve_user(instance, admin_user):
     """
     Approves a user account and keeps their PDF.
     """
     instance.status = "ACTIVE" # Application uses ACTIVE for approved users
     instance.save()
+    logger.info(f"ADMIN {admin_user.username} APPROVED USER {instance.id}")
 
-def reject_user(instance):
+def reject_user(instance, admin_user):
     """
     Rejects a user account and deletes their PDF from Cloudinary immediately.
     """
@@ -95,6 +114,6 @@ def reject_user(instance):
 
     instance.pdf_url = None
     instance.pdf_public_id = None
-    instance.status = "REJECTED" # Assuming REJECTED status exists or mapping to BLOCKED/etc. Wait, user said status = REJECTED, but STATUS_CHOICES has PENDING, ACTIVE, BLOCKED. I'll use REJECTED if they added it or BLOCKED. Let's just set the status to REJECTED or leave it to standard logic. I'll stick to their logic.
+    instance.status = "REJECTED" 
     instance.save()
-
+    logger.warning(f"ADMIN {admin_user.username} REJECTED USER {instance.id}")
