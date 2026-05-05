@@ -45,6 +45,7 @@
                             <th>Teacher</th>
                             <th>Courses</th>
                             <th>Status</th>
+                            <th>Proof</th>
                             <th>View</th>
                             <th>Actions</th>
                         </tr>
@@ -77,6 +78,15 @@
                                     {% else %}background: #fee2e2; color: #b91c1c;{% endif %}">
                                     {{ u.status }}
                                 </span>
+                            </td>
+                            <td style="padding: 1.25rem 1.5rem;">
+                                {% if u.pdf_path or u.proof_pdf or u.pdf_url %}
+                                    <a href="{% url 'proxy_pdf_access' u.uid %}" target="_blank" style="color: #6366f1; text-decoration: none; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem;">
+                                        📄 View
+                                    </a>
+                                {% else %}
+                                    <span style="color: #94a3b8; font-size: 0.85rem;">None</span>
+                                {% endif %}
                             </td>
                             <td style="padding: 1.25rem 1.5rem;">
                                 <a href="{% url 'admin_teacher_profile' u.uid %}" style="color: #6366f1; text-decoration: none; font-weight: 700;">👁️ View</a>

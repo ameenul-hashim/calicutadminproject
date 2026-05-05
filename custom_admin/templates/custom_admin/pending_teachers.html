@@ -38,7 +38,7 @@
                         </div>
                     </td>
                     <td style="padding: 1.25rem 1.5rem;">
-                        {% if u.proof_pdf %}
+                        {% if u.pdf_path or u.proof_pdf or u.pdf_url %}
                             <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                                 <a href="{% url 'proxy_pdf_access' u.uid %}" target="_blank" class="view-btn" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: #eef2ff; color: #6366f1; text-align: center;">📄 Open PDF Fullscreen</a>
                                 <div style="width: 250px; height: 150px; border: 1px solid #e2e8f0; border-radius: 0.5rem; overflow: hidden;">

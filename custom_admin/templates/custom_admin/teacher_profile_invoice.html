@@ -52,8 +52,8 @@
                 </div>
             </div>
             <p style="margin: 1rem 0 0 0; color: #64748b;">Faculty ID: #TEA-{{ teacher.id|stringformat:"05d" }}</p>
-            {% if teacher.proof_pdf %}
-            <a href="{{ teacher.proof_pdf_url }}" target="_blank" class="no-print" style="display: inline-block; margin-top: 0.8rem; font-size: 0.8rem; color: #0ea5e9; text-decoration: none; font-weight: 600; border: 1px solid #0ea5e9; padding: 0.2rem 0.5rem; border-radius: 0.3rem;">📄 View ID Proof</a>
+            {% if teacher.pdf_path or teacher.proof_pdf or teacher.pdf_url %}
+            <a href="{% url 'proxy_pdf_access' teacher.uid %}" target="_blank" class="no-print" style="display: inline-block; margin-top: 0.8rem; font-size: 0.8rem; color: #0ea5e9; text-decoration: none; font-weight: 600; border: 1px solid #0ea5e9; padding: 0.2rem 0.5rem; border-radius: 0.3rem;">📄 View ID Proof</a>
             {% endif %}
         </div>
         <div style="text-align: right;">
