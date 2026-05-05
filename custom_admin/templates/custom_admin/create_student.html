@@ -3,42 +3,73 @@
 {% block title %}Create Student | Admin{% endblock %}
 
 {% block header_title %}
-    <h1>Create New Student</h1>
-    <p style="color: #64748b;">Add a new student to the platform manually.</p>
+    <div style="text-align: center; width: 100%;">
+        <h1>Create New Student</h1>
+        <p style="color: #64748b;">Add a new student to the platform manually.</p>
+    </div>
 {% endblock %}
 
 {% block content %}
-            <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 2rem; max-width: 600px;">
-                <form method="POST" enctype="multipart/form-data">
-                    {% csrf_token %}
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Username</label>
-                        <input type="text" name="username" required style="width: 100%; padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.75rem;">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Full Name</label>
-                        <input type="text" name="fullname" required style="width: 100%; padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.75rem;">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Email Address</label>
-                        <input type="email" name="email" required style="width: 100%; padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.75rem;">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Student Proof (PDF)</label>
-                        <input type="file" name="proof_file" accept=".pdf" required style="width: 100%; padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.75rem;">
-                    </div>
-                    <div style="margin-bottom: 1.5rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Password</label>
-                        <input type="password" name="password" required style="width: 100%; padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.75rem;">
-                    </div>
-                    <div style="margin-bottom: 2rem;">
-                        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b;">Confirm Password</label>
-                        <input type="password" name="confirm_password" required style="width: 100%; padding: 0.8rem; border: 1px solid #e2e8f0; border-radius: 0.75rem;">
-                    </div>
-                    <div style="display: flex; gap: 1rem;">
-                        <button type="submit" class="view-btn" style="background: #0ea5e9; color: white; border: none; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer;">Create Student</button>
-                        <a href="{% url 'manage_students' %}" class="view-btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">Cancel</a>
-                    </div>
-                </form>
+<div style="display: flex; justify-content: center; width: 100%; padding: 2rem 0;">
+    <div style="background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; padding: 2.5rem; width: 100%; max-width: 550px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+        <form method="POST" enctype="multipart/form-data" autocomplete="off">
+            {% csrf_token %}
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Username</label>
+                <input type="text" name="username" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Full Name</label>
+                <input type="text" name="fullname" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Email Address</label>
+                <input type="email" name="email" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Student Proof (PDF)</label>
+                <input type="file" name="proof_file" accept=".pdf" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 0.9rem; box-sizing: border-box;">
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="password" name="password" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
+                    <span onclick="toggleCreatePassword('password', 'eye-1')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
+                        <svg id="eye-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </span>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 2rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Confirm Password</label>
+                <div style="position: relative;">
+                    <input type="password" id="confirm_password" name="confirm_password" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
+                    <span onclick="toggleCreatePassword('confirm_password', 'eye-2')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
+                        <svg id="eye-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    </span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" style="flex: 2; background: #0ea5e9; color: white; border: none; padding: 1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#0ea5e9'">Create Student Account</button>
+                <a href="{% url 'manage_students' %}" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b; padding: 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleCreatePassword(inputId, iconId) {
+        const input = document.getElementById(inputId);
+        const icon = document.getElementById(iconId);
+        if (input.type === "password") {
+            input.type = "text";
+            icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+        } else {
+            input.type = "password";
+            icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+        }
+    }
+</script>
 {% endblock %}
