@@ -1,0 +1,31 @@
+name: Daily PDF Backup (Supabase to GDrive)
+
+on:
+  schedule:
+    - cron: '0 5 * * *' # Runs daily at 05:00 UTC
+  workflow_dispatch:    # Allows manual trigger
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install supabase google-api-python-client google-auth google-auth-httplib2 google-auth-oauthlib
+
+      - name: Run Backup Script
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_SERVICE_ACCOUNT_JSON }}
+          GDRIVE_FOLDER_ID: ${{ secrets.GDRIVE_FOLDER_ID }}
+        run: python backup_pdfs.py

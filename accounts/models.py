@@ -17,12 +17,18 @@ class CustomUser(AbstractUser):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE', db_index=True)
     full_name = models.CharField(max_length=255, blank=True)
     profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
-    proof_pdf = models.URLField(max_length=1000, blank=True, null=True)
+    proof_pdf = models.CharField(max_length=1000, blank=True, null=True)
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
     approved_at = models.DateTimeField(null=True, blank=True)
     current_session_key = models.CharField(max_length=40, null=True, blank=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
+    @property
+    def proof_pdf_url(self):
+        """Generates a secure signed URL for the user's proof PDF."""
+        from .utils.supabase_storage import get_signed_url
+        return get_signed_url(self.proof_pdf)
 
     def __str__(self):
         return f"{self.username} ({self.user_type})"

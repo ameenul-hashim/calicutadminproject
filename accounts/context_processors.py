@@ -11,7 +11,9 @@ def pending_counts(request):
     if cached_context:
         return cached_context
     
-    context = {}
+    context = {
+        'is_admin_preview': request.session.get('student_view_unlocked', False)
+    }
     
     if request.user.user_type == 'ADMIN':
         context['pending_students_count'] = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()

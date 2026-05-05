@@ -168,6 +168,12 @@ def teacher_signup_view(request):
     return render(request, 'accounts/teacher_signup.html')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
+from django.http import JsonResponse
+
+def health_check(request):
+    """Lightweight health check for Render/Uptime monitoring."""
+    return JsonResponse({"status": "healthy", "timestamp": timezone.now().isoformat()})
+
 def login_view(request):
     if request.user.is_authenticated:
         if request.user.user_type == 'STUDENT':
@@ -228,8 +234,8 @@ def student_view_auth(request):
     if request.user.user_type == 'STUDENT':
         return redirect('dashboard')
 
-    # Direct access for Teachers as requested
-    if request.user.user_type == 'TEACHER':
+    # Direct access for Teachers and Admins as requested
+    if request.user.user_type == 'TEACHER' or getattr(request.user, 'is_staff', False):
         request.session['student_view_unlocked'] = True
         next_url = request.session.pop('next_student_url', 'dashboard')
         return redirect(next_url)

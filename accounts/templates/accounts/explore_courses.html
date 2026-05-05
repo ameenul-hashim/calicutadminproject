@@ -58,7 +58,13 @@
                 {% endif %}
                 <a href="{% url 'profile' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">👤 Profile</a>
             </nav>
-            <a href="{% url 'logout' %}" style="padding: 1rem; color: #ef4444; text-decoration: none; border-radius: 0.75rem;">🚪 Logout</a>
+            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9; margin-top: auto;">
+                {% if is_admin_preview %}
+                    <a href="{% url 'admin_student_logout' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600; border: 1px solid #c7d2fe;">🔙 Back to Admin</a>
+                {% else %}
+                    <a href="{% url 'logout' %}" style="padding: 1rem; color: #ef4444; text-decoration: none; border-radius: 0.75rem; display: flex; align-items: center; gap: 1rem;">🚪 Logout</a>
+                {% endif %}
+            </div>
         </aside>
 
         <main class="main-content">
