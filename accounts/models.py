@@ -16,7 +16,9 @@ class CustomUser(AbstractUser):
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='STUDENT', db_index=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE', db_index=True)
     full_name = models.CharField(max_length=255, blank=True)
-    profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True)
+    profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True) # Legacy
+    image = models.URLField(max_length=1000, blank=True, null=True)
+    image_public_id = models.CharField(max_length=255, blank=True, null=True)
     proof_pdf = models.CharField(max_length=1000, blank=True, null=True)
     rejection_reason = models.TextField(blank=True, null=True)
     approved_by = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_users')
@@ -49,7 +51,9 @@ class Course(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     category = models.CharField(max_length=100, db_index=True)
-    thumbnail = models.ImageField(upload_to='course_thumbnails/', null=True, blank=True)
+    thumbnail = models.ImageField(upload_to='course_thumbnails/', null=True, blank=True) # Legacy
+    image = models.URLField(max_length=1000, blank=True, null=True)
+    image_public_id = models.CharField(max_length=255, blank=True, null=True)
     level = models.CharField(max_length=20, choices=LEVEL_CHOICES, default='BEGINNER', db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     intro_video = models.FileField(upload_to='course_intro/', null=True, blank=True)
@@ -160,3 +164,16 @@ class DeletionRequest(models.Model):
 
     def __str__(self):
         return f"{self.item_type} deletion request by {self.teacher.username}"
+
+# Signals for explicit image cleanup
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
+from .utils.cloudinary_helpers import delete_image
+
+@receiver(pre_delete, sender=CustomUser)
+def cleanup_user_image(sender, instance, **kwargs):
+    delete_image(instance)
+
+@receiver(pre_delete, sender=Course)
+def cleanup_course_image(sender, instance, **kwargs):
+    delete_image(instance)

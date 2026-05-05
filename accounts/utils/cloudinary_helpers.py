@@ -1,0 +1,52 @@
+import cloudinary.uploader
+import logging
+
+logger = logging.getLogger(__name__)
+
+def update_image(instance, new_image_file, folder="edustream/uploads"):
+    """
+    Safely updates an image in Cloudinary and the database model.
+    """
+    try:
+        # STEP 1: Upload new image FIRST (fail-safe)
+        upload_result = cloudinary.uploader.upload(
+            new_image_file,
+            folder=folder
+        )
+
+        new_url = upload_result.get("secure_url")
+        new_public_id = upload_result.get("public_id")
+
+        if not new_url or not new_public_id:
+            logger.error("Cloudinary upload failed: Missing URL or public_id")
+            return False
+
+        # STEP 2: Delete old image ONLY after successful upload
+        if getattr(instance, 'image_public_id', None):
+            try:
+                cloudinary.uploader.destroy(instance.image_public_id)
+            except Exception as e:
+                logger.error(f"Failed to delete old Cloudinary image {instance.image_public_id}: {e}")
+                pass  # prevent crash if deletion fails
+
+        # STEP 3: Save new values
+        instance.image = new_url
+        instance.image_public_id = new_public_id
+        instance.save()
+        return True
+
+    except Exception as e:
+        logger.error(f"Error in update_image: {e}")
+        return False
+
+def delete_image(instance):
+    """
+    Cleans up Cloudinary image when a model is deleted.
+    """
+    if getattr(instance, 'image_public_id', None):
+        try:
+            cloudinary.uploader.destroy(instance.image_public_id)
+        except Exception as e:
+            logger.error(f"Failed to delete Cloudinary image {instance.image_public_id}: {e}")
+            pass
+
