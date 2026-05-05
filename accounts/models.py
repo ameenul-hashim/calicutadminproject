@@ -217,8 +217,17 @@ from django.dispatch import receiver
 from .utils.cloudinary_helpers import delete_image
 
 @receiver(pre_delete, sender=CustomUser)
-def cleanup_user_image(sender, instance, **kwargs):
+def cleanup_user_files(sender, instance, **kwargs):
+    # 1. Clean Cloudinary Image
     delete_image(instance)
+    
+    # 2. Clean Supabase PDF
+    if hasattr(instance, 'pdf_path') and instance.pdf_path:
+        try:
+            from .utils.supabase_storage import delete_pdf
+            delete_pdf(instance.pdf_path)
+        except Exception:
+            pass
 
 @receiver(pre_delete, sender=Course)
 def cleanup_course_image(sender, instance, **kwargs):
