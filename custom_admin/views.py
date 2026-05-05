@@ -531,7 +531,13 @@ def edit_user_admin(request, user_uid):
                 user.set_password(password)
             
             if profile_photo:
-                update_image(user, profile_photo, folder="edustream/profiles")
+                if profile_photo.size > 2 * 1024 * 1024:
+                    messages.error(request, "Profile photo exceeds 2MB limit.")
+                else:
+                    if update_image(user, profile_photo, folder="edustream/profiles"):
+                        messages.success(request, "Profile photo updated successfully!")
+                    else:
+                        messages.error(request, "Failed to update profile photo in Cloudinary.")
                 
             user.save()
             messages.success(request, f"User {user.username} data updated successfully!")

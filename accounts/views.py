@@ -782,11 +782,14 @@ def edit_profile(request):
     if request.method == 'POST':
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
-            from .utils.cloudinary_helpers import update_image
-            if update_image(request.user, profile_photo, folder="edustream/profiles"):
-                messages.success(request, "Profile photo updated successfully!")
+            if profile_photo.size > 2 * 1024 * 1024:
+                messages.error(request, "Profile photo exceeds 2MB limit.")
             else:
-                messages.error(request, "Failed to upload photo to Cloudinary. Please try again.")
+                from .utils.cloudinary_helpers import update_image
+                if update_image(request.user, profile_photo, folder="edustream/profiles"):
+                    messages.success(request, "Profile photo updated successfully!")
+                else:
+                    messages.error(request, "Failed to upload photo to Cloudinary. Please try again.")
             return redirect('profile')
         else:
             messages.error(request, "Please select a photo to upload.")
@@ -892,7 +895,7 @@ def get_chat_list(request):
             'name': u.full_name or u.username,
             'last_message': last_msg.message if last_msg else "No messages yet",
             'unread_count': unread_count,
-            'profile_photo': u.profile_photo.url if u.profile_photo else None
+            'profile_photo': u.avatar_url
         })
     
     from django.http import JsonResponse
