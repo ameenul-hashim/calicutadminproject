@@ -63,6 +63,16 @@ class PortalSecurityMiddleware:
                 has_photo = bool(request.user.image) or bool(request.user.profile_photo)
                 if not has_photo and url_name != 'edit_profile' and url_name != 'logout':
                     return redirect('edit_profile')
+
+            # --- Admin Isolation Hardening ---
+            # Prevent non-staff users from accessing ANY admin URL paths
+            admin_paths = ['/customadmin/', '/admin/']
+            if any(path.startswith(admin_path) for admin_path in admin_paths):
+                if not request.user.is_staff:
+                    if request.user.user_type == 'TEACHER':
+                        return redirect('teacher_dashboard')
+                    else:
+                        return redirect('dashboard')
                     
             # --- Student View Step-Up Authentication for Admin/Teachers ---
             student_url_names = [
