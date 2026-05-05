@@ -119,23 +119,38 @@ DATABASES = {
     )
 }
 
-# Scalable Caching (Redis)
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-    }
-}
+# Scalable Caching & Channel Layers
+REDIS_URL = os.getenv('REDIS_URL')
 
-# Scalable Channel Layer (Redis)
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            "hosts": [os.getenv('REDIS_URL', 'redis://127.0.0.1:6379/1')],
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
+    }
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                "hosts": [REDIS_URL],
+                "symmetric_encryption_keys": [SECRET_KEY],
+            },
         },
-    },
-}
+    }
+else:
+    # Fallback to local memory for both cache and channels if Redis is not provided
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'unique-snowflake',
+        }
+    }
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True
