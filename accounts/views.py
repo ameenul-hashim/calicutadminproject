@@ -270,7 +270,7 @@ def login_view(request):
                 messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
                 return redirect('dashboard')
             elif user.status == 'PENDING':
-                messages.error(request, "Your student account is pending approval.")
+                messages.info(request, "Not approved by admin, please wait")
             elif user.status == 'BLOCKED':
                 messages.error(request, "Your account has been blocked.")
         else:
@@ -360,8 +360,10 @@ def teacher_login_view(request):
                 login(request, user)
                 messages.success(request, "Teacher dashboard logged in successfully!")
                 return redirect('teacher_dashboard')
-            else:
-                messages.error(request, "Your teacher account is pending approval or blocked.")
+            elif user.status == 'PENDING':
+                messages.info(request, "Not approved by admin, please wait")
+            elif user.status == 'BLOCKED':
+                messages.error(request, "Your account has been blocked.")
         else:
             messages.error(request, "Invalid teacher credentials.")
             

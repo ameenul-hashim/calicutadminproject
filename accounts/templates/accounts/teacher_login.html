@@ -14,11 +14,7 @@
     <div class="glass-card" style="width: 100%; max-width: 400px; background: white; border-top: 4px solid #6366f1;">
         <h1 style="text-align: center; margin-bottom: 2rem; color: #1e293b;">Teacher Portal</h1>
         
-        {% include 'includes/messages.html' %}
-
-        <div class="alert alert-info" style="background: #e0f2fe; border: 1px solid #7dd3fc; color: #0369a1; font-weight: 500; text-align: center; margin-bottom: 1.5rem;">
-            Teacher account approval required by administrator.
-        </div>
+        {% include 'includes/local_messages.html' %}
 
         <form method="POST" id="loginForm" novalidate>
             {% csrf_token %}
