@@ -445,7 +445,14 @@ def analytics_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    courses = Course.objects.filter(status='PUBLISHED').select_related('teacher').prefetch_related('lessons')
+    status_filter = request.GET.get('status', 'PUBLISHED')
+    courses = Course.objects.all().select_related('teacher').prefetch_related('lessons')
+    
+    if status_filter != 'ALL':
+        courses = courses.filter(status=status_filter)
+    
+    courses = courses.order_by('-created_at')
+
     # Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(courses, 20)
@@ -453,7 +460,8 @@ def content_management_view(request):
     page_obj = paginator.get_page(page_number)
     return render(request, 'custom_admin/content_management.html', {
         'courses': page_obj,
-        'page_obj': page_obj
+        'page_obj': page_obj,
+        'status_filter': status_filter
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -501,6 +509,9 @@ def approve_course(request, course_uid):
     )
     
     messages.success(request, f"Course '{course.title}' has been approved and published!")
+    referer = request.META.get('HTTP_REFERER')
+    if referer and ('content' in referer or 'pending' in referer):
+        return redirect(referer)
     return redirect('pending_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -524,7 +535,10 @@ def reject_course(request, course_uid):
         )
         
         messages.warning(request, f"Course '{course.title}' has been rejected.")
-        return redirect('pending_courses')
+        referer = request.META.get('HTTP_REFERER')
+        if referer and ('content' in referer or 'pending' in referer):
+            return redirect(referer)
+        return redirect('admin_content')
         
     return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
 
