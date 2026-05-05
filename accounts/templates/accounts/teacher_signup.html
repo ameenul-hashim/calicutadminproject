@@ -32,6 +32,10 @@
                 <input type="email" name="email" id="email" value="{{ email|default:'' }}" required>
             </div>
             <div class="input-group">
+                <label for="phone_number">Contact Number</label>
+                <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" required placeholder="e.g., +1234567890">
+            </div>
+            <div class="input-group">
                 <label for="proof_file">Teacher Proof (PDF)</label>
                 <input type="file" name="proof_file" id="proof_file" accept=".pdf" required>
             </div>
