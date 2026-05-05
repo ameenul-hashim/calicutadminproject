@@ -88,10 +88,17 @@ class PortalSecurityMiddleware:
         try:
             response = self.get_response(request)
             
+            # 🛡️ HARDENING: Remove technical exposure
+            response["Server"] = "Webserver"
+            response["X-Powered-By"] = "Secure Portal"
+            
             # Add strict cache control headers
             response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response["Pragma"] = "no-cache"
             response["Expires"] = "Sat, 01 Jan 2000 00:00:00 GMT"
+            
+            # Referrer Policy for security
+            response["Referrer-Policy"] = "same-origin"
             
             return response
         except Exception:
