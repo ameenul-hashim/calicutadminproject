@@ -722,9 +722,17 @@ def edit_profile(request):
     if request.method == 'POST':
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
+            from .utils.cloudinary_helpers import update_image
+            success = update_image(request.user, profile_photo, folder="edustream/profiles")
+            
+            # Keep legacy field working for templates that haven't been updated yet
             request.user.profile_photo = profile_photo
             request.user.save()
-            messages.success(request, "Profile photo updated successfully!")
+            
+            if success:
+                messages.success(request, "Profile photo updated successfully!")
+            else:
+                messages.warning(request, "Photo updated locally but failed to optimize on Cloudinary.")
             return redirect('profile')
         else:
             messages.error(request, "Please select a photo to upload.")
