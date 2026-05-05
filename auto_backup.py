@@ -23,6 +23,9 @@ cloudinary.config(
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
+DATABASE_FOLDER_ID = os.getenv("DRIVE_DATABASE_FOLDER_ID", "YOUR_DB_FOLDER_ID")
+PDF_FOLDER_ID = os.getenv("DRIVE_PDF_FOLDER_ID", "YOUR_PDF_FOLDER_ID")
+
 # ----------------------------
 # AUTHENTICATE GOOGLE DRIVE
 # ----------------------------
@@ -78,11 +81,14 @@ def backup_cloudinary():
 # ----------------------------
 # UPLOAD FILE TO DRIVE
 # ----------------------------
-def upload_to_drive(service, file_path):
-    file_metadata = {'name': os.path.basename(file_path)}
+def upload_to_drive(service, file_path, folder_id):
+    file_metadata = {
+        'name': os.path.basename(file_path),
+        'parents': [folder_id]
+    }
     media = MediaFileUpload(file_path, resumable=True)
     service.files().create(body=file_metadata, media_body=media).execute()
-    print(f"Uploaded {file_path} to Google Drive.")
+    print(f"Uploaded {file_path} to Google Drive (Folder: {folder_id}).")
 
 # ----------------------------
 # MAIN BACKUP EXECUTION
@@ -100,7 +106,7 @@ def run_backup():
     try:
         print("Backing up PostgreSQL database...")
         db_file = backup_database()
-        upload_to_drive(service, db_file)
+        upload_to_drive(service, db_file, DATABASE_FOLDER_ID)
         # Clean up local db backup
         if os.path.exists(db_file):
             os.remove(db_file)
@@ -112,7 +118,7 @@ def run_backup():
         print("Backing up Cloudinary PDFs...")
         pdf_files = backup_cloudinary()
         for f in pdf_files:
-            upload_to_drive(service, f)
+            upload_to_drive(service, f, PDF_FOLDER_ID)
             # Clean up local pdf
             if os.path.exists(f):
                 os.remove(f)
