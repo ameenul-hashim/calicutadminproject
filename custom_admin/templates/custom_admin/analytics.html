@@ -169,8 +169,9 @@
                     <thead>
                         <tr>
                             <th>Course Name</th>
-                            <th>Students Enrolled</th>
+                            <th>Students</th>
                             <th>Teacher</th>
+                            <th>Contents</th>
                             <th>Category</th>
                         </tr>
                     </thead>
@@ -180,11 +181,50 @@
                                 <td style="font-weight: 600;">{{ course.title }}</td>
                                 <td>{{ course.enrollment_count }}</td>
                                 <td>{{ course.teacher.full_name|default:course.teacher.username }}</td>
+                                <td style="font-weight: 700; color: #6366f1;">{{ course.lesson_count }} Items</td>
                                 <td><span class="status-pill status-pass">{{ course.category }}</span></td>
                             </tr>
                         {% empty %}
                             <tr>
                                 <td colspan="4" style="text-align: center; color: #94a3b8; padding: 2rem;">No courses available</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        <!-- Top Educators Section -->
+        <div class="premium-panel" style="margin-top: 1.5rem;">
+            <div class="premium-panel-header">
+                <h2 class="premium-panel-title">Top Educators (By Content Contribution)</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Educator</th>
+                            <th>Total Courses</th>
+                            <th>Total Contents Uploaded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in top_educators %}
+                            <tr>
+                                <td style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
+                                        {% if teacher.avatar_url %}
+                                            <img src="{{ teacher.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                        {% else %}
+                                            👤
+                                        {% endif %}
+                                    </div>
+                                    <span style="font-weight: 600;">{{ teacher.full_name|default:teacher.username }}</span>
+                                </td>
+                                <td>{{ teacher.total_courses }}</td>
+                                <td style="font-weight: 700; color: #10b981;">{{ teacher.total_content }} Lessons</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" style="text-align: center; color: #94a3b8; padding: 2rem;">No educator data available</td>
                             </tr>
                         {% endfor %}
                     </tbody>
