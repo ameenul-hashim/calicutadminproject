@@ -73,28 +73,46 @@ def update_image(instance, new_image_file, folder="edustream/profiles"):
 
 def delete_image(instance):
     """
-    CLEANUP DISABLED: Images are preserved permanently even if model is deleted.
+    ENFORCED CLEANUP: Permanently deletes user images from Cloudinary to free up space
+    and ensure no leftover data exists for rejected/deleted users.
     """
-    logger.info(f"PERMANENT DATA POLICY: Preserving image {getattr(instance, 'image_public_id', 'unknown')}")
-    pass
+    public_id = getattr(instance, 'image_public_id', None)
+    if public_id:
+        try:
+            cloudinary.uploader.destroy(public_id)
+            logger.info(f"Successfully purged image: {public_id}")
+        except Exception as e:
+            logger.warning(f"Failed to purge Cloudinary image {public_id}: {e}")
 
 def approve_user(instance, admin_user):
     """
-    Approves a user account and keeps their PDF.
+    Approves a user account.
     """
-    instance.status = "ACTIVE" # Application uses ACTIVE for approved users
+    instance.status = "ACTIVE"
     instance.save()
     logger.info(f"ADMIN {admin_user.username} APPROVED USER {instance.id}")
 
-def reject_user(instance, admin_user):
+def reject_user_and_clean(instance, admin_user):
     """
-    Rejects a user account.
-    NO-DELETE POLICY: PDF is preserved in Supabase even if user is rejected.
+    REJECT-AND-CLEAN FLOW: Permanently purges user data.
+    Ensures:
+    1. Supabase PDF is deleted
+    2. Cloudinary image is deleted
+    3. User record is deleted from DB (triggers CASCADE)
     """
-    # if instance.pdf_path:
-    #     supabase_delete(instance.pdf_path)
+    # 1. Purge Supabase PDF
+    pdf_path = getattr(instance, 'pdf_path', None)
+    if pdf_path:
+        try:
+            supabase_delete(pdf_path)
+            logger.info(f"Purged Supabase PDF: {pdf_path}")
+        except Exception as e:
+            logger.error(f"Failed to purge Supabase PDF {pdf_path}: {e}")
 
-    # Note: We keep pdf_path to ensure the file remains linked for admin review later
-    instance.status = "REJECTED" 
-    instance.save()
-    logger.warning(f"ADMIN {admin_user.username} REJECTED USER {instance.id} (Data Preserved)")
+    # 2. Purge Cloudinary Image
+    delete_image(instance)
+
+    # 3. Permanent DB Purge
+    username = instance.username
+    instance.delete()
+    logger.warning(f"ADMIN {admin_user.username} PURGED USER {username} (Re-signup now possible)")

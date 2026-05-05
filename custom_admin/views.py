@@ -240,34 +240,30 @@ def decline_user(request, user_uid):
         user_type = user.user_type
         username = user.username
         
-        # Log the rejection before deletion
+        # REJECT-AND-CLEAN FLOW
+        from accounts.utils.cloudinary_helpers import reject_user_and_clean
+        from django.contrib.sessions.models import Session
+        
+        # 1. Log the rejection for audit (before user deletion)
         ApprovalLog.objects.create(
             content_type=user_type,
-            object_id=0, # Object will be deleted, use 0 or dummy
+            object_id=0, # Object will be deleted
             status='REJECTED',
             reviewed_by=request.user,
-            comments=f"User {username} rejected and deleted. Reason: {reason}"
+            comments=f"User {username} rejected and permanently purged. Reason: {reason}"
         )
-        
-        # Explicitly delete files from cloud storage
-        if getattr(user, 'image_public_id', None):
+
+        # 2. Invalidate any existing sessions for this user
+        if user.current_session_key:
             try:
-                import cloudinary.uploader
-                cloudinary.uploader.destroy(user.image_public_id)
+                Session.objects.filter(session_key=user.current_session_key).delete()
             except Exception:
                 pass
-                
-        if getattr(user, 'pdf_path', None):
-            try:
-                from accounts.utils.supabase_storage import delete_pdf
-                delete_pdf(user.pdf_path)
-            except Exception:
-                pass
-                
-        # Delete user from DB
-        user.delete()
         
-        messages.warning(request, f"{user_type.title()} {username} has been rejected.")
+        # 3. Permanent Purge (DB + Files)
+        reject_user_and_clean(user, request.user)
+        
+        messages.warning(request, f"✔ {user_type.title()} {username} has been rejected and permanently purged.")
         if user_type == 'TEACHER':
             return redirect('pending_teachers')
         return redirect('pending_users')
