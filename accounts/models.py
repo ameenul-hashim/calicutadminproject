@@ -42,7 +42,8 @@ class CustomUser(AbstractUser):
             except ValueError:
                 pass
         # High-quality default avatar
-        return "https://res.cloudinary.com/dhegrcgja/image/upload/v1714934521/default_avatar_edu.png"
+        from django.templatetags.static import static
+        return static('images/default_avatar.png')
 
     @property
     def proof_pdf_url(self):

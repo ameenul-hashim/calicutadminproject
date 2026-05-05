@@ -642,12 +642,12 @@ def edit_course(request, course_uid):
             from .utils.cloudinary_helpers import update_image
             update_image(course, request.FILES.get('thumbnail'), folder="edustream/courses")
         
-        # If it was rejected or published, editing it should ideally keep it in draft/pending review
-        # For now, let's clear the rejection reason if they edit it
         if course.status == 'REJECTED':
-            course.status = 'DRAFT'
             course.rejection_reason = ""
             
+        # Any edit should reset the course to PENDING if it was already PUBLISHED or REJECTED
+        course.status = 'PENDING'
+        course.is_approved = False
         course.save()
         messages.success(request, f"Course '{course.title}' updated successfully!")
         return redirect('my_courses')
@@ -800,6 +800,13 @@ def logout_view(request):
 @user_passes_test(lambda u: u.is_authenticated and (u.user_type in ['STUDENT', 'TEACHER'] or getattr(u, 'is_staff', False)), login_url='login')
 def enroll_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, status='PUBLISHED', is_approved=True)
+    
+    # Constrain: Student must update profile picture to enroll
+    if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
+        if not request.user.image and not request.user.profile_photo:
+            messages.error(request, "You must update your profile picture before you can enroll in courses.")
+            return redirect('edit_profile')
+            
     if Enrollment.objects.filter(user=request.user, course=course).exists():
         messages.info(request, f"You are already enrolled in {course.title}.")
     else:
