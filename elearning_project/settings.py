@@ -170,7 +170,7 @@ if not DEBUG:
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_DOMAIN = None
-SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+SECURE_REFERRER_POLICY = 'same-origin'
 
 # Stable Session Management
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
