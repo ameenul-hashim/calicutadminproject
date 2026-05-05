@@ -42,8 +42,8 @@
             {% csrf_token %}
             
             <div class="photo-preview">
-                {% if user.profile_photo %}
-                    <img src="{{ user.profile_photo.url }}" alt="Current Photo">
+                {% if user.avatar_url %}
+                    <img src="{{ user.avatar_url }}" alt="Current Photo">
                 {% else %}
                     <span style="font-size: 3rem;">👤</span>
                 {% endif %}

@@ -30,8 +30,22 @@ class CustomUser(AbstractUser):
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
     @property
+    def avatar_url(self):
+        """Returns Cloudinary image URL, falling back to legacy profile_photo."""
+        if self.image:
+            return self.image
+        if self.profile_photo:
+            try:
+                return self.profile_photo.url
+            except ValueError:
+                pass
+        return None
+
+    @property
     def proof_pdf_url(self):
         """Generates a secure signed URL for the user's proof PDF."""
+        if self.pdf_url:
+            return self.pdf_url
         from .utils.supabase_storage import get_signed_url
         return get_signed_url(self.proof_pdf)
 
