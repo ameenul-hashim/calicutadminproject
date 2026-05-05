@@ -78,7 +78,10 @@ def upload_pdf(destination_path_or_file, file_content=None, filename=None):
         supabase.storage.from_(bucket_name).upload(
             path=destination_path,
             file=file_content,
-            file_options={"content-type": "application/pdf"}
+            file_options={
+                "content-type": "application/pdf",
+                "upsert": "true"
+            }
         )
         return destination_path
     except Exception as e:
@@ -142,6 +145,7 @@ def upload_user_proof(instance, pdf_file):
         # 3. Perform upload
         path = upload_pdf(destination_path, content, destination_path)
         if not path:
+            logger.error(f"❌ Supabase Upload Failed for user {instance.username}. Path returned None.")
             return False
             
         # 4. Update instance
@@ -153,5 +157,5 @@ def upload_user_proof(instance, pdf_file):
             
         return True
     except Exception as e:
-        logger.error(f"Error in upload_user_proof: {e}")
+        logger.error(f"❌ Error in upload_user_proof for user {instance.username}: {str(e)}")
         return False
