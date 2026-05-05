@@ -16,19 +16,19 @@
             {% csrf_token %}
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Username</label>
-                <input type="text" name="username" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="text" name="username" value="{{ username|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Full Name</label>
-                <input type="text" name="fullname" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="text" name="fullname" value="{{ fullname|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Email Address</label>
-                <input type="email" name="email" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="email" name="email" value="{{ email|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Contact Number</label>
-                <input type="tel" name="phone_number" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;" placeholder="e.g., +1234567890">
+                <input type="tel" name="phone_number" value="{{ phone_number|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;" placeholder="e.g., +1234567890">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Student Proof (PDF)</label>
