@@ -675,16 +675,31 @@ def add_lesson(request, course_uid):
         title = request.POST.get('title')
         video_url = request.POST.get('video_url')
         video_file = request.FILES.get('video_file')
+
+        # === APPROVAL ENFORCEMENT ===
+        # Always create lesson as PENDING — never bypass admin review
         lesson = Lesson.objects.create(
             course=course,
             title=title,
             video_url=video_url,
             video_file=video_file,
-            order=request.POST.get('order', course.lessons.count() + 1)
+            order=request.POST.get('order', course.lessons.count() + 1),
+            status='PENDING',
+            is_approved=False,
         )
-            
-        messages.success(request, "Lesson added successfully!")
-        notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added a new lesson '{title}' to course '{course.title}'.")
+
+        # If course was already PUBLISHED, uploading new content must lock it
+        # back to PENDING until admin re-reviews the new lesson
+        if course.status == 'PUBLISHED' or course.is_approved:
+            course.status = 'PENDING'
+            course.is_approved = False
+            course.save(update_fields=['status', 'is_approved'])
+            messages.warning(request, f"Lesson '{title}' added. ⚠️ Course is now PENDING admin re-approval because new content was uploaded.")
+            notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'. Course locked for re-review.")
+        else:
+            messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
+            notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
+
         return redirect('course_lessons', course_uid=course.uid)
     
     return render(request, 'teacher_portal/add_lesson.html', {'course': course})

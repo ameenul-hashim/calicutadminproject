@@ -589,8 +589,10 @@ def approve_course(request, course_uid):
     course.rejection_reason = ""
     course.save()
     
-    # Auto-approve all current lessons in the course
-    course.lessons.update(is_approved=True, status='APPROVED')
+    # Auto-approve ONLY lessons that are currently PENDING (awaiting first review).
+    # Do NOT touch REJECTED lessons — those require explicit re-submission.
+    # This prevents accidentally publishing content the admin hasn't reviewed.
+    course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
 
     create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
     
