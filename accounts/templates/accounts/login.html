@@ -46,8 +46,13 @@
         <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted);">
             Don't have an account? <a href="{% url 'signup' %}" style="color: var(--primary); text-decoration: none;">Sign up</a>
         </p>
-        <p style="text-align: center; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
-            <a href="{% url 'teacher_login' %}" style="color: #6366f1; font-weight: 600; text-decoration: none;">Teachers Portal Login</a>
+        <p style="text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+            <a href="{% url 'teacher_login' %}" class="portal-link-teacher" style="color: #6366f1; font-weight: 700; text-decoration: none; font-size: 0.9rem; transition: all 0.3s ease;">
+                <span style="display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    Teachers Portal Login
+                </span>
+            </a>
         </p>
     </div>
 
