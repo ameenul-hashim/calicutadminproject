@@ -628,9 +628,16 @@ def reject_lesson(request, lesson_uid):
         lesson.is_approved = False
         lesson.rejection_reason = reason
         lesson.save()
-        create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been rejected. Reason: {reason}")
-        messages.warning(request, f"Lesson '{lesson.title}' rejected.")
-        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+        
+        # If a lesson is rejected, the entire course must be rejected/hidden from students
+        course = lesson.course
+        course.status = 'REJECTED'
+        course.is_approved = False
+        course.save()
+        
+        create_notification(course.teacher, f"Your lesson '{lesson.title}' in course '{course.title}' was rejected. Entire course rejected. Reason: {reason}")
+        messages.warning(request, f"Lesson '{lesson.title}' rejected. Entire course '{course.title}' marked as REJECTED.")
+        return redirect('admin_view_course_content', course_uid=course.uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
 

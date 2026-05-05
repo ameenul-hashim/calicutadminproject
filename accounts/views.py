@@ -397,14 +397,22 @@ def dashboard_view(request):
         return redirect('login')
 
     if request.user.user_type == 'TEACHER' and not is_admin:
-        # Teacher viewing their own courses in student layout
-        courses = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
+        # Teacher viewing their own courses (all statuses)
+        courses = Course.objects.filter(teacher=request.user).annotate(
+            lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
+        ).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     elif is_admin and is_unlocked:
         # Admin in Student View - show all approved courses as if enrolled for testing
         courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     else:
-        # Real Student - show only their enrolled courses
-        courses = Course.objects.filter(enrollments__user=request.user, is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        # Real Student - show only their enrolled courses that are PUBLISHED and APPROVED
+        courses = Course.objects.filter(
+            enrollments__user=request.user, 
+            is_approved=True, 
+            status='PUBLISHED'
+        ).annotate(
+            lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
+        ).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     search_query = request.GET.get('search', '')
     if search_query:
@@ -794,7 +802,8 @@ def profile_view(request):
 @login_required
 def edit_profile(request):
     has_photo = bool(request.user.image) or bool(request.user.profile_photo)
-    if not has_photo and request.method == 'GET':
+    url_name = request.resolver_match.url_name
+    if not has_photo and url_name not in ['edit_profile', 'logout', 'student_view_auth', 'teacher_view_auth']:
         if request.user.user_type in ['STUDENT', 'TEACHER'] and not request.user.is_superuser:
             messages.info(request, "👋 Welcome! Please upload a profile photo to complete your account setup.")
 
@@ -836,8 +845,8 @@ def course_player(request, course_uid):
         if not Enrollment.objects.filter(user=request.user, course=course).exists():
             messages.error(request, "You are not enrolled in this course.")
             return redirect('student_explore')
-        # Filter: Students see Approved content only in production, but user wants uploaded content visible
-        lessons = course.lessons.exclude(status='REJECTED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
+        # Filter: Students see APPROVED content only
+        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
 
     context = {
         'course': course,
