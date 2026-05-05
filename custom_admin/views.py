@@ -35,17 +35,11 @@ def create_notification(user, message):
 @user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_student_view_auth(request):
-    if request.method == 'POST':
-        password = request.POST.get('password')
-        # Robust verification using the current user's check_password method
-        if request.user.check_password(password):
-            request.session['student_view_unlocked'] = True
-            request.session.modified = True
-            messages.success(request, "Secure access granted. Welcome to Student View!")
-            return redirect('dashboard')
-        else:
-            messages.error(request, "Authentication failed. Please ensure you are using your correct Admin password.")
-    return render(request, 'custom_admin/admin_student_view_auth.html')
+    # Direct access as requested - no password required for admin switching
+    request.session['student_view_unlocked'] = True
+    request.session.modified = True
+    messages.success(request, "Switched to Student View. You are now previewing the platform as a student.")
+    return redirect('dashboard')
 
 
 

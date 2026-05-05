@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+SUPABASE_BUCKET = "calicutadminpanelpdf"
 
 # Singleton client instance
 _supabase_client = None
@@ -24,6 +25,7 @@ def get_supabase_client():
     return _supabase_client
 
 def upload_pdf(file):
+    """Uploads a PDF and returns the STORAGE PATH (not the public URL)."""
     if not file:
         return None
         
@@ -41,21 +43,44 @@ def upload_pdf(file):
         file_path = f"documents/{uuid.uuid4()}.{file_ext}"
 
         # Upload attempt
-        bucket_name = "calicutadminpanelpdf"
         try:
-            res = supabase.storage.from_(bucket_name).upload(
+            supabase.storage.from_(SUPABASE_BUCKET).upload(
                 path=file_path,
                 file=file_content,
                 file_options={"content-type": "application/pdf"}
             )
-            
-            # Get public URL
-            public_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
-            return public_url
+            # Return the path so we can generate signed URLs later
+            return file_path
         except Exception as upload_err:
             logger.error(f"❌ Supabase Upload Error: {upload_err}")
             return None
 
     except Exception as e:
         logger.error(f"💥 General Upload Error in upload_pdf: {e}")
+        return None
+
+def get_signed_url(file_path, expires_in=900):
+    """
+    Generates a signed URL for a file path.
+    Default expiry is 15 minutes (900 seconds).
+    """
+    if not file_path:
+        return None
+    
+    # If it's already a full URL (legacy), return it
+    if file_path.startswith('http'):
+        return file_path
+        
+    try:
+        supabase = get_supabase_client()
+        if not supabase:
+            return None
+            
+        res = supabase.storage.from_(SUPABASE_BUCKET).create_signed_url(
+            path=file_path,
+            expires_in=expires_in
+        )
+        return res.get('signedURL') or res # Handle different lib versions
+    except Exception as e:
+        logger.error(f"❌ Error generating signed URL for {file_path}: {e}")
         return None
