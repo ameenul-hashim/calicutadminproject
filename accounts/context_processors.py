@@ -38,6 +38,7 @@ def pending_counts(request):
             
             # Unread admin notifications
             context['unread_admin_notifs'] = Notification.objects.filter(user=request.user, is_read=False).count()
+            context['notifications'] = Notification.objects.filter(user=request.user, is_read=False).only('id', 'uid', 'message', 'created_at')[:10]
             if request.session.get('student_view_unlocked'):
                 context['unread_student_notifs'] = context['unread_admin_notifs']
 

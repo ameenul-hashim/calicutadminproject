@@ -67,8 +67,8 @@
                     <div class="input-group">
                         <label for="thumbnail">Course Thumbnail</label>
                         <input type="file" name="thumbnail" id="thumbnail" accept="image/*">
-                        {% if course.thumbnail %}
-                            <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Current: <a href="{{ course.thumbnail.url }}" target="_blank">View Thumbnail</a></p>
+                        {% if course.thumbnail_url %}
+                            <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Current: <a href="{{ course.thumbnail_url }}" target="_blank">View Thumbnail</a></p>
                         {% endif %}
                     </div>
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">

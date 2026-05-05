@@ -106,8 +106,8 @@
             <!-- Teacher Profile Quick View -->
             <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
                 <div style="width: 70px; height: 70px; border-radius: 50%; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    {% if user.profile_photo %}
-                        <img src="{{ user.profile_photo.url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% if user.avatar_url %}
+                        <img src="{{ user.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover;">
                     {% else %}
                         <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
                     {% endif %}
@@ -140,8 +140,8 @@
                 {% for course in other_courses %}
                 <div class="course-card">
                     <div class="thumbnail-area">
-                        {% if course.thumbnail %}
-                            <img src="{{ course.thumbnail.url }}" alt="{{ course.title }}">
+                        {% if course.thumbnail_url %}
+                            <img src="{{ course.thumbnail_url }}" alt="{{ course.title }}">
                         {% else %}
                             <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background: var(--teacher-gradient); color: white; font-weight: 700; font-size: 2rem;">
                                 {{ course.title|slice:":2"|upper }}

@@ -575,15 +575,18 @@ def create_course(request):
         level = request.POST.get('level')
         thumbnail = request.FILES.get('thumbnail')
         
+        from .utils.cloudinary_helpers import update_image
         course = Course.objects.create(
             teacher=request.user,
             title=title,
             description=description,
             category=category,
             level=level,
-            thumbnail=thumbnail,
             status='DRAFT'
         )
+        if thumbnail:
+            update_image(course, thumbnail, folder="edustream/courses")
+        
         messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
         return redirect('course_lessons', course_uid=course.uid)
     
@@ -598,7 +601,8 @@ def edit_course(request, course_uid):
         course.category = request.POST.get('category')
         course.level = request.POST.get('level')
         if request.FILES.get('thumbnail'):
-            course.thumbnail = request.FILES.get('thumbnail')
+            from .utils.cloudinary_helpers import update_image
+            update_image(course, request.FILES.get('thumbnail'), folder="edustream/courses")
         
         # If it was rejected or published, editing it should ideally keep it in draft/pending review
         # For now, let's clear the rejection reason if they edit it
@@ -779,16 +783,10 @@ def edit_profile(request):
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
             from .utils.cloudinary_helpers import update_image
-            success = update_image(request.user, profile_photo, folder="edustream/profiles")
-            
-            # Keep legacy field working for templates that haven't been updated yet
-            request.user.profile_photo = profile_photo
-            request.user.save()
-            
-            if success:
+            if update_image(request.user, profile_photo, folder="edustream/profiles"):
                 messages.success(request, "Profile photo updated successfully!")
             else:
-                messages.warning(request, "Photo updated locally but failed to optimize on Cloudinary.")
+                messages.error(request, "Failed to upload photo to Cloudinary. Please try again.")
             return redirect('profile')
         else:
             messages.error(request, "Please select a photo to upload.")
