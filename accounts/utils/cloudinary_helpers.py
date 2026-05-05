@@ -20,15 +20,26 @@ def validate_pdf(file):
     except Exception as e:
         raise ValueError(str(e))
 
-def update_image(instance, new_image_file, folder="edustream/uploads"):
+def update_image(instance, new_image_file, folder="edustream/profiles"):
     """
     Safely updates an image in Cloudinary and the database model.
+    Ensures old images are deleted to save space.
     """
     try:
-        # STEP 1: Upload new image
+        # STEP 1: Delete old image if it exists to ensure clean replacement
+        old_public_id = getattr(instance, 'image_public_id', None)
+        if old_public_id:
+            try:
+                cloudinary.uploader.destroy(old_public_id)
+                logger.info(f"Deleted old image: {old_public_id}")
+            except Exception as e:
+                logger.warning(f"Failed to delete old Cloudinary image {old_public_id}: {e}")
+
+        # STEP 2: Upload new image
         upload_result = cloudinary.uploader.upload(
             new_image_file,
-            folder=folder
+            folder=folder,
+            resource_type="image"
         )
 
         new_url = upload_result.get("secure_url")
@@ -38,26 +49,23 @@ def update_image(instance, new_image_file, folder="edustream/uploads"):
             logger.error("Cloudinary upload failed: Missing URL or public_id")
             return False
 
-        # STEP 2: Delete old image if it exists
-        old_public_id = getattr(instance, 'image_public_id', None)
-        if old_public_id:
-            try:
-                cloudinary.uploader.destroy(old_public_id)
-            except Exception as e:
-                logger.error(f"Failed to delete old Cloudinary image {old_public_id}: {e}")
-
-        # STEP 3: Save new values
+        # STEP 3: Update model fields
         instance.image = new_url
         instance.image_public_id = new_public_id
         
-        # Synchronize with legacy field if it exists
+        # Clear legacy local fields to prevent confusion/local storage usage
         if hasattr(instance, 'profile_photo'):
-            instance.profile_photo = new_image_file
-        elif hasattr(instance, 'thumbnail'):
-            instance.thumbnail = new_image_file
+            instance.profile_photo = None
+        if hasattr(instance, 'thumbnail'):
+            instance.thumbnail = None
             
         instance.save()
+        logger.info(f"Successfully updated image for {instance} to {new_url}")
         return True
+
+    except Exception as e:
+        logger.error(f"Error in update_image: {e}")
+        return False
 
     except Exception as e:
         logger.error(f"Error in update_image: {e}")
