@@ -80,7 +80,13 @@ def admin_dashboard(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_students(request):
     search_query = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
+    
     users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
+    
+    if status_filter:
+        users = users.filter(status=status_filter)
+        
     if search_query:
         users = users.filter(
             Q(username__icontains=search_query) | 
@@ -101,6 +107,7 @@ def manage_students(request):
     return render(request, 'custom_admin/manage_students.html', {
         'users': page_obj, 
         'search_query': search_query,
+        'status_filter': status_filter,
         'notifications': notifications,
         'unread_notifications_count': unread_count,
         'page_obj': page_obj
@@ -132,7 +139,13 @@ def admin_student_profile(request, user_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_teachers(request):
     search_query = request.GET.get('search', '')
+    status_filter = request.GET.get('status', '')
+    
     users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses')
+    
+    if status_filter:
+        users = users.filter(status=status_filter)
+        
     if search_query:
         users = users.filter(
             Q(username__icontains=search_query) | 
@@ -148,6 +161,7 @@ def manage_teachers(request):
     return render(request, 'custom_admin/manage_teachers.html', {
         'users': page_obj, 
         'search_query': search_query,
+        'status_filter': status_filter,
         'page_obj': page_obj
     })
 
