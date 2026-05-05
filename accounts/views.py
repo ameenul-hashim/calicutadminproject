@@ -365,8 +365,7 @@ def dashboard_view(request):
 
     # Build initial context
     context = {
-        'courses': page_obj,
-        'page_obj': page_obj,
+        'courses': courses,
         'search_query': search_query,
         'total_lessons': sum(c.lesson_count for c in courses),
         'is_admin_preview': is_unlocked,
