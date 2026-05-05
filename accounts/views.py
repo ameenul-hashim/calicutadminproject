@@ -412,14 +412,14 @@ def dashboard_view(request):
         messages.error(request, "Please use the appropriate portal.")
         return redirect('login')
 
-    if request.user.user_type == 'TEACHER' and not is_admin:
-        # Teacher viewing their own courses (all statuses)
+    if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
+        # Admin or Teacher in Student View - strictly mimic student by showing only approved courses
+        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
+    elif request.user.user_type == 'TEACHER' and not is_admin:
+        # Teacher viewing normally - show their own courses (all statuses)
         courses = Course.objects.filter(teacher=request.user).annotate(
             lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
         ).only('id', 'title', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
-    elif is_admin and is_unlocked:
-        # Admin in Student View - show all approved courses as if enrolled for testing
-        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'thumbnail', 'category', 'teacher').select_related('teacher')
     else:
         # Real Student - show only their enrolled courses that are PUBLISHED and APPROVED
         courses = Course.objects.filter(
@@ -855,8 +855,8 @@ def course_player(request, course_uid):
     is_admin = getattr(request.user, 'is_staff', False)
 
     # === ACCESS CONTROL ===
-    if is_admin and is_unlocked:
-        # Admin in Student View: Strictly mimic student behavior (APPROVED only)
+    if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
+        # Admin or Teacher in Student View: Strictly mimic student behavior (APPROVED only)
         lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
 
     elif is_admin:
