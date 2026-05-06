@@ -724,7 +724,7 @@ def reject_lesson(request, lesson_uid):
         # Just reject the lesson. The course remains PUBLISHED so other approved content is visible.
         create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' was rejected. Please fix it. Reason: {reason}")
         messages.warning(request, f"Lesson '{lesson.title}' rejected. The course remains live with its other approved content.")
-        return redirect('admin_view_course_content', course_uid=course.uid)
+        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
 
