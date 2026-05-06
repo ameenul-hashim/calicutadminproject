@@ -54,7 +54,7 @@
         }
 
         /* Floating Mobile Controls */
-        .mobile-controls { position: fixed; top: 1rem; left: 0; right: 0; z-index: 3000; pointer-events: none; }
+        .mobile-controls { position: fixed; top: 1rem; left: 0; right: 0; z-index: 1100; pointer-events: none; }
         .floating-btn { 
             pointer-events: auto;
             width: 45px; height: 45px; border-radius: 50%; background: white; 
@@ -62,13 +62,20 @@
             display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
             cursor: pointer; position: absolute; color: #6366f1;
         }
-        .bell-btn { color: #1e293b; }
+        .bell-btn { color: #1e293b; transition: opacity 0.2s; }
 
         .bell-btn { color: #1e293b; }
 
         @media (max-width: 1023px) {
             body { background: #e0f7fa !important; }
-            .sidebar { transform: translateX(-100%); z-index: 5000; width: 280px; position: fixed; box-shadow: 10px 0 30px rgba(0,0,0,0.1); }
+            .sidebar { 
+                transform: translateX(-100%); 
+                z-index: 1050; 
+                width: 80vw; 
+                max-width: 320px; 
+                position: fixed; 
+                box-shadow: 10px 0 30px rgba(0,0,0,0.1); 
+            }
             .sidebar.active { transform: translateX(0); }
             .main-content { margin-left: 0 !important; padding: 1.5rem !important; padding-top: 4.5rem !important; width: 100%; max-width: 100vw; }
             .mobile-controls { display: block !important; }
@@ -80,9 +87,14 @@
                 right: 1rem !important;
                 left: 1rem !important;
                 width: auto !important;
-                z-index: 4000 !important;
+                z-index: 1060 !important;
             }
             .notif-dropdown.active { display: block !important; }
+            
+            /* Hide controls when sidebar active */
+            body.sidebar-open .bell-btn { display: none !important; }
+            body.sidebar-open .chatbot-container, body.sidebar-open #chatbot-bubble { display: none !important; }
+            body.sidebar-open { overflow: hidden !important; }
             
             /* Global Form & Card Responsiveness */
             .glass-card, .form-container, .card, .edit-card, .login-card { 
@@ -149,7 +161,7 @@
         </button>
     </div>
 
-    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:4500;" onclick="closeSidebar()"></div>
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1040;" onclick="closeSidebar()"></div>
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
@@ -250,22 +262,19 @@
     <script>
         // Sidebar toggle functions
         function toggleSidebar() {
-            var sb = document.querySelector('.sidebar');
-            var bd = document.getElementById('sidebar-backdrop');
-            if (!sb) return;
-            if (sb.classList.contains('active')) {
-                sb.classList.remove('active');
-                if (bd) bd.style.display = 'none';
-            } else {
-                sb.classList.add('active');
-                if (bd) bd.style.display = 'block';
-            }
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('active');
+            backdrop.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            document.body.classList.toggle('sidebar-open', sidebar.classList.contains('active'));
         }
+
         function closeSidebar() {
-            var sb = document.querySelector('.sidebar');
-            var bd = document.getElementById('sidebar-backdrop');
-            if (sb) sb.classList.remove('active');
-            if (bd) bd.style.display = 'none';
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.remove('active');
+            backdrop.style.display = 'none';
+            document.body.classList.remove('sidebar-open');
         }
         var mainContent = document.querySelector('.main-content');
         if (mainContent) {

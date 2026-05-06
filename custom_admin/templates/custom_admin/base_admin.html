@@ -112,7 +112,9 @@
             .sidebar {
                 left: -260px;
                 transition: left 0.3s ease;
-                z-index: 5000;
+                z-index: 1050;
+                width: 80vw;
+                max-width: 320px;
             }
             .sidebar.active {
                 left: 0;
@@ -126,7 +128,10 @@
                 width: 100%;
                 overflow-x: hidden;
             }
-            .mobile-toggle { display: flex !important; }
+            .mobile-toggle { 
+                display: flex !important; 
+                z-index: 1100;
+            }
             .logout-section { padding-top: 1rem !important; margin-top: 0.5rem; }
             
             /* Global Form & Card Responsiveness */
@@ -143,6 +148,10 @@
                 box-sizing: border-box !important; 
             }
             .stats-grid, .grid { grid-template-columns: 1fr !important; }
+
+            /* Interaction Locks */
+            body.sidebar-open { overflow: hidden !important; }
+            body.sidebar-open .notification-wrapper, body.sidebar-open #notifBell { display: none !important; }
         }
 
         .mobile-toggle {
@@ -325,7 +334,7 @@
 <body>
     <div id="page-loader"><div class="progress"></div></div>
     
-    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1050;" onclick="closeSidebar()"></div>
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1040;" onclick="closeSidebar()"></div>
     <button class="mobile-toggle" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">
         ☰
     </button>
@@ -515,22 +524,18 @@
 
         // Sidebar toggle functions
         function toggleSidebar() {
-            var sb = document.querySelector('.sidebar');
-            var bd = document.getElementById('sidebar-backdrop');
-            if (!sb) return;
-            if (sb.classList.contains('active')) {
-                sb.classList.remove('active');
-                if (bd) bd.style.display = 'none';
-            } else {
-                sb.classList.add('active');
-                if (bd) bd.style.display = 'block';
-            }
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.toggle('active');
+            backdrop.style.display = sidebar.classList.contains('active') ? 'block' : 'none';
+            document.body.classList.toggle('sidebar-open', sidebar.classList.contains('active'));
         }
         function closeSidebar() {
-            var sb = document.querySelector('.sidebar');
-            var bd = document.getElementById('sidebar-backdrop');
-            if (sb) sb.classList.remove('active');
-            if (bd) bd.style.display = 'none';
+            const sidebar = document.querySelector('.sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            sidebar.classList.remove('active');
+            backdrop.style.display = 'none';
+            document.body.classList.remove('sidebar-open');
         }
         var mainStage = document.querySelector('.main-stage');
         if (mainStage) {
