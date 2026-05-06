@@ -75,32 +75,29 @@
                 <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" required placeholder="e.g., 9876543210" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" title="Enter exactly 10 digits">
             </div>
             <div class="input-group" id="proof-upload-wrapper">
-                <!-- DESKTOP: Standard PDF upload (shown on lg screens) -->
-                <div id="desktop-upload">
-                    <label for="proof_file">Student Proof (PDF ONLY)</label>
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf" required style="width:100%;" onchange="validatePDF(this)">
-                    <p style="font-size:0.78rem;color:#94a3b8;margin-top:0.3rem;">Upload your identity proof PDF. Max 200KB. No other formats allowed.</p>
-                </div>
-                <!-- MOBILE: Camera / Photo upload (shown on mobile only) -->
-                <div id="mobile-upload" style="display:none;">
-                    <label for="proof_file_mobile" style="display:flex;align-items:center;gap:0.5rem;">
-                        📄 Student Proof
-                        <span style="font-size:0.78rem;background:#e0f2fe;color:#0369a1;padding:0.15rem 0.5rem;border-radius:1rem;">Mobile Upload</span>
+                <label for="proof_file" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Student Proof (PDF ONLY)</label>
+                
+                <!-- Stylized Upload Area -->
+                <div class="upload-container" style="position: relative; width: 100%;">
+                    <label for="proof_file" class="upload-btn" id="upload-label" style="
+                        display: flex; align-items: center; justify-content: center; gap: 0.75rem; 
+                        padding: 1rem; background: #f8fafc; border: 2px dashed #cbd5e1; 
+                        border-radius: 0.75rem; cursor: pointer; transition: all 0.2s;
+                        min-height: 50px; font-weight: 600; color: #475569; text-align: center;
+                    ">
+                        <span style="font-size: 1.2rem;">📄</span>
+                        <span id="file-name-display">Click to Select PDF</span>
                     </label>
-                    <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
-                        <!-- PDF Upload Option -->
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:0.75rem;padding:0.8rem;background:#f0fdf4;border:2px dashed #10b981;border-radius:0.75rem;">
-                            <span style="font-size:1.5rem;">📄</span>
-                            <div>
-                                <div style="font-weight:700;color:#166534;font-size:0.9rem;">Upload PDF Document</div>
-                                <div style="font-size:0.75rem;color:#64748b;">Select your identity proof (PDF only)</div>
-                            </div>
-                            <input type="file" name="proof_file" id="proof_file_mobile" accept=".pdf" style="display:none;" onchange="handleMobileUpload(this)">
-                        </label>
-
-                    </div>
-                    <div id="mobile-file-preview" style="display:none;margin-top:0.5rem;padding:0.6rem 1rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:0.5rem;color:#166534;font-size:0.85rem;"></div>
+                    
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf" required style="
+                        position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+                        opacity: 0; cursor: pointer; z-index: 2;
+                    " onchange="handleFileSelection(this)">
                 </div>
+                
+                <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.5rem;">
+                    Upload identity proof (PDF, Max 200KB). Selected file must be a PDF.
+                </p>
             </div>
             <div class="input-group" style="position: relative;">
                 <label for="password">Password</label>
@@ -137,42 +134,44 @@
             }
         }
 
-        // Responsive proof upload switcher
-        function switchUploadMode() {
-            var isMobile = window.innerWidth <= 1024;
-            var desktop = document.getElementById('desktop-upload');
-            var mobile = document.getElementById('mobile-upload');
-            var desktopInput = document.getElementById('proof_file');
-            var mobileInput = document.getElementById('proof_file_mobile');
-            
-            if (!desktop || !mobile) return;
-            
-            if (isMobile) {
-                desktop.style.display = 'none';
-                mobile.style.display = 'block';
-                if (desktopInput) {
-                    desktopInput.required = false;
-                    desktopInput.disabled = true;
+        // Robust File Selection Handler for All Devices
+        function handleFileSelection(input) {
+            const display = document.getElementById('file-name-display');
+            const label = document.getElementById('upload-label');
+            const file = input.files[0];
+
+            if (file) {
+                // Validation
+                if (!file.name.toLowerCase().endsWith('.pdf')) {
+                    alert("Only PDF files are allowed.");
+                    input.value = "";
+                    display.innerText = "Click to Select PDF";
+                    label.style.borderColor = "#cbd5e1";
+                    label.style.background = "#f8fafc";
+                    return;
                 }
-                if (mobileInput) {
-                    mobileInput.required = true;
-                    mobileInput.disabled = false;
+                if (file.size > 200 * 1024) {
+                    alert("File size must be below 200 KB.");
+                    input.value = "";
+                    display.innerText = "Click to Select PDF";
+                    label.style.borderColor = "#cbd5e1";
+                    label.style.background = "#f8fafc";
+                    return;
                 }
-            } else {
-                desktop.style.display = 'block';
-                mobile.style.display = 'none';
-                if (desktopInput) {
-                    desktopInput.required = true;
-                    desktopInput.disabled = false;
-                }
-                if (mobileInput) {
-                    mobileInput.required = false;
-                    mobileInput.disabled = true;
-                }
+
+                // Success State
+                display.innerText = "Selected: " + file.name;
+                label.style.borderColor = "#10b981";
+                label.style.background = "#f0fdf4";
+                label.style.color = "#166534";
+                console.log("📄 File selected:", file.name, "(" + (file.size/1024).toFixed(1) + " KB)");
             }
         }
-        switchUploadMode();
-        window.addEventListener('resize', switchUploadMode);
+
+        // Initialize state on load
+        window.addEventListener('load', function() {
+            console.log("🚀 Signup page ready. PDF upload active.");
+        });
 
         // Show preview when mobile file is selected
         function handleMobileUpload(input) {
