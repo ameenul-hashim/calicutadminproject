@@ -124,6 +124,8 @@
                 padding: 1.5rem 1rem 2rem;
             }
             .mobile-toggle { display: flex !important; }
+            .logout-section { padding-top: 3.5rem !important; margin-top: 1rem; }
+        }
         }
 
         .mobile-toggle {
@@ -399,7 +401,7 @@
                     <a href="{% url 'enterprise_monitor' %}" class="nav-link {% if request.resolver_match.url_name == 'enterprise_monitor' %}active{% endif %}" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);">🛡️ Enterprise Monitor</a>
                 </div>
 
-                <div style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
+                <div class="logout-section" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
                     <a href="{% url 'admin_logout' %}" class="nav-link" style="color: #ef4444;">🚪 Logout</a>
                 </div>
             </nav>

@@ -87,6 +87,7 @@
             /* Forms & Grids */
             .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
             .input-group input, .input-group select, .input-group textarea { width: 100% !important; }
+            .logout-section { padding-top: 2.5rem !important; margin-top: 1rem; }
         }
         .mobile-bell-btn {
             font-size: 1.5rem;
@@ -182,7 +183,7 @@
                 <a href="{% url 'student_view_auth' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
                 <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">👤 My Profile</a>
             </nav>
-            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+            <div class="logout-section" style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                 <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
             </div>
         </aside>
