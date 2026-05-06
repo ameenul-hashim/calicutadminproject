@@ -319,8 +319,9 @@
             <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                 {% if user.user_type == 'TEACHER' %}
                     <a href="{% url 'teacher_dashboard' %}" class="nav-link" style="color: #6366f1; font-weight: 600; background: #f5f3ff;"><span>🔙</span> Back to Teacher Panel</a>
-                    <!-- Logout hidden for Teachers in Student View as requested -->
-
+                {% elif request.session.student_view_unlocked %}
+                    <a href="{% url 'admin_dashboard' %}" class="nav-link" style="color: #0ea5e9; font-weight: 700; background: #f0f9ff; border: 1px solid #bae6fd;"><span>🔙</span> Back to Admin Panel</a>
+                    <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444; margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.7;"><span>🚪</span> Logout</a>
                 {% else %}
                     <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
                 {% endif %}
@@ -336,6 +337,12 @@
                     
                     {% if user.user_type == 'TEACHER' %}
                         <a href="{% url 'teacher_dashboard' %}" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">← Back to Teacher Portal</a>
+                    {% endif %}
+
+                    {% if request.session.student_view_unlocked %}
+                        <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+                            <a href="{% url 'admin_dashboard' %}" style="display: inline-block; padding: 0.6rem 1.25rem; background: #0ea5e9; color: white; border-radius: 0.75rem; text-decoration: none; font-weight: 700; font-size: 0.9rem; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);">← Return to Admin Panel</a>
+                        </div>
                     {% endif %}
 
                     <!-- Stats Grid for Sessions and Courses -->
