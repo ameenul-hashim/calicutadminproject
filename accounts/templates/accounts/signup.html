@@ -61,6 +61,7 @@
 
         <form method="POST" enctype="multipart/form-data" id="signupForm">
             {% csrf_token %}
+            <input type="hidden" name="is_mobile" id="is_mobile" value="false">
             <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
                 <div class="input-group">
                     <label for="username" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Username</label>
@@ -156,7 +157,7 @@
                 }
 
                 if (!isPDF && !isTouch) {
-                    alert("Only PDF files are allowed on desktop.");
+                    alert("On desktop, only PDF files are allowed for verification.");
                     input.value = "";
                     resetUploadUI(display, label);
                     return;
@@ -203,10 +204,18 @@
         });
 
         window.addEventListener('load', function() {
-            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 1024;
             const fileInput = document.getElementById('proof_file');
+            const helpText = document.getElementById('upload-help-text');
+            const mobileInput = document.getElementById('is_mobile');
+
             if (isTouch) {
+                mobileInput.value = "true";
                 fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif');
+                helpText.innerText = "Upload a clear photo of your verification document";
+            } else {
+                fileInput.setAttribute('accept', 'application/pdf');
+                helpText.innerText = "PDF Document Only (Max 2MB)";
             }
         });
     </script>

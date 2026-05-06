@@ -1,118 +1,33 @@
 import cloudinary.uploader
-import logging
-from django.db import transaction
-from .supabase_storage import (
-    upload_pdf as supabase_upload, 
-    delete_pdf as supabase_delete,
-    validate_pdf as supabase_validate
-)
+import cloudinary.api
+from django.conf import settings
 
-logger = logging.getLogger(__name__)
-
-def validate_pdf(file):
+def upload_temp_image(image_file):
     """
-    Validates that a file is actually a PDF using the centralized validator.
+    Uploads an image to Cloudinary temporarily.
+    Returns the secure URL and public_id if successful, or (None, None) if failed.
     """
     try:
-        content = file.read()
-        file.seek(0)
-        supabase_validate(content, getattr(file, 'name', None))
-    except Exception as e:
-        raise ValueError(str(e))
-
-def update_image(instance, new_image_file, folder="edustream/profiles"):
-    """
-    Safely updates an image in Cloudinary and the database model.
-    Ensures old images are deleted to save space.
-    """
-    try:
-        # STEP 1: Delete old image if it exists to ensure clean replacement
-        old_public_id = getattr(instance, 'image_public_id', None)
-        if old_public_id:
-            try:
-                cloudinary.uploader.destroy(old_public_id)
-                logger.info(f"Deleted old image: {old_public_id}")
-            except Exception as e:
-                logger.warning(f"Failed to delete old Cloudinary image {old_public_id}: {e}")
-
-        # STEP 2: Upload new image
-        upload_result = cloudinary.uploader.upload(
-            new_image_file,
-            folder=folder,
+        # Use a temporary folder in Cloudinary
+        result = cloudinary.uploader.upload(
+            image_file,
+            folder="temp_verifications/",
             resource_type="image"
         )
-
-        new_url = upload_result.get("secure_url")
-        new_public_id = upload_result.get("public_id")
-
-        if not new_url or not new_public_id:
-            logger.error("Cloudinary upload failed: Missing URL or public_id")
-            return False
-
-        # STEP 3: Update model fields
-        instance.image = new_url
-        instance.image_public_id = new_public_id
-        
-        # Clear legacy local fields to prevent confusion/local storage usage
-        if hasattr(instance, 'profile_photo'):
-            instance.profile_photo = None
-        if hasattr(instance, 'thumbnail'):
-            instance.thumbnail = None
-            
-        instance.save()
-        logger.info(f"Successfully updated image for {instance} to {new_url}")
-        return True
-
+        return result.get('secure_url'), result.get('public_id')
     except Exception as e:
-        logger.error(f"Error in update_image: {e}")
-        return False
+        print(f"❌ Cloudinary Temp Upload Error: {str(e)}")
+        return None, None
 
-    except Exception as e:
-        logger.error(f"Error in update_image: {e}")
-        return False
-
-def delete_image(instance):
+def delete_temp_image(public_id):
     """
-    ENFORCED CLEANUP: Permanently deletes user images from Cloudinary to free up space
-    and ensure no leftover data exists for rejected/deleted users.
+    Deletes an image from Cloudinary by its public_id.
     """
-    public_id = getattr(instance, 'image_public_id', None)
-    if public_id:
-        try:
+    try:
+        if public_id:
             cloudinary.uploader.destroy(public_id)
-            logger.info(f"Successfully purged image: {public_id}")
-        except Exception as e:
-            logger.warning(f"Failed to purge Cloudinary image {public_id}: {e}")
-
-def approve_user(instance, admin_user):
-    """
-    Approves a user account.
-    """
-    instance.status = "ACTIVE"
-    instance.save()
-    logger.info(f"ADMIN {admin_user.username} APPROVED USER {instance.id}")
-
-def reject_user_and_clean(instance, admin_user):
-    """
-    REJECT-AND-CLEAN FLOW: Permanently purges user data.
-    Ensures:
-    1. Supabase PDF is deleted
-    2. Cloudinary image is deleted
-    3. User record is deleted from DB (triggers CASCADE)
-    """
-    # 1. Purge Supabase PDF
-    pdf_path = getattr(instance, 'pdf_path', None)
-    if pdf_path:
-        try:
-            supabase_delete(pdf_path)
-            logger.info(f"Purged Supabase PDF: {pdf_path}")
-        except Exception as e:
-            logger.error(f"Failed to purge Supabase PDF {pdf_path}: {e}")
-
-    # 2. Purge Cloudinary Image
-    delete_image(instance)
-
-    # 3. Permanent DB Purge
-    username = instance.username
-    instance.delete()
-    logger.warning(f"ADMIN {admin_user.username} PURGED USER {username} (Re-signup now possible)")
+            print(f"🗑️ Deleted temp image: {public_id}")
+            return True
+    except Exception as e:
+        print(f"❌ Cloudinary Delete Error: {str(e)}")
+    return False

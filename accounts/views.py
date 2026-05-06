@@ -56,104 +56,100 @@ def signup_view(request):
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
+        is_mobile = request.POST.get('is_mobile') == 'true'
 
-        # 1. Extensive Debug Logging for Mobile Failures
-        print("\n--- 📝 STUDENT SIGNUP ATTEMPT ---")
-        print(f"👤 User: {username} | Email: {email}")
+        # 1. Extensive Debug Logging
+        print("\n--- 📝 STUDENT SIGNUP (HYBRID FLOW) ---")
+        print(f"👤 User: {username} | Mobile Device: {is_mobile}")
         if proof_file:
-            print(f"📄 FILENAME: {proof_file.name}")
-            print(f"📊 SIZE: {proof_file.size} bytes")
-            print(f"🧪 MIME: {proof_file.content_type}")
+            print(f"📄 FILE: {proof_file.name} | SIZE: {proof_file.size} bytes | TYPE: {proof_file.content_type}")
         else:
-            print("❌ NO FILE ATTACHED")
+            print("❌ NO FILE")
 
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields including contact number and verification document are required.")
+            messages.error(request, "All fields are required.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # 2. Phone Validation (10 digits)
+        # 2. Validation
         phone_digits = ''.join(filter(str.isdigit, phone_number))
         if len(phone_digits) != 10:
-            messages.error(request, "Contact number must be exactly 10 digits.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            messages.error(request, "Contact number must be 10 digits.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # 3. Robust File Support (Extension & Content Fallback)
         allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
         file_ext = os.path.splitext(proof_file.name.lower())[1]
-        
         if file_ext not in allowed_exts:
-            messages.error(request, "Unsupported file format. Please upload PDF or JPG/PNG/WebP.")
+            messages.error(request, "Unsupported file format.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Size Limit check (Increased for mobile camera files to 5MB, we resize later)
-        if proof_file.size > 5 * 1024 * 1024:
-            messages.error(request, "File size too large. Please upload a document under 5MB.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-        # 4. Existing Validations (Email, Username, Password)
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        if not re.match(email_regex, email):
-            messages.error(request, "Invalid email format.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
+        # 3. Existing User Validations (Username, Email, Phone)
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "Username taken.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-        
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email already registered.")
+            messages.error(request, "Email registered.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
         if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "Phone number already in use.")
+            messages.error(request, "Phone number in use.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Password must be 8+ chars with uppercase, lowercase, and special char.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-        # 5. Atomic User Creation & Processing
+        # 4. Hybrid Flow Execution
+        temp_public_id = None
         try:
+            from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
+            from accounts.utils.supabase_storage import upload_user_proof
+            
+            final_proof = proof_file
+            
+            # Mobile Flow: Cloudinary Temp -> PDF -> Supabase
+            if is_mobile and file_ext != '.pdf':
+                print("☁️ Uploading to Cloudinary (Mobile Temp Flow)...")
+                temp_url, temp_public_id = upload_temp_image(proof_file)
+                if not temp_url:
+                    raise Exception("Cloudinary temporary upload failed.")
+                
+                print(f"🔄 Converting image from Cloudinary to PDF...")
+                final_proof = convert_image_to_pdf(temp_url)
+                if not final_proof:
+                    raise Exception("PDF conversion from Cloudinary failed.")
+            
+            # Desktop/Fallback Flow: Direct conversion if needed
+            elif file_ext != '.pdf':
+                print("💻 Converting image to PDF (Direct Flow)...")
+                final_proof = convert_image_to_pdf(proof_file)
+                if not final_proof:
+                    raise Exception("Direct PDF conversion failed.")
+
+            # Create User
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # 6. Hardened Document Pipeline
-            from accounts.utils.supabase_storage import upload_user_proof
-            final_proof = proof_file
-            
-            if file_ext != '.pdf':
-                print(f"🔄 Converting {file_ext} image to PDF...")
-                converted = convert_image_to_pdf(proof_file)
-                if converted:
-                    final_proof = converted
-                    print(f"✅ Conversion Success: {final_proof.name}")
-                else:
-                    user.delete()
-                    messages.error(request, "Failed to process the image. Please try a different format or a PDF.")
-                    return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-            # Upload to Supabase
+            # Final Upload to Supabase
             if not upload_user_proof(user, final_proof):
                 user.delete()
-                messages.error(request, "Secure upload failed. Please check your document and try again.")
-                return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+                raise Exception("Supabase upload failed.")
 
-            messages.success(request, "✅ Registration successful! Admin approval needed.")
-            notify_admins(f"New student registration: {username}. Approval needed.")
+            # Cleanup Cloudinary
+            if temp_public_id:
+                delete_temp_image(temp_public_id)
+
+            messages.success(request, "✅ Registration successful! Admin approval pending.")
+            notify_admins(f"New student: {username}.")
             return redirect('login')
 
         except Exception as e:
+            if temp_public_id: delete_temp_image(temp_public_id)
             import traceback
-            print(f"❌ SIGNUP EXCEPTION: {str(e)}")
+            print(f"❌ SIGNUP ERROR: {str(e)}")
             print(traceback.format_exc())
-            messages.error(request, "A server error occurred during registration. Please try again.")
+            messages.error(request, f"Registration failed: {str(e)}")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
     return render(request, 'accounts/signup.html')
@@ -172,101 +168,100 @@ def teacher_signup_view(request):
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
+        is_mobile = request.POST.get('is_mobile') == 'true'
 
         # 1. Extensive Debug Logging
-        print("\n--- 📝 TEACHER SIGNUP ATTEMPT ---")
-        print(f"👨‍🏫 Teacher: {username} | Email: {email}")
+        print("\n--- 📝 TEACHER SIGNUP (HYBRID FLOW) ---")
+        print(f"👨‍🏫 Teacher: {username} | Mobile: {is_mobile}")
         if proof_file:
-            print(f"📄 FILENAME: {proof_file.name}")
-            print(f"📊 SIZE: {proof_file.size} bytes")
-            print(f"🧪 MIME: {proof_file.content_type}")
+            print(f"📄 FILE: {proof_file.name} | SIZE: {proof_file.size} bytes")
         else:
-            print("❌ NO FILE ATTACHED")
+            print("❌ NO FILE")
 
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields are required.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # 2. Phone Validation
+        # 2. Validation
         phone_digits = ''.join(filter(str.isdigit, phone_number))
         if len(phone_digits) != 10:
-            messages.error(request, "Contact number must be exactly 10 digits.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            messages.error(request, "Contact number must be 10 digits.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # 3. Support broad image formats for mobile
         allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
         file_ext = os.path.splitext(proof_file.name.lower())[1]
-        
         if file_ext not in allowed_exts:
-            messages.error(request, "Unsupported file format. Please upload PDF or image.")
+            messages.error(request, "Unsupported file format.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if proof_file.size > 5 * 1024 * 1024:
-            messages.error(request, "Document size exceeds 5MB.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-        # 4. Standard Validations
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        if not re.match(email_regex, email):
-            messages.error(request, "Invalid email format.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
+        # 3. Unique Checks
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "Username taken.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-        
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email already registered.")
+            messages.error(request, "Email registered.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
         if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "Phone number in use.")
+            messages.error(request, "Phone in use.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Weak password. Requires 8+ chars with upper/lower/special.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-        # 5. Creation & Conversion
+        # 4. Hybrid Flow execution
+        temp_public_id = None
         try:
+            from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
+            from accounts.utils.supabase_storage import upload_user_proof
+            
+            final_proof = proof_file
+
+            # Mobile Flow: Cloudinary Bridge
+            if is_mobile and file_ext != '.pdf':
+                print("☁️ Uploading to Cloudinary (Mobile Temp Flow)...")
+                temp_url, temp_public_id = upload_temp_image(proof_file)
+                if not temp_url:
+                    raise Exception("Cloudinary temp upload failed.")
+                
+                print(f"🔄 Converting image from Cloudinary to PDF...")
+                final_proof = convert_image_to_pdf(temp_url)
+                if not final_proof:
+                    raise Exception("PDF conversion failed.")
+
+            # Direct Flow (Desktop or PDF)
+            elif file_ext != '.pdf':
+                print("💻 Converting image to PDF (Direct Flow)...")
+                final_proof = convert_image_to_pdf(proof_file)
+                if not final_proof:
+                    raise Exception("Direct conversion failed.")
+
+            # Create User
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
             )
 
-            from accounts.utils.supabase_storage import upload_user_proof
-            final_proof = proof_file
-            
-            if file_ext != '.pdf':
-                print(f"🔄 Converting teacher proof {file_ext} to PDF...")
-                converted = convert_image_to_pdf(proof_file)
-                if converted:
-                    final_proof = converted
-                    print(f"✅ Conversion Success: {final_proof.name}")
-                else:
-                    user.delete()
-                    messages.error(request, "Image processing failed. Try a different photo or a PDF.")
-                    return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
+            # Final Save
             if not upload_user_proof(user, final_proof):
                 user.delete()
-                messages.error(request, "Secure document upload failed.")
-                return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+                raise Exception("Supabase storage failure.")
+
+            # Cleanup
+            if temp_public_id:
+                delete_temp_image(temp_public_id)
 
             messages.success(request, "✅ Teacher registration successful! Admin review pending.")
-            notify_admins(f"New teacher registration: {username}. Approval needed.")
+            notify_admins(f"New teacher: {username}.")
             return redirect('teacher_login')
 
         except Exception as e:
+            if temp_public_id: delete_temp_image(temp_public_id)
             import traceback
-            print(f"❌ TEACHER SIGNUP EXCEPTION: {str(e)}")
+            print(f"❌ TEACHER SIGNUP ERROR: {str(e)}")
             print(traceback.format_exc())
-            messages.error(request, "A server error occurred. Please try again.")
+            messages.error(request, f"Registration failed: {str(e)}")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
     return render(request, 'accounts/teacher_signup.html')
