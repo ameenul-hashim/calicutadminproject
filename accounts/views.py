@@ -513,6 +513,7 @@ def teacher_dashboard(request):
         'published_courses': courses.filter(status='PUBLISHED').count(),
         'pending_courses': courses.filter(Q(status='PENDING') | Q(pending_lessons__gt=0)).distinct().count(),
         'total_students': total_students,
+        'pending_deletions': DeletionRequest.objects.filter(teacher=request.user, status='PENDING').count(),
         'recent_courses': recent_courses,
         'courses': page_obj,
         'page_obj': page_obj,
