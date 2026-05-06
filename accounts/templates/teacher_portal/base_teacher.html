@@ -25,7 +25,10 @@
             --teacher-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
         }
         body { font-family: 'Inter', sans-serif; background: #e0f7fa; margin: 0; }
-        .dashboard-container { display: flex; min-height: 100vh; }
+        .dashboard-container { display: flex; min-height: 100vh; background: #e0f7fa; }
+        @media (max-width: 1024px) {
+            .dashboard-container { min-height: auto; }
+        }
         
         .sidebar {
             width: var(--sidebar-width);
@@ -75,8 +78,8 @@
                 box-shadow: 10px 0 30px rgba(0,0,0,0.1); 
             }
             .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; padding-top: 1rem !important; width: 100%; max-width: 100vw; }
-            header { padding-top: 4.5rem !important; margin-bottom: 1rem !important; }
+            .main-content { margin-left: 0 !important; padding: 1rem !important; padding-top: 5.5rem !important; width: 100%; max-width: 100vw; }
+            header { padding-top: 0 !important; margin-bottom: 1rem !important; }
             .mobile-controls { display: block !important; }
             .notification-wrapper { display: none !important; }
             
@@ -224,7 +227,6 @@
                         <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
                             🔔
                             <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_teacher_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_teacher_notifs }}</span>
-                        </div>
                         </div>
                     </div>
                     
