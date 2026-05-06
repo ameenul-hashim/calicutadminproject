@@ -13,6 +13,7 @@ from django.conf import settings
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count, Sum, Q
+from .utils.pdf_helpers import convert_image_to_pdf
 
 def limit_notifications(user):
     """Limit notifications: 10 for Teachers, 50 for Admins."""
@@ -70,9 +71,10 @@ def signup_view(request):
             messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # PDF format validation
-        if not proof_file.name.lower().endswith('.pdf'):
-            messages.error(request, "Only PDF format is allowed for verification documents.")
+        # File format validation (Relaxed for mobile fallback)
+        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
+        if not any(proof_file.name.lower().endswith(ext) for ext in allowed_extensions):
+            messages.error(request, "Only PDF or Image (JPG, PNG) format is allowed for verification documents.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         if proof_file.size > 200 * 1024:
@@ -126,9 +128,21 @@ def signup_view(request):
             user_type='STUDENT',
         )
 
-        # Upload verification document
+        # Upload verification document (Convert image to PDF if necessary)
         from accounts.utils.supabase_storage import upload_user_proof
-        if not upload_user_proof(user, proof_file):
+        
+        final_proof = proof_file
+        if not proof_file.name.lower().endswith('.pdf'):
+            print(f"🔄 Converting image {proof_file.name} to PDF...")
+            converted = convert_image_to_pdf(proof_file)
+            if converted:
+                final_proof = converted
+            else:
+                user.delete()
+                messages.error(request, "Failed to process your image. Please try uploading a PDF instead.")
+                return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
+        if not upload_user_proof(user, final_proof):
             user.delete() # Rollback user creation
             messages.error(request, "Failed to upload your document. Please check your connection.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
@@ -163,9 +177,10 @@ def teacher_signup_view(request):
             messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # PDF format validation
-        if not proof_file.name.lower().endswith('.pdf'):
-            messages.error(request, "Only PDF format is allowed for verification documents.")
+        # File format validation (Relaxed for mobile fallback)
+        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
+        if not any(proof_file.name.lower().endswith(ext) for ext in allowed_extensions):
+            messages.error(request, "Only PDF or Image (JPG, PNG) format is allowed for verification documents.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         if proof_file.size > 200 * 1024:
@@ -212,9 +227,21 @@ def teacher_signup_view(request):
             user_type='TEACHER',
         )
 
-        # Upload verification document
+        # Upload verification document (Convert image to PDF if necessary)
         from accounts.utils.supabase_storage import upload_user_proof
-        if not upload_user_proof(user, proof_file):
+        
+        final_proof = proof_file
+        if not proof_file.name.lower().endswith('.pdf'):
+            print(f"🔄 Converting teacher image {proof_file.name} to PDF...")
+            converted = convert_image_to_pdf(proof_file)
+            if converted:
+                final_proof = converted
+            else:
+                user.delete()
+                messages.error(request, "Failed to process your image. Please try uploading a PDF instead.")
+                return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
+        if not upload_user_proof(user, final_proof):
             user.delete()
             messages.error(request, "Failed to upload your document. Please check your connection.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
