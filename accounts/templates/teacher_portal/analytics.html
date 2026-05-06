@@ -1,9 +1,9 @@
-{% extends 'teacher_portal/dashboard.html' %}
+{% extends 'teacher_portal/base_teacher.html' %}
 {% load static %}
 
-{% block title %}Teacher Analytics | Admin{% endblock %}
+{% block title %}Teacher Analytics | EduStream{% endblock %}
 
-{% block main_content %}
+{% block content %}
 <style>
     /* Premium Dashboard Styles */
     .dashboard-layout {
@@ -84,30 +84,16 @@
     }
 
         /* RESPONSIVE INJECTIONS */
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
-            /* Forms */
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
+        @media (max-width: 1023px) {
+            .premium-stats-grid { grid-template-columns: 1fr !important; }
+            .premium-charts-grid { grid-template-columns: 1fr !important; }
+            .analytics-container { padding: 1rem !important; margin-top: 4rem !important; }
+            .premium-panel { padding: 1rem !important; }
+            .premium-stat-card .value { font-size: 1.5rem !important; }
+            canvas { max-width: 100% !important; }
         }
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
-        /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
-        /* Django Messages Toast */
-        .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
+        @media (min-width: 768px) and (max-width: 1023px) {
+            .premium-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         </style>
 
