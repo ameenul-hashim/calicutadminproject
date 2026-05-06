@@ -109,9 +109,16 @@ def signup_view(request):
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # Mobile Flow: Direct Image Upload (Treat like Profile Photo)
-            if is_mobile and file_ext != '.pdf':
-                print("☁️ Uploading mobile verification image directly to Cloudinary...")
+            # HYBRID UPLOAD LOGIC: 
+            # - PDFs go to Supabase
+            # - Images go to Cloudinary (optimized)
+            if file_ext == '.pdf':
+                print("📄 Uploading PDF directly to Supabase...")
+                if not upload_user_proof(user, proof_file):
+                    user.delete()
+                    raise Exception("Supabase storage failure.")
+            else:
+                print(f"☁️ Uploading verification image ({file_ext}) to Cloudinary...")
                 import cloudinary.uploader
                 import uuid
                 unique_id = f"proof_{uuid.uuid4()}"
@@ -119,27 +126,25 @@ def signup_view(request):
                     proof_file,
                     public_id=unique_id,
                     folder="edustream/proofs",
-                    resource_type="image"
+                    resource_type="image",
+                    quality="auto",
+                    fetch_format="auto"
                 )
                 user.pdf_url = result.get('secure_url')
                 user.pdf_public_id = result.get('public_id')
                 user.save(update_fields=['pdf_url', 'pdf_public_id'])
-            else:
-                # Desktop/PDF Flow: Direct Supabase Upload
-                print("📄 Uploading PDF directly to Supabase...")
-                if not upload_user_proof(user, proof_file):
-                    raise Exception("Supabase upload failed.")
 
             messages.success(request, "✅ Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
             return redirect('login')
 
         except Exception as e:
-            if temp_public_id: delete_temp_image(temp_public_id)
             import traceback
             print(f"❌ SIGNUP ERROR: {str(e)}")
             print(traceback.format_exc())
+            if 'user' in locals(): user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
     return render(request, 'accounts/signup.html')
@@ -210,9 +215,14 @@ def teacher_signup_view(request):
                 is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
             )
 
-            # Mobile Flow: Direct Image Upload (Treat like Profile Photo)
-            if is_mobile and file_ext != '.pdf':
-                print("☁️ Uploading mobile verification image directly to Cloudinary...")
+            # HYBRID UPLOAD LOGIC
+            if file_ext == '.pdf':
+                print("📄 Uploading PDF directly to Supabase...")
+                if not upload_user_proof(user, proof_file):
+                    user.delete()
+                    raise Exception("Supabase storage failure.")
+            else:
+                print(f"☁️ Uploading teacher verification image ({file_ext}) to Cloudinary...")
                 import cloudinary.uploader
                 import uuid
                 unique_id = f"proof_teacher_{uuid.uuid4()}"
@@ -220,27 +230,23 @@ def teacher_signup_view(request):
                     proof_file,
                     public_id=unique_id,
                     folder="edustream/proofs",
-                    resource_type="image"
+                    resource_type="image",
+                    quality="auto",
+                    fetch_format="auto"
                 )
                 user.pdf_url = result.get('secure_url')
                 user.pdf_public_id = result.get('public_id')
                 user.save(update_fields=['pdf_url', 'pdf_public_id'])
-            else:
-                # Desktop/PDF Flow: Direct Supabase Upload
-                print("📄 Uploading PDF directly to Supabase...")
-                if not upload_user_proof(user, proof_file):
-                    user.delete()
-                    raise Exception("Supabase storage failure.")
 
             messages.success(request, "✅ Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
             return redirect('teacher_login')
 
         except Exception as e:
-            if temp_public_id: delete_temp_image(temp_public_id)
             import traceback
             print(f"❌ TEACHER SIGNUP ERROR: {str(e)}")
             print(traceback.format_exc())
+            if 'user' in locals(): user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 

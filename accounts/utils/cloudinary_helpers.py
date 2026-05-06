@@ -61,33 +61,59 @@ def update_image(instance, image_file, folder="edustream/uploads"):
     """
     Uploads a new image and updates the model instance.
     Deletes the old image from Cloudinary if it exists.
+    Robust for mobile uploads (large files, HEIC format).
     """
     try:
+        if not image_file:
+            print(f"⚠️ No image file provided for {instance}")
+            return False
+
         # 1. Cleanup Old Image first
         if hasattr(instance, 'image_public_id') and instance.image_public_id:
-            cloudinary.uploader.destroy(instance.image_public_id)
-            print(f"🗑️ Cleaned up old image: {instance.image_public_id}")
+            try:
+                cloudinary.uploader.destroy(instance.image_public_id)
+                print(f"🗑️ Cleaned up old image: {instance.image_public_id}")
+            except Exception as cleanup_err:
+                print(f"⚠️ Non-critical cleanup error: {str(cleanup_err)}")
 
-        # 2. Upload New Image
+        # 2. Upload New Image with transformations for optimization
         import uuid
         unique_id = f"img_{uuid.uuid4()}"
         
+        print(f"☁️ Uploading image to Cloudinary (Folder: {folder})...")
         result = cloudinary.uploader.upload(
             image_file,
             public_id=unique_id,
             folder=folder,
-            resource_type="image"
+            resource_type="image",
+            # Objective: Optimize for mobile/web delivery
+            quality="auto",
+            fetch_format="auto"
         )
         
         # 3. Update Instance
-        instance.image = result.get('secure_url')
-        instance.image_public_id = result.get('public_id')
-        instance.save()
+        secure_url = result.get('secure_url')
+        public_id = result.get('public_id')
         
-        print(f"✅ Updated Image for {instance}: {instance.image}")
-        return True
+        if secure_url and public_id:
+            instance.image = secure_url
+            instance.image_public_id = public_id
+            
+            # Use update_fields to be precise and avoid race conditions if possible
+            instance.save(update_fields=['image', 'image_public_id'])
+            
+            print(f"✅ Successfully updated Image for {instance}")
+            print(f"🔗 URL: {instance.image}")
+            return True
+        else:
+            print(f"❌ Cloudinary returned empty result for {instance}")
+            return False
+
     except Exception as e:
+        import traceback
         print(f"❌ Cloudinary Update Error: {str(e)}")
+        print(traceback.format_exc())
+        return False
         return False
 
 def approve_user(user, approved_by=None):
