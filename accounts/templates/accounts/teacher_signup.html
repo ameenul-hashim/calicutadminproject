@@ -94,7 +94,7 @@
                     <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf" required style="display: none;" onchange="handleFileSelection(this)">
                 </div>
                 
-                <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.5rem;">
+                <p id="upload-help-text" style="font-size:0.75rem; color:#94a3b8; margin-top:0.5rem;">
                     Upload qualification proof (PDF, Max 200KB). Selected file must be a PDF.
                 </p>
             </div>
@@ -142,24 +142,31 @@
             const display = document.getElementById('file-name-display');
             const label = document.getElementById('upload-label');
             const file = input.files[0];
+            const isMobile = window.innerWidth <= 1024;
 
             if (file) {
-                // Validation
                 const fileName = file.name.toLowerCase();
-                if (!fileName.endsWith('.pdf')) {
-                    showLocalError("Only PDF files are allowed.");
-                    input.value = "";
-                    display.innerText = "Click to Select PDF";
-                    label.style.borderColor = "#cbd5e1";
-                    label.style.background = "#f8fafc";
-                    return;
+                const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp'];
+                const isImage = allowedImageExts.some(ext => fileName.endsWith(ext));
+                const isPDF = fileName.endsWith('.pdf');
+
+                // Validation Logic
+                if (!isPDF) {
+                    if (isMobile && isImage) {
+                        // Allow image on mobile
+                        console.log("📱 Mobile image detected, will be converted to PDF on server.");
+                    } else {
+                        showLocalError(isMobile ? "Please upload a PDF or a clear image (JPG/PNG)." : "Only PDF files are allowed on desktop.");
+                        input.value = "";
+                        resetUploadUI(display, label);
+                        return;
+                    }
                 }
+
                 if (file.size > 200 * 1024) {
                     showLocalError("File size must be below 200 KB.");
                     input.value = "";
-                    display.innerText = "Click to Select PDF";
-                    label.style.borderColor = "#cbd5e1";
-                    label.style.background = "#f8fafc";
+                    resetUploadUI(display, label);
                     return;
                 }
 
@@ -168,8 +175,15 @@
                 label.style.borderColor = "#10b981";
                 label.style.background = "#f0fdf4";
                 label.style.color = "#166534";
-                console.log("📄 Teacher PDF selected:", file.name);
+                console.log("📄 Teacher Document selected:", file.name);
             }
+        }
+
+        function resetUploadUI(display, label) {
+            display.innerText = "Click to Select PDF";
+            label.style.borderColor = "#cbd5e1";
+            label.style.background = "#f8fafc";
+            label.style.color = "#475569";
         }
 
         // Custom Error Display for Mobile
@@ -214,6 +228,17 @@
 
         // Initialize state on load
         window.addEventListener('load', function() {
+            const isMobile = window.innerWidth <= 1024;
+            const fileInput = document.getElementById('proof_file');
+            const helpText = document.getElementById('upload-help-text');
+            const display = document.getElementById('file-name-display');
+
+            if (isMobile) {
+                fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp');
+                helpText.innerHTML = "Upload PDF or a clear image of your qualification document (JPG, PNG, WebP). Max 200KB.";
+                display.innerText = "Click to Select PDF or Image";
+                console.log("📱 Mobile device detected: Image-to-PDF fallback active for teachers.");
+            }
             console.log("🚀 Teacher Signup ready. Validations active.");
         });
 
