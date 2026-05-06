@@ -89,3 +89,61 @@ def update_image(instance, image_file, folder="edustream/uploads"):
     except Exception as e:
         print(f"❌ Cloudinary Update Error: {str(e)}")
         return False
+
+def approve_user(user, approved_by=None):
+    """
+    Sets user status to ACTIVE and activates them.
+    Called by the admin accept_user view.
+    """
+    try:
+        user.status = 'ACTIVE'
+        user.is_active = True
+        if approved_by:
+            user.approved_by = approved_by
+        from django.utils import timezone
+        user.approved_at = timezone.now()
+        user.save()
+        print(f"✅ User {user.username} approved.")
+        return True
+    except Exception as e:
+        print(f"❌ approve_user Error: {str(e)}")
+        return False
+
+def reject_user_and_clean(user, rejected_by=None):
+    """
+    Permanently deletes a rejected user and cleans up their Cloudinary/Supabase files.
+    Called by the admin decline_user view.
+    """
+    try:
+        # 1. Delete Cloudinary images (profile photo + proof image)
+        if hasattr(user, 'image_public_id') and user.image_public_id:
+            try:
+                cloudinary.uploader.destroy(user.image_public_id)
+                print(f"🗑️ Deleted Cloudinary image: {user.image_public_id}")
+            except Exception as e:
+                print(f"⚠️ Could not delete Cloudinary image: {e}")
+
+        if hasattr(user, 'pdf_public_id') and user.pdf_public_id:
+            try:
+                cloudinary.uploader.destroy(user.pdf_public_id, resource_type="image")
+                print(f"🗑️ Deleted Cloudinary proof: {user.pdf_public_id}")
+            except Exception as e:
+                print(f"⚠️ Could not delete Cloudinary proof image: {e}")
+
+        # 2. Delete Supabase PDF if exists
+        if hasattr(user, 'pdf_path') and user.pdf_path:
+            try:
+                from accounts.utils.supabase_storage import delete_pdf
+                delete_pdf(user.pdf_path)
+                print(f"🗑️ Deleted Supabase PDF: {user.pdf_path}")
+            except Exception as e:
+                print(f"⚠️ Could not delete Supabase PDF: {e}")
+
+        # 3. Permanently delete user record
+        username = user.username
+        user.delete()
+        print(f"✅ User {username} permanently deleted.")
+        return True
+    except Exception as e:
+        print(f"❌ reject_user_and_clean Error: {str(e)}")
+        return False
