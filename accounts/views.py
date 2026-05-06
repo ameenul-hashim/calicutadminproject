@@ -675,9 +675,10 @@ def edit_course(request, course_uid):
         if course.status == 'REJECTED':
             course.rejection_reason = ""
             
-        # Any edit should reset the course to PENDING if it was already PUBLISHED or REJECTED
-        course.status = 'PENDING'
-        course.is_approved = False
+        # Only reset course status if it was not already PUBLISHED
+        if course.status != 'PUBLISHED':
+            course.status = 'PENDING'
+            course.is_approved = False
         course.save()
         messages.success(request, f"Course '{course.title}' updated successfully!")
         return redirect('my_courses')
@@ -718,14 +719,11 @@ def add_lesson(request, course_uid):
             is_approved=False,
         )
 
-        # If course was already PUBLISHED, uploading new content must lock it
-        # back to PENDING until admin re-reviews the new lesson
+        # If course was already PUBLISHED, we keep it PUBLISHED.
+        # Only the NEW lesson will be PENDING (set above), making it invisible to students.
         if course.status == 'PUBLISHED' or course.is_approved:
-            course.status = 'PENDING'
-            course.is_approved = False
-            course.save(update_fields=['status', 'is_approved'])
-            messages.warning(request, f"Lesson '{title}' added. ⚠️ Course is now PENDING admin re-approval because new content was uploaded.")
-            notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'. Course locked for re-review.")
+            messages.success(request, f"Lesson '{title}' added! It will be visible to students once approved by admin. The rest of your course remains live.")
+            notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
         else:
             messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
             notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
