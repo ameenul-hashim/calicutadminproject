@@ -56,3 +56,36 @@ def delete_image(instance):
     except Exception as e:
         print(f"❌ Cloudinary Cleanup Error: {str(e)}")
         return False
+
+def update_image(instance, image_file, folder="edustream/uploads"):
+    """
+    Uploads a new image and updates the model instance.
+    Deletes the old image from Cloudinary if it exists.
+    """
+    try:
+        # 1. Cleanup Old Image first
+        if hasattr(instance, 'image_public_id') and instance.image_public_id:
+            cloudinary.uploader.destroy(instance.image_public_id)
+            print(f"🗑️ Cleaned up old image: {instance.image_public_id}")
+
+        # 2. Upload New Image
+        import uuid
+        unique_id = f"img_{uuid.uuid4()}"
+        
+        result = cloudinary.uploader.upload(
+            image_file,
+            public_id=unique_id,
+            folder=folder,
+            resource_type="image"
+        )
+        
+        # 3. Update Instance
+        instance.image = result.get('secure_url')
+        instance.image_public_id = result.get('public_id')
+        instance.save()
+        
+        print(f"✅ Updated Image for {instance}: {instance.image}")
+        return True
+    except Exception as e:
+        print(f"❌ Cloudinary Update Error: {str(e)}")
+        return False
