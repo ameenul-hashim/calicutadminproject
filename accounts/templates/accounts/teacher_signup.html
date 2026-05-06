@@ -78,32 +78,24 @@
             <div class="input-group" id="proof-upload-wrapper">
                 <!-- DESKTOP: Standard PDF upload (shown on lg screens) -->
                 <div id="desktop-upload">
-                    <label for="proof_file">Teacher Proof (PDF)</label>
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,.jpg,.jpeg,.png" required style="width:100%;">
+                    <label for="proof_file">Teacher Proof (PDF Only)</label>
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf" required style="width:100%;">
                     <p style="font-size:0.78rem;color:#94a3b8;margin-top:0.3rem;">Upload your identity/qualification proof PDF. Max 200KB.</p>
                 </div>
                 <!-- MOBILE: Camera / Photo upload (shown on mobile only) -->
                 <div id="mobile-upload" style="display:none;">
                     <label for="proof_file_mobile" style="display:flex;align-items:center;gap:0.5rem;">
-                        📄 Teacher Proof
-                        <span style="font-size:0.78rem;background:#ede9fe;color:#7c3aed;padding:0.15rem 0.5rem;border-radius:1rem;">Mobile Upload</span>
+                        📄 Teacher Proof (PDF Only)
+                        <span style="font-size:0.78rem;background:#ede9fe;color:#7c3aed;padding:0.15rem 0.5rem;border-radius:1rem;">Mobile</span>
                     </label>
                     <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:0.75rem;padding:0.8rem;background:#f5f3ff;border:2px dashed #a78bfa;border-radius:0.75rem;">
-                            <span style="font-size:1.5rem;">📷</span>
+                        <label style="cursor:pointer;display:flex;align-items:center;gap:0.75rem;padding:1rem;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:0.75rem;">
+                            <span style="font-size:1.5rem;">📤</span>
                             <div>
-                                <div style="font-weight:700;color:#7c3aed;font-size:0.9rem;">Take a Photo of Document</div>
-                                <div style="font-size:0.75rem;color:#64748b;">Use camera to capture your certificate/ID</div>
+                                <div style="font-weight:700;color:#334155;font-size:0.9rem;">Upload PDF Document</div>
+                                <div style="font-size:0.75rem;color:#64748b;">PDF only — max 200KB</div>
                             </div>
-                            <input type="file" name="proof_file" id="proof_file_mobile" accept="image/*,.pdf" capture="environment" style="display:none;" onchange="handleMobileUpload(this)">
-                        </label>
-                        <label style="cursor:pointer;display:flex;align-items:center;gap:0.75rem;padding:0.8rem;background:#f8fafc;border:2px dashed #cbd5e1;border-radius:0.75rem;">
-                            <span style="font-size:1.5rem;">🗂️</span>
-                            <div>
-                                <div style="font-weight:700;color:#334155;font-size:0.9rem;">Upload from Files / Gallery</div>
-                                <div style="font-size:0.75rem;color:#64748b;">PDF, JPG, or PNG — max 200KB</div>
-                            </div>
-                            <input type="file" name="proof_file" accept="image/*,.pdf" style="display:none;" onchange="handleMobileUpload(this)">
+                            <input type="file" name="proof_file" id="proof_file_mobile" accept=".pdf" style="display:none;" onchange="handleMobileUpload(this)">
                         </label>
                     </div>
                     <div id="mobile-file-preview" style="display:none;margin-top:0.5rem;padding:0.6rem 1rem;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:0.5rem;color:#166534;font-size:0.85rem;"></div>
@@ -170,9 +162,23 @@
             if (input.files && input.files[0]) {
                 var file = input.files[0];
                 var sizeKB = (file.size / 1024).toFixed(1);
-                var icon = file.type.startsWith('image/') ? '🖼️' : '📄';
+                
+                if (file.type !== 'application/pdf') {
+                    preview.style.display = 'block';
+                    preview.style.background = '#fef2f2';
+                    preview.style.borderColor = '#fecaca';
+                    preview.style.color = '#991b1b';
+                    preview.innerHTML = '⚠️ Invalid format. Please upload a <strong>PDF</strong> file.';
+                    input.value = ''; // Clear the input
+                    return;
+                }
+
                 preview.style.display = 'block';
-                preview.innerHTML = icon + ' <strong>' + file.name + '</strong> (' + sizeKB + ' KB) — ready to upload';
+                preview.style.background = '#f0fdf4';
+                preview.style.borderColor = '#bbf7d0';
+                preview.style.color = '#166534';
+                preview.innerHTML = '📄 <strong>' + file.name + '</strong> (' + sizeKB + ' KB) — ready to upload';
+                
                 if (file.size > 200 * 1024) {
                     preview.style.background = '#fef2f2';
                     preview.style.borderColor = '#fecaca';
