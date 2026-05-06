@@ -97,42 +97,37 @@ def signup_view(request):
             messages.error(request, "Passwords do not match.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # 4. Hybrid Flow Execution
-        temp_public_id = None
+        # 4. Processing File Uploads
         try:
-            from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
             from accounts.utils.supabase_storage import upload_user_proof
             
-            final_proof = proof_file
-            
-            # Mobile Flow: Cloudinary Temp -> PDF -> Supabase
-            if is_mobile and file_ext != '.pdf':
-                print("☁️ Uploading to Cloudinary (Mobile Temp Flow)...")
-                temp_url, temp_public_id = upload_temp_image(proof_file)
-                if not temp_url:
-                    raise Exception("Cloudinary temporary upload failed.")
-                
-                print(f"🔄 Converting image from Cloudinary to PDF...")
-                final_proof = convert_image_to_pdf(temp_url)
-                if not final_proof:
-                    raise Exception("PDF conversion from Cloudinary failed.")
-            
-
-            # Create User
+            # Create User First
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # Final Upload to Supabase
-            if not upload_user_proof(user, final_proof):
-                user.delete()
-                raise Exception("Supabase upload failed.")
-
-            # Cleanup Cloudinary
-            if temp_public_id:
-                delete_temp_image(temp_public_id)
+            # Mobile Flow: Direct Image Upload (Treat like Profile Photo)
+            if is_mobile and file_ext != '.pdf':
+                print("☁️ Uploading mobile verification image directly to Cloudinary...")
+                import cloudinary.uploader
+                import uuid
+                unique_id = f"proof_{uuid.uuid4()}"
+                result = cloudinary.uploader.upload(
+                    proof_file,
+                    public_id=unique_id,
+                    folder="edustream/proofs",
+                    resource_type="image"
+                )
+                user.pdf_url = result.get('secure_url')
+                user.pdf_public_id = result.get('public_id')
+                user.save(update_fields=['pdf_url', 'pdf_public_id'])
+            else:
+                # Desktop/PDF Flow: Direct Supabase Upload
+                print("📄 Uploading PDF directly to Supabase...")
+                if not upload_user_proof(user, proof_file):
+                    raise Exception("Supabase upload failed.")
 
             messages.success(request, "✅ Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
@@ -203,42 +198,38 @@ def teacher_signup_view(request):
             messages.error(request, "Passwords do not match.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # 4. Hybrid Flow execution
-        temp_public_id = None
+        # 4. Processing File Uploads
         try:
-            from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
             from accounts.utils.supabase_storage import upload_user_proof
             
-            final_proof = proof_file
-
-            # Mobile Flow: Cloudinary Bridge
-            if is_mobile and file_ext != '.pdf':
-                print("☁️ Uploading to Cloudinary (Mobile Temp Flow)...")
-                temp_url, temp_public_id = upload_temp_image(proof_file)
-                if not temp_url:
-                    raise Exception("Cloudinary temp upload failed.")
-                
-                print(f"🔄 Converting image from Cloudinary to PDF...")
-                final_proof = convert_image_to_pdf(temp_url)
-                if not final_proof:
-                    raise Exception("PDF conversion failed.")
-
-
-            # Create User
+            # Create User First
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
             )
 
-            # Final Save
-            if not upload_user_proof(user, final_proof):
-                user.delete()
-                raise Exception("Supabase storage failure.")
-
-            # Cleanup
-            if temp_public_id:
-                delete_temp_image(temp_public_id)
+            # Mobile Flow: Direct Image Upload (Treat like Profile Photo)
+            if is_mobile and file_ext != '.pdf':
+                print("☁️ Uploading mobile verification image directly to Cloudinary...")
+                import cloudinary.uploader
+                import uuid
+                unique_id = f"proof_teacher_{uuid.uuid4()}"
+                result = cloudinary.uploader.upload(
+                    proof_file,
+                    public_id=unique_id,
+                    folder="edustream/proofs",
+                    resource_type="image"
+                )
+                user.pdf_url = result.get('secure_url')
+                user.pdf_public_id = result.get('public_id')
+                user.save(update_fields=['pdf_url', 'pdf_public_id'])
+            else:
+                # Desktop/PDF Flow: Direct Supabase Upload
+                print("📄 Uploading PDF directly to Supabase...")
+                if not upload_user_proof(user, proof_file):
+                    user.delete()
+                    raise Exception("Supabase storage failure.")
 
             messages.success(request, "✅ Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
