@@ -71,7 +71,18 @@ class PortalSecurityMiddleware:
             # Prevent non-staff users from accessing ANY admin URL paths
             admin_paths = ['/customadmin/', '/admin/']
             if any(path.startswith(admin_path) for admin_path in admin_paths):
-                if not request.user.is_staff:
+                
+                # 1. Device-level security: Freeze admin access on non-laptop/desktop devices
+                user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+                is_mobile = any(keyword in user_agent for keyword in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'windows phone'])
+                if is_mobile:
+                    if request.user.is_authenticated:
+                        logout(request)
+                    messages.error(request, "Admin panel is strictly restricted to desktop/laptop devices for security.")
+                    return redirect('login')
+
+                # 2. Role-level security: Prevent students and teachers from accessing admin routes
+                if request.user.is_authenticated and not request.user.is_staff:
                     if request.user.user_type == 'TEACHER':
                         return redirect('teacher_dashboard')
                     else:
