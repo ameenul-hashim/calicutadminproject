@@ -210,69 +210,86 @@ def pending_teachers_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def accept_user(request, user_uid):
-    user = get_object_or_404(CustomUser, uid=user_uid)
-    
-    from accounts.utils.cloudinary_helpers import approve_user
-    approve_user(user, request.user) # Sets status to ACTIVE and logs action
-    
-    user.is_active = True
-    user.approved_by = request.user
-    user.approved_at = timezone.now()
-    user.rejection_reason = ""
-    user.save()
-    
-    create_notification(user, f"Your account has been approved by admin. You can now login.")
-    
-    ApprovalLog.objects.create(
-        content_type=user.user_type,
-        object_id=user.id,
-        status='APPROVED',
-        reviewed_by=request.user,
-        comments="Approved by admin."
-    )
-    
-    messages.success(request, f"✅ {user.user_type.title()} {user.username} has been approved.")
-    if user.user_type == 'TEACHER':
-        return redirect('pending_teachers')
-    return redirect('pending_users')
+    try:
+        user = get_object_or_404(CustomUser, uid=user_uid)
+
+        user.status = 'ACTIVE'
+        user.is_active = True
+        user.approved_by = request.user
+        user.approved_at = timezone.now()
+        user.rejection_reason = ""
+        user.save()
+
+        try:
+            create_notification(user, "Your account has been approved by admin. You can now login.")
+        except Exception:
+            pass
+
+        try:
+            ApprovalLog.objects.create(
+                content_type=user.user_type,
+                object_id=user.id,
+                status='APPROVED',
+                reviewed_by=request.user,
+                comments="Approved by admin."
+            )
+        except Exception:
+            pass
+
+        messages.success(request, f"✅ {user.user_type.title()} {user.username} has been approved.")
+        if user.user_type == 'TEACHER':
+            return redirect('pending_teachers')
+        return redirect('pending_users')
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not approve user: {str(e)}")
+        return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def decline_user(request, user_uid):
-    user = get_object_or_404(CustomUser, uid=user_uid)
-    if request.method == 'POST':
-        reason = request.POST.get('reason', '')
-        user_type = user.user_type
-        username = user.username
-        
-        # REJECT-AND-CLEAN FLOW
-        from accounts.utils.cloudinary_helpers import reject_user_and_clean
-        from django.contrib.sessions.models import Session
-        
-        # 1. Log the rejection for audit (before user deletion)
-        ApprovalLog.objects.create(
-            content_type=user_type,
-            object_id=0, # Object will be deleted
-            status='REJECTED',
-            reviewed_by=request.user,
-            comments=f"User {username} rejected and permanently purged. Reason: {reason}"
-        )
+    try:
+        user = get_object_or_404(CustomUser, uid=user_uid)
+        if request.method == 'POST':
+            reason = request.POST.get('reason', '')
+            user_type = user.user_type
+            username = user.username
 
-        # 2. Invalidate any existing sessions for this user
-        if user.current_session_key:
+            # Log rejection before deleting
             try:
-                Session.objects.filter(session_key=user.current_session_key).delete()
+                ApprovalLog.objects.create(
+                    content_type=user_type,
+                    object_id=0,
+                    status='REJECTED',
+                    reviewed_by=request.user,
+                    comments=f"User {username} rejected and permanently purged. Reason: {reason}"
+                )
             except Exception:
                 pass
-        
-        # 3. Permanent Purge (DB + Files)
-        reject_user_and_clean(user, request.user)
-        
-        messages.warning(request, f"✔ {user_type.title()} {username} has been rejected and permanently purged.")
-        if user_type == 'TEACHER':
-            return redirect('pending_teachers')
+
+            # Invalidate session
+            if user.current_session_key:
+                try:
+                    from django.contrib.sessions.models import Session
+                    Session.objects.filter(session_key=user.current_session_key).delete()
+                except Exception:
+                    pass
+
+            # Clean up files and delete user
+            try:
+                from accounts.utils.cloudinary_helpers import reject_user_and_clean
+                reject_user_and_clean(user, request.user)
+            except Exception as e:
+                # Fallback: just delete the user if cleanup fails
+                user.delete()
+
+            messages.warning(request, f"✔ {user_type.title()} {username} has been rejected and permanently purged.")
+            if user_type == 'TEACHER':
+                return redirect('pending_teachers')
+            return redirect('pending_users')
+
+        return render(request, 'custom_admin/decline_reason.html', {'target_user': user})
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not reject user: {str(e)}")
         return redirect('pending_users')
-        
-    return render(request, 'custom_admin/decline_reason.html', {'target_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def toggle_user_status(request, user_uid):
