@@ -6,6 +6,7 @@ from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMe
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
+import os
 from accounts.utils.supabase_storage import upload_pdf
 import random
 from django.core.mail import send_mail
