@@ -22,8 +22,7 @@
             --sidebar-bg: #1e293b;
             --main-bg: #0f172a;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--main-bg); margin: 0; color: white; overflow: hidden; }
-        
+        body { font-family: 'Inter', sans-serif; background: #0f172a; margin: 0; color: white; }
         .player-container { display: flex; height: 100vh; flex-direction: column; }
         
         /* Header */
@@ -121,8 +120,9 @@
         .video-footer h1 { margin: 0 0 0.5rem 0; font-size: 1.5rem; }
         .video-footer p { margin: 0; color: #94a3b8; font-size: 0.95rem; }
 
-        /* Mobile Adjustments */
-        @media (max-width: 1024px) {
+        /* Mobile-Only Course Player Styles (Below 1024px) */
+        @media (max-width: 1023px) {
+            body { overflow-y: auto; }
             .player-content { flex-direction: column; overflow-y: auto; }
             .content-sidebar { 
                 position: fixed;
@@ -144,7 +144,6 @@
             .video-footer h1 { font-size: 1.25rem; }
             .player-header { padding: 0 1rem; }
             .mobile-sidebar-toggle { display: flex !important; }
-            body { overflow-y: auto; }
         }
         
         ::-webkit-scrollbar { width: 6px; }

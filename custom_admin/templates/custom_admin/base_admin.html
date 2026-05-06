@@ -29,7 +29,7 @@
     <style>
         body { 
             font-family: 'Inter', sans-serif; 
-            background: #e0f7fa; 
+            background: #f8fafc; 
             margin: 0; 
             color: #1e293b;
             overflow: hidden; /* Prevent body scroll */
@@ -64,7 +64,7 @@
             flex: 1;
             height: 100vh;
             overflow: hidden; /* Prevent stage scroll */
-            background: #e0f7fa;
+            background: #f8fafc;
             position: relative;
             display: flex;
             flex-direction: column;
@@ -107,7 +107,8 @@
         }
 
         /* Mobile Responsive */
-        @media (max-width: 1024px) {
+        @media (max-width: 1023px) {
+            body, .main-stage { background: #e0f7fa !important; }
             .sidebar {
                 left: -260px;
                 transition: left 0.3s ease;
