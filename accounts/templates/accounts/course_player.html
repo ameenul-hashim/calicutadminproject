@@ -124,8 +124,12 @@
         /* Mobile Adjustments */
         @media (max-width: 1024px) {
             .player-content { flex-direction: column; overflow-y: auto; }
-            .content-sidebar { width: 100%; height: auto; border-right: none; border-top: 1px solid #334155; overflow-y: visible; }
+            .content-sidebar { width: 100%; height: auto; border-right: none; border-top: 1px solid #334155; overflow-y: visible; order: 2; }
+            .video-main { order: 1; }
             .video-wrapper { aspect-ratio: 16/9; flex: none; height: auto; }
+            .video-footer { padding: 1.25rem 1.5rem; }
+            .video-footer h1 { font-size: 1.25rem; }
+            .player-header { padding: 0 1rem; }
             body { overflow-y: auto; }
         }
         
