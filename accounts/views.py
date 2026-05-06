@@ -671,12 +671,6 @@ def delete_course(request, course_uid):
         
     return redirect('my_courses')
 
-@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
-def admin_student_logout(request):
-    if 'student_view_unlocked' in request.session:
-        del request.session['student_view_unlocked']
-    messages.success(request, "Exited student view. Returned to admin dashboard.")
-    return redirect('admin_dashboard')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def create_course(request):
