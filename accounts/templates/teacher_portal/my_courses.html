@@ -120,7 +120,7 @@
                         <div style="margin-top: auto;">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #f1f5f9;">
                                 <span style="font-size: 0.85rem; color: #6366f1; font-weight: 600; display: flex; align-items: center; gap: 0.4rem;">
-                                    <span>📚</span> {{ course.lessons.count }} Lessons
+                                    <span>📚</span> <span style="color: #10b981;">{{ course.approved_lessons }} Live</span> / {{ course.total_lessons }} Total
                                 </span>
                                 <span style="font-size: 0.75rem; color: #94a3b8;">Created: {{ course.created_at|date:"M d, Y" }}</span>
                             </div>
