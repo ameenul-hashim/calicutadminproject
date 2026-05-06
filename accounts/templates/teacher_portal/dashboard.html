@@ -12,7 +12,7 @@
 
 {% block content %}
 <style>
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2.5rem; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem; }
     .stat-card { 
         background: white; 
         padding: 1.5rem; 
@@ -62,6 +62,10 @@
     <div class="stat-card">
         <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Enrolled Students</p>
         <h2 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: #6366f1;">{{ total_students }}</h2>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid #ef4444;">
+        <p style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-transform: uppercase;">Delete Requests</p>
+        <h2 style="font-size: 2rem; font-weight: 700; margin-top: 0.5rem; color: #ef4444;">{{ pending_deletions }}</h2>
     </div>
 </div>
 
