@@ -142,6 +142,7 @@
                 input.type = "password";
                 icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
+        }
 
         // Responsive proof upload switcher
         function switchUploadMode() {
@@ -149,19 +150,19 @@
             var desktop = document.getElementById('desktop-upload');
             var mobile = document.getElementById('mobile-upload');
             var desktopInput = document.getElementById('proof_file');
+            
             if (!desktop || !mobile) return;
+            
             if (isMobile) {
                 desktop.style.display = 'none';
                 mobile.style.display = 'block';
-                if (desktopInput) desktopInput.removeAttribute('required');
+                if (desktopInput) desktopInput.required = false;
             } else {
                 desktop.style.display = 'block';
                 mobile.style.display = 'none';
-                if (desktopInput) desktopInput.setAttribute('required', 'required');
+                if (desktopInput) desktopInput.required = true;
             }
         }
-        switchUploadMode();
-        window.addEventListener('resize', switchUploadMode);
 
         function handleMobileUpload(input) {
             var preview = document.getElementById('mobile-file-preview');
@@ -180,7 +181,10 @@
                 }
             }
         }
-        }
+
+        // Initialize on load and resize
+        window.addEventListener('DOMContentLoaded', switchUploadMode);
+        window.addEventListener('resize', switchUploadMode);
     </script>
 </body>
 
