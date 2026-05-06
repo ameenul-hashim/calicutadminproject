@@ -481,7 +481,12 @@ def dashboard_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_dashboard(request):
-    courses = Course.objects.filter(teacher=request.user).annotate(lesson_count=Count('lessons')).only('id', 'title', 'status', 'created_at', 'thumbnail')
+    courses = Course.objects.filter(teacher=request.user).annotate(
+        total_lessons=Count('lessons'),
+        approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
+        pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING'))
+    ).only('id', 'title', 'status', 'created_at', 'thumbnail')
+    
     total_students = Enrollment.objects.filter(course__teacher=request.user).count()
     
     # Efficient aggregation
@@ -496,7 +501,7 @@ def teacher_dashboard(request):
     context = {
         'total_courses': courses.count(),
         'published_courses': courses.filter(status='PUBLISHED').count(),
-        'pending_courses': courses.filter(status='PENDING').count(),
+        'pending_courses': courses.filter(Q(status='PENDING') | Q(pending_lessons__gt=0)).distinct().count(),
         'total_students': total_students,
         'recent_courses': recent_courses,
         'courses': page_obj,
@@ -573,6 +578,9 @@ def view_other_course(request, course_uid):
 def my_courses(request):
     from django.db.models import Count, Q
     courses_qs = Course.objects.filter(teacher=request.user).annotate(
+        total_lessons=Count('lessons'),
+        approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
+        pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING')),
         rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED'))
     ).only('id', 'title', 'status', 'created_at', 'thumbnail').order_by('-created_at')
     
