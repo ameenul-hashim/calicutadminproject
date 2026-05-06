@@ -55,101 +55,108 @@ def signup_view(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
-
-        print("🧾 REQUEST FILES:", request.FILES)
-        print("📄 PROOF FILE:", proof_file)
-
         phone_number = request.POST.get('phone_number')
+
+        # 1. Extensive Debug Logging for Mobile Failures
+        print("\n--- 📝 STUDENT SIGNUP ATTEMPT ---")
+        print(f"👤 User: {username} | Email: {email}")
+        if proof_file:
+            print(f"📄 FILENAME: {proof_file.name}")
+            print(f"📊 SIZE: {proof_file.size} bytes")
+            print(f"🧪 MIME: {proof_file.content_type}")
+        else:
+            print("❌ NO FILE ATTACHED")
 
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields including contact number and verification document are required.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # Phone number: must be exactly 10 digits
-        phone_digits = phone_number.replace(' ', '').replace('-', '').replace('+', '').replace('(', '').replace(')', '')
-        if not phone_digits.isdigit() or len(phone_digits) != 10:
-            messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
+        # 2. Phone Validation (10 digits)
+        phone_digits = ''.join(filter(str.isdigit, phone_number))
+        if len(phone_digits) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # File format validation (Relaxed for mobile fallback)
-        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
-        if not any(proof_file.name.lower().endswith(ext) for ext in allowed_extensions):
-            messages.error(request, "Only PDF or Image (JPG, PNG) format is allowed for verification documents.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        # 3. Robust File Support (Extension & Content Fallback)
+        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        file_ext = os.path.splitext(proof_file.name.lower())[1]
+        
+        if file_ext not in allowed_exts:
+            messages.error(request, "Unsupported file format. Please upload PDF or JPG/PNG/WebP.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if proof_file.size > 200 * 1024:
-            messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        # Size Limit check (Increased for mobile camera files to 5MB, we resize later)
+        if proof_file.size > 5 * 1024 * 1024:
+            messages.error(request, "File size too large. Please upload a document under 5MB.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Upload verification document
-        # Note: We create the user first in memory, or upload first and assign later.
-        # Since upload_pdf expects an instance, we will delay upload until user is created,
-        # or we rewrite upload_pdf to return url/public_id. 
-        # The user's helper expects an instance: upload_pdf(instance, pdf_file)
-        # So we will handle this after user creation below.
-
-
-        # ... (Existing validations)
+        # 4. Existing Validations (Email, Username, Password)
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not re.match(email_regex, email):
-            messages.error(request, "The email address you entered is not in a valid format.")
+            messages.error(request, "Invalid email format.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "This username is already taken. Please choose another one.")
+            messages.error(request, "Username taken.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
         
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "This email is already registered. Please login or use a different email.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            messages.error(request, "Email already registered.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Phone uniqueness check (excluding REJECTED users)
         if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "This contact number is already registered and in use. Please use another one.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            messages.error(request, "Phone number already in use.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
-            messages.error(request, "The passwords you entered do not match.")
+            messages.error(request, "Passwords do not match.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            messages.error(request, "Password must be 8+ chars with uppercase, lowercase, and special char.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Create student
-        user = CustomUser.objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            full_name=fullname,
-            phone_number=phone_number,
-            is_active=False,
-            status='PENDING',
-            user_type='STUDENT',
-        )
+        # 5. Atomic User Creation & Processing
+        try:
+            user = CustomUser.objects.create_user(
+                username=username, email=email, password=password,
+                full_name=fullname, phone_number=phone_number,
+                is_active=False, status='PENDING', user_type='STUDENT',
+            )
 
-        # Upload verification document (Convert image to PDF if necessary)
-        from accounts.utils.supabase_storage import upload_user_proof
-        
-        final_proof = proof_file
-        if not proof_file.name.lower().endswith('.pdf'):
-            print(f"🔄 Converting image {proof_file.name} to PDF...")
-            converted = convert_image_to_pdf(proof_file)
-            if converted:
-                final_proof = converted
-            else:
+            # 6. Hardened Document Pipeline
+            from accounts.utils.supabase_storage import upload_user_proof
+            final_proof = proof_file
+            
+            if file_ext != '.pdf':
+                print(f"🔄 Converting {file_ext} image to PDF...")
+                converted = convert_image_to_pdf(proof_file)
+                if converted:
+                    final_proof = converted
+                    print(f"✅ Conversion Success: {final_proof.name}")
+                else:
+                    user.delete()
+                    messages.error(request, "Failed to process the image. Please try a different format or a PDF.")
+                    return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
+            # Upload to Supabase
+            if not upload_user_proof(user, final_proof):
                 user.delete()
-                messages.error(request, "Failed to process your image. Please try uploading a PDF instead.")
+                messages.error(request, "Secure upload failed. Please check your document and try again.")
                 return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if not upload_user_proof(user, final_proof):
-            user.delete() # Rollback user creation
-            messages.error(request, "Failed to upload your document. Please check your connection.")
+            messages.success(request, "✅ Registration successful! Admin approval needed.")
+            notify_admins(f"New student registration: {username}. Approval needed.")
+            return redirect('login')
+
+        except Exception as e:
+            import traceback
+            print(f"❌ SIGNUP EXCEPTION: {str(e)}")
+            print(traceback.format_exc())
+            messages.error(request, "A server error occurred during registration. Please try again.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        messages.success(request, "✅ Registration successful! admin approval needed to login please wait for a while or contact admin for login")
-        notify_admins(f"New student registration: {username}. Approval needed.")
-        return redirect('login')
+    return render(request, 'accounts/signup.html')
 
     return render(request, 'accounts/signup.html')
 
@@ -164,91 +171,105 @@ def teacher_signup_view(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
-
         phone_number = request.POST.get('phone_number')
 
+        # 1. Extensive Debug Logging
+        print("\n--- 📝 TEACHER SIGNUP ATTEMPT ---")
+        print(f"👨‍🏫 Teacher: {username} | Email: {email}")
+        if proof_file:
+            print(f"📄 FILENAME: {proof_file.name}")
+            print(f"📊 SIZE: {proof_file.size} bytes")
+            print(f"🧪 MIME: {proof_file.content_type}")
+        else:
+            print("❌ NO FILE ATTACHED")
+
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields including contact number and verification document are required.")
+            messages.error(request, "All fields are required.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # Phone number: must be exactly 10 digits
-        phone_digits = phone_number.replace(' ', '').replace('-', '').replace('+', '').replace('(', '').replace(')', '')
-        if not phone_digits.isdigit() or len(phone_digits) != 10:
-            messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
+        # 2. Phone Validation
+        phone_digits = ''.join(filter(str.isdigit, phone_number))
+        if len(phone_digits) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # File format validation (Relaxed for mobile fallback)
-        allowed_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
-        if not any(proof_file.name.lower().endswith(ext) for ext in allowed_extensions):
-            messages.error(request, "Only PDF or Image (JPG, PNG) format is allowed for verification documents.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        # 3. Support broad image formats for mobile
+        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        file_ext = os.path.splitext(proof_file.name.lower())[1]
+        
+        if file_ext not in allowed_exts:
+            messages.error(request, "Unsupported file format. Please upload PDF or image.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if proof_file.size > 200 * 1024:
-            messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if proof_file.size > 5 * 1024 * 1024:
+            messages.error(request, "Document size exceeds 5MB.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Email format validation
+        # 4. Standard Validations
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not re.match(email_regex, email):
-            messages.error(request, "The email address you entered is not in a valid format.")
+            messages.error(request, "Invalid email format.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "This username is already taken. Please choose another one.")
+            messages.error(request, "Username taken.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
         
         if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "This email is already registered. Please login or use a different email.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            messages.error(request, "Email already registered.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Phone uniqueness check (excluding REJECTED users)
         if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "This contact number is already registered and in use. Please use another one.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            messages.error(request, "Phone number in use.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            messages.error(request, "Weak password. Requires 8+ chars with upper/lower/special.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        # Create teacher (staff but inactive until approved)
-        user = CustomUser.objects.create_user(
-            username=username,
-            email=email,
-            password=password,
-            full_name=fullname,
-            phone_number=phone_number,
-            is_active=False,
-            is_staff=True,
-            status='PENDING',
-            user_type='TEACHER',
-        )
+        # 5. Creation & Conversion
+        try:
+            user = CustomUser.objects.create_user(
+                username=username, email=email, password=password,
+                full_name=fullname, phone_number=phone_number,
+                is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
+            )
 
-        # Upload verification document (Convert image to PDF if necessary)
-        from accounts.utils.supabase_storage import upload_user_proof
-        
-        final_proof = proof_file
-        if not proof_file.name.lower().endswith('.pdf'):
-            print(f"🔄 Converting teacher image {proof_file.name} to PDF...")
-            converted = convert_image_to_pdf(proof_file)
-            if converted:
-                final_proof = converted
-            else:
+            from accounts.utils.supabase_storage import upload_user_proof
+            final_proof = proof_file
+            
+            if file_ext != '.pdf':
+                print(f"🔄 Converting teacher proof {file_ext} to PDF...")
+                converted = convert_image_to_pdf(proof_file)
+                if converted:
+                    final_proof = converted
+                    print(f"✅ Conversion Success: {final_proof.name}")
+                else:
+                    user.delete()
+                    messages.error(request, "Image processing failed. Try a different photo or a PDF.")
+                    return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
+            if not upload_user_proof(user, final_proof):
                 user.delete()
-                messages.error(request, "Failed to process your image. Please try uploading a PDF instead.")
+                messages.error(request, "Secure document upload failed.")
                 return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        if not upload_user_proof(user, final_proof):
-            user.delete()
-            messages.error(request, "Failed to upload your document. Please check your connection.")
+            messages.success(request, "✅ Teacher registration successful! Admin review pending.")
+            notify_admins(f"New teacher registration: {username}. Approval needed.")
+            return redirect('teacher_login')
+
+        except Exception as e:
+            import traceback
+            print(f"❌ TEACHER SIGNUP EXCEPTION: {str(e)}")
+            print(traceback.format_exc())
+            messages.error(request, "A server error occurred. Please try again.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        messages.success(request, "✅ Registration successful! admin approval needed to login please wait for a while or contact admin for login")
-        notify_admins(f"New teacher registration: {username}. Approval needed.")
-        return redirect('teacher_login')
+    return render(request, 'accounts/teacher_signup.html')
 
     return render(request, 'accounts/teacher_signup.html')
 
