@@ -56,7 +56,7 @@
         
         {% include 'includes/local_messages.html' %}
 
-        <form method="POST" enctype="multipart/form-data" novalidate>
+        <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="input-group">
                 <label for="username">Username</label>
@@ -139,20 +139,36 @@
 
         // Responsive proof upload switcher
         function switchUploadMode() {
-            var isMobile = window.innerWidth < 1024;
+            var isMobile = window.innerWidth <= 1024;
             var desktop = document.getElementById('desktop-upload');
             var mobile = document.getElementById('mobile-upload');
             var desktopInput = document.getElementById('proof_file');
+            var mobileInput = document.getElementById('proof_file_mobile');
+            
             if (!desktop || !mobile) return;
+            
             if (isMobile) {
                 desktop.style.display = 'none';
                 mobile.style.display = 'block';
-                // On mobile, desktop input is not required (mobile inputs handle submission)
-                if (desktopInput) desktopInput.removeAttribute('required');
+                if (desktopInput) {
+                    desktopInput.required = false;
+                    desktopInput.disabled = true;
+                }
+                if (mobileInput) {
+                    mobileInput.required = true;
+                    mobileInput.disabled = false;
+                }
             } else {
                 desktop.style.display = 'block';
                 mobile.style.display = 'none';
-                if (desktopInput) desktopInput.setAttribute('required', 'required');
+                if (desktopInput) {
+                    desktopInput.required = true;
+                    desktopInput.disabled = false;
+                }
+                if (mobileInput) {
+                    mobileInput.required = false;
+                    mobileInput.disabled = true;
+                }
             }
         }
         switchUploadMode();
