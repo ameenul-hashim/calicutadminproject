@@ -75,24 +75,22 @@
                 <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" required placeholder="e.g., 9876543210" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" title="Enter exactly 10 digits">
             </div>
             <div class="input-group" id="proof-upload-wrapper">
-                <label for="proof_file" style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Student Proof (PDF ONLY)</label>
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Student Proof (PDF ONLY)</label>
                 
                 <!-- Stylized Upload Area -->
-                <div class="upload-container" style="position: relative; width: 100%;">
-                    <label for="proof_file" class="upload-btn" id="upload-label" style="
+                <div class="upload-container" style="width: 100%;">
+                    <button type="button" onclick="document.getElementById('proof_file').click()" class="upload-btn" id="upload-label" style="
                         display: flex; align-items: center; justify-content: center; gap: 0.75rem; 
                         padding: 1rem; background: #f8fafc; border: 2px dashed #cbd5e1; 
                         border-radius: 0.75rem; cursor: pointer; transition: all 0.2s;
-                        min-height: 50px; font-weight: 600; color: #475569; text-align: center;
+                        min-height: 55px; width: 100%; font-weight: 600; color: #475569; 
+                        text-align: center; outline: none; -webkit-tap-highlight-color: transparent;
                     ">
                         <span style="font-size: 1.2rem;">📄</span>
                         <span id="file-name-display">Click to Select PDF</span>
-                    </label>
+                    </button>
                     
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf" required style="
-                        position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-                        opacity: 0; cursor: pointer; z-index: 2;
-                    " onchange="handleFileSelection(this)">
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf" required style="display: none;" onchange="handleFileSelection(this)">
                 </div>
                 
                 <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.5rem;">
