@@ -92,7 +92,7 @@
                             <div id="upload-help-text" style="font-size: 0.75rem; color: #94a3b8;">PDF or Image (Max 200KB)</div>
                         </div>
                     </div>
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,.heic" style="display: none;" onchange="handleFileSelection(this)">
+                    <input type="file" name="proof_file" id="proof_file" accept="application/pdf,image/*,.heic,.heif" style="opacity: 0; position: absolute; width: 1px; height: 1px; z-index: -1;" onchange="handleFileSelection(this)">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -157,9 +157,9 @@
                 }
 
                 // Relaxed limit for mobile (backend will compress)
-                const limit = 5 * 1024 * 1024; 
+                const limit = 15 * 1024 * 1024; // 15MB
                 if (file.size > limit) {
-                    alert("File too large. Please upload a document under 5MB.");
+                    alert("File too large. Please upload a document under 15MB.");
                     input.value = "";
                     resetUploadUI(display, label);
                     return;
@@ -209,14 +209,14 @@
             const mobileInput = document.getElementById('is_mobile');
 
             // Allow both formats on all devices for maximum compatibility
-            fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif');
+            fileInput.setAttribute('accept', 'application/pdf,image/*,.heic,.heif');
             
             if (isTouch) {
                 mobileInput.value = "true";
                 helpText.innerText = "Upload a clear photo of your verification document";
             } else {
                 // We'll still set is_mobile to true for images on desktop so the hybrid flow converts them
-                helpText.innerText = "PDF or Image Document (Max 5MB)";
+                helpText.innerText = "PDF or Image Document (Max 15MB)";
             }
         });
     </script>
