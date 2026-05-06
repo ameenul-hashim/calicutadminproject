@@ -117,12 +117,6 @@ def signup_view(request):
                 if not final_proof:
                     raise Exception("PDF conversion from Cloudinary failed.")
             
-            # Desktop/Fallback Flow: Direct conversion if needed
-            elif file_ext != '.pdf':
-                print("💻 Converting image to PDF (Direct Flow)...")
-                final_proof = convert_image_to_pdf(proof_file)
-                if not final_proof:
-                    raise Exception("Direct PDF conversion failed.")
 
             # Create User
             user = CustomUser.objects.create_user(
@@ -229,12 +223,6 @@ def teacher_signup_view(request):
                 if not final_proof:
                     raise Exception("PDF conversion failed.")
 
-            # Direct Flow (Desktop or PDF)
-            elif file_ext != '.pdf':
-                print("💻 Converting image to PDF (Direct Flow)...")
-                final_proof = convert_image_to_pdf(proof_file)
-                if not final_proof:
-                    raise Exception("Direct conversion failed.")
 
             # Create User
             user = CustomUser.objects.create_user(
