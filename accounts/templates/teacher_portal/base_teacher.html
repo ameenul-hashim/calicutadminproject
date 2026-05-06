@@ -70,7 +70,7 @@
             body { background: #e0f7fa !important; }
             .sidebar { 
                 transform: translateX(-100%); 
-                z-index: 1050; 
+                z-index: 9999; 
                 width: 80vw; 
                 max-width: 320px; 
                 position: fixed; 
@@ -87,13 +87,13 @@
                 right: 1rem !important;
                 left: 1rem !important;
                 width: auto !important;
-                z-index: 1060 !important;
+                z-index: 9998 !important;
             }
             .notif-dropdown.active { display: block !important; }
             
             /* Hide controls when sidebar active */
-            body.sidebar-open .bell-btn { display: none !important; }
-            body.sidebar-open .chatbot-container, body.sidebar-open #chatbot-bubble { display: none !important; }
+            body.sidebar-open .bell-btn, body.sidebar-open .toggle-btn { display: none !important; }
+            body.sidebar-open #chat-widget-container { display: none !important; }
             body.sidebar-open { overflow: hidden !important; }
             
             /* Global Form & Card Responsiveness */
@@ -161,7 +161,7 @@
         </button>
     </div>
 
-    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1040;" onclick="closeSidebar()"></div>
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;" onclick="closeSidebar()"></div>
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
