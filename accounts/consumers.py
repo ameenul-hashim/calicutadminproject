@@ -28,11 +28,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     async def receive(self, text_data):
         data = json.loads(text_data)
         message = data['message']
-        sender_id = self.scope['user'].id
-        receiver_id = data['receiver_id']
+        sender = self.scope['user']
+        receiver_uid = data['receiver_uid']
 
         # Save message to database
-        await self.save_message(sender_id, receiver_id, message)
+        await self.save_message(sender, receiver_uid, message)
 
         # Send message to room group
         await self.channel_layer.group_send(
@@ -40,8 +40,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             {
                 'type': 'chat_message',
                 'message': message,
-                'sender_id': sender_id,
-                'sender_name': self.scope['user'].username,
+                'sender_uid': str(sender.uid),
+                'sender_name': sender.username,
                 'timestamp': timezone.now().strftime('%H:%M')
             }
         )
@@ -49,20 +49,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # Receive message from room group
     async def chat_message(self, event):
         message = event['message']
-        sender_id = event['sender_id']
+        sender_uid = event['sender_uid']
         sender_name = event['sender_name']
         timestamp = event['timestamp']
 
         # Send message to WebSocket
         await self.send(text_data=json.dumps({
             'message': message,
-            'sender_id': sender_id,
+            'sender_uid': sender_uid,
             'sender_name': sender_name,
             'timestamp': timestamp
         }))
 
     @database_sync_to_async
-    def save_message(self, sender_id, receiver_id, message):
-        sender = CustomUser.objects.get(id=sender_id)
-        receiver = CustomUser.objects.get(id=receiver_id)
+    def save_message(self, sender, receiver_uid, message):
+        receiver = CustomUser.objects.get(uid=receiver_uid)
         return ChatMessage.objects.create(sender=sender, receiver=receiver, message=message)
