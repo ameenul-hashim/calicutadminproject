@@ -49,12 +49,16 @@ def admin_student_view_auth(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
     if request.user.is_authenticated:
-        if request.user.is_staff:
+        if getattr(request.user, 'is_staff', False):
             return redirect('admin_dashboard')
         elif request.user.user_type == 'TEACHER':
             return redirect('teacher_dashboard')
-        else:
+        elif request.user.user_type == 'STUDENT':
             return redirect('dashboard')
+        else:
+            # Break redirect loops for corrupted sessions
+            logout(request)
+            return redirect('admin_login')
         
     if request.method == 'POST':
         username = request.POST.get('username')
