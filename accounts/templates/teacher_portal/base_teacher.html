@@ -84,9 +84,16 @@
             }
             .notif-dropdown.active { display: block !important; }
             
-            /* Forms & Grids */
+            /* Global Form & Card Responsiveness */
+            .glass-card, .form-container, .card, .edit-card, .login-card { 
+                width: 100% !important; 
+                max-width: 100% !important; 
+                margin: 0 !important; 
+                box-sizing: border-box !important;
+                border-radius: 0.5rem !important;
+            }
+            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
             .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; }
             .logout-section { padding-top: 1rem !important; margin-top: 0.5rem; }
         }
         .mobile-bell-btn {
