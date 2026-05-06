@@ -315,9 +315,14 @@ def login_view(request):
         if request.user.user_type == 'STUDENT':
             return redirect('dashboard')
         elif request.user.user_type == 'TEACHER':
-            return redirect('teacher_login')
-        elif request.user.user_type == 'ADMIN':
-            return redirect('admin_login')
+            return redirect('teacher_dashboard')
+        elif getattr(request.user, 'is_staff', False):
+            return redirect('admin_dashboard')
+        else:
+            # Break redirect loops for corrupted sessions by clearing the cookie
+            from django.contrib.auth import logout
+            logout(request)
+            return redirect('login')
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -426,9 +431,14 @@ def teacher_login_view(request):
         if request.user.user_type == 'TEACHER':
             return redirect('teacher_dashboard')
         elif request.user.user_type == 'STUDENT':
-            return redirect('login')
-        elif request.user.user_type == 'ADMIN':
-            return redirect('admin_login')
+            return redirect('dashboard')
+        elif getattr(request.user, 'is_staff', False):
+            return redirect('admin_dashboard')
+        else:
+            # Break redirect loops for corrupted sessions
+            from django.contrib.auth import logout
+            logout(request)
+            return redirect('teacher_login')
         
     if request.method == 'POST':
         username = request.POST.get('username')
