@@ -64,22 +64,22 @@
             <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
                 <div class="input-group">
                     <label for="username" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Username</label>
-                    <input type="text" name="username" id="username" value="{{ username|default:'' }}" required style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'">
+                    <input type="text" name="username" id="username" value="{{ username|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#0ea5e9'">
                 </div>
                 
                 <div class="input-group">
                     <label for="fullname" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Full Name</label>
-                    <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" required style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#0ea5e9'">
+                    <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#0ea5e9'">
                 </div>
 
                 <div class="input-group">
                     <label for="email" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Email Address</label>
-                    <input type="email" name="email" id="email" value="{{ email|default:'' }}" required style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#0ea5e9'">
+                    <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#0ea5e9'">
                 </div>
 
                 <div class="input-group">
                     <label for="phone_number" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Contact Number <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 400;">(10 digits)</span></label>
-                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" required placeholder="e.g., 9876543210" maxlength="10" pattern="[0-9]{10}" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#0ea5e9'">
+                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" placeholder="e.g., 9876543210" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#0ea5e9'">
                 </div>
 
                 <div class="input-group">
@@ -91,20 +91,20 @@
                             <div id="upload-help-text" style="font-size: 0.75rem; color: #94a3b8;">PDF or Image (Max 200KB)</div>
                         </div>
                     </div>
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf" required style="display: none;" onchange="handleFileSelection(this)">
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,application/pdf,.jpg,.jpeg,.png,.webp,.heic" style="display: none;" onchange="handleFileSelection(this)">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                     <div class="input-group" style="position: relative;">
                         <label for="password" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Password</label>
-                        <input type="password" name="password" id="password" required style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;" onfocus="this.style.borderColor='#0ea5e9'">
+                        <input type="password" name="password" id="password" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;" onfocus="this.style.borderColor='#0ea5e9'">
                         <span onclick="togglePassword('password', 'eye-icon-1')" style="position: absolute; right: 12px; bottom: 10px; cursor: pointer; color: #94a3b8;">
                             <svg id="eye-icon-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap round="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </span>
                     </div>
                     <div class="input-group" style="position: relative;">
                         <label for="confirm_password" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Confirm</label>
-                        <input type="password" name="confirm_password" id="confirm_password" required style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;" onfocus="this.style.borderColor='#0ea5e9'">
+                        <input type="password" name="confirm_password" id="confirm_password" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;" onfocus="this.style.borderColor='#0ea5e9'">
                         <span onclick="togglePassword('confirm_password', 'eye-icon-2')" style="position: absolute; right: 12px; bottom: 10px; cursor: pointer; color: #94a3b8;">
                             <svg id="eye-icon-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap round="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </span>
