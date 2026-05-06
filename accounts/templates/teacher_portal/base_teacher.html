@@ -54,11 +54,11 @@
         }
 
         /* Floating Mobile Controls */
-        .mobile-controls { position: fixed; top: 1rem; left: 0; right: 0; z-index: 1080; pointer-events: none; }
+        .mobile-controls { position: fixed; top: 1rem; left: 0; right: 0; z-index: 3000; pointer-events: none; }
         .floating-btn { 
             pointer-events: auto;
             width: 45px; height: 45px; border-radius: 50%; background: white; 
-            border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
             display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
             cursor: pointer; position: absolute; color: #6366f1;
         }
@@ -68,11 +68,11 @@
 
         @media (max-width: 1023px) {
             body { background: #e0f7fa !important; }
-            .sidebar { transform: translateX(-100%); z-index: 2100; width: 280px; position: fixed; }
+            .sidebar { transform: translateX(-100%); z-index: 5000; width: 280px; position: fixed; box-shadow: 10px 0 30px rgba(0,0,0,0.1); }
             .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1.5rem !important; padding-top: 4rem !important; width: 100%; max-width: 100vw; }
+            .main-content { margin-left: 0 !important; padding: 1.5rem !important; padding-top: 4.5rem !important; width: 100%; max-width: 100vw; }
             .mobile-controls { display: block !important; }
-            .notification-wrapper { display: none !important; } /* Hide desktop bell on mobile */
+            .notification-wrapper { display: none !important; }
             
             .notif-dropdown {
                 position: fixed !important;
@@ -80,7 +80,7 @@
                 right: 1rem !important;
                 left: 1rem !important;
                 width: auto !important;
-                z-index: 2000 !important;
+                z-index: 4000 !important;
             }
             .notif-dropdown.active { display: block !important; }
             
@@ -142,7 +142,7 @@
         </button>
     </div>
 
-    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1050;" onclick="closeSidebar()"></div>
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:4500;" onclick="closeSidebar()"></div>
     <div class="dashboard-container">
         <!-- Sidebar -->
         <aside class="sidebar">
