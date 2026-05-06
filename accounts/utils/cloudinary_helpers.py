@@ -8,9 +8,13 @@ def upload_temp_image(image_file):
     Returns the secure URL and public_id if successful, or (None, None) if failed.
     """
     try:
+        import uuid
+        unique_id = f"temp_{uuid.uuid4()}"
+        
         # Use a temporary folder in Cloudinary
         result = cloudinary.uploader.upload(
             image_file,
+            public_id=unique_id,
             folder="temp_verifications/",
             resource_type="image"
         )
