@@ -21,7 +21,7 @@
         }
         body { font-family: 'Inter', sans-serif; background: var(--bg-slate); margin: 0; color: var(--text-main); }
         
-        .profile-container { max-width: 900px; margin: 4rem auto; padding: 0 1.5rem; }
+        .profile-container { width: 100%; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
         
         /* Profile Header Card */
         .profile-card {
@@ -39,7 +39,7 @@
         }
         
         .profile-info-section {
-            padding: 0 3rem 3rem 3rem;
+            padding: 0 2rem 2rem 2rem;
             position: relative;
             margin-top: -60px;
         }
@@ -124,9 +124,12 @@
         .btn-outline:hover { background: #f8fafc; }
 
         @media (max-width: 640px) {
-            .details-grid { grid-template-columns: 1fr; }
-            .profile-info-section { padding: 0 1.5rem 2rem 1.5rem; }
-            .profile-meta h1 { font-size: 1.8rem; }
+            .details-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+            .profile-info-section { padding: 0 1.25rem 2rem 1.25rem; }
+            .profile-meta h1 { font-size: 1.5rem; }
+            .profile-photo-container { width: 130px; height: 160px; }
+            .profile-banner { height: 120px; }
+            .profile-container { margin: 1rem auto; }
         }
     
         /* RESPONSIVE INJECTIONS */

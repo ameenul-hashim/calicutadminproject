@@ -20,8 +20,8 @@
         pointer-events: none; /* Let clicks pass through empty space */
     }
     .toast-message {
-        min-width: 300px;
-        max-width: 400px;
+        min-width: clamp(260px, 90vw, 400px);
+        max-width: min(400px, calc(100vw - 40px));
         background: white;
         padding: 15px 20px;
         border-radius: 8px;

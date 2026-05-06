@@ -307,7 +307,8 @@
 </head>
 <body>
 
-    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:999;" onclick="closeSidebar()"></div>
+    <button class="mobile-toggle" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">
         ☰
     </button>
     <div class="dashboard-container">
@@ -371,7 +372,7 @@
                     <!-- Stats Grid for Sessions and Courses -->
                     <div style="margin-top: 2.5rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
                         <!-- Enrolled Courses Card -->
-                        <div style="background: white; padding: 1.25rem 2rem; border-radius: 1.25rem; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1.5rem; min-width: 280px; transition: transform 0.2s; cursor: default;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="background: white; padding: 1.25rem 2rem; border-radius: 1.25rem; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 1.5rem; flex: 1; min-width: 260px; transition: transform 0.2s; cursor: default;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                             <div style="width: 50px; height: 50px; background: #f0f9ff; border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">
                                 🎓
                             </div>
@@ -382,7 +383,7 @@
                         </div>
 
                         <!-- Total Sessions Card -->
-                        <div style="background: var(--primary-gradient); padding: 1.25rem 2rem; border-radius: 1.25rem; color: white; display: flex; align-items: center; gap: 1.5rem; box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3); min-width: 280px; transition: transform 0.2s; cursor: default;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+                        <div style="background: var(--primary-gradient); padding: 1.25rem 2rem; border-radius: 1.25rem; color: white; display: flex; align-items: center; gap: 1.5rem; box-shadow: 0 10px 15px -3px rgba(14, 165, 233, 0.3); flex: 1; min-width: 260px; transition: transform 0.2s; cursor: default;" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
                             <div style="width: 50px; height: 50px; background: rgba(255,255,255,0.2); border-radius: 1rem; display: flex; align-items: center; justify-content: center; font-size: 1.8rem;">
                                 🎬
                             </div>
@@ -537,23 +538,37 @@
 
 
 
-            <!-- Mobile Toggle Button -->
-            <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+
 
             </div>
         </main>
     </div>
 
     <script>
-    // Toggle Sidebar for mobile
+    // Sidebar toggle functions
     function toggleSidebar() {
-        document.querySelector('.sidebar').classList.toggle('active');
+        var sb = document.querySelector('.sidebar');
+        var bd = document.getElementById('sidebar-backdrop');
+        if (!sb) return;
+        if (sb.classList.contains('active')) {
+            sb.classList.remove('active');
+            if (bd) bd.style.display = 'none';
+        } else {
+            sb.classList.add('active');
+            if (bd) bd.style.display = 'block';
+        }
+    }
+    function closeSidebar() {
+        var sb = document.querySelector('.sidebar');
+        var bd = document.getElementById('sidebar-backdrop');
+        if (sb) sb.classList.remove('active');
+        if (bd) bd.style.display = 'none';
     }
 
     // Close sidebar when clicking main content on mobile
     document.querySelector('.main-content').addEventListener('click', () => {
-        if (window.innerWidth <= 768) {
-            document.querySelector('.sidebar').classList.remove('active');
+        if (window.innerWidth <= 1024) {
+            closeSidebar();
         }
     });
     </script>

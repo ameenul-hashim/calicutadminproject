@@ -18,60 +18,62 @@
         </div>
     </div>
 
-    <table style="width: 100%; border-collapse: collapse;">
-        <thead>
-            <tr style="background: #f1f5f9; text-align: left;">
-                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Course info</th>
-                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Teacher</th>
-                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Lessons</th>
-                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Status</th>
-                <th style="padding: 1rem 1.5rem; color: #475569; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for course in courses %}
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                <td style="padding: 1.25rem 1.5rem;">
-                    <div style="display: flex; align-items: center; gap: 1rem;">
-                        {% if course.thumbnail %}
-                            <img src="{{ course.thumbnail.url }}" style="width: 60px; height: 40px; border-radius: 0.4rem; object-fit: cover;">
-                        {% else %}
-                            <div style="width: 60px; height: 40px; background: #e2e8f0; border-radius: 0.4rem;"></div>
-                        {% endif %}
-                        <div>
-                            <div style="font-weight: 700; color: #1e293b;">{{ course.title }}</div>
-                            <div style="font-size: 0.75rem; color: #94a3b8;">{{ course.category }}</div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Course info</th>
+                    <th>Teacher</th>
+                    <th>Lessons</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for course in courses %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            {% if course.thumbnail %}
+                                <img src="{{ course.thumbnail.url }}" style="width: 60px; height: 40px; border-radius: 0.4rem; object-fit: cover;">
+                            {% else %}
+                                <div style="width: 60px; height: 40px; background: #e2e8f0; border-radius: 0.4rem;"></div>
+                            {% endif %}
+                            <div>
+                                <div style="font-weight: 700; color: #1e293b;">{{ course.title }}</div>
+                                <div style="font-size: 0.75rem; color: #94a3b8;">{{ course.category }}</div>
+                            </div>
                         </div>
-                    </div>
-                </td>
-                <td style="padding: 1.25rem 1.5rem; color: #475569; font-weight: 500;">
-                    {{ course.teacher.username }}
-                </td>
-                <td style="padding: 1.25rem 1.5rem; color: #475569;">
-                    {{ course.lessons.count }} Lessons
-                </td>
-                <td style="padding: 1.25rem 1.5rem;">
-                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-                        {% if course.status == 'PUBLISHED' %}background: #dcfce7; color: #166534;
-                        {% elif course.status == 'PENDING' %}background: #fef3c7; color: #92400e;
-                        {% else %}background: #fee2e2; color: #991b1b;{% endif %}">
-                        {{ course.status }}
-                    </span>
-                </td>
-                <td style="padding: 1.25rem 1.5rem;">
-                    <div style="display: flex; gap: 0.75rem;">
-                        <a href="{% url 'admin_view_course_content' course.uid %}" style="padding: 0.5rem 1rem; background: #eff6ff; color: #3b82f6; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.85rem; border: 1px solid #dbeafe;">Verify Content</a>
-                        <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="padding: 0.5rem 1rem; background: #fef2f2; color: #ef4444; border-radius: 0.6rem; border: 1px solid #fee2e2; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Delete</button>
-                    </div>
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">No courses found.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    </td>
+                    <td style="color: #475569; font-weight: 500;">
+                        {{ course.teacher.username }}
+                    </td>
+                    <td style="color: #475569;">
+                        {{ course.lessons.count }} Lessons
+                    </td>
+                    <td>
+                        <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
+                            {% if course.status == 'PUBLISHED' %}background: #dcfce7; color: #166534;
+                            {% elif course.status == 'PENDING' %}background: #fef3c7; color: #92400e;
+                            {% else %}background: #fee2e2; color: #991b1b;{% endif %}">
+                            {{ course.status }}
+                        </span>
+                    </td>
+                    <td>
+                        <div style="display: flex; gap: 0.75rem;">
+                            <a href="{% url 'admin_view_course_content' course.uid %}" style="padding: 0.5rem 1rem; background: #eff6ff; color: #3b82f6; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.85rem; border: 1px solid #dbeafe; white-space: nowrap;">Verify Content</a>
+                            <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="padding: 0.5rem 1rem; background: #fef2f2; color: #ef4444; border-radius: 0.6rem; border: 1px solid #fee2e2; font-weight: 700; font-size: 0.85rem; cursor: pointer;">Delete</button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">No courses found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 {% if courses.has_other_pages %}
