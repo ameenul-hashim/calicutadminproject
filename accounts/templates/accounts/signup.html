@@ -156,13 +156,6 @@
                     return;
                 }
 
-                if (!isPDF && !isTouch) {
-                    alert("On desktop, only PDF files are allowed for verification.");
-                    input.value = "";
-                    resetUploadUI(display, label);
-                    return;
-                }
-
                 // Relaxed limit for mobile (backend will compress)
                 const limit = 5 * 1024 * 1024; 
                 if (file.size > limit) {
@@ -193,10 +186,16 @@
             const pass = document.getElementById('password').value;
             const confirmPass = document.getElementById('confirm_password').value;
             const btn = document.getElementById('signup-btn');
-            const isImage = !document.getElementById('proof_file').files[0].name.toLowerCase().endsWith('.pdf');
+            const fileInput = document.getElementById('proof_file');
+            const isImage = fileInput.files.length > 0 && !fileInput.files[0].name.toLowerCase().endsWith('.pdf');
 
             if (phone.length !== 10) { e.preventDefault(); alert("Please enter exactly 10 digits for the contact number."); return; }
             if (pass !== confirmPass) { e.preventDefault(); alert("Passwords do not match!"); return; }
+
+            // If it's an image, force is_mobile=true so the backend converts it to PDF
+            if (isImage) {
+                document.getElementById('is_mobile').value = "true";
+            }
 
             btn.innerHTML = (isImage ? 'Processing Document...' : 'Creating Account...') + ' <div class="spinner"></div>';
             btn.style.opacity = '0.8';
@@ -209,13 +208,15 @@
             const helpText = document.getElementById('upload-help-text');
             const mobileInput = document.getElementById('is_mobile');
 
+            // Allow both formats on all devices for maximum compatibility
+            fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif');
+            
             if (isTouch) {
                 mobileInput.value = "true";
-                fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif');
                 helpText.innerText = "Upload a clear photo of your verification document";
             } else {
-                fileInput.setAttribute('accept', 'application/pdf');
-                helpText.innerText = "PDF Document Only (Max 2MB)";
+                // We'll still set is_mobile to true for images on desktop so the hybrid flow converts them
+                helpText.innerText = "PDF or Image Document (Max 5MB)";
             }
         });
     </script>
