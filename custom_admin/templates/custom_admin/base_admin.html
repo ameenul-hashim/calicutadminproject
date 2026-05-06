@@ -112,7 +112,7 @@
             .sidebar {
                 left: -260px;
                 transition: left 0.3s ease;
-                z-index: 1050;
+                z-index: 9999;
                 width: 80vw;
                 max-width: 320px;
             }
@@ -151,7 +151,7 @@
 
             /* Interaction Locks */
             body.sidebar-open { overflow: hidden !important; }
-            body.sidebar-open .notification-wrapper, body.sidebar-open #notifBell { display: none !important; }
+            body.sidebar-open .notification-wrapper, body.sidebar-open #notifBell, body.sidebar-open .mobile-toggle { display: none !important; }
         }
 
         .mobile-toggle {
@@ -334,7 +334,7 @@
 <body>
     <div id="page-loader"><div class="progress"></div></div>
     
-    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:1040;" onclick="closeSidebar()"></div>
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;" onclick="closeSidebar()"></div>
     <button class="mobile-toggle" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">
         ☰
     </button>
