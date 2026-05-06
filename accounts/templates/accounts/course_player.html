@@ -124,12 +124,26 @@
         /* Mobile Adjustments */
         @media (max-width: 1024px) {
             .player-content { flex-direction: column; overflow-y: auto; }
-            .content-sidebar { width: 100%; height: auto; border-right: none; border-top: 1px solid #334155; overflow-y: visible; order: 2; }
-            .video-main { order: 1; }
+            .content-sidebar { 
+                position: fixed;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                width: 300px;
+                z-index: 1001;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                background: var(--sidebar-bg);
+                border-right: 1px solid #334155;
+                height: 100vh;
+            }
+            .content-sidebar.active { transform: translateX(0); }
+            .video-main { width: 100%; }
             .video-wrapper { aspect-ratio: 16/9; flex: none; height: auto; }
             .video-footer { padding: 1.25rem 1.5rem; }
             .video-footer h1 { font-size: 1.25rem; }
             .player-header { padding: 0 1rem; }
+            .mobile-sidebar-toggle { display: flex !important; }
             body { overflow-y: auto; }
         }
         
@@ -137,31 +151,25 @@
         ::-webkit-scrollbar-track { background: #1e293b; }
         ::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
     
-        /* RESPONSIVE INJECTIONS */
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
-            /* Forms */
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
+        .mobile-sidebar-toggle {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: #334155;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 0.5rem;
+            border: 1px solid #475569;
+            cursor: pointer;
+            font-size: 1.2rem;
         }
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
-        /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
-        /* Django Messages Toast */
-        .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
+        #sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
         }
         </style>
 
@@ -177,7 +185,8 @@
     <div class="player-container">
         <!-- Header -->
         <header class="player-header">
-            <div style="display: flex; align-items: center; gap: 2rem;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button class="mobile-sidebar-toggle" onclick="togglePlayerSidebar()">☰</button>
                 <a href="{% url 'dashboard' %}" class="back-btn">← Back</a>
                 <span style="font-weight: 600; color: #f1f5f9; font-size: 1.1rem;">{{ course.title }}</span>
             </div>
@@ -185,6 +194,8 @@
                 <span style="font-size: 0.85rem; color: #94a3b8;">Status: <strong style="color: #10b981;">Active</strong></span>
             </div>
         </header>
+
+        <div id="sidebar-backdrop" onclick="togglePlayerSidebar()"></div>
 
         <div class="player-content">
             <!-- Sidebar -->
@@ -249,6 +260,18 @@
     <script>
     let player = null;
 
+    function togglePlayerSidebar() {
+        const sidebar = document.querySelector('.content-sidebar');
+        const backdrop = document.getElementById('sidebar-backdrop');
+        if (sidebar.classList.contains('active')) {
+            sidebar.classList.remove('active');
+            backdrop.style.display = 'none';
+        } else {
+            sidebar.classList.add('active');
+            backdrop.style.display = 'block';
+        }
+    }
+
     function initPlayer(type, source) {
         const playerContainer = document.getElementById('playerContainer');
         playerContainer.style.display = 'block';
@@ -304,6 +327,11 @@
     }
 
     function playContent(element, type, title, videoUrl, videoFileUrl, notesUrl) {
+        // Close sidebar on mobile after selecting
+        if (window.innerWidth <= 1024) {
+            togglePlayerSidebar();
+        }
+
         document.querySelectorAll('.sub-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
 
