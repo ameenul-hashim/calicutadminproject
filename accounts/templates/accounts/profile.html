@@ -222,11 +222,7 @@
 
                 <div class="action-bar">
                     <a href="{% url 'edit_profile' %}" class="btn-profile btn-primary">Edit Photo</a>
-                    {% if is_admin_preview %}
-                        <a href="{% url 'admin_student_logout' %}" class="btn-profile btn-outline" style="color: #6366f1; border-color: #6366f1; background: #f5f3ff;">Back to Admin Panel</a>
-                    {% else %}
-                        <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout Account</a>
-                    {% endif %}
+                    <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout Account</a>
                 </div>
             </div>
         </div>
