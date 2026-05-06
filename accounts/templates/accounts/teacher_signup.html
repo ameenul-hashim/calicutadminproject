@@ -112,7 +112,7 @@
                     <svg id="eye-icon-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </span>
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; background: #6366f1;">Register as Teacher</button>
+            <button type="submit" id="signup-btn" class="btn btn-primary" style="width: 100%; background: #6366f1; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Register as Teacher</button>
         </form>
 
         <p style="text-align: center; margin-top: 1.5rem; color: var(--text-muted);">
@@ -137,12 +137,17 @@
         function handleFileSelection(input) {
             const display = document.getElementById('file-name-display');
             const label = document.getElementById('upload-label');
+        // Robust File Selection Handler for All Devices
+        function handleFileSelection(input) {
+            const display = document.getElementById('file-name-display');
+            const label = document.getElementById('upload-label');
             const file = input.files[0];
 
             if (file) {
                 // Validation
-                if (!file.name.toLowerCase().endsWith('.pdf')) {
-                    alert("Only PDF files are allowed.");
+                const fileName = file.name.toLowerCase();
+                if (!fileName.endsWith('.pdf')) {
+                    showLocalError("Only PDF files are allowed.");
                     input.value = "";
                     display.innerText = "Click to Select PDF";
                     label.style.borderColor = "#cbd5e1";
@@ -150,7 +155,7 @@
                     return;
                 }
                 if (file.size > 200 * 1024) {
-                    alert("File size must be below 200 KB.");
+                    showLocalError("File size must be below 200 KB.");
                     input.value = "";
                     display.innerText = "Click to Select PDF";
                     label.style.borderColor = "#cbd5e1";
@@ -163,14 +168,58 @@
                 label.style.borderColor = "#10b981";
                 label.style.background = "#f0fdf4";
                 label.style.color = "#166534";
-                console.log("📄 File selected:", file.name, "(" + (file.size/1024).toFixed(1) + " KB)");
+                console.log("📄 Teacher PDF selected:", file.name);
             }
         }
 
+        // Custom Error Display for Mobile
+        function showLocalError(message) {
+            alert(message);
+        }
+
+        // Form Validation Engine
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const phone = document.getElementById('phone_number').value;
+            const pass = document.getElementById('password').value;
+            const confirmPass = document.getElementById('confirm_password').value;
+            const proof = document.getElementById('proof_file');
+            const btn = document.getElementById('signup-btn');
+
+            // 1. Phone Validation
+            if (phone.length !== 10) {
+                e.preventDefault();
+                alert("Please enter exactly 10 digits for the contact number.");
+                return;
+            }
+
+            // 2. Password Match
+            if (pass !== confirmPass) {
+                e.preventDefault();
+                alert("Passwords do not match!");
+                return;
+            }
+
+            // 3. Proof File Check
+            if (!proof.files || proof.files.length === 0) {
+                e.preventDefault();
+                alert("Please select your qualification proof (PDF).");
+                return;
+            }
+
+            // Success: Show Loading State
+            btn.innerHTML = 'Registering... <div style="width:16px;height:16px;border:3px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 1s linear infinite;"></div>';
+            btn.style.opacity = '0.8';
+            btn.style.pointerEvents = 'none';
+        });
+
         // Initialize state on load
         window.addEventListener('load', function() {
-            console.log("🚀 Teacher Signup ready. PDF upload active.");
+            console.log("🚀 Teacher Signup ready. Validations active.");
         });
+
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
 
         function validatePDF(input) {
             var preview = document.getElementById('mobile-file-preview');
