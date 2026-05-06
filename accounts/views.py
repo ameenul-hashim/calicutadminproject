@@ -1107,8 +1107,13 @@ def all_notifications(request):
     
     notifications = notifications_qs
     
-    # Mark all as read when viewing this page
-    request.user.notifications.filter(is_read=False).update(is_read=True)
+    # Mark as read = Delete permanently (No DB save needed)
+    # Only delete for Admin/Teacher to keep their history clean
+    if request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser:
+        notifications_qs.delete()
+    else:
+        # Students keep history (is_read only)
+        notifications_qs.filter(is_read=False).update(is_read=True)
     
     # Determine base template based on user type
     base_template = 'custom_admin/base_admin.html' if (request.user.user_type == 'ADMIN' or request.user.is_superuser) else 'accounts/base.html'

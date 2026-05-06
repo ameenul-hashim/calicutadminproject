@@ -813,14 +813,17 @@ def delete_user_admin(request, user_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_all_notifications(request):
-    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')
-    unread_count = notifications.filter(is_read=False).count()
+    notifications_qs = Notification.objects.filter(user=request.user)
     
-    # Mark all as read when viewing
-    notifications.update(is_read=True)
+    # Only delete for Admin/Teacher to keep their history clean
+    if request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser:
+        notifications_qs.delete()
+    else:
+        # Students keep history (is_read only)
+        notifications_qs.filter(is_read=False).update(is_read=True)
     
     return render(request, 'custom_admin/all_notifications.html', {
-        'all_notifications': notifications,
+        'all_notifications': [],
         'unread_notifications_count': 0,
     })
 
