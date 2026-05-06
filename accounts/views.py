@@ -70,9 +70,14 @@ def signup_view(request):
             messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
+        # PDF format validation
+        if not proof_file.name.lower().endswith('.pdf'):
+            messages.error(request, "Only PDF format is allowed for verification documents.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
         if proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # Upload verification document
         # Note: We create the user first in memory, or upload first and assign later.
@@ -158,9 +163,14 @@ def teacher_signup_view(request):
             messages.error(request, "Contact number must be exactly 10 digits (numbers only).")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
+        # PDF format validation
+        if not proof_file.name.lower().endswith('.pdf'):
+            messages.error(request, "Only PDF format is allowed for verification documents.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
         if proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # Email format validation
         email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
