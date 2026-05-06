@@ -138,37 +138,42 @@
         function handleFileSelection(input) {
             const display = document.getElementById('file-name-display');
             const label = document.getElementById('upload-label');
+            const help = document.getElementById('upload-help-text');
             const file = input.files[0];
             const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
             if (file) {
                 const fileName = file.name.toLowerCase();
-                const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp'];
+                const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
                 const isImage = allowedImageExts.some(ext => fileName.endsWith(ext));
                 const isPDF = fileName.endsWith('.pdf');
 
                 if (!isPDF && !isImage) {
-                    alert("Please upload a PDF or an image (JPG/PNG).");
+                    alert("Please upload a PDF or an image (JPG/PNG/HEIC).");
                     input.value = "";
                     resetUploadUI(display, label);
                     return;
                 }
 
                 if (!isPDF && !isTouch) {
-                    alert("Only PDF files are allowed on desktop. Please upload a PDF.");
+                    alert("Only PDF files are allowed on desktop.");
                     input.value = "";
                     resetUploadUI(display, label);
                     return;
                 }
 
-                if (file.size > 200 * 1024) {
-                    alert("File size must be below 200 KB.");
+                // Relaxed limit for mobile (backend will compress)
+                const limit = 5 * 1024 * 1024; 
+                if (file.size > limit) {
+                    alert("File too large. Please upload a document under 5MB.");
                     input.value = "";
                     resetUploadUI(display, label);
                     return;
                 }
 
-                display.innerText = "Selected: " + (file.name.length > 25 ? file.name.substring(0, 22) + "..." : file.name);
+                const sizeText = (file.size / 1024 / 1024).toFixed(2) + " MB";
+                display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
+                help.innerText = "Ready to upload (" + sizeText + ")";
                 label.style.borderColor = "#10b981";
                 label.style.background = "#f0fdf4";
                 label.style.color = "#166534";
@@ -187,11 +192,12 @@
             const pass = document.getElementById('password').value;
             const confirmPass = document.getElementById('confirm_password').value;
             const btn = document.getElementById('signup-btn');
+            const isImage = !document.getElementById('proof_file').files[0].name.toLowerCase().endsWith('.pdf');
 
             if (phone.length !== 10) { e.preventDefault(); alert("Please enter exactly 10 digits for the contact number."); return; }
             if (pass !== confirmPass) { e.preventDefault(); alert("Passwords do not match!"); return; }
 
-            btn.innerHTML = 'Registering... <div class="spinner"></div>';
+            btn.innerHTML = (isImage ? 'Processing Document...' : 'Registering...') + ' <div class="spinner"></div>';
             btn.style.opacity = '0.8';
             btn.style.pointerEvents = 'none';
         });
@@ -200,7 +206,7 @@
             const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
             const fileInput = document.getElementById('proof_file');
             if (isTouch) {
-                fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp');
+                fileInput.setAttribute('accept', 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif');
             }
         });
     </script>
