@@ -300,7 +300,7 @@
                 </div>
                 <h3 style="font-size: 0.95rem; font-weight: 700; color: #1e293b; margin: 0;">{{ user.full_name }}</h3>
                 <p style="font-size: 0.75rem; font-weight: 600; color: #0ea5e9; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 0.25rem;">
-                    Student
+                    {% if user.user_type == 'ADMIN' %}Administrator{% elif user.user_type == 'TEACHER' %}Teacher{% else %}Student{% endif %}
                 </p>
             </div>
             {% endif %}
@@ -317,6 +317,8 @@
             <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                 {% if user.user_type == 'TEACHER' %}
                     <a href="{% url 'teacher_dashboard' %}" class="nav-link" style="color: #6366f1; font-weight: 600; background: #f5f3ff;"><span>🔙</span> Back to Teacher Panel</a>
+                {% elif user.user_type == 'ADMIN' %}
+                    <a href="{% url 'admin_dashboard' %}" class="nav-link" style="color: #0ea5e9; font-weight: 600; background: #f0f9ff;"><span>🔙</span> Back to Admin Panel</a>
                 {% else %}
                     <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
                 {% endif %}
@@ -328,10 +330,12 @@
             <header class="top-header">
                 <div class="welcome-section">
                     <h1 style="font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 0.25rem;">Welcome, {{ user.full_name }} 👋</h1>
-                    <p style="color: #64748b; font-size: 1rem;">{% if user.user_type == 'TEACHER' %}Previewing Student View{% else %}Ready to continue your learning journey?{% endif %}</p>
+                    <p style="color: #64748b; font-size: 1rem;">{% if user.user_type == 'TEACHER' %}Previewing Student View{% elif user.user_type == 'ADMIN' %}Administrator Preview Mode{% else %}Ready to continue your learning journey?{% endif %}</p>
                     
                     {% if user.user_type == 'TEACHER' %}
                         <a href="{% url 'teacher_dashboard' %}" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">← Back to Teacher Portal</a>
+                    {% elif user.user_type == 'ADMIN' %}
+                        <a href="{% url 'admin_dashboard' %}" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #0ea5e9; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">← Back to Admin Panel</a>
                     {% endif %}
 
 
