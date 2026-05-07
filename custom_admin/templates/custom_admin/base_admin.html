@@ -468,6 +468,11 @@
                     <a href="{% url 'enterprise_monitor' %}" class="nav-link {% if request.resolver_match.url_name == 'enterprise_monitor' %}active{% endif %}" style="background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.2);">🛡️ Enterprise Monitor</a>
                 </div>
 
+                <!-- 7. System Audit Hub -->
+                <div class="nav-group">
+                    <a href="{% url 'system_audit' %}" class="nav-link {% if request.resolver_match.url_name == 'system_audit' %}active{% endif %}" style="background: rgba(239, 68, 68, 0.05); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 700;">🔍 System Audit Hub</a>
+                </div>
+
                 <div class="logout-section" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
                     <a href="{% url 'admin_logout' %}" class="nav-link" style="color: #ef4444;">🚪 Logout</a>
                 </div>
