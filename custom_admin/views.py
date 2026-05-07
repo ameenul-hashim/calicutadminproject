@@ -678,38 +678,23 @@ def reject_course(request, course_uid):
         teacher = course.teacher
         course_title = course.title
 
-        # Log rejection BEFORE deleting
-        ApprovalLog.objects.create(
-            content_type='COURSE',
-            object_id=course.id,
-            status='REJECTED',
-            reviewed_by=request.user,
-            comments=reason
-        )
-
-        # Permanently delete course Cloudinary thumbnail if exists
-        if course.image_public_id:
-            try:
-                import cloudinary.uploader
-                cloudinary.uploader.destroy(course.image_public_id)
-            except Exception:
-                pass
-
-        # Delete all lesson video files (Cloudinary/storage)
-        for lesson in course.lessons.all():
-            if lesson.video_file:
-                try:
-                    lesson.video_file.delete(save=False)
-                except Exception:
-                    pass
-
-        # Permanently delete the course (cascades lessons, quizzes, etc.)
+        # Objective: Replace soft rejection with permanent purging
+        course_id = course.id
         course.delete()
 
-        # Notify teacher: course was rejected and deleted, they must resubmit fresh
-        create_notification(teacher, f"❌ Your course '{course_title}' was rejected and removed. Reason: {reason}. Please create a new course with the requested changes.")
+        # Log rejection as a purge event
+        ApprovalLog.objects.create(
+            content_type='COURSE',
+            object_id=0, # Object no longer exists
+            status='REJECTED',
+            reviewed_by=request.user,
+            comments=f"Course '{course_title}' rejected and permanently purged. Reason: {reason}"
+        )
 
-        messages.warning(request, f"Course '{course_title}' has been rejected and permanently removed. Teacher has been notified.")
+        # Notify teacher: course was purged
+        create_notification(teacher, f"❌ Your course '{course_title}' was rejected and PERMANENTLY PURGED. Reason: {reason}. You must recreate it if you wish to resubmit.")
+
+        messages.warning(request, f"Course '{course_title}' has been rejected and permanently purged from the system.")
         return redirect('admin_content')
 
     return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
@@ -785,15 +770,18 @@ def reject_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason')
-        lesson.status = 'REJECTED'
-        lesson.is_approved = False
-        lesson.rejection_reason = reason
-        lesson.save()
+        # Objective: Replace soft rejection with permanent purging for lessons
+        lesson_title = lesson.title
+        course_uid = lesson.course.uid
+        teacher = lesson.course.teacher
+        course_title = lesson.course.title
         
-        # Just reject the lesson. The course remains PUBLISHED so other approved content is visible.
-        create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' was rejected. Please fix it. Reason: {reason}")
-        messages.warning(request, f"Lesson '{lesson.title}' rejected. The course remains live with its other approved content.")
-        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+        lesson.delete()
+        
+        # Notify teacher
+        create_notification(teacher, f"Your lesson '{lesson_title}' in course '{course_title}' was rejected and PURGED. Reason: {reason}")
+        messages.warning(request, f"Lesson '{lesson_title}' rejected and permanently purged. The course remains live with its other approved content.")
+        return redirect('admin_view_course_content', course_uid=course_uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
 

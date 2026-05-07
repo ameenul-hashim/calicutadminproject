@@ -269,3 +269,12 @@ def cleanup_user_files(sender, instance, **kwargs):
 @receiver(pre_delete, sender=Course)
 def cleanup_course_image(sender, instance, **kwargs):
     delete_image(instance)
+
+@receiver(pre_delete, sender=Lesson)
+def cleanup_lesson_video(sender, instance, **kwargs):
+    """Clean up uploaded video file when lesson is deleted."""
+    if instance.video_file:
+        try:
+            instance.video_file.delete(save=False)
+        except Exception:
+            pass
