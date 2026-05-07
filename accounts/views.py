@@ -9,8 +9,17 @@ import re
 import os
 from accounts.utils.supabase_storage import upload_pdf
 import random
-from django.core.mail import send_mail
 from django.conf import settings
+import cloudinary
+
+# Explicitly configure cloudinary for use in helper functions
+if hasattr(settings, 'CLOUDINARY_STORAGE'):
+    cloudinary.config(
+        cloud_name=settings.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+        api_key=settings.CLOUDINARY_STORAGE.get('API_KEY'),
+        api_secret=settings.CLOUDINARY_STORAGE.get('API_SECRET'),
+        secure=settings.CLOUDINARY_STORAGE.get('SECURE', True)
+    )
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count, Sum, Q
@@ -608,7 +617,7 @@ def student_explore(request):
         .exclude(id__in=enrolled_ids)\
         .select_related('teacher')\
         .annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED')))\
-        .only('id', 'title', 'image', 'thumbnail', 'category', 'teacher__username', 'teacher__full_name')\
+        .only('id', 'uid', 'title', 'description', 'image', 'thumbnail', 'category', 'teacher__username', 'teacher__full_name', 'teacher__image')\
         .order_by('-created_at')
     
     search_query = request.GET.get('search', '')
@@ -634,7 +643,7 @@ def explore_courses(request):
     other_courses_qs = Course.objects.exclude(teacher=request.user)\
         .filter(is_approved=True)\
         .select_related('teacher')\
-        .only('id', 'title', 'status', 'created_at', 'image', 'thumbnail', 'teacher__username', 'teacher__full_name')\
+        .only('id', 'uid', 'title', 'category', 'status', 'created_at', 'image', 'thumbnail', 'teacher__username', 'teacher__full_name', 'teacher__image')\
         .order_by('-created_at')
     
     # Pagination
@@ -663,12 +672,12 @@ def view_other_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
     from django.db.models import Count, Q
-    courses_qs = Course.objects.filter(teacher=request.user).annotate(
+    courses_qs = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(
         total_lessons=Count('lessons'),
         approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
         pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING')),
         rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED'))
-    ).only('id', 'title', 'status', 'created_at', 'image', 'thumbnail').order_by('-created_at')
+    ).only('id', 'uid', 'title', 'status', 'created_at', 'image', 'thumbnail').order_by('-created_at')
     
     # Pagination
     from django.core.paginator import Paginator
@@ -711,8 +720,9 @@ def create_course(request):
         description = request.POST.get('description')
         category = request.POST.get('category')
         level = request.POST.get('level')
-        thumbnail = request.FILES.get('thumbnail')
-        
+        # Accept either the compressed version (JS succeeded) or raw version (JS fallback)
+        thumbnail = request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed')
+
         from .utils.cloudinary_helpers import update_image
         course = Course.objects.create(
             teacher=request.user,
@@ -723,7 +733,9 @@ def create_course(request):
             status='DRAFT'
         )
         if thumbnail:
-            update_image(course, thumbnail, folder="edustream/courses")
+            success = update_image(course, thumbnail, folder="edustream/courses")
+            if not success:
+                print(f"⚠️ Thumbnail upload failed for course '{title}' — course saved without thumbnail.")
         
         messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
         return redirect('course_lessons', course_uid=course.uid)
@@ -738,9 +750,12 @@ def edit_course(request, course_uid):
         course.description = request.POST.get('description')
         course.category = request.POST.get('category')
         course.level = request.POST.get('level')
-        if request.FILES.get('thumbnail'):
+        if request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed'):
+            thumbnail_file = request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed')
             from .utils.cloudinary_helpers import update_image
-            update_image(course, request.FILES.get('thumbnail'), folder="edustream/courses")
+            success = update_image(course, thumbnail_file, folder="edustream/courses")
+            if not success:
+                print(f"⚠️ Thumbnail update failed for course '{course.title}'")
         
         if course.status == 'REJECTED':
             course.rejection_reason = ""
@@ -1219,14 +1234,27 @@ def forgot_password(request):
             email_from = settings.DEFAULT_FROM_EMAIL
             recipient_list = [user.email]
             
-            try:
-                send_mail(subject, message, email_from, recipient_list)
-                messages.success(request, f"✅ A verification code has been sent to {user.email}.")
+            # Check if email credentials are configured
+            email_configured = bool(getattr(settings, 'EMAIL_HOST_USER', '')) and bool(getattr(settings, 'EMAIL_HOST_PASSWORD', ''))
+            
+            if email_configured:
+                try:
+                    send_mail(subject, message, email_from, recipient_list, fail_silently=False)
+                    messages.success(request, f"✅ A verification code has been sent to {user.email}.")
+                    request.session['reset_email_target'] = user.email
+                    return redirect('verify_otp')
+                except Exception as e:
+                    print(f"❌ MAIL ERROR: {type(e).__name__}: {str(e)}")
+                    # Fallback: show OTP directly since email failed
+                    messages.warning(request, f"⚠️ Email service unavailable. Your OTP code is: {otp} (Valid for 5 minutes)")
+                    request.session['reset_email_target'] = user.email
+                    return redirect('verify_otp')
+            else:
+                # No email service configured — show OTP directly
+                print(f"📧 EMAIL NOT CONFIGURED. OTP for {user.email}: {otp}")
+                messages.warning(request, f"⚠️ Email service not configured. Your OTP code is: {otp} (Valid for 5 minutes)")
                 request.session['reset_email_target'] = user.email
                 return redirect('verify_otp')
-            except Exception as e:
-                print(f"❌ MAIL ERROR: {str(e)}")
-                messages.error(request, "⚠️ Failed to send verification email. Please try again.")
         else:
             messages.error(request, "❌ No account found with this email address.")
             

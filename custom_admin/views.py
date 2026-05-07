@@ -596,7 +596,8 @@ def analytics_view(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
     status_filter = request.GET.get('status', 'PUBLISHED')
-    courses = Course.objects.all().annotate(
+    # Never show REJECTED in default/ALL view — they are permanently deleted on rejection now
+    courses = Course.objects.exclude(status='REJECTED').annotate(
         total_lessons_count=Count('lessons'),
         approved_lessons_count=Count('lessons', filter=Q(lessons__is_approved=True))
     ).select_related('teacher')
@@ -674,13 +675,10 @@ def reject_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason', '')
-        course.status = 'REJECTED'
-        course.is_approved = False
-        course.rejection_reason = reason
-        course.save()
-        
-        create_notification(course.teacher, f"Your course '{course.title}' was rejected. Reason: {reason}")
-        
+        teacher = course.teacher
+        course_title = course.title
+
+        # Log rejection BEFORE deleting
         ApprovalLog.objects.create(
             content_type='COURSE',
             object_id=course.id,
@@ -688,13 +686,32 @@ def reject_course(request, course_uid):
             reviewed_by=request.user,
             comments=reason
         )
-        
-        messages.warning(request, f"Course '{course.title}' has been rejected.")
-        referer = request.META.get('HTTP_REFERER')
-        if referer and ('content' in referer or 'pending' in referer):
-            return redirect(referer)
+
+        # Permanently delete course Cloudinary thumbnail if exists
+        if course.image_public_id:
+            try:
+                import cloudinary.uploader
+                cloudinary.uploader.destroy(course.image_public_id)
+            except Exception:
+                pass
+
+        # Delete all lesson video files (Cloudinary/storage)
+        for lesson in course.lessons.all():
+            if lesson.video_file:
+                try:
+                    lesson.video_file.delete(save=False)
+                except Exception:
+                    pass
+
+        # Permanently delete the course (cascades lessons, quizzes, etc.)
+        course.delete()
+
+        # Notify teacher: course was rejected and deleted, they must resubmit fresh
+        create_notification(teacher, f"❌ Your course '{course_title}' was rejected and removed. Reason: {reason}. Please create a new course with the requested changes.")
+
+        messages.warning(request, f"Course '{course_title}' has been rejected and permanently removed. Teacher has been notified.")
         return redirect('admin_content')
-        
+
     return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
 
 @user_passes_test(is_admin, login_url='admin_login')

@@ -175,9 +175,10 @@ class EnterpriseHardeningMiddleware:
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://kit.fontawesome.com https://cdn.plot.ly",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://ka-f.fontawesome.com",
-            "img-src 'self' data: https://res.cloudinary.com https://*.supabase.co",
+            "img-src 'self' data: https://*.cloudinary.com https://res.cloudinary.com https://*.supabase.co",
             "font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com",
-            "connect-src 'self' https://ka-f.fontawesome.com https://*.supabase.co",
+            "connect-src 'self' https://ka-f.fontawesome.com https://*.supabase.co https://*.cloudinary.com",
+            "frame-src 'self' https://*.youtube.com https://www.youtube.com https://youtube.com https://*.cloudinary.com https://res.cloudinary.com",
             "frame-ancestors 'none'",
             "object-src 'none'",
             "base-uri 'self'",
@@ -185,7 +186,7 @@ class EnterpriseHardeningMiddleware:
         response["Content-Security-Policy"] = "; ".join(csp_rules)
         response["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
         response["X-Content-Type-Options"] = "nosniff"
-        response["X-Frame-Options"] = "DENY"
+        response["X-Frame-Options"] = "SAMEORIGIN"
         response["X-XSS-Protection"] = "1; mode=block"
         
         return response
