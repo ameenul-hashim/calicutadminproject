@@ -111,28 +111,43 @@ def signup_view(request):
 
             # HYBRID UPLOAD LOGIC: 
             # - PDFs go to Supabase
-            # - Images go to Cloudinary (optimized)
+            # - Images go to Cloudinary (temp) -> Convert to PDF -> Supabase -> Cleanup
             if file_ext == '.pdf':
                 print("📄 Uploading PDF directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"☁️ Uploading verification image ({file_ext}) to Cloudinary...")
-                import cloudinary.uploader
-                import uuid
-                unique_id = f"proof_{uuid.uuid4()}"
-                result = cloudinary.uploader.upload(
-                    proof_file,
-                    public_id=unique_id,
-                    folder="edustream/proofs",
-                    resource_type="image",
-                    quality="auto",
-                    fetch_format="auto"
-                )
-                user.pdf_url = result.get('secure_url')
-                user.pdf_public_id = result.get('public_id')
-                user.save(update_fields=['pdf_url', 'pdf_public_id'])
+                print(f"☁️ Processing image ({file_ext}) -> PDF conversion flow...")
+                from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
+                from accounts.utils.pdf_helpers import convert_image_to_pdf
+                from accounts.utils.supabase_storage import upload_user_proof
+
+                # 1. Upload temp image to Cloudinary
+                temp_url, temp_public_id = upload_temp_image(proof_file)
+                if not temp_url:
+                    user.delete()
+                    raise Exception("Cloudinary temp upload failed.")
+
+                try:
+                    # 2. Convert Image URL to PDF ContentFile
+                    pdf_file = convert_image_to_pdf(temp_url)
+                    if not pdf_file:
+                        raise Exception("PDF conversion failed.")
+
+                    # 3. Upload PDF to Supabase
+                    if not upload_user_proof(user, pdf_file):
+                        raise Exception("Supabase upload failed.")
+
+                    # 4. Success - Cleanup Cloudinary
+                    delete_temp_image(temp_public_id)
+                    print(f"✅ Conversion complete & Cloudinary cleaned for {username}")
+
+                except Exception as conversion_error:
+                    # Cleanup Cloudinary even on failure
+                    delete_temp_image(temp_public_id)
+                    user.delete()
+                    raise conversion_error
 
             messages.success(request, "✅ Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
@@ -215,28 +230,45 @@ def teacher_signup_view(request):
                 is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
             )
 
-            # HYBRID UPLOAD LOGIC
+            # HYBRID UPLOAD LOGIC:
+            # - PDFs go to Supabase
+            # - Images go to Cloudinary (temp) -> Convert to PDF -> Supabase -> Cleanup
             if file_ext == '.pdf':
                 print("📄 Uploading PDF directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"☁️ Uploading teacher verification image ({file_ext}) to Cloudinary...")
-                import cloudinary.uploader
-                import uuid
-                unique_id = f"proof_teacher_{uuid.uuid4()}"
-                result = cloudinary.uploader.upload(
-                    proof_file,
-                    public_id=unique_id,
-                    folder="edustream/proofs",
-                    resource_type="image",
-                    quality="auto",
-                    fetch_format="auto"
-                )
-                user.pdf_url = result.get('secure_url')
-                user.pdf_public_id = result.get('public_id')
-                user.save(update_fields=['pdf_url', 'pdf_public_id'])
+                print(f"☁️ Processing teacher image ({file_ext}) -> PDF conversion flow...")
+                from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
+                from accounts.utils.pdf_helpers import convert_image_to_pdf
+                from accounts.utils.supabase_storage import upload_user_proof
+
+                # 1. Upload temp image to Cloudinary
+                temp_url, temp_public_id = upload_temp_image(proof_file)
+                if not temp_url:
+                    user.delete()
+                    raise Exception("Cloudinary temp upload failed.")
+
+                try:
+                    # 2. Convert Image URL to PDF ContentFile
+                    pdf_file = convert_image_to_pdf(temp_url)
+                    if not pdf_file:
+                        raise Exception("PDF conversion failed.")
+
+                    # 3. Upload PDF to Supabase
+                    if not upload_user_proof(user, pdf_file):
+                        raise Exception("Supabase upload failed.")
+
+                    # 4. Success - Cleanup Cloudinary
+                    delete_temp_image(temp_public_id)
+                    print(f"✅ Teacher conversion complete & Cloudinary cleaned for {username}")
+
+                except Exception as conversion_error:
+                    # Cleanup Cloudinary even on failure
+                    delete_temp_image(temp_public_id)
+                    user.delete()
+                    raise conversion_error
 
             messages.success(request, "✅ Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
