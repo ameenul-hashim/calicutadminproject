@@ -1,59 +1,125 @@
 from PIL import Image
 import io
 import os
-from django.core.files.base import ContentFile
-
 import requests
+from django.core.files.base import ContentFile
+from pillow_heif import register_heif_opener
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.utils import ImageReader
+
+# Enable HEIC support for Pillow to handle iPhone uploads
+register_heif_opener()
+
+def optimize_image_internally(img, max_width=1200, quality=80):
+    """
+    Intelligently resizes, removes metadata, and compresses an image.
+    Returns a BytesIO object containing the optimized JPEG data.
+    """
+    # 1. Resize intelligently if too large (Banking KYC standard: 1000px-1200px)
+    if img.width > max_width:
+        ratio = max_width / float(img.width)
+        new_height = int(float(img.height) * float(ratio))
+        img = img.resize((max_width, new_height), Image.LANCZOS)
+    
+    # 2. Mode Normalization & Metadata Removal
+    # Converting to RGB and saving as JPEG effectively strips EXIF and Alpha channels
+    if img.mode in ("RGBA", "P"):
+        background = Image.new("RGB", img.size, (255, 255, 255))
+        if img.mode == "RGBA":
+            background.paste(img, mask=img.split()[3])
+        else:
+            background.paste(img)
+        img = background
+    elif img.mode != "RGB":
+        img = img.convert("RGB")
+    
+    # 3. Save to memory as optimized JPEG
+    output_io = io.BytesIO()
+    img.save(output_io, format='JPEG', quality=quality, optimize=True)
+    output_io.seek(0)
+    return output_io
 
 def convert_image_to_pdf(image_source):
     """
-    Hardened conversion of uploaded images or Cloudinary URLs to PDF.
-    Supports resizing for mobile optimization and strict RGB conversion.
-    Targets ~200KB final size.
+    Professional PDF generation pipeline for verification documents.
+    - Supports: .jpg, .jpeg, .png, .heic
+    - Logic: Adaptive re-compression to hit < 200KB target.
+    - Output: Standardized professional PDF for admin review.
     """
     try:
-        # 1. Load image (handle both file objects and URLs)
+        # 1. Load Image from URL or File
         if isinstance(image_source, str) and (image_source.startswith('http://') or image_source.startswith('https://')):
-            response = requests.get(image_source, timeout=10)
+            response = requests.get(image_source, timeout=15)
             img = Image.open(io.BytesIO(response.content))
             filename = os.path.basename(image_source).split('?')[0]
         else:
             img = Image.open(image_source)
-            filename = image_source.name
+            filename = getattr(image_source, 'name', 'verification_upload.jpg')
 
-        print(f"📸 Image Conversion Start: {filename} | Mode: {img.mode} | Size: {img.size}")
+        print(f"🚀 PDF Pipeline: Processing {filename} ({img.width}x{img.height})")
+
+        # 2. Adaptive Optimization Loop
+        # Goal: < 200KB (Target 180KB)
+        MAX_SIZE_BYTES = 200 * 1024
         
-        # 2. Resizing for Mobile Optimization (Targeting small file size)
-        # 1280px is plenty for documents and keeps size down
-        max_size = 1280
-        if max(img.size) > max_size:
-            img.thumbnail((max_size, max_size), Image.LANCZOS)
-            print(f"📏 Optimized size to: {img.size}")
-
-        # 3. Mode Normalization (Strict RGB for PDF)
-        if img.mode in ("RGBA", "P"):
-            background = Image.new("RGB", img.size, (255, 255, 255))
-            if img.mode == "RGBA":
-                background.paste(img, mask=img.split()[3])
-            else:
-                background.paste(img)
-            img = background
-        elif img.mode != "RGB":
-            img = img.convert("RGB")
+        current_quality = 85
+        current_max_width = 1200
+        final_pdf_buffer = None
+        
+        # Max 3 attempts with decreasing quality/resolution
+        for attempt in range(3):
+            # A. Compress image in-memory
+            optimized_jpg_io = optimize_image_internally(img, max_width=current_max_width, quality=current_quality)
             
-        # 4. Conversion to PDF with Compression (Targeting ~200KB)
-        pdf_io = io.BytesIO()
-        # Using a resolution and quality balance to hit the 200KB goal
-        img.save(pdf_io, format='PDF', quality=75, optimize=True, resolution=72.0)
-        pdf_io.seek(0)
+            # B. Generate Professional PDF using ReportLab
+            pdf_buffer = io.BytesIO()
+            c = canvas.Canvas(pdf_buffer, pagesize=A4)
+            width, height = A4
+            
+            # Draw the image to fit the page while maintaining aspect ratio
+            img_reader = ImageReader(optimized_jpg_io)
+            img_w, img_h = img_reader.getSize()
+            
+            aspect = img_h / float(img_w)
+            display_w = width - 40  # 20pt margins
+            display_h = display_w * aspect
+            
+            # If image height exceeds page, scale down
+            if display_h > (height - 40):
+                display_h = height - 40
+                display_w = display_h / aspect
+                
+            # Center on page
+            x_centered = (width - display_w) / 2
+            y_centered = (height - display_h) / 2
+            
+            c.drawImage(img_reader, x_centered, y_centered, width=display_w, height=display_h)
+            c.showPage()
+            c.save()
+            
+            pdf_size = pdf_buffer.tell()
+            print(f"📊 Attempt {attempt+1}: Quality={current_quality}, Width={current_max_width}, Size={pdf_size/1024:.2f}KB")
+            
+            if pdf_size <= MAX_SIZE_BYTES:
+                final_pdf_buffer = pdf_buffer
+                break
+            
+            # Adjust parameters for next attempt if too large
+            current_quality -= 20
+            current_max_width = int(current_max_width * 0.75)
+
+        if not final_pdf_buffer:
+            final_pdf_buffer = pdf_buffer # Use the last one anyway
+
+        final_pdf_buffer.seek(0)
         
-        # 5. Generate Safe Filename
-        name_without_ext = os.path.splitext(os.path.basename(filename))[0]
-        pdf_filename = f"{name_without_ext}.pdf"
-        
-        return ContentFile(pdf_io.read(), name=pdf_filename)
+        # 3. Return as ContentFile for Django
+        base_name = os.path.splitext(os.path.basename(filename))[0]
+        return ContentFile(final_pdf_buffer.read(), name=f"{base_name}_verified.pdf")
+
     except Exception as e:
         import traceback
-        print(f"❌ CRITICAL IMAGE CONVERSION FAILURE: {str(e)}")
+        print(f"❌ PDF PIPELINE ERROR: {str(e)}")
         print(traceback.format_exc())
         return None

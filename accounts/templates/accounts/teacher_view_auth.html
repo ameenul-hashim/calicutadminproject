@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EduStream - Professional E-Learning Platform for Students, Teachers, and Admins.">
+    <meta name="description" content="EduStream - Professional E-Learning Platform for Students, Teachers, and Education.">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
     <title>Verify Access | EduStream Teacher Portal</title>
@@ -67,7 +67,7 @@
         <form method="POST" novalidate>
             {% csrf_token %}
             <div style="position: relative; margin-bottom: 1.5rem;">
-                <label for="password" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.9rem;">Admin Password</label>
+                <label for="password" style="display: block; font-weight: 600; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.9rem;">Password</label>
                 <input type="password" name="password" id="password" required autofocus
                     style="width: 100%; padding: 0.85rem 2.5rem 0.85rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: border-color 0.2s;"
                     onfocus="this.style.borderColor='#10b981'" onblur="this.style.borderColor='#e2e8f0'">
