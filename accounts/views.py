@@ -573,8 +573,8 @@ def dashboard_view(request):
         return redirect('login')
 
     if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
-        # Admin or Teacher in Student View - strictly mimic student by showing only approved courses
-        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        # Admin or Teacher in Student View - Allow previewing ALL courses (including PENDING) for verification
+        courses = Course.objects.all().annotate(lesson_count=Count('lessons')).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
     elif request.user.user_type == 'TEACHER' and not is_admin:
         # Teacher viewing normally - show their own courses (all statuses)
         courses = Course.objects.filter(teacher=request.user).annotate(
@@ -1018,16 +1018,15 @@ def edit_profile(request):
             # Objective: Accept any size up to 2GB and process
             MAX_SIZE = 2 * 1024 * 1024 * 1024 # 2GB
             if profile_photo.size > MAX_SIZE:
-                messages.error(request, "File is too large (Maximum 2GB allowed).")
+                return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 2GB allowed).'}, status=400)
+            
+            from .utils.cloudinary_helpers import update_image
+            if update_image(request.user, profile_photo, folder="edustream/profiles"):
+                return JsonResponse({'status': 'success', 'message': '✅ Profile photo updated successfully!'})
             else:
-                from .utils.cloudinary_helpers import update_image
-                if update_image(request.user, profile_photo, folder="edustream/profiles"):
-                    messages.success(request, "✅ Profile photo updated successfully!")
-                else:
-                    messages.error(request, "Failed to upload photo. Please try again.")
-            return redirect('profile')
+                return JsonResponse({'status': 'error', 'message': 'Failed to upload photo. Please try again.'}, status=500)
         else:
-            messages.error(request, "Please select a photo to upload.")
+            return JsonResponse({'status': 'error', 'message': 'Please select a photo to upload.'}, status=400)
     
     return render(request, 'accounts/edit_profile.html', {'user': request.user})
 

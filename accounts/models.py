@@ -35,10 +35,9 @@ class CustomUser(AbstractUser):
     @property
     def avatar_url(self):
         """Returns optimized Cloudinary image URL, falling back to legacy profile_photo."""
-        url = None
-        if self.image:
-            url = self.image
-        elif self.profile_photo:
+        url = self.image if self.image else None
+        
+        if not url and self.profile_photo:
             try:
                 url = self.profile_photo.url
             except ValueError:
@@ -47,7 +46,8 @@ class CustomUser(AbstractUser):
         if url:
             # Inject Cloudinary auto-optimization if it's a Cloudinary URL
             if 'res.cloudinary.com' in url and 'upload/' in url:
-                return url.replace('upload/', 'upload/f_auto,q_auto/')
+                if 'f_auto,q_auto' not in url:
+                    return url.replace('upload/', 'upload/f_auto,q_auto/')
             return url
             
         # High-quality dynamic default avatar (Fast CDN)
@@ -96,17 +96,17 @@ class Course(models.Model):
     @property
     def thumbnail_url(self):
         """Returns optimized Cloudinary image URL, falling back to legacy thumbnail."""
-        url = None
-        if self.image:
-            url = self.image
-        elif self.thumbnail:
+        url = self.image if self.image else None
+        
+        if not url and self.thumbnail:
             try:
                 url = self.thumbnail.url
             except ValueError:
                 pass
         
         if url and 'res.cloudinary.com' in url and 'upload/' in url:
-            return url.replace('upload/', 'upload/f_auto,q_auto/')
+            if 'f_auto,q_auto' not in url:
+                return url.replace('upload/', 'upload/f_auto,q_auto/')
         return url
 
     def __str__(self):

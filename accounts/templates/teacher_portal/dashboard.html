@@ -84,7 +84,16 @@
             <tbody>
                 {% for course in recent_courses %}
                 <tr style="border-bottom: 1px solid #f8fafc;">
-                    <td style="padding: 1rem 0; font-weight: 500;">{{ course.title }}</td>
+                    <td style="padding: 1rem 0;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            {% if course.thumbnail_url %}
+                                <img src="{{ course.thumbnail_url }}" alt="thumb" style="width: 40px; height: 30px; border-radius: 0.3rem; object-fit: cover;">
+                            {% else %}
+                                <div style="width: 40px; height: 30px; background: #f1f5f9; border-radius: 0.3rem; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; font-weight: 800; color: #94a3b8;">{{ course.title|slice:":2"|upper }}</div>
+                            {% endif %}
+                            <span style="font-weight: 600; color: #1e293b;">{{ course.title }}</span>
+                        </div>
+                    </td>
                     <td style="padding: 1rem 0;">
                         <span class="status-badge status-{{ course.status|lower }}">{{ course.get_status_display }}</span>
                     </td>
