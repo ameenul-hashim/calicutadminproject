@@ -222,7 +222,9 @@
 
                 <div class="action-bar">
                     <a href="{% url 'edit_profile' %}" class="btn-profile btn-primary">Edit Photo</a>
-                    {% if user.user_type == 'ADMIN' %}
+                    {% if user.user_type == 'TEACHER' %}
+                        <a href="{% url 'teacher_dashboard' %}" class="btn-profile btn-outline" style="color: #6366f1; border-color: #c7d2fe;">Back to Teacher Panel</a>
+                    {% elif user.user_type == 'ADMIN' or user.is_staff %}
                         <a href="{% url 'admin_dashboard' %}" class="btn-profile btn-outline" style="color: #0ea5e9;">Back to Admin Panel</a>
                     {% else %}
                         <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout Account</a>

@@ -136,18 +136,6 @@
                                         }
                                     } else {
                                         if (height > MAX_SIZE) {
-                                            width *= MAX_HEIGHT / height; // Typo in previous thought but fixed here
-                                            width = MAX_SIZE;
-                                        }
-                                    }
-                                    // Fix: correctly calculate dimensions
-                                    if (width > height) {
-                                        if (width > MAX_SIZE) {
-                                            height *= MAX_SIZE / width;
-                                            width = MAX_SIZE;
-                                        }
-                                    } else {
-                                        if (height > MAX_SIZE) {
                                             width *= MAX_SIZE / height;
                                             height = MAX_SIZE;
                                         }
