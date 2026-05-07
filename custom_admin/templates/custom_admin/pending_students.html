@@ -74,8 +74,8 @@
                     <!-- Actions -->
                     <td style="padding: 1rem 1.25rem;">
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                            <a href="{% url 'accept_user' u.uid %}"
-                               onclick="return confirm('Approve {{ u.full_name|default:u.username }}?')"
+                            <a href="javascript:void(0)"
+                               onclick="Toast.confirm('Approve student {{ u.full_name|default:u.username }}? They will be granted immediate access.', () => { window.location.href = '{% url 'accept_user' u.uid %}'; })"
                                style="padding: 0.4rem 0.9rem; background: #10b981; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.8rem; white-space: nowrap;">
                                 ✅ Approve
                             </a>

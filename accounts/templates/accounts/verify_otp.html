@@ -10,7 +10,8 @@
             <p>We've sent a 6-digit code to your email for <strong>{{ purpose }}</strong>.</p>
         </div>
 
-        <form method="POST" class="auth-form" id="otp-form">
+        <form method="POST" class="auth-form" id="otp-form" novalidate>
+            {% include 'includes/validation_engine.html' %}
             {% csrf_token %}
             <div class="form-group">
                 <label for="otp">Enter 6-Digit Code</label>
@@ -25,6 +26,48 @@
                 <i class="fas fa-check-circle"></i>
             </button>
         </form>
+
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize Validation
+                Validation.initForm('otp-form', {
+                    fields: [
+                        { id: 'otp', label: 'Verification Code', required: true, custom: (val) => {
+                            if (val.length !== 6 || !/^\d+$/.test(val)) return "Please enter a valid 6-digit code";
+                            return null;
+                        }}
+                    ]
+                });
+
+                let timeLeft = 60;
+                const timerElement = document.getElementById('timer');
+                const timerText = document.getElementById('timer-text');
+                const resendLink = document.getElementById('resend-link');
+
+                const countdown = setInterval(function() {
+                    timeLeft--;
+                    if(timerElement) timerElement.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        clearInterval(countdown);
+                        if(timerText) timerText.classList.add('hidden');
+                        if(resendLink) resendLink.classList.remove('hidden');
+                    }
+                }, 1000);
+
+                // Auto-submit when 6 digits are entered
+                const otpInput = document.getElementById('otp');
+                otpInput.addEventListener('input', function() {
+                    if (this.value.length === 6 && /^\d+$/.test(this.value)) {
+                        // Manually trigger the submit event so Validation engine can handle it
+                        const form = document.getElementById('otp-form');
+                        const event = new Event('submit', { cancelable: true });
+                        if(form.dispatchEvent(event)) {
+                            form.submit();
+                        }
+                    }
+                });
+            });
+        </script>
 
         <div class="auth-footer">
             <p id="resend-container">
