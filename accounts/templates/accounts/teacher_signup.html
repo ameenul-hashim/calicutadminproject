@@ -85,14 +85,14 @@
 
                 <div class="input-group">
                     <label style="font-weight: 600; font-size: 0.9rem; color: #475569; display: block; margin-bottom: 0.5rem;">Qualification Proof</label>
-                    <div class="upload-area" onclick="document.getElementById('proof_file').click()" id="upload-label" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 1.25rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s;">
+                    <label for="proof_file" class="upload-area" id="upload-label" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 1.25rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s;">
                         <span id="file-icon" style="font-size: 1.5rem;">📄</span>
                         <div style="text-align: left;">
                             <div id="file-name-display" style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">Select qualification document</div>
                             <div id="upload-help-text" style="font-size: 0.75rem; color: #94a3b8;">PDF Document Only (Max 200KB)</div>
                         </div>
-                    </div>
-                    <input type="file" name="proof_file" id="proof_file" accept="application/pdf,image/*,.heic,.heif" style="opacity: 0; position: absolute; width: 1px; height: 1px; z-index: -1;" onchange="handleFileSelection(this)">
+                    </label>
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*,.heic,.heif" style="display: none;" onchange="handleFileSelection(this)">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -227,12 +227,12 @@
 
             if (isMobile) {
                 // On mobile, prioritize camera/gallery but allow PDF
-                fileInput.setAttribute('accept', 'image/*,application/pdf,.heic,.heif');
+                fileInput.setAttribute('accept', '.pdf,image/*,.heic,.heif');
                 mobileInput.value = "true";
                 helpText.innerText = "Upload Photo (Max 15MB) or PDF (Max 200KB)";
             } else {
                 // On desktop, enforce PDF for professional documents
-                fileInput.setAttribute('accept', 'application/pdf');
+                fileInput.setAttribute('accept', '.pdf');
                 mobileInput.value = "false";
                 helpText.innerText = "Upload PDF Document Only (Max 200KB)";
             }
