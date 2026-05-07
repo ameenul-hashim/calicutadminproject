@@ -23,10 +23,10 @@
                         <tr style="border-bottom: 1px solid #f1f5f9;">
                             <td style="padding: 0.6rem;">
                                 <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                    {% if course.thumbnail %}
-                                        <img src="{{ course.thumbnail.url }}" alt="thumb" style="width: 45px; height: 45px; border-radius: 0.4rem; object-fit: cover;">
+                                    {% if course.thumbnail_url %}
+                                        <img src="{{ course.thumbnail_url }}" alt="thumb" style="width: 45px; height: 45px; border-radius: 0.4rem; object-fit: cover;">
                                     {% else %}
-                                        <div style="width: 45px; height: 45px; background: #e2e8f0; border-radius: 0.4rem; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #94a3b8;">No Img</div>
+                                        <div style="width: 45px; height: 45px; background: linear-gradient(135deg, #6366f1, #a855f7); border-radius: 0.4rem; display: flex; align-items: center; justify-content: center; color: white; font-weight: 800; font-size: 0.7rem;">{{ course.title|slice:":2"|upper }}</div>
                                     {% endif %}
                                     <div>
                                         <div style="font-weight: 700; color: #1e293b; font-size: 0.9rem;">{{ course.title }}</div>
