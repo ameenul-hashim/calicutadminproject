@@ -114,40 +114,50 @@ def signup_view(request):
         else:
             print("❌ NO FILE")
 
+        # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields are required.")
+            messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # 2. Validation
+        # Email format check
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            messages.error(request, "Please enter a valid email address.")
+            return render(request, 'accounts/signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+
+        # Unique checks
+        if CustomUser.objects.filter(username=username).exists():
+            messages.error(request, "This username is already taken. Please try another one.")
+            return render(request, 'accounts/signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "This email is already registered. If it's yours, try logging in.")
+            return render(request, 'accounts/signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+        
+        if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
+            messages.error(request, "This phone number is already associated with an account.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
+        # Phone digits check
         phone_digits = ''.join(filter(str.isdigit, phone_number))
         if len(phone_digits) != 10:
-            messages.error(request, "Contact number must be 10 digits.")
+            messages.error(request, "Contact number must be exactly 10 digits.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
-        file_ext = os.path.splitext(proof_file.name.lower())[1]
-        if file_ext not in allowed_exts:
-            messages.error(request, "Unsupported file format.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-        # 3. Existing User Validations (Username, Email, Phone)
-        if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "Username taken.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-        if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email registered.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-        if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "Phone number in use.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
+        # Password match & strength
         if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
+            messages.error(request, "Passwords do not match. Please re-enter them correctly.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         is_strong, msg = is_strong_password(password)
         if not is_strong:
             messages.error(request, msg)
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        # File validation
+        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        file_ext = os.path.splitext(proof_file.name.lower())[1]
+        if file_ext not in allowed_exts:
+            messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
@@ -229,40 +239,50 @@ def teacher_signup_view(request):
         else:
             print("❌ NO FILE")
 
+        # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields are required.")
+            messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # 2. Validation
+        # Email format check
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            messages.error(request, "Please enter a valid email address.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+
+        # Unique checks
+        if CustomUser.objects.filter(username=username).exists():
+            messages.error(request, "This username is already taken. Please try another one.")
+            return render(request, 'accounts/teacher_signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, "This email is already registered. If it's yours, try logging in.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+        
+        if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
+            messages.error(request, "This phone number is already associated with an account.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+
+        # Phone digits check
         phone_digits = ''.join(filter(str.isdigit, phone_number))
         if len(phone_digits) != 10:
-            messages.error(request, "Contact number must be 10 digits.")
+            messages.error(request, "Contact number must be exactly 10 digits.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
-        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
-        file_ext = os.path.splitext(proof_file.name.lower())[1]
-        if file_ext not in allowed_exts:
-            messages.error(request, "Unsupported file format.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
-        # 3. Unique Checks
-        if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "Username taken.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-        if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "Email registered.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-        if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "Phone in use.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
-
+        # Password match & strength
         if password != confirm_password:
-            messages.error(request, "Passwords do not match.")
+            messages.error(request, "Passwords do not match. Please re-enter them correctly.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         is_strong, msg = is_strong_password(password)
         if not is_strong:
             messages.error(request, msg)
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        # File validation
+        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        file_ext = os.path.splitext(proof_file.name.lower())[1]
+        if file_ext not in allowed_exts:
+            messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
@@ -401,19 +421,17 @@ def login_view(request):
 
         if user is not None:
             if user.user_type != 'STUDENT':
-                messages.error(request, "This login is for students only. Teachers and Admins please use their respective login pages.")
+                messages.error(request, "This login area is strictly for Students. Teachers and Admins must use their respective portals.")
                 return render(request, 'accounts/login.html')
 
             if user.status == 'ACTIVE':
                 # Concurrent login restriction for students
-                # Efficiently handle concurrent login restriction
                 from django.contrib.sessions.models import Session
                 if user.current_session_key:
                     Session.objects.filter(session_key=user.current_session_key).delete()
                 
                 login(request, user)
                 
-                # Save the new session key
                 if not request.session.session_key:
                     request.session.save()
                 user.current_session_key = request.session.session_key
@@ -422,11 +440,17 @@ def login_view(request):
                 messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
                 return redirect('dashboard')
             elif user.status == 'PENDING':
-                messages.info(request, "admin approval needed to login please wait for a while or contact admin for login")
+                messages.warning(request, "Your account is currently PENDING approval. Admin approval is needed to login. Please wait for a while or contact the administration.")
+            elif user.status == 'REJECTED':
+                messages.error(request, "Your registration was REJECTED. Please contact admin for details.")
             elif user.status == 'BLOCKED':
-                messages.error(request, "Your account has been blocked.")
+                messages.error(request, "Your account has been BLOCKED. Access is restricted.")
         else:
-            messages.error(request, "Invalid username or password.")
+            # Check if user exists but password is wrong OR user doesn't exist
+            if CustomUser.objects.filter(username=username).exists():
+                messages.error(request, "Incorrect password. Please try again.")
+            else:
+                messages.error(request, "Account not found. Please check your username or sign up.")
             
     return render(request, 'accounts/login.html')
 
@@ -512,17 +536,25 @@ def teacher_login_view(request):
         user = authenticate(request, username=username, password=password)
         if user is not None:
             if user.user_type != 'TEACHER':
-                messages.error(request, "This login is for teachers only.")
-            elif user.status == 'ACTIVE':
+                messages.error(request, "This login area is strictly for Teachers. Students and Admins must use their respective portals.")
+                return render(request, 'accounts/teacher_login.html')
+                
+            if user.status == 'ACTIVE':
                 login(request, user)
-                messages.success(request, "Teacher dashboard logged in successfully!")
+                messages.success(request, f"Welcome, {user.full_name}! Teacher Dashboard active.")
                 return redirect('teacher_dashboard')
             elif user.status == 'PENDING':
-                messages.info(request, "admin approval needed to login please wait for a while or contact admin for login")
+                messages.warning(request, "Your teacher account is PENDING approval. Admin approval is needed to login. Please wait for a while or contact the administration.")
+            elif user.status == 'REJECTED':
+                messages.error(request, "Your teacher application was REJECTED. Please contact admin for details.")
             elif user.status == 'BLOCKED':
-                messages.error(request, "Your account has been blocked.")
+                messages.error(request, "Your teacher account has been BLOCKED.")
         else:
-            messages.error(request, "Invalid teacher credentials.")
+            # Check existence vs wrong password
+            if CustomUser.objects.filter(username=username).exists():
+                messages.error(request, "Incorrect password. Please try again.")
+            else:
+                messages.error(request, "Teacher account not found. Please check your username or apply.")
             
     return render(request, 'accounts/teacher_login.html')
 
