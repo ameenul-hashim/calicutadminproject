@@ -78,6 +78,13 @@ def update_image(instance, image_file, folder="edustream/uploads"):
             print(f"⚠️ No image file provided for {instance}")
             return False
 
+        # 0. Handle Lazy Objects (e.g. request.user)
+        from django.utils.functional import SimpleLazyObject
+        if isinstance(instance, SimpleLazyObject):
+            from django.contrib.auth import get_user_model
+            instance = get_user_model().objects.get(pk=instance.pk)
+            print(f"🔄 Resolved LazyObject to real user: {instance.username}")
+
         # 1. Cleanup Old Image first
         if hasattr(instance, 'image_public_id') and instance.image_public_id:
             try:
@@ -86,7 +93,7 @@ def update_image(instance, image_file, folder="edustream/uploads"):
             except Exception as cleanup_err:
                 print(f"⚠️ Non-critical cleanup error: {str(cleanup_err)}")
 
-        # 2. Upload New Image with transformations for optimization
+        # 2. Upload New Image
         import uuid
         unique_id = f"img_{uuid.uuid4()}"
         
@@ -96,7 +103,6 @@ def update_image(instance, image_file, folder="edustream/uploads"):
             public_id=unique_id,
             folder=folder,
             resource_type="image",
-            # Objective: Optimize for mobile/web delivery
             quality="auto",
             fetch_format="auto"
         )
@@ -106,11 +112,19 @@ def update_image(instance, image_file, folder="edustream/uploads"):
         public_id = result.get('public_id')
         
         if secure_url and public_id:
+            # Update modern Cloudinary fields
             instance.image = secure_url
             instance.image_public_id = public_id
             
-            # Use update_fields to be precise and avoid race conditions if possible
-            instance.save(update_fields=['image', 'image_public_id'])
+            # IMPORTANT: Clear legacy fields to ensure 'avatar_url' and 'thumbnail_url' 
+            # properties ALWAYS prefer the new Cloudinary URL.
+            if hasattr(instance, 'profile_photo') and instance.profile_photo:
+                instance.profile_photo = None
+            if hasattr(instance, 'thumbnail') and instance.thumbnail:
+                instance.thumbnail = None
+            
+            # Save the entire instance to ensure database persistence
+            instance.save()
             
             print(f"✅ Successfully updated Image for {instance}")
             print(f"🔗 URL: {instance.image}")
