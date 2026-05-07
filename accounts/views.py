@@ -109,45 +109,34 @@ def signup_view(request):
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # HYBRID UPLOAD LOGIC: 
-            # - PDFs go to Supabase
-            # - Images go to Cloudinary (temp) -> Convert to PDF -> Supabase -> Cleanup
+            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
+            from accounts.utils.pdf_helpers import convert_image_to_pdf
+            from accounts.utils.supabase_storage import upload_user_proof
+
             if file_ext == '.pdf':
+                if proof_file.size > 200 * 1024:
+                    user.delete()
+                    messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
+                    return redirect('login')
+
                 print("📄 Uploading PDF directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"☁️ Processing image ({file_ext}) -> PDF conversion flow...")
-                from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
-                from accounts.utils.pdf_helpers import convert_image_to_pdf
-                from accounts.utils.supabase_storage import upload_user_proof
-
-                # 1. Upload temp image to Cloudinary
-                temp_url, temp_public_id = upload_temp_image(proof_file)
-                if not temp_url:
+                print(f"⚡ Processing image ({file_ext}) directly from memory...")
+                # convert_image_to_pdf now processes the file object directly in RAM
+                optimized_pdf = convert_image_to_pdf(proof_file)
+                
+                if not optimized_pdf:
                     user.delete()
-                    raise Exception("Cloudinary temp upload failed.")
+                    raise Exception("PDF conversion failed. File may be corrupted.")
 
-                try:
-                    # 2. Convert Image URL to PDF ContentFile
-                    pdf_file = convert_image_to_pdf(temp_url)
-                    if not pdf_file:
-                        raise Exception("PDF conversion failed.")
-
-                    # 3. Upload PDF to Supabase
-                    if not upload_user_proof(user, pdf_file):
-                        raise Exception("Supabase upload failed.")
-
-                    # 4. Success - Cleanup Cloudinary
-                    delete_temp_image(temp_public_id)
-                    print(f"✅ Conversion complete & Cloudinary cleaned for {username}")
-
-                except Exception as conversion_error:
-                    # Cleanup Cloudinary even on failure
-                    delete_temp_image(temp_public_id)
+                if not upload_user_proof(user, optimized_pdf):
                     user.delete()
-                    raise conversion_error
+                    raise Exception("Supabase upload failed.")
+                
+                print(f"✅ Fast-track registration complete for {username}")
 
             messages.success(request, "✅ Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
@@ -230,45 +219,34 @@ def teacher_signup_view(request):
                 is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
             )
 
-            # HYBRID UPLOAD LOGIC:
-            # - PDFs go to Supabase
-            # - Images go to Cloudinary (temp) -> Convert to PDF -> Supabase -> Cleanup
+            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
+            from accounts.utils.pdf_helpers import convert_image_to_pdf
+            from accounts.utils.supabase_storage import upload_user_proof
+
             if file_ext == '.pdf':
+                if proof_file.size > 200 * 1024:
+                    user.delete()
+                    messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
+                    return redirect('teacher_login')
+
                 print("📄 Uploading PDF directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"☁️ Processing teacher image ({file_ext}) -> PDF conversion flow...")
-                from accounts.utils.cloudinary_helpers import upload_temp_image, delete_temp_image
-                from accounts.utils.pdf_helpers import convert_image_to_pdf
-                from accounts.utils.supabase_storage import upload_user_proof
-
-                # 1. Upload temp image to Cloudinary
-                temp_url, temp_public_id = upload_temp_image(proof_file)
-                if not temp_url:
+                print(f"⚡ Processing teacher image ({file_ext}) directly from memory...")
+                # convert_image_to_pdf now processes the file object directly in RAM
+                optimized_pdf = convert_image_to_pdf(proof_file)
+                
+                if not optimized_pdf:
                     user.delete()
-                    raise Exception("Cloudinary temp upload failed.")
+                    raise Exception("PDF conversion failed. File may be corrupted.")
 
-                try:
-                    # 2. Convert Image URL to PDF ContentFile
-                    pdf_file = convert_image_to_pdf(temp_url)
-                    if not pdf_file:
-                        raise Exception("PDF conversion failed.")
-
-                    # 3. Upload PDF to Supabase
-                    if not upload_user_proof(user, pdf_file):
-                        raise Exception("Supabase upload failed.")
-
-                    # 4. Success - Cleanup Cloudinary
-                    delete_temp_image(temp_public_id)
-                    print(f"✅ Teacher conversion complete & Cloudinary cleaned for {username}")
-
-                except Exception as conversion_error:
-                    # Cleanup Cloudinary even on failure
-                    delete_temp_image(temp_public_id)
+                if not upload_user_proof(user, optimized_pdf):
                     user.delete()
-                    raise conversion_error
+                    raise Exception("Supabase upload failed.")
+                
+                print(f"✅ Fast-track teacher registration complete for {username}")
 
             messages.success(request, "✅ Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
