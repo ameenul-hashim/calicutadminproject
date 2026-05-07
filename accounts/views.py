@@ -16,6 +16,32 @@ from datetime import timedelta
 from django.db.models import Count, Sum, Q
 from .utils.pdf_helpers import convert_image_to_pdf
 
+def log_login_attempt(request, user, status='SUCCESS'):
+    """Audit helper for enterprise login tracking."""
+    try:
+        from .models import LoginHistory
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            ip = x_forwarded_for.split(',')[0]
+        else:
+            ip = request.META.get('REMOTE_ADDR')
+        
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        # Basic device detection
+        device = "Desktop"
+        if "Mobile" in user_agent: device = "Mobile"
+        elif "Tablet" in user_agent: device = "Tablet"
+        
+        LoginHistory.objects.create(
+            user=user,
+            ip_address=ip,
+            user_agent=user_agent,
+            device_type=device,
+            status=status
+        )
+    except Exception:
+        pass # Never block login due to logging failure
+
 def limit_notifications(user):
     """Limit notifications: 10 for Teachers, 50 for Admins."""
     from .models import Notification

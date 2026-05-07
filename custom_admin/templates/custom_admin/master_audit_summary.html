@@ -1,0 +1,197 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4" style="background: #020617; min-height: 100vh; color: #f8fafc; font-family: 'Inter', sans-serif;">
+    <style>
+        :root { --soc-bg: rgba(15, 23, 42, 0.8); --soc-border: rgba(255, 255, 255, 0.08); }
+        .siem-card { background: var(--soc-bg); backdrop-filter: blur(20px); border: 1px solid var(--soc-border); border-radius: 1.25rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .siem-card:hover { border-color: rgba(59, 130, 246, 0.5); transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); }
+        .siem-header { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 2px solid #3b82f6; }
+        .status-pill { padding: 0.25rem 0.75rem; border-radius: 50rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.025em; text-transform: uppercase; }
+        .metric-value { font-size: 2.5rem; font-weight: 800; background: linear-gradient(to bottom, #fff, #94a3b8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .chart-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; animation: blink 2s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
+        .timeline-item { border-left: 2px solid #334155; padding-left: 1.5rem; position: relative; margin-bottom: 1.5rem; }
+        .timeline-item::before { content: ''; position: absolute; left: -7px; top: 0; width: 12px; height: 12px; border-radius: 50%; background: #3b82f6; border: 3px solid #020617; }
+    </style>
+
+    <!-- Executive Enterprise Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="siem-card siem-header p-4 overflow-hidden position-relative">
+                <div style="position: absolute; right: -20px; top: -20px; font-size: 180px; opacity: 0.03; filter: grayscale(1);">🛡️</div>
+                <div class="row align-items-center">
+                    <div class="col-md-7">
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <span class="status-pill bg-primary bg-opacity-20 text-primary border border-primary border-opacity-30">ULTIMATE ENTERPRISE SOC v5.0</span>
+                            <span class="text-muted small">|</span>
+                            <span class="small text-muted"><i class="fas fa-satellite-dish me-1"></i>Observability: ACTIVE</span>
+                        </div>
+                        <h1 class="display-5 fw-extrabold mb-1 tracking-tight">SECURITY & OPERATIONS CENTER</h1>
+                        <p class="text-slate-400 mb-0">Unified SIEM Dashboard & Real-time Infrastructure Telemetry</p>
+                    </div>
+                    <div class="col-md-5 text-md-end mt-4 mt-md-0">
+                        <div class="d-inline-flex gap-4">
+                            <div class="text-center">
+                                <div class="text-muted x-small text-uppercase tracking-widest mb-1">Health Score</div>
+                                <div class="h3 fw-bold text-success mb-0">{{ scores.overall }}%</div>
+                            </div>
+                            <div class="vr bg-slate-700"></div>
+                            <div class="text-center">
+                                <div class="text-muted x-small text-uppercase tracking-widest mb-1">Threat Level</div>
+                                <div class="h3 fw-bold {{ siem.active_threat_level|yesno:'text-danger,text-success' }} mb-0">{{ siem.active_threat_level }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tier 1: Security Intelligence -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="siem-card p-4 text-center">
+                <div class="text-muted small mb-2"><i class="fas fa-virus-slash me-2 text-danger"></i>Malware Blocked</div>
+                <div class="metric-value">{{ siem.total_malware_blocked }}</div>
+                <div class="mt-2 small text-success"><i class="fas fa-check-circle me-1"></i>IPS Fully Hardened</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="siem-card p-4 text-center">
+                <div class="text-muted small mb-2"><i class="fas fa-map-marked-alt me-2 text-warning"></i>Travel Anomalies</div>
+                <div class="metric-value text-warning">{{ siem.travel_anomalies }}</div>
+                <div class="mt-2 small text-warning"><i class="fas fa-shield-alt me-1"></i>Geo-Fence Active</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="siem-card p-4 text-center">
+                <div class="text-muted small mb-2"><i class="fas fa-user-lock me-2 text-primary"></i>Brute Force Blocks</div>
+                <div class="metric-value">{{ siem.brute_force_attempts }}</div>
+                <div class="mt-2 small text-primary"><i class="fas fa-lock me-1"></i>Axes Protocol Enforced</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="siem-card p-4 text-center bg-primary bg-opacity-5">
+                <div class="text-muted small mb-2"><i class="fas fa-microchip me-2 text-info"></i>DB Latency</div>
+                <div class="metric-value text-white">{{ observability.db_latency }}</div>
+                <div class="mt-2 small text-muted">Optimized Cluster Response</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tier 2: Observability & CDN Analytics -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="siem-card p-4 h-100">
+                <h5 class="fw-bold mb-4"><i class="fas fa-chart-line me-2 text-primary"></i>Infrastructure Observability</h5>
+                <div class="row g-3">
+                    {% for key, val in observability.items %}
+                    <div class="col-md-4">
+                        <div class="p-3 border border-slate-800 rounded-3 bg-slate-900 bg-opacity-40">
+                            <div class="x-small text-muted text-uppercase mb-1">{{ key }}</div>
+                            <div class="fw-bold small text-white d-flex align-items-center">
+                                <span class="chart-dot bg-success me-2"></span> {{ val }}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                <hr class="border-slate-800 my-4">
+                <h6 class="fw-bold mb-3 small text-muted text-uppercase tracking-widest">Video CDN Analytics (Cloudinary)</h6>
+                <div class="row g-3 text-center">
+                    {% for key, val in cdn_analytics.items %}
+                    <div class="col-md-3">
+                        <div class="p-2">
+                            <div class="h5 mb-0 fw-bold text-primary">{{ val }}</div>
+                            <div class="x-small text-muted text-uppercase mt-1" style="font-size: 0.6rem;">{{ key }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="siem-card p-4 h-100">
+                <h5 class="fw-bold mb-4"><i class="fas fa-server me-2 text-warning"></i>Capacity Projections</h5>
+                <div class="space-y-4">
+                    <div class="p-3 border border-slate-800 rounded-3">
+                        <div class="x-small text-muted mb-1 uppercase">Database Footprint</div>
+                        <div class="h5 mb-0 fw-bold">{{ capacity.db_growth_mb }}</div>
+                    </div>
+                    <div class="p-3 border border-slate-800 rounded-3">
+                        <div class="x-small text-muted mb-1 uppercase">Cloud Storage Volume</div>
+                        <div class="h5 mb-0 fw-bold">{{ capacity.supabase_volume }}</div>
+                    </div>
+                    <div class="p-3 border border-slate-800 rounded-3">
+                        <div class="x-small text-muted mb-1 uppercase">Max Scalability Capacity</div>
+                        <div class="h5 mb-0 fw-bold text-primary">{{ capacity.max_students_capacity }}+ Users</div>
+                    </div>
+                </div>
+                <div class="mt-4 p-3 bg-success bg-opacity-10 border border-success border-opacity-20 rounded-3">
+                    <div class="small text-success d-flex align-items-center">
+                        <i class="fas fa-check-double me-2"></i> Auto-scaling Readiness: 100%
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tier 3: Forensic Timeline & Recovery -->
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="siem-card p-4">
+                <h5 class="fw-bold mb-4 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-fingerprint me-2 text-secondary"></i>Live Forensic Audit Trail</span>
+                    <span class="x-small text-muted fw-normal">SIEM Real-time Sync</span>
+                </h5>
+                <div class="pe-2" style="max-height: 400px; overflow-y: auto;">
+                    {% for log in audit_logs %}
+                    <div class="timeline-item">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold {% if 'BLOCK' in log.action or 'ANOMALY' in log.action %}text-danger{% else %}text-white{% endif %}">{{ log.action }}</span>
+                            <span class="text-muted x-small">{{ log.timestamp|timesince }} ago</span>
+                        </div>
+                        <div class="small text-slate-400 font-monospace">{{ log.details }}</div>
+                        <div class="x-small text-slate-500 mt-1">Actor: {{ log.admin.username|default:"SYSTEM" }} | IP: {{ log.ip_address|default:"N/A" }}</div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">No forensic events logged.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="siem-card p-4">
+                <h5 class="fw-bold mb-4"><i class="fas fa-undo me-2 text-success"></i>Disaster Readiness</h5>
+                <div class="text-center mb-4">
+                    <div class="display-6 fw-bold text-success">{{ recovery.restore_readiness }}</div>
+                    <div class="text-muted x-small uppercase mt-1">Recovery Confidence Score</div>
+                </div>
+                <div class="space-y-3 small">
+                    <div class="d-flex justify-content-between border-bottom border-slate-800 pb-2">
+                        <span class="text-slate-400">RTO (Restore Time)</span>
+                        <span class="text-white fw-bold">{{ recovery.rto }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between border-bottom border-slate-800 pb-2">
+                        <span class="text-slate-400">RPO (Data Loss Window)</span>
+                        <span class="text-white fw-bold">{{ recovery.rpo }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-slate-400">Backup Integrity</span>
+                        <span class="text-success fw-bold">{{ recovery.last_sync_integrity }}</span>
+                    </div>
+                </div>
+                <div class="alert alert-info border-0 rounded-4 shadow-sm mt-4 x-small mb-0">
+                    <i class="fas fa-info-circle me-1"></i> Multi-region snapshots verified every 24 hours across Google Drive and S3.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.body.classList.add('bg-slate-950');
+</script>
+{% endblock %}

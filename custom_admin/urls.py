@@ -43,5 +43,6 @@ urlpatterns = [
     path('notifications/', views.admin_all_notifications, name='admin_all_notifications'),
     path('enterprise-monitor/', views.enterprise_monitor, name='enterprise_monitor'),
     path('system-audit/', views.system_audit_view, name='system_audit'),
+    path('master-audit-summary/', views.master_audit_summary_view, name='master_audit_summary'),
     path('secure-pdf-access/<uuid:user_uid>/', views.proxy_pdf_access, name='proxy_pdf_access'),
 ]

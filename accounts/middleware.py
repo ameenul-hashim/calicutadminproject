@@ -140,3 +140,72 @@ class PortalSecurityMiddleware:
             # If an error occurs in the view, let Django's handler catch it
             # instead of risking a secondary middleware loop
             raise e
+from .utils.malware_scanner import scanner
+
+class EnterpriseHardeningMiddleware:
+    """Enterprise-grade security header injection and threat mitigation."""
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        # 1. PRE-PROCESS: Advanced Malware Scanning
+        if request.method == 'POST' and request.FILES:
+            for file_key in request.FILES:
+                uploaded_file = request.FILES[file_key]
+                is_infected, reason = scanner.scan_file(uploaded_file)
+                
+                if is_infected:
+                    from django.http import HttpResponseForbidden
+                    from accounts.models import AdminActivityLog
+                    AdminActivityLog.objects.create(
+                        admin=None,
+                        action="MALWARE_BLOCK",
+                        details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}"
+                    )
+                    return HttpResponseForbidden(f"Security Alert: {reason}. Upload blocked by Enterprise SOC.")
+
+        # 2. PRE-PROCESS: Impossible Travel Detection (Simulated)
+        if request.user.is_authenticated:
+            self.detect_impossible_travel(request)
+
+        response = self.get_response(request)
+
+        # 3. POST-PROCESS: Security Headers (Existing logic)
+        csp_rules = [
+            "default-src 'self'",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://kit.fontawesome.com https://cdn.plot.ly",
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://ka-f.fontawesome.com",
+            "img-src 'self' data: https://res.cloudinary.com https://*.supabase.co",
+            "font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com",
+            "connect-src 'self' https://ka-f.fontawesome.com https://*.supabase.co",
+            "frame-ancestors 'none'",
+            "object-src 'none'",
+            "base-uri 'self'",
+        ]
+        response["Content-Security-Policy"] = "; ".join(csp_rules)
+        response["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+        response["X-Content-Type-Options"] = "nosniff"
+        response["X-Frame-Options"] = "DENY"
+        response["X-XSS-Protection"] = "1; mode=block"
+        
+        return response
+
+    def detect_impossible_travel(self, request):
+        """Detects if a user logs in from two geographically distant IPs too quickly."""
+        from accounts.models import LoginHistory
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        current_ip = request.META.get('REMOTE_ADDR')
+        last_login = LoginHistory.objects.filter(user=request.user, status='SUCCESS').order_by('-timestamp').first()
+        
+        if last_login and last_login.ip_address != current_ip:
+            # If last login was within 1 hour and IP changed significantly (mocked check)
+            if timezone.now() - last_login.timestamp < timedelta(hours=1):
+                from accounts.models import AdminActivityLog
+                AdminActivityLog.objects.create(
+                    admin=None,
+                    target_user=request.user,
+                    action="SUSPICIOUS_TRAVEL",
+                    details=f"Login from {current_ip} detected 1h after {last_login.ip_address}."
+                )

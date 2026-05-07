@@ -212,6 +212,30 @@ class PDFAccessLog(models.Model):
     def __str__(self):
         return f"{self.user} accessed {self.pdf_path} at {self.accessed_at}"
 
+class LoginHistory(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='login_history')
+    ip_address = models.GenericIPAddressField()
+    user_agent = models.TextField()
+    device_type = models.CharField(max_length=50, blank=True)
+    location = models.CharField(max_length=255, blank=True) # Mocked/GeoIP
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, default='SUCCESS') # SUCCESS, FAILED, ANOMALY
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name_plural = "Login Histories"
+
+class AdminActivityLog(models.Model):
+    admin = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='admin_actions')
+    action = models.CharField(max_length=255)
+    target_user = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    details = models.TextField(blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
 # Signals for explicit image cleanup
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
