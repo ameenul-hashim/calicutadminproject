@@ -1,10 +1,12 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EduStream - Professional E-Learning Platform for Students, Teachers, and Education.">
+    <meta name="description"
+        content="EduStream - Professional E-Learning Platform for Students, Teachers, and Education.">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
     <title>My Profile | EduStream</title>
@@ -19,10 +21,21 @@
             --text-main: #1e293b;
             --text-muted: #64748b;
         }
-        body { font-family: 'Inter', sans-serif; background: var(--bg-slate); margin: 0; color: var(--text-main); }
-        
-        .profile-container { width: 100%; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-        
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-slate);
+            margin: 0;
+            color: var(--text-main);
+        }
+
+        .profile-container {
+            width: 100%;
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
         /* Profile Header Card */
         .profile-card {
             background: white;
@@ -31,19 +44,19 @@
             overflow: hidden;
             border: 1px solid #e2e8f0;
         }
-        
+
         .profile-banner {
             height: 160px;
             background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
             position: relative;
         }
-        
+
         .profile-info-section {
             padding: 0 2rem 2rem 2rem;
             position: relative;
             margin-top: -60px;
         }
-        
+
         .profile-photo-container {
             width: 160px;
             height: 200px;
@@ -56,28 +69,86 @@
             position: relative;
             cursor: pointer;
         }
-        .profile-photo-container img { width: 100%; height: 100%; object-fit: cover; }
-        
+
+        .profile-photo-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         .upload-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0, 0, 0, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
             transition: opacity 0.2s;
         }
-        .profile-photo-container:hover .upload-overlay { opacity: 1; }
-        .plus-icon { width: 40px; height: 40px; background: white; color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+
+        .profile-photo-container:hover .upload-overlay {
+            opacity: 1;
+        }
+
+        .plus-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
 
         /* Modal Styles */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; padding: 1rem; }
-        .modal-content { background: white; border-radius: 1.5rem; width: 100%; max-width: 450px; padding: 1.5rem; position: relative; max-height: 90vh; overflow-y: auto; }
-        .crop-container { width: 100%; max-height: 400px; background: #f1f5f9; margin-bottom: 1.5rem; overflow: hidden; border-radius: 0.5rem; }
-        .crop-container img { display: block; max-width: 100%; }
-        
-        .profile-meta h1 { margin: 0; font-size: 2.2rem; font-weight: 800; color: var(--text-main); }
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 1.5rem;
+            width: 100%;
+            max-width: 450px;
+            padding: 1.5rem;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .crop-container {
+            width: 100%;
+            max-height: 400px;
+            background: #f1f5f9;
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+            border-radius: 0.5rem;
+        }
+
+        .crop-container img {
+            display: block;
+            max-width: 100%;
+        }
+
+        .profile-meta h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
         .role-badge {
             display: inline-block;
             padding: 0.3rem 1rem;
@@ -89,7 +160,7 @@
             margin-top: 0.5rem;
             text-transform: uppercase;
         }
-        
+
         /* Grid Layout for Details */
         .details-grid {
             display: grid;
@@ -99,17 +170,34 @@
             border-top: 1px solid #f1f5f9;
             padding-top: 2rem;
         }
-        
-        .detail-item { display: flex; flex-direction: column; gap: 0.5rem; }
-        .detail-item label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-        .detail-item p { margin: 0; font-size: 1.1rem; font-weight: 500; color: var(--text-main); }
-        
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .detail-item label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detail-item p {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text-main);
+        }
+
         .action-bar {
             margin-top: 3rem;
             display: flex;
             gap: 1rem;
         }
-        
+
         .btn-profile {
             padding: 0.8rem 2rem;
             border-radius: 1rem;
@@ -118,60 +206,164 @@
             transition: all 0.2s;
             font-size: 0.95rem;
         }
-        .btn-primary { background: var(--primary); color: white; border: none; cursor: pointer; }
-        .btn-primary:hover { background: var(--primary-hover); transform: translateY(-2px); }
-        .btn-outline { background: white; color: var(--text-main); border: 1px solid #e2e8f0; }
-        .btn-outline:hover { background: #f8fafc; }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--text-main);
+            border: 1px solid #e2e8f0;
+        }
+
+        .btn-outline:hover {
+            background: #f8fafc;
+        }
 
         @media (max-width: 640px) {
-            .details-grid { grid-template-columns: 1fr; gap: 1.5rem; }
-            .profile-info-section { padding: 0 1.25rem 2rem 1.25rem; }
-            .profile-meta h1 { font-size: 1.5rem; }
-            .profile-photo-container { width: 130px; height: 160px; }
-            .profile-banner { height: 120px; }
-            .profile-container { margin: 1rem auto; }
+            .details-grid {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .profile-info-section {
+                padding: 0 1.25rem 2rem 1.25rem;
+            }
+
+            .profile-meta h1 {
+                font-size: 1.5rem;
+            }
+
+            .profile-photo-container {
+                width: 130px;
+                height: 160px;
+            }
+
+            .profile-banner {
+                height: 120px;
+            }
+
+            .profile-container {
+                margin: 1rem auto;
+            }
         }
-    
+
         /* RESPONSIVE INJECTIONS */
         @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 1000;
+                position: fixed;
+                width: 280px;
+                transition: transform 0.3s;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+                padding: 1rem !important;
+                width: 100%;
+                max-width: 100vw;
+            }
+
+            .search-bar,
+            .form-container,
+            .card,
+            .edit-card,
+            .login-card {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 1rem !important;
+            }
+
+            .stats-grid,
+            .subject-grid,
+            .card-grid,
+            .grid {
+                grid-template-columns: 1fr !important;
+            }
+
             /* Forms */
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
+            .input-group input,
+            .input-group select,
+            .input-group textarea {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
         }
+
         @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
+
+            .stats-grid,
+            .subject-grid,
+            .card-grid,
+            .grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+            }
         }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
+
+        .table-responsive,
+        .table-container {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        table {
+            min-width: 62.5rem;
+            /* 1000px */
+        }
+
         /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
-        /* Django Messages Toast */
-        .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
+        .video-container {
+            aspect-ratio: 16 / 9;
+            width: 100%;
+            max-width: 100%;
         }
-        </style>
+
+        video {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Django Messages Toast */
+        .messages {
+            max-width: 24rem;
+            word-wrap: break-word;
+        }
+
+        @media (max-width: 640px) {
+            .messages {
+                max-width: 90vw;
+            }
+        }
+    </style>
 
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        corePlugins: { preflight: false }
-      }
+        tailwind.config = {
+            corePlugins: { preflight: false }
+        }
     </script>
 </head>
+
 <body>
     <div class="profile-container">
         <header style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
-            <a href="{% if user.user_type == 'STUDENT' %}{% url 'dashboard' %}{% elif user.user_type == 'TEACHER' %}{% url 'teacher_dashboard' %}{% else %}{% url 'admin_dashboard' %}{% endif %}" style="color: var(--text-muted); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+            <a href="{% if user.user_type == 'STUDENT' %}{% url 'dashboard' %}{% elif user.user_type == 'TEACHER' %}{% url 'teacher_dashboard' %}{% else %}{% url 'admin_dashboard' %}{% endif %}"
+                style="color: var(--text-muted); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
                 ← Back to Dashboard
             </a>
             <h3 style="margin: 0; font-weight: 700; color: var(--primary);">EduStream Profile</h3>
@@ -183,18 +375,19 @@
             <div class="profile-info-section">
                 <div class="profile-photo-container" onclick="document.getElementById('photoInput').click()">
                     {% if user.avatar_url %}
-                        <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="profileDisplay">
+                    <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="profileDisplay">
                     {% else %}
-                        <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:var(--primary); font-size:3rem; font-weight:800;" id="profileDisplay">
-                            {{ user.username|first|upper }}
-                        </div>
+                    <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:var(--primary); font-size:3rem; font-weight:800;"
+                        id="profileDisplay">
+                        {{ user.username|first|upper }}
+                    </div>
                     {% endif %}
                     <div class="upload-overlay">
                         <div class="plus-icon">+</div>
                     </div>
                 </div>
                 <input type="file" id="photoInput" style="display: none;" accept="image/*">
-                
+
                 <div class="profile-meta">
                     <h1>{{ user.full_name|default:user.username }}</h1>
                     <span class="role-badge">{{ user.get_user_type_display }}</span>
@@ -224,34 +417,50 @@
                 <div class="action-bar">
                     <a href="{% url 'edit_profile' %}" class="btn-profile btn-primary">Edit Photo</a>
                     {% if user.user_type == 'TEACHER' %}
-                        <a href="{% url 'teacher_dashboard' %}" class="btn-profile btn-outline" style="color: #6366f1; border-color: #c7d2fe;">Back to Teacher Panel</a>
+                    <a href="{% url 'teacher_dashboard' %}" class="btn-profile btn-outline"
+                        style="color: #6366f1; border-color: #c7d2fe;">Back to Teacher Panel</a>
                     {% elif user.user_type == 'ADMIN' or user.is_staff %}
-                        <a href="{% url 'admin_dashboard' %}" class="btn-profile btn-outline" style="color: #0ea5e9;">Back to Admin Panel</a>
+                    <a href="{% url 'admin_dashboard' %}" class="btn-profile btn-outline" style="color: #0ea5e9;">Back
+                        to Admin Panel</a>
                     {% else %}
-                        <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout Account</a>
+                    <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout
+                        Account</a>
                     {% endif %}
                 </div>
             </div>
         </div>
 
         {% if user.pdf_path or user.proof_pdf or user.pdf_url %}
-        <div style="margin-top: 2rem; background: white; padding: 2.5rem; border-radius: 2rem; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div
+            style="margin-top: 2rem; background: white; padding: 2.5rem; border-radius: 2rem; border: 1px solid #e2e8f0; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
+            <div
+                style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                    <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main);">Verification Document</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">This is the identity proof you submitted during registration.</p>
+                    <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main);">Verification
+                        Document</h3>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">This is the identity
+                        proof you submitted during registration.</p>
                 </div>
-                <div style="background: #f0fdf4; color: #166534; padding: 0.5rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
-                    <span style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
+                <div
+                    style="background: #f0fdf4; color: #166534; padding: 0.5rem 1rem; border-radius: 2rem; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
+                    <span
+                        style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></span>
                     SECURELY STORED
                 </div>
             </div>
-            
-            <div style="background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 1rem; padding: 2rem; text-align: center;">
+
+            <div
+                style="background: #f8fafc; border: 1px dashed #e2e8f0; border-radius: 1rem; padding: 2rem; text-align: center;">
                 <div style="font-size: 2.5rem; margin-bottom: 1rem;">📄</div>
-                <p style="font-weight: 600; color: var(--text-main); margin-bottom: 1.5rem;">Registered Verification Proof (PDF)</p>
-                <a href="{{ user.proof_pdf_url }}" target="_blank" class="btn-profile btn-primary" style="display: inline-flex; align-items: center; gap: 0.75rem; text-decoration: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <p style="font-weight: 600; color: var(--text-main); margin-bottom: 1.5rem;">Registered Verification
+                    Proof (PDF)</p>
+                <a href="{{ user.proof_pdf_url }}" target="_blank" class="btn-profile btn-primary"
+                    style="display: inline-flex; align-items: center; gap: 0.75rem; text-decoration: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
                     View Document
                 </a>
             </div>
@@ -263,12 +472,14 @@
     <div id="cropModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-top: 0; margin-bottom: 1rem;">Crop Your Photo</h3>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">Adjust the image to fit the passport-size frame.</p>
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">Adjust the image to fit the
+                passport-size frame.</p>
             <div class="crop-container">
                 <img id="imageToCrop">
             </div>
             <div style="display: flex; gap: 1rem;">
-                <button onclick="saveCrop()" id="saveCropBtn" class="btn-profile btn-primary" style="flex: 1;">Crop & Save</button>
+                <button onclick="saveCrop()" id="saveCropBtn" class="btn-profile btn-primary" style="flex: 1;">Crop &
+                    Save</button>
                 <button onclick="closeModal()" class="btn-profile btn-outline" style="flex: 1;">Cancel</button>
             </div>
         </div>
@@ -278,25 +489,25 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-        
+
         let cropper;
         const photoInput = document.getElementById('photoInput');
         const cropModal = document.getElementById('cropModal');
         const imageToCrop = document.getElementById('imageToCrop');
 
-        photoInput.addEventListener('change', function(e) {
+        photoInput.addEventListener('change', function (e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
 
             if (file.type === 'application/pdf') {
-                reader.onload = function() {
+                reader.onload = function () {
                     const typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                        pdf.getPage(1).then(function(page) {
+                    pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
+                        pdf.getPage(1).then(function (page) {
                             // High scale for better quality
-                            const viewport = page.getViewport({scale: 1.5});
+                            const viewport = page.getViewport({ scale: 1.5 });
                             const canvas = document.createElement('canvas');
                             const context = canvas.getContext('2d');
                             canvas.height = viewport.height;
@@ -306,13 +517,13 @@
                                 canvasContext: context,
                                 viewport: viewport
                             };
-                            
+
                             const renderTask = page.render(renderContext);
-                            renderTask.promise.then(function() {
+                            renderTask.promise.then(function () {
                                 const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
                                 imageToCrop.src = dataUrl;
                                 // Wait for image to load before starting cropper
-                                imageToCrop.onload = function() {
+                                imageToCrop.onload = function () {
                                     startCropper();
                                 };
                             });
@@ -321,7 +532,7 @@
                 };
                 reader.readAsArrayBuffer(file);
             } else {
-                reader.onload = function(event) {
+                reader.onload = function (event) {
                     imageToCrop.src = event.target.result;
                     startCropper();
                 };
@@ -334,7 +545,7 @@
             if (cropper) {
                 cropper.destroy();
             }
-            
+
             // Short delay to ensure modal is visible and dimensions are calculated
             setTimeout(() => {
                 cropper = new Cropper(imageToCrop, {
@@ -377,21 +588,21 @@
                     method: 'POST',
                     body: formData
                 })
-                .then(response => {
-                    if (response.ok) {
-                        window.location.reload();
-                    } else {
-                        Toast.error('Failed to update photo. Please try again.');
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            Toast.error('Failed to update photo. Please try again.');
+                            btn.disabled = false;
+                            btn.textContent = 'Crop & Save';
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        Toast.error('Error updating photo.');
                         btn.disabled = false;
                         btn.textContent = 'Crop & Save';
-                    }
-                })
-                .catch(err => {
-                    console.error(err);
-                    Toast.error('Error updating photo.');
-                    btn.disabled = false;
-                    btn.textContent = 'Crop & Save';
-                });
+                    });
             }, 'image/jpeg', 0.9);
         }
     </script>
