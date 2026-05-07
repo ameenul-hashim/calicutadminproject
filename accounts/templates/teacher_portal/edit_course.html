@@ -100,80 +100,87 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="imageInput">Course Thumbnail</label>
-                        <input type="file" id="imageInput" accept="image/*">
-                        <input type="file" name="thumbnail" id="finalThumbnail" style="display: none;">
-                        <p id="statusText" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
-                            * Any size accepted (up to 2GB). We'll optimize it automatically.
-                        </p>
+                        <label for="imageInput">Course Thumbnail <span style="color:#94a3b8; font-weight:400;">(Leave blank to keep current)</span></label>
                         {% if course.thumbnail_url %}
-                            <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Current: <a href="{{ course.thumbnail_url }}" target="_blank">View Thumbnail</a></p>
+                        <div style="width:100%; max-width:320px; height:160px; border-radius:0.75rem; overflow:hidden; border:1px solid #e2e8f0; margin-bottom:0.75rem; background:#f8fafc; position:relative;">
+                            <img id="previewImg" src="{{ course.thumbnail_url }}" alt="Current Thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                            <span style="position:absolute; bottom:0.5rem; left:0.5rem; background:rgba(0,0,0,0.5); color:white; font-size:0.65rem; padding:0.2rem 0.5rem; border-radius:0.25rem;">Current</span>
+                        </div>
+                        {% else %}
+                        <div id="thumbnailPreview" style="display:none; width:100%; max-width:320px; height:160px; border-radius:0.75rem; overflow:hidden; border:1px solid #e2e8f0; margin-bottom:0.75rem; background:#f8fafc;">
+                            <img id="previewImg" src="" alt="New Thumbnail" style="width:100%; height:100%; object-fit:cover;">
+                        </div>
                         {% endif %}
+                        <!-- Primary input — always submitted as fallback if JS fails -->
+                        <input type="file" id="imageInput" name="thumbnail" accept="image/*" style="display:block; width:100%; padding:0.6rem; border:1px dashed #e2e8f0; border-radius:0.75rem; font-size:0.9rem; cursor:pointer;">
+                        <!-- Hidden compressed output — JS replaces name on this and removes name from above -->
+                        <input type="file" name="thumbnail_compressed" id="finalThumbnail" style="display:none;">
+                        <p id="statusText" style="font-size:0.75rem; color:#94a3b8; margin-top:0.5rem;">
+                            * Any size accepted. We'll optimize it automatically.
+                        </p>
                     </div>
 
                     <script>
-                        const imageInput = document.getElementById('imageInput');
-                        const finalThumbnail = document.getElementById('finalThumbnail');
-                        const statusText = document.getElementById('statusText');
-                        const submitBtn = document.querySelector('button[type="submit"]');
+                        (function() {
+                            const imageInput = document.getElementById('imageInput');
+                            const finalThumbnail = document.getElementById('finalThumbnail');
+                            const statusText = document.getElementById('statusText');
+                            const previewImg = document.getElementById('previewImg');
+                            const submitBtn = document.querySelector('button[type="submit"]');
 
-                        imageInput.addEventListener('change', function(e) {
-                            const file = e.target.files[0];
-                            if (!file) return;
+                            imageInput.addEventListener('change', function(e) {
+                                const file = e.target.files[0];
+                                if (!file) return;
 
-                            statusText.innerHTML = `<span style="color: #6366f1; font-weight: 600;">⚡ Processing ${file.name} (${(file.size / (1024*1024)).toFixed(2)} MB)...</span>`;
-                            submitBtn.disabled = true;
-                            submitBtn.innerText = 'Processing Image...';
+                                statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">⚡ Processing ${file.name} (${(file.size/(1024*1024)).toFixed(2)} MB)...</span>`;
+                                if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = 'Processing...'; }
 
-                            const reader = new FileReader();
-                            reader.onload = function(event) {
-                                const img = new Image();
-                                img.onload = function() {
-                                    const canvas = document.createElement('canvas');
-                                    let width = img.width;
-                                    let height = img.height;
-                                    const MAX_SIZE = 1280;
+                                const reader = new FileReader();
+                                reader.onload = function(event) {
+                                    const img = new Image();
+                                    img.onload = function() {
+                                        try {
+                                            const canvas = document.createElement('canvas');
+                                            let width = img.width, height = img.height;
+                                            const MAX_SIZE = 1280;
+                                            if (width > height) { if (width > MAX_SIZE) { height = Math.round(height * MAX_SIZE / width); width = MAX_SIZE; } }
+                                            else { if (height > MAX_SIZE) { width = Math.round(width * MAX_SIZE / height); height = MAX_SIZE; } }
+                                            canvas.width = width; canvas.height = height;
+                                            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
 
-                                    if (width > height) {
-                                        if (width > MAX_SIZE) {
-                                            height *= MAX_SIZE / width;
-                                            width = MAX_SIZE;
+                                            // Update preview
+                                            if (previewImg) { previewImg.src = canvas.toDataURL('image/jpeg', 0.85); }
+                                            const thumbPrev = document.getElementById('thumbnailPreview');
+                                            if (thumbPrev) thumbPrev.style.display = 'block';
+
+                                            canvas.toBlob(function(blob) {
+                                                try {
+                                                    const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
+                                                    const dt = new DataTransfer();
+                                                    dt.items.add(compressedFile);
+                                                    finalThumbnail.files = dt.files;
+                                                    finalThumbnail.name = 'thumbnail';
+                                                    imageInput.removeAttribute('name');
+                                                    statusText.innerHTML = `<span style="color:#10b981;font-weight:600;">✅ Optimized! (${(compressedFile.size/1024).toFixed(1)} KB) — Ready to upload</span>`;
+                                                } catch(err) {
+                                                    statusText.innerHTML = `<span style="color:#f59e0b;font-weight:600;">⚠️ Using original file (${(file.size/1024).toFixed(1)} KB)</span>`;
+                                                }
+                                                if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = 'Save Changes'; }
+                                            }, 'image/jpeg', 0.85);
+                                        } catch(err) {
+                                            statusText.innerHTML = `<span style="color:#f59e0b;font-weight:600;">⚠️ Using original file</span>`;
+                                            if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = 'Save Changes'; }
                                         }
-                                    } else {
-                                        if (height > MAX_SIZE) {
-                                            width *= MAX_SIZE / height;
-                                            height = MAX_SIZE;
-                                        }
-                                    }
-
-                                    canvas.width = width;
-                                    canvas.height = height;
-                                    const ctx = canvas.getContext('2d');
-                                    ctx.drawImage(img, 0, 0, width, height);
-
-                                    canvas.toBlob(function(blob) {
-                                        const compressedFile = new File([blob], file.name.split('.')[0] + '.jpg', {
-                                            type: 'image/jpeg',
-                                            lastModified: Date.now()
-                                        });
-
-                                        const dataTransfer = new DataTransfer();
-                                        dataTransfer.items.add(compressedFile);
-                                        finalThumbnail.files = dataTransfer.files;
-
-                                        statusText.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Optimized! (${(compressedFile.size / 1024).toFixed(2)} KB)</span>`;
-                                        submitBtn.disabled = false;
-                                        submitBtn.innerText = 'Save Changes';
-                                    }, 'image/jpeg', 0.8);
+                                    };
+                                    img.src = event.target.result;
                                 };
-                                img.src = event.target.result;
-                            };
-                            reader.readAsDataURL(file);
-                        });
+                                reader.readAsDataURL(file);
+                            });
+                        })();
                     </script>
-                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Save Changes</button>
-                        <a href="{% url 'my_courses' %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">Cancel</a>
+                    <div style="display:flex; gap:1rem; margin-top:2rem;">
+                        <button type="submit" class="btn" style="background:#6366f1; color:white; padding:0.8rem 2rem; border-radius:0.75rem; font-weight:600; border:none; cursor:pointer;">Save Changes</button>
+                        <a href="{% url 'my_courses' %}" class="btn" style="background:#f1f5f9; color:#64748b; padding:0.8rem 2rem; border-radius:0.75rem; text-decoration:none; font-weight:600;">Cancel</a>
                     </div>
                 </form>
             </div>

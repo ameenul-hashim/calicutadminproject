@@ -1,6 +1,16 @@
 import cloudinary.uploader
 import cloudinary.api
+import cloudinary
 from django.conf import settings
+
+# Explicitly configure cloudinary for use in helper functions
+if hasattr(settings, 'CLOUDINARY_STORAGE'):
+    cloudinary.config(
+        cloud_name=settings.CLOUDINARY_STORAGE.get('CLOUD_NAME'),
+        api_key=settings.CLOUDINARY_STORAGE.get('API_KEY'),
+        api_secret=settings.CLOUDINARY_STORAGE.get('API_SECRET'),
+        secure=settings.CLOUDINARY_STORAGE.get('SECURE', True)
+    )
 
 def upload_temp_image(image_file):
     """

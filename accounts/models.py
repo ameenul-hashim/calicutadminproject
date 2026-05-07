@@ -34,17 +34,24 @@ class CustomUser(AbstractUser):
 
     @property
     def avatar_url(self):
-        """Returns Cloudinary image URL, falling back to legacy profile_photo, then a professional default avatar."""
+        """Returns optimized Cloudinary image URL, falling back to legacy profile_photo."""
+        url = None
         if self.image:
-            return self.image
-        if self.profile_photo:
+            url = self.image
+        elif self.profile_photo:
             try:
-                return self.profile_photo.url
+                url = self.profile_photo.url
             except ValueError:
                 pass
-        # High-quality default avatar
-        from django.templatetags.static import static
-        return static('images/default_avatar.png')
+        
+        if url:
+            # Inject Cloudinary auto-optimization if it's a Cloudinary URL
+            if 'res.cloudinary.com' in url and 'upload/' in url:
+                return url.replace('upload/', 'upload/f_auto,q_auto/')
+            return url
+            
+        # High-quality dynamic default avatar (Fast CDN)
+        return f"https://ui-avatars.com/api/?name={self.username}&background=random&color=fff&size=256"
 
     @property
     def proof_pdf_url(self):
@@ -88,15 +95,19 @@ class Course(models.Model):
 
     @property
     def thumbnail_url(self):
-        """Returns Cloudinary image URL, falling back to legacy thumbnail."""
+        """Returns optimized Cloudinary image URL, falling back to legacy thumbnail."""
+        url = None
         if self.image:
-            return self.image
-        if self.thumbnail:
+            url = self.image
+        elif self.thumbnail:
             try:
-                return self.thumbnail.url
+                url = self.thumbnail.url
             except ValueError:
                 pass
-        return None
+        
+        if url and 'res.cloudinary.com' in url and 'upload/' in url:
+            return url.replace('upload/', 'upload/f_auto,q_auto/')
+        return url
 
     def __str__(self):
         return self.title
