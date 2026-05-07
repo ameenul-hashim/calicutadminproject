@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, PasswordResetOTP, DeletionRequest
+from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, EmailOTP, DeletionRequest
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
