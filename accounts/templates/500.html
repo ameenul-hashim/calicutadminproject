@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>500 - Internal Server Error | EduStream</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --bg: #fdf2f2;
+            --text: #1e293b;
+            --text-muted: #64748b;
+        }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: white;
+            padding: 50px;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.05);
+        }
+        .error-code {
+            font-size: clamp(80px, 15vw, 120px);
+            font-weight: 800;
+            margin: 0;
+            color: var(--danger);
+            line-height: 1;
+        }
+        h1 {
+            font-size: 32px;
+            margin: 20px 0 10px;
+            color: var(--text);
+        }
+        p {
+            font-size: 18px;
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .illustration {
+            font-size: 80px;
+            color: #fee2e2;
+            margin-bottom: 20px;
+        }
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        .btn {
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-danger {
+            background-color: var(--danger);
+            color: white;
+            box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+        }
+        .btn-danger:hover {
+            background-color: var(--danger-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+        }
+        .btn-secondary {
+            background-color: #f1f5f9;
+            color: var(--text);
+        }
+        .btn-secondary:hover {
+            background-color: #e2e8f0;
+            transform: translateY(-2px);
+        }
+        .support-text {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="illustration">
+            <i class="fas fa-tools"></i>
+        </div>
+        <div class="error-code">500</div>
+        <h1>Something went wrong</h1>
+        <p>Our servers are experiencing some unexpected turbulence. We've been notified and are working to resolve the issue as quickly as possible.</p>
+        <div class="actions">
+            <a href="/" class="btn btn-danger">
+                <i class="fas fa-home"></i>
+                Back to Safety
+            </a>
+            <button onclick="location.reload()" class="btn btn-secondary">
+                <i class="fas fa-sync"></i>
+                Try Again
+            </button>
+        </div>
+        <div class="support-text">
+            If the problem persists, please contact EduStream support.
+        </div>
+    </div>
+</body>
+</html>

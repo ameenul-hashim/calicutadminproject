@@ -1,17 +1,57 @@
 {% if messages %}
-<div class="local-messages" style="margin-bottom: 1.5rem;">
+<div class="local-alerts-wrapper" style="margin-bottom: 2rem;">
     {% for message in messages %}
-        <div class="local-alert alert-{{ message.tags }}" style="padding: 1rem; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 600; display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.5rem; word-wrap: break-word; word-break: break-word;
-            {% if message.tags == 'success' %}background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0;
-            {% elif message.tags == 'error' %}background: #fee2e2; color: #b91c1c; border: 1px solid #b91c1c;
-            {% elif message.tags == 'warning' %}background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa;
-            {% else %}background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd;{% endif %}">
-            <span style="flex: 1;">
-                {% if message.tags == 'success' %}✅ {% elif message.tags == 'error' %}❌ {% elif message.tags == 'warning' %}⚠️ {% else %}ℹ️ {% endif %}
-                {{ message }}
-            </span>
-            <button onclick="this.parentElement.style.display='none'" style="background: none; border: none; font-size: 1.4rem; cursor: pointer; color: currentColor; opacity: 0.6; padding: 0 0.5rem; line-height: 1; flex-shrink: 0;">&times;</button>
+        <div class="inline-card-alert alert-{{ message.tags }} animate-fade-in">
+            <div class="alert-icon">
+                {% if message.tags == 'success' %}
+                    <i class="fas fa-check-circle"></i>
+                {% elif message.tags == 'error' %}
+                    <i class="fas fa-exclamation-circle"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="fas fa-exclamation-triangle"></i>
+                {% else %}
+                    <i class="fas fa-info-circle"></i>
+                {% endif %}
+            </div>
+            <div class="alert-content">
+                <strong>{% if message.tags == 'success' %}Success{% elif message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Warning{% else %}Note{% endif %}:</strong>
+                <span>{{ message }}</span>
+            </div>
+            <button class="alert-close" onclick="this.parentElement.style.display='none'">&times;</button>
         </div>
     {% endfor %}
 </div>
+
+<style>
+    .inline-card-alert {
+        display: flex;
+        align-items: center;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+        font-family: 'Inter', sans-serif;
+        border: 1px solid transparent;
+        gap: 12px;
+        position: relative;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .alert-icon { font-size: 20px; flex-shrink: 0; }
+    .alert-content { flex: 1; font-size: 14px; font-weight: 500; }
+    .alert-content strong { text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px; margin-right: 4px; }
+    .alert-close { background: none; border: none; font-size: 20px; cursor: pointer; opacity: 0.5; color: inherit; padding: 0; }
+    .alert-close:hover { opacity: 1; }
+
+    .alert-success { background: #ecfdf5; color: #065f46; border-color: #10b981; }
+    .alert-error { background: #fef2f2; color: #991b1b; border-color: #ef4444; }
+    .alert-warning { background: #fffbeb; color: #92400e; border-color: #f59e0b; }
+    .alert-info { background: #eff6ff; color: #1e40af; border-color: #3b82f6; }
+
+    .animate-fade-in {
+        animation: fadeInAlert 0.4s ease-out;
+    }
+    @keyframes fadeInAlert {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 {% endif %}
