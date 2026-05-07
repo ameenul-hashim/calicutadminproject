@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, PasswordResetOTP, DeletionRequest, EmailOTP
+from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, DeletionRequest, EmailOTP
 
 @admin.register(EmailOTP)
 class EmailOTPAdmin(admin.ModelAdmin):
