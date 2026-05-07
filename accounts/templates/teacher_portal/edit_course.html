@@ -100,12 +100,77 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="thumbnail">Course Thumbnail</label>
-                        <input type="file" name="thumbnail" id="thumbnail" accept="image/*">
+                        <label for="imageInput">Course Thumbnail</label>
+                        <input type="file" id="imageInput" accept="image/*">
+                        <input type="file" name="thumbnail" id="finalThumbnail" style="display: none;">
+                        <p id="statusText" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">
+                            * Any size accepted (up to 2GB). We'll optimize it automatically.
+                        </p>
                         {% if course.thumbnail_url %}
                             <p style="font-size: 0.8rem; color: #64748b; margin-top: 0.5rem;">Current: <a href="{{ course.thumbnail_url }}" target="_blank">View Thumbnail</a></p>
                         {% endif %}
                     </div>
+
+                    <script>
+                        const imageInput = document.getElementById('imageInput');
+                        const finalThumbnail = document.getElementById('finalThumbnail');
+                        const statusText = document.getElementById('statusText');
+                        const submitBtn = document.querySelector('button[type="submit"]');
+
+                        imageInput.addEventListener('change', function(e) {
+                            const file = e.target.files[0];
+                            if (!file) return;
+
+                            statusText.innerHTML = `<span style="color: #6366f1; font-weight: 600;">⚡ Processing ${file.name} (${(file.size / (1024*1024)).toFixed(2)} MB)...</span>`;
+                            submitBtn.disabled = true;
+                            submitBtn.innerText = 'Processing Image...';
+
+                            const reader = new FileReader();
+                            reader.onload = function(event) {
+                                const img = new Image();
+                                img.onload = function() {
+                                    const canvas = document.createElement('canvas');
+                                    let width = img.width;
+                                    let height = img.height;
+                                    const MAX_SIZE = 1280;
+
+                                    if (width > height) {
+                                        if (width > MAX_SIZE) {
+                                            height *= MAX_SIZE / width;
+                                            width = MAX_SIZE;
+                                        }
+                                    } else {
+                                        if (height > MAX_SIZE) {
+                                            width *= MAX_SIZE / height;
+                                            height = MAX_SIZE;
+                                        }
+                                    }
+
+                                    canvas.width = width;
+                                    canvas.height = height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.drawImage(img, 0, 0, width, height);
+
+                                    canvas.toBlob(function(blob) {
+                                        const compressedFile = new File([blob], file.name.split('.')[0] + '.jpg', {
+                                            type: 'image/jpeg',
+                                            lastModified: Date.now()
+                                        });
+
+                                        const dataTransfer = new DataTransfer();
+                                        dataTransfer.items.add(compressedFile);
+                                        finalThumbnail.files = dataTransfer.files;
+
+                                        statusText.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Optimized! (${(compressedFile.size / 1024).toFixed(2)} KB)</span>`;
+                                        submitBtn.disabled = false;
+                                        submitBtn.innerText = 'Save Changes';
+                                    }, 'image/jpeg', 0.8);
+                                };
+                                img.src = event.target.result;
+                            };
+                            reader.readAsDataURL(file);
+                        });
+                    </script>
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                         <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Save Changes</button>
                         <a href="{% url 'my_courses' %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">Cancel</a>
