@@ -175,7 +175,7 @@ class EnterpriseHardeningMiddleware:
             "default-src 'self'",
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://kit.fontawesome.com https://cdn.plot.ly",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://ka-f.fontawesome.com",
-            "img-src 'self' data: https://*.cloudinary.com https://res.cloudinary.com https://*.supabase.co",
+            "img-src 'self' data: https://*.cloudinary.com https://res.cloudinary.com https://*.supabase.co https://ui-avatars.com",
             "font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com",
             "connect-src 'self' https://ka-f.fontawesome.com https://*.supabase.co https://*.cloudinary.com",
             "frame-src 'self' https://*.youtube.com https://www.youtube.com https://youtube.com https://*.cloudinary.com https://res.cloudinary.com",

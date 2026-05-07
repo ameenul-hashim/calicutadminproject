@@ -179,15 +179,33 @@
                     </div>
                     <div style="margin: 2rem 0; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
                         <h3 style="font-size: 1rem; margin-bottom: 1rem;">Update Password (Optional)</h3>
-                        <div class="input-group">
+                        <div class="input-group" style="position: relative;">
                             <label for="password">New Password</label>
-                            <input type="password" name="password" id="password">
+                            <div style="position: relative;">
+                                <input type="password" name="password" id="password" style="padding-right: 40px;">
+                                <button type="button" onclick="togglePassword('password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;">👁️</button>
+                            </div>
                         </div>
-                        <div class="input-group">
+                        <div class="input-group" style="position: relative;">
                             <label for="confirm_password">Confirm New Password</label>
-                            <input type="password" name="confirm_password" id="confirm_password">
+                            <div style="position: relative;">
+                                <input type="password" name="confirm_password" id="confirm_password" style="padding-right: 40px;">
+                                <button type="button" onclick="togglePassword('confirm_password', this)" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #64748b; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;">👁️</button>
+                            </div>
                         </div>
                     </div>
+                    <script>
+                        function togglePassword(fieldId, btn) {
+                            const input = document.getElementById(fieldId);
+                            if (input.type === 'password') {
+                                input.type = 'text';
+                                btn.innerText = '🔒';
+                            } else {
+                                input.type = 'password';
+                                btn.innerText = '👁️';
+                            }
+                        }
+                    </script>
                     <div style="display: flex; gap: 1rem;">
                         <button type="submit" class="btn btn-primary">Update User</button>
                         <a href="{% if edit_user.user_type == 'TEACHER' %}{% url 'manage_teachers' %}{% else %}{% url 'manage_students' %}{% endif %}" class="btn" style="background: #f1f5f9; color: #64748b;">Cancel</a>

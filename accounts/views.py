@@ -573,8 +573,9 @@ def dashboard_view(request):
         return redirect('login')
 
     if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
-        # Admin or Teacher in Student View - Allow previewing ALL courses (including PENDING) for verification
-        courses = Course.objects.all().annotate(lesson_count=Count('lessons')).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        # Admin or Teacher in Student View - strictly mimic student by showing only approved courses
+        # This prevents "previewing" unapproved/deleted/draft content in the live student environment
+        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
     elif request.user.user_type == 'TEACHER' and not is_admin:
         # Teacher viewing normally - show their own courses (all statuses)
         courses = Course.objects.filter(teacher=request.user).annotate(
@@ -814,11 +815,14 @@ def edit_course(request, course_uid):
         if course.status == 'REJECTED':
             course.rejection_reason = ""
             
-        # Only reset course status if it was not already PUBLISHED
-        if course.status != 'PUBLISHED':
-            course.status = 'PENDING'
-            course.is_approved = False
+        # Hardened Security: ANY edit to a course resets its approval status to PENDING
+        # This prevents teachers from bypassing admin review by editing a published course.
+        course.status = 'PENDING'
+        course.is_approved = False
         course.save()
+        
+        # Notify admins about the update
+        notify_admins(f"🔄 COURSE UPDATE: Teacher {request.user.username} updated course '{course.title}'. It is now PENDING re-approval.")
         messages.success(request, f"Course '{course.title}' updated successfully!")
         return redirect('my_courses')
     
