@@ -206,6 +206,13 @@
                 { id: 'proof_file', label: 'Qualification Document', custom: (val, form) => {
                     const file = form.querySelector('#proof_file').files[0];
                     if (!file) return "Please upload your qualification proof";
+                    
+                    const isMobile = window.innerWidth <= 1024;
+                    const fileName = file.name.toLowerCase();
+                    const isPDF = fileName.endsWith('.pdf');
+                    
+                    if (!isMobile && !isPDF) return "On laptop, only PDF files are allowed";
+                    if (isPDF && file.size > 200 * 1024) return "PDF too large (Max 200KB)";
                     return null;
                 }}
             ]
