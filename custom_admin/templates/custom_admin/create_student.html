@@ -12,33 +12,35 @@
 {% block content %}
 <div style="display: flex; justify-content: center; width: 100%; padding: 2rem 0;">
     <div style="background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; padding: 2.5rem; width: 100%; max-width: 550px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-        <form method="POST" enctype="multipart/form-data" autocomplete="off">
+        <form method="POST" enctype="multipart/form-data" autocomplete="off" id="createStudentForm" novalidate>
+            {% include 'includes/validation_engine.html' %}
             {% csrf_token %}
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Username</label>
-                <input type="text" name="username" value="{{ username|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="text" name="username" id="username" value="{{ username|default:'' }}" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Full Name</label>
-                <input type="text" name="fullname" value="{{ fullname|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Email Address</label>
-                <input type="email" name="email" value="{{ email|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Contact Number</label>
-                <input type="tel" name="phone_number" value="{{ phone_number|default:'' }}" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
+                <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" maxlength="10" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
             </div>
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Student Proof (PDF)</label>
-                <input type="file" name="proof_file" accept=".pdf" required style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 0.9rem; box-sizing: border-box;">
+                <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*" onchange="handleFileSelection(this)" style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 0.9rem; box-sizing: border-box;">
+                <div id="upload-help-text" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">PDF Document Only (Max 200KB)</div>
             </div>
             
             <div style="margin-bottom: 1.5rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Password</label>
                 <div style="position: relative;">
-                    <input type="password" id="password" name="password" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
+                    <input type="password" id="password" name="password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
                     <span onclick="toggleCreatePassword('password', 'eye-1')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
                         <svg id="eye-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </span>
@@ -48,7 +50,7 @@
             <div style="margin-bottom: 2rem;">
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Confirm Password</label>
                 <div style="position: relative;">
-                    <input type="password" id="confirm_password" name="confirm_password" required style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
+                    <input type="password" id="confirm_password" name="confirm_password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
                     <span onclick="toggleCreatePassword('confirm_password', 'eye-2')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
                         <svg id="eye-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </span>
@@ -64,6 +66,35 @@
 </div>
 
 <script>
+    function handleFileSelection(input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const isMobile = window.innerWidth <= 1024;
+        const fileName = file.name.toLowerCase();
+        const isPDF = fileName.endsWith('.pdf');
+        const isImage = ['.jpg', '.jpeg', '.png', '.heic', '.heif'].some(ext => fileName.endsWith(ext));
+
+        // On Laptop (non-mobile), only PDF is allowed
+        if (!isMobile && !isPDF) {
+            Toast.error("On laptop, only PDF files are allowed. Please use a mobile device for image uploads.");
+            input.value = "";
+            return;
+        }
+
+        if (!isPDF && !isImage) {
+            Toast.error("Please upload a PDF or an image.");
+            input.value = "";
+            return;
+        }
+
+        if (isPDF && file.size > 200 * 1024) {
+            Toast.error("PDF too large. Max 200KB.");
+            input.value = "";
+            return;
+        }
+    }
+
     function toggleCreatePassword(inputId, iconId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);
@@ -75,5 +106,31 @@
             icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
         }
     }
+
+    // Initialize Validation Engine
+    Validation.initForm('createStudentForm', {
+        fields: [
+            { id: 'username', label: 'Username', required: true },
+            { id: 'fullname', label: 'Full Name', required: true },
+            { id: 'email', label: 'Email Address', required: true, type: 'email' },
+            { id: 'phone_number', label: 'Contact Number', required: true, type: 'phone' },
+            { id: 'password', label: 'Password', required: true, custom: (val) => {
+                if (val.length < 8) return "Password must be at least 8 characters";
+                if (!/[A-Z]/.test(val)) return "Include at least one uppercase letter";
+                if (!/[a-z]/.test(val)) return "Include at least one lowercase letter";
+                if (!/[@$!%*?&#]/.test(val)) return "Include at least one special character";
+                return null;
+            }},
+            { id: 'confirm_password', label: 'Confirm Password', required: true, custom: (val, form) => {
+                if (val !== form.querySelector('#password').value) return "Passwords do not match";
+                return null;
+            }},
+            { id: 'proof_file', label: 'Verification Document', custom: (val, form) => {
+                const file = form.querySelector('#proof_file').files[0];
+                if (!file) return "Please upload a verification document";
+                return null;
+            }}
+        ]
+    });
 </script>
 {% endblock %}
