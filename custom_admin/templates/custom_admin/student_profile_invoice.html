@@ -51,6 +51,7 @@
                 <div>
                     <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ student.full_name|default:student.username }}</h4>
                     <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.95rem;">{{ student.email }}</p>
+                    <p style="margin: 0.2rem 0 0 0; color: #1e293b; font-size: 0.9rem; font-weight: 600;">Phone: {{ student.phone_number|default:"—" }}</p>
                     <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Student ID: #STU-{{ student.id|stringformat:"05d" }}</p>
                     <p style="margin: 0.2rem 0 0 0; color: #64748b; font-size: 0.85rem;">Joined: {{ student.date_joined|date:"M d, Y" }}</p>
                     {% if student.pdf_path or student.proof_pdf or student.pdf_url %}

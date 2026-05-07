@@ -43,6 +43,7 @@
                     <thead>
                         <tr>
                             <th>Student</th>
+                            <th>Contact</th>
                             <th>Status</th>
                             <th>Proof</th>
                             <th>Joined</th>
@@ -67,6 +68,9 @@
                                         <div style="font-size: 0.85rem; color: #64748b;">{{ u.email }}</div>
                                     </div>
                                 </div>
+                            </td>
+                            <td style="padding: 1.25rem 1.5rem; color: #1e293b; font-size: 0.9rem; font-weight: 500;">
+                                {{ u.phone_number|default:"—" }}
                             </td>
                             <td style="padding: 1.25rem 1.5rem;">
                                 <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; 
