@@ -111,7 +111,7 @@
             </header>
 
             <form method="GET" action="{% url 'student_explore' %}" style="position: relative; max-width: 500px; margin-bottom: 2rem;">
-                <input type="text" name="search" placeholder="Search for courses..." class="search-bar" value="{{ search_query }}" style="margin-bottom: 0; padding-right: 100px;">
+                <input type="text" name="search" class="search-bar" value="{{ search_query }}" style="margin-bottom: 0; padding-right: 100px;">
                 <button type="submit" style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); background: var(--primary-blue); color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 1.5rem; font-weight: 600; cursor: pointer;">Search</button>
             </form>
 

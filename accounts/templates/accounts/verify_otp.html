@@ -16,7 +16,7 @@
             <div class="form-group">
                 <label for="otp">Enter 6-Digit Code</label>
                 <div class="otp-input-wrapper">
-                    <input type="text" name="otp" id="otp" maxlength="6" pattern="\d{6}" inputmode="numeric" placeholder="000000" autocomplete="one-time-code" required autofocus>
+                    <input type="text" name="otp" id="otp" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required autofocus>
                 </div>
                 <small class="form-hint">Code expires at {{ expires_at|time:"H:i" }}</small>
             </div>

@@ -303,13 +303,16 @@ def decline_user(request, user_uid):
 
             # Clean up files and delete user
             try:
+                # Cleanup ApprovalLogs for this user as well (since they aren't ForeignKeys)
+                ApprovalLog.objects.filter(content_type=user_type, object_id=user.id).delete()
+                
                 from accounts.utils.cloudinary_helpers import reject_user_and_clean
                 reject_user_and_clean(user, request.user)
             except Exception as e:
                 # Fallback: just delete the user if cleanup fails
                 user.delete()
 
-            messages.warning(request, f"✔ {user_type.title()} {username} has been rejected and permanently purged.")
+            messages.warning(request, f"✔ {user_type.title()} {username} has been rejected and PERMANENTLY purged from the database.")
             if user_type == 'TEACHER':
                 return redirect('pending_teachers')
             return redirect('pending_users')
@@ -698,17 +701,19 @@ def reject_course(request, course_uid):
         teacher = course.teacher
         course_title = course.title
 
-        # Objective: Replace soft rejection with permanent purging
-        course_id = course.id
-        course.delete()
+        # Objective: Replace permanent purging with status change for resubmission
+        course.status = 'REJECTED'
+        course.is_approved = False
+        course.rejection_reason = reason
+        course.save()
 
-        # Log rejection as a purge event
+        # Log rejection
         ApprovalLog.objects.create(
             content_type='COURSE',
-            object_id=0, # Object no longer exists
+            object_id=course.id,
             status='REJECTED',
             reviewed_by=request.user,
-            comments=f"Course '{course_title}' rejected and permanently purged. Reason: {reason}"
+            comments=f"Course '{course_title}' rejected. Reason: {reason}"
         )
 
         # Notify teacher: course was purged
@@ -800,11 +805,14 @@ def reject_lesson(request, lesson_uid):
         teacher = lesson.course.teacher
         course_title = lesson.course.title
         
-        lesson.delete()
+        lesson.status = 'REJECTED'
+        lesson.is_approved = False
+        lesson.rejection_reason = reason
+        lesson.save()
         
         # Notify teacher
-        create_notification(teacher, f"Your lesson '{lesson_title}' in course '{course_title}' was rejected and PURGED. Reason: {reason}")
-        messages.warning(request, f"Lesson '{lesson_title}' rejected and permanently purged. The course remains live with its other approved content.")
+        create_notification(teacher, f"Your lesson '{lesson_title}' in course '{course_title}' was rejected. Reason: {reason}. Please edit and resubmit.")
+        messages.warning(request, f"Lesson '{lesson_title}' rejected. The teacher can now edit and resubmit it.")
         return redirect('admin_view_course_content', course_uid=course_uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
@@ -878,8 +886,12 @@ def delete_user_admin(request, user_uid):
         user = authenticate(request, username=username, password=password)
         if user is not None and user == request.user and user.is_staff:
             user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
+            
+            # Explicitly cleanup logs that don't cascade
+            ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
+            
             target_user.delete()
-            messages.success(request, "✅ Action completed.")
+            messages.success(request, f"✅ User {user_info} and all associated data permanently purged.")
             
             # Redirect back to appropriate list
             if target_user.user_type == 'TEACHER':

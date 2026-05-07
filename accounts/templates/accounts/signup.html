@@ -66,22 +66,22 @@
             <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" name="username" id="username" value="{{ username|default:'' }}" placeholder="Choose a unique username" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; transition: border-color 0.2s;">
+                    <input type="text" name="username" id="username" value="{{ username|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; transition: border-color 0.2s;">
                 </div>
                 
                 <div class="form-group">
                     <label for="fullname">Full Name</label>
-                    <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" placeholder="Enter your full name" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
+                    <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
                 <div class="form-group">
                     <label for="email">Email Address</label>
-                    <input type="email" name="email" id="email" value="{{ email|default:'' }}" placeholder="email@example.com" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
+                    <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
                 <div class="form-group">
                     <label for="phone_number">Contact Number</label>
-                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" placeholder="10-digit mobile number" maxlength="10" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
+                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" maxlength="10" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
                 <div class="form-group">
@@ -215,8 +215,6 @@
             if (isImage) document.getElementById('is_mobile').value = "true";
         });
     </script>
-</body>
->
     <style>
         .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }

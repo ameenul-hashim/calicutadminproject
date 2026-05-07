@@ -66,7 +66,7 @@
                         
                                 <form id="reject-form-{{ course.uid }}" method="POST" action="{% url 'reject_course' course.uid %}" style="display: none; margin-top: 1rem; width: 100%;">
                                     {% csrf_token %}
-                                    <input type="text" name="reason" placeholder="Reason for rejection" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box;">
+                                    <input type="text" name="reason" required style="width: 100%; padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box;">
                                     <button type="submit" class="view-btn" style="width: 100%; background: #1e293b; color: white; border: none; font-size: 0.9rem; padding: 0.6rem; border-radius: 0.5rem;">Confirm Rejection</button>
                                 </form>
                             </td>

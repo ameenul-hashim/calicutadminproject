@@ -43,7 +43,7 @@
             
             <form id="rejectCourseForm" action="{% url 'reject_course' course.uid %}" method="post" style="display: none; margin-top: 1rem; width: 100%; max-width: 400px;">
                 {% csrf_token %}
-                <textarea name="reason" placeholder="Reason for rejection..." required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; margin-bottom: 0.5rem; font-family: inherit; resize: vertical; min-height: 80px; box-sizing: border-box;"></textarea>
+                <textarea name="reason" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; margin-bottom: 0.5rem; font-family: inherit; resize: vertical; min-height: 80px; box-sizing: border-box;"></textarea>
                 <button type="submit" style="background: #b45309; color: white; border: none; padding: 0.6rem 1rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer; width: 100%;">Submit Rejection</button>
             </form>
         </div>
@@ -145,7 +145,7 @@
 
                 <form id="reject-lesson-form-{{ lesson.uid }}" method="POST" action="{% url 'reject_lesson' lesson.uid %}" style="display: none; margin-top: 0.5rem;">
                     {% csrf_token %}
-                    <textarea name="reason" placeholder="Explain the reason for rejection..." required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
+                    <textarea name="reason" required style="width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; margin-bottom: 0.5rem; box-sizing: border-box; font-family: inherit; resize: vertical; min-height: 80px;"></textarea>
                     <button type="submit" style="width: 100%; background: #b45309; color: white; border: none; font-size: 0.9rem; font-weight: 700; padding: 0.75rem; border-radius: 0.5rem; cursor: pointer;">
                         Submit Rejection
                     </button>
