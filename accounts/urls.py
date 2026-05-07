@@ -42,6 +42,7 @@ urlpatterns = [
     path('notifications/', views.all_notifications, name='all_notifications'),
     path('unread-counts/', views.get_unread_counts, name='get_unread_counts'),
     path('forgot-password/', views.forgot_password, name='forgot_password'),
+    path('recover-username/', views.recover_username, name='recover_username'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
 ]

@@ -1260,142 +1260,122 @@ def get_unread_counts(request):
         'chat': chat_count
     })
 
-# ====== FORGOT PASSWORD FLOW ======
-
-# ====== FORGOT PASSWORD FLOW (SECURE OTP PIPELINE) ======
+# ====== ENTERPRISE OTP RECOVERY PIPELINE ======
+from .utils.otp_engine import OTPEngine
 
 def forgot_password(request):
+    user_type = request.GET.get('type', 'student').upper()
+    
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        user = CustomUser.objects.filter(email=email).first()
+        
+        # Security: Always show success message to prevent email enumeration
+        if user:
+            raw_otp, otp_obj = OTPEngine.create_otp(user, 'PASSWORD_RESET', request)
+            success = OTPEngine.send_otp_email(user, raw_otp, 'PASSWORD_RESET')
+            
+            if not success:
+                print(f"📧 [DEV/FALLBACK] OTP for {email}: {raw_otp}")
+                messages.warning(request, f"⚠️ Delivery service busy. Your recovery code is: {raw_otp} (Valid 5m)")
+            else:
+                messages.success(request, f"✅ A secure recovery code has been sent to {email}.")
+            
+            request.session['recovery_otp_uid'] = str(otp_obj.uid)
+            request.session['recovery_user_uid'] = str(user.uid)
+            return redirect('verify_otp')
+        else:
+            messages.info(request, "If an account exists with that email, a recovery code has been sent.")
+            return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
+            
+    return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+
+def recover_username(request):
+    user_type = request.GET.get('type', 'student').upper()
+    
     if request.method == 'POST':
         email = request.POST.get('email')
         user = CustomUser.objects.filter(email=email).first()
         
         if user:
-            # Objective: 5 Minutes expiry. Cleanup old OTPs for this user first.
-            PasswordResetOTP.objects.filter(user=user).delete()
+            raw_otp, otp_obj = OTPEngine.create_otp(user, 'USERNAME_RECOVERY', request)
+            OTPEngine.send_otp_email(user, raw_otp, 'USERNAME_RECOVERY')
             
-            # Generate random 6-digit OTP
-            otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-            PasswordResetOTP.objects.create(user=user, otp=otp)
-            
-            # Send Email
-            subject = 'Password Reset OTP - EduStream'
-            message = (
-                f"Hello {user.username},\n\n"
-                f"Your OTP for password reset is: {otp}\n"
-                f"This code is valid for exactly 5 minutes.\n\n"
-                f"If you did not request this, please ignore this email."
-            )
-            email_from = settings.DEFAULT_FROM_EMAIL
-            recipient_list = [user.email]
-            
-            # Check if email credentials are configured
-            email_configured = bool(getattr(settings, 'EMAIL_HOST_USER', '')) and bool(getattr(settings, 'EMAIL_HOST_PASSWORD', ''))
-            
-            if email_configured:
-                try:
-                    send_mail(subject, message, email_from, recipient_list, fail_silently=False)
-                    messages.success(request, f"✅ A verification code has been sent to {user.email}.")
-                    request.session['reset_email_target'] = user.email
-                    return redirect('verify_otp')
-                except Exception as e:
-                    print(f"❌ MAIL ERROR: {type(e).__name__}: {str(e)}")
-                    # Fallback: show OTP directly since email failed
-                    messages.warning(request, f"⚠️ Email service unavailable. Your OTP code is: {otp} (Valid for 5 minutes)")
-                    request.session['reset_email_target'] = user.email
-                    return redirect('verify_otp')
-            else:
-                # No email service configured — show OTP directly
-                print(f"📧 EMAIL NOT CONFIGURED. OTP for {user.email}: {otp}")
-                messages.warning(request, f"⚠️ Email service not configured. Your OTP code is: {otp} (Valid for 5 minutes)")
-                request.session['reset_email_target'] = user.email
-                return redirect('verify_otp')
+            messages.success(request, f"✅ Verification code sent to {email}.")
+            request.session['recovery_otp_uid'] = str(otp_obj.uid)
+            request.session['recovery_user_uid'] = str(user.uid)
+            return redirect('verify_otp')
         else:
-            messages.error(request, "❌ No account found with this email address.")
+            messages.error(request, "No account found with this email.")
             
-    return render(request, 'accounts/forgot_password.html')
+    return render(request, 'accounts/recover_username.html', {'user_type': user_type})
 
 def verify_otp(request):
-    email = request.session.get('reset_email_target')
-    if not email:
+    otp_uid = request.session.get('recovery_otp_uid')
+    user_uid = request.session.get('recovery_user_uid')
+    
+    if not otp_uid or not user_uid:
+        messages.error(request, "Session expired. Please restart recovery.")
         return redirect('forgot_password')
         
+    otp_obj = get_object_or_404(EmailOTP, uid=otp_uid)
+    user = get_object_or_404(CustomUser, uid=user_uid)
+    
     if request.method == 'POST':
-        otp_entered = request.POST.get('otp')
+        raw_otp = request.POST.get('otp')
+        success, msg = OTPEngine.verify_otp(user, raw_otp, otp_obj.purpose)
         
-        # Verify 5-minute window
-        otp_record = PasswordResetOTP.objects.filter(
-            user__email=email, 
-            otp=otp_entered,
-            created_at__gte=timezone.now() - timedelta(minutes=5)
-        ).last()
-        
-        if otp_record:
-            otp_record.is_verified = True
-            otp_record.save()
-            messages.success(request, "✅ OTP verified successfully. Please set your new credentials.")
-            return redirect('reset_password')
+        if success:
+            messages.success(request, "✅ Verification successful.")
+            if otp_obj.purpose == 'PASSWORD_RESET':
+                request.session['otp_verified_for_reset'] = True
+                return redirect('reset_password')
+            elif otp_obj.purpose == 'USERNAME_RECOVERY':
+                return render(request, 'accounts/username_revealed.html', {'target_user': user})
         else:
-            # Check if it was expired
-            old_otp = PasswordResetOTP.objects.filter(user__email=email, otp=otp_entered).first()
-            if old_otp:
-                old_otp.delete() # Expired, cleanup
-                messages.error(request, "❌ This OTP has expired (5 minute limit reached).")
-            else:
-                messages.error(request, "❌ Invalid OTP code.")
+            messages.error(request, f"❌ {msg}")
             
-    return render(request, 'accounts/verify_otp.html', {'email': email})
+    return render(request, 'accounts/verify_otp.html', {
+        'user': user,
+        'purpose': otp_obj.get_purpose_display(),
+        'expires_at': otp_obj.expires_at
+    })
 
 def reset_password(request):
-    email = request.session.get('reset_email_target')
-    if not email:
+    user_uid = request.session.get('recovery_user_uid')
+    is_verified = request.session.get('otp_verified_for_reset')
+    
+    if not user_uid or not is_verified:
+        messages.error(request, "Security verification required.")
         return redirect('forgot_password')
         
-    # Security Check: Ensure verified OTP exists
-    otp_record = PasswordResetOTP.objects.filter(user__email=email, is_verified=True).last()
-    if not otp_record:
-        messages.error(request, "⚠️ Please verify your email with OTP first.")
-        return redirect('verify_otp')
-        
+    user = get_object_or_404(CustomUser, uid=user_uid)
+    
     if request.method == 'POST':
         new_username = request.POST.get('new_username')
         new_password = request.POST.get('new_password')
         confirm_password = request.POST.get('confirm_password')
         
-        user = otp_record.user
-        
-        # 1. Validation Logic
-        error_found = False
-        
-        # Username Uniqueness (Exclude current user)
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'accounts/reset_password.html', {'user': user})
+            
+        is_strong, strength_msg = is_strong_password(new_password)
+        if not is_strong:
+            messages.error(request, strength_msg)
+            return render(request, 'accounts/reset_password.html', {'user': user})
+            
         if new_username and new_username != user.username:
-            if CustomUser.objects.filter(username=new_username).exists():
-                messages.error(request, "❌ This username is already taken. Please choose another.")
-                error_found = True
+            if CustomUser.objects.filter(username=new_username).exclude(uid=user.uid).exists():
+                messages.error(request, "This username is already taken.")
+                return render(request, 'accounts/reset_password.html', {'user': user})
+            user.username = new_username
+            
+        user.set_password(new_password)
+        user.save()
         
-        # Password Complexity
-        is_strong, msg = is_strong_password(new_password)
-        if not new_password or new_password != confirm_password:
-            messages.error(request, "❌ Passwords do not match.")
-            error_found = True
-        elif not is_strong:
-            messages.error(request, f"❌ {msg}")
-            error_found = True
-
-        if not error_found:
-            # 2. Update Credentials
-            if new_username:
-                user.username = new_username
-            user.set_password(new_password)
-            user.save()
-            
-            # 3. Final Cleanup
-            PasswordResetOTP.objects.filter(user=user).delete()
-            if 'reset_email_target' in request.session:
-                del request.session['reset_email_target']
-            
-            messages.success(request, "🎉 Your credentials have been updated successfully! Please login.")
-            if user.user_type == 'TEACHER':
-                return redirect('teacher_login')
-            return redirect('login')
-                
-    return render(request, 'accounts/reset_password.html', {'target_user': otp_record.user})
+        request.session.flush()
+        messages.success(request, "✅ Account updated successfully. Please login.")
+        return redirect('login' if user.user_type == 'STUDENT' else 'teacher_login')
+        
+    return render(request, 'accounts/reset_password.html', {'user': user})

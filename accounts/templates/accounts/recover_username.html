@@ -4,35 +4,34 @@
     <div class="auth-card animate-fade-in">
         <div class="auth-header">
             <div class="auth-icon">
-                <i class="fas fa-key"></i>
+                <i class="fas fa-search"></i>
             </div>
-            <h2>Password Recovery</h2>
-            <p>Don't worry! Enter your email and we'll send you a recovery code for your {{ user_type|title }} account.</p>
+            <h2>Recover Username</h2>
+            <p>Enter the email address associated with your {{ user_type|title }} account.</p>
         </div>
 
         <form method="POST" class="auth-form">
             {% csrf_token %}
             <div class="form-group">
-                <label for="email">Registered Email</label>
+                <label for="email">Registered Email Address</label>
                 <div class="input-with-icon">
                     <i class="fas fa-envelope"></i>
-                    <input type="email" name="email" id="email" placeholder="name@example.com" required>
+                    <input type="email" name="email" id="email" placeholder="e.g. name@example.com" required>
                 </div>
             </div>
 
             <button type="submit" class="btn-primary">
-                <span>Send Recovery Code</span>
-                <i class="fas fa-paper-plane"></i>
+                <span>Send Verification Code</span>
+                <i class="fas fa-arrow-right"></i>
             </button>
         </form>
 
         <div class="auth-footer">
-            <p><a href="{% url 'recover_username' %}?type={{ user_type|lower }}" class="btn-link">Forgot username instead?</a></p>
-            <p>Back to 
+            <p>Remember your username? 
                 {% if user_type == 'TEACHER' %}
-                    <a href="{% url 'teacher_login' %}">Teacher Login</a>
+                    <a href="{% url 'teacher_login' %}">Login here</a>
                 {% else %}
-                    <a href="{% url 'login' %}">Student Login</a>
+                    <a href="{% url 'login' %}">Login here</a>
                 {% endif %}
             </p>
         </div>
