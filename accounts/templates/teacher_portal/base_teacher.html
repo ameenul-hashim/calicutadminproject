@@ -280,18 +280,24 @@
     <script>
         // Notification Dropdown Toggle
         function toggleNotifDropdown(event) {
-            event.stopPropagation();
+            if (event) event.stopPropagation();
             const dropdown = document.getElementById('notifDropdown');
-            const isActive = dropdown.style.display === 'block';
-            dropdown.style.display = isActive ? 'none' : 'block';
+            if (dropdown) dropdown.classList.toggle('active');
         }
 
         // Close dropdown when clicking outside
         document.addEventListener('click', function(event) {
             const dropdown = document.getElementById('notifDropdown');
             const bell = document.getElementById('notifBell');
-            if (dropdown && dropdown.style.display === 'block' && !dropdown.contains(event.target) && event.target !== bell) {
-                dropdown.style.display = 'none';
+            const mobileBell = document.getElementById('mobileNotifBell');
+            
+            if (dropdown && dropdown.classList.contains('active')) {
+                const clickedInside = dropdown.contains(event.target) || 
+                                     (bell && bell.contains(event.target)) || 
+                                     (mobileBell && mobileBell.contains(event.target));
+                if (!clickedInside) {
+                    dropdown.classList.remove('active');
+                }
             }
         });
 

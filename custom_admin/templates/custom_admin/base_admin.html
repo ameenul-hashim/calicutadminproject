@@ -499,8 +499,8 @@
 
                     <div style="display: flex; align-items: center; gap: 1.5rem;">
                         <!-- Notification Bell -->
-                        <div class="notification-wrapper" style="position: relative; cursor: pointer;">
-                            <div id="notifBell" onclick="document.getElementById('notifDropdown').classList.toggle('active')" style="font-size: 1.5rem; position: relative;">
+                        <div class="notification-wrapper" style="position: relative;">
+                            <div id="notifBell" style="font-size: 1.5rem; position: relative; cursor: pointer; padding: 5px;">
                                 🔔
                                 <span id="notif-count-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_admin_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_admin_notifs }}</span>
                             </div>
@@ -562,10 +562,10 @@
         if(bell && dropdown) {
             bell.addEventListener('click', (e) => {
                 e.stopPropagation();
-                dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+                dropdown.classList.toggle('active');
             });
             document.addEventListener('click', () => {
-                dropdown.style.display = 'none';
+                dropdown.classList.remove('active');
             });
             dropdown.addEventListener('click', (e) => e.stopPropagation());
         }
