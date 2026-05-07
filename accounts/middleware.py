@@ -173,7 +173,7 @@ class EnterpriseHardeningMiddleware:
         # 3. POST-PROCESS: Security Headers (Existing logic)
         csp_rules = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://kit.fontawesome.com https://cdn.plot.ly https://cdn.plyr.io",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://kit.fontawesome.com https://cdn.plot.ly https://cdn.plyr.io https://cdn.tailwindcss.com https://www.youtube.com https://s.ytimg.com",
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com https://cdnjs.cloudflare.com https://ka-f.fontawesome.com https://cdn.plyr.io",
             "img-src 'self' data: https: http: *.cloudinary.com *.supabase.co ui-avatars.com",
             "font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com",
