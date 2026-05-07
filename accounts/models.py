@@ -30,6 +30,7 @@ class CustomUser(AbstractUser):
     approved_at = models.DateTimeField(null=True, blank=True)
     current_session_key = models.CharField(max_length=40, null=True, blank=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    totp_secret = models.CharField(max_length=32, null=True, blank=True)
 
     @property
     def avatar_url(self):
