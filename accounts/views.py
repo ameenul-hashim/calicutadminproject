@@ -25,6 +25,18 @@ from datetime import timedelta
 from django.db.models import Count, Sum, Q
 from .utils.pdf_helpers import convert_image_to_pdf
 
+def is_strong_password(password):
+    """Enforces enterprise password policy: 8+ chars, Upper, Lower, Special."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r'[A-Z]', password):
+        return False, "Password must contain at least one uppercase letter."
+    if not re.search(r'[a-z]', password):
+        return False, "Password must contain at least one lowercase letter."
+    if not re.search(r'[@$!%*?&#]', password):
+        return False, "Password must contain at least one special character (@$!%*?&#)."
+    return True, ""
+
 def log_login_attempt(request, user, status='SUCCESS'):
     """Audit helper for enterprise login tracking."""
     try:
@@ -131,7 +143,12 @@ def signup_view(request):
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        is_strong, msg = is_strong_password(password)
+        if not is_strong:
+            messages.error(request, msg)
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
         try:
@@ -241,7 +258,12 @@ def teacher_signup_view(request):
 
         if password != confirm_password:
             messages.error(request, "Passwords do not match.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        is_strong, msg = is_strong_password(password)
+        if not is_strong:
+            messages.error(request, msg)
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
         try:
@@ -561,7 +583,7 @@ def dashboard_view(request):
 
     # Add platform updates to Django messages so they appear in the dashboard message card
     for update in platform_updates:
-        messages.info(request, update)
+        messages.info(request, update, extra_tags='platform_update')
 
     # Build initial context
     context = {
@@ -672,7 +694,7 @@ def view_other_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
     from django.db.models import Count, Q
-    courses_qs = Course.objects.filter(teacher=request.user).exclude(status='REJECTED').annotate(
+    courses_qs = Course.objects.filter(teacher=request.user).annotate(
         total_lessons=Count('lessons'),
         approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
         pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING')),
@@ -1319,17 +1341,12 @@ def reset_password(request):
                 error_found = True
         
         # Password Complexity
+        is_strong, msg = is_strong_password(new_password)
         if not new_password or new_password != confirm_password:
             messages.error(request, "❌ Passwords do not match.")
             error_found = True
-        elif len(new_password) < 8:
-            messages.error(request, "❌ Password must be at least 8 characters long.")
-            error_found = True
-        elif not re.search(r'[A-Z]', new_password) or not re.search(r'[a-z]', new_password):
-            messages.error(request, "❌ Password must contain both uppercase and lowercase letters.")
-            error_found = True
-        elif not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
-            messages.error(request, "❌ Password must contain at least one special character.")
+        elif not is_strong:
+            messages.error(request, f"❌ {msg}")
             error_found = True
 
         if not error_found:

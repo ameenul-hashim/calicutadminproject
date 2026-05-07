@@ -124,6 +124,7 @@
                                 const file = e.target.files[0];
                                 if (!file) return;
 
+                                console.log(`[ImageProcessor] Starting optimization for: ${file.name} (${file.size} bytes)`);
                                 statusText.innerHTML = `<span style="color:#6366f1;font-weight:600;">⚡ Processing ${file.name} (${(file.size/(1024*1024)).toFixed(2)} MB)...</span>`;
                                 if (submitBtn) { submitBtn.disabled = true; submitBtn.innerText = 'Processing...'; }
 
@@ -153,6 +154,8 @@
 
                                             canvas.toBlob(function(blob) {
                                                 try {
+                                                    if (!blob) throw new Error("Canvas toBlob returned null");
+                                                    
                                                     const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg', lastModified: Date.now() });
                                                     const dt = new DataTransfer();
                                                     dt.items.add(compressedFile);
@@ -162,23 +165,31 @@
                                                     finalThumbnail.name = 'thumbnail';
                                                     imageInput.removeAttribute('name');
 
+                                                    console.log(`[ImageProcessor] Success: ${compressedFile.size} bytes (Reduced by ${((1 - compressedFile.size/file.size)*100).toFixed(1)}%)`);
                                                     statusText.innerHTML = `<span style="color:#10b981;font-weight:600;">✅ Optimized! (${(compressedFile.size/1024).toFixed(1)} KB) — Ready to upload</span>`;
                                                 } catch(err) {
-                                                    // DataTransfer failed (some mobile browsers) — raw file will be submitted via imageInput
-                                                    statusText.innerHTML = `<span style="color:#f59e0b;font-weight:600;">⚠️ Using original file (${(file.size/1024).toFixed(1)} KB)</span>`;
+                                                    console.error(`[ImageProcessor] DataTransfer/Blob Error:`, err);
+                                                    statusText.innerHTML = `<span style="color:#f59e0b;font-weight:600;">⚠️ Compression bypass: Using original file (${(file.size/1024).toFixed(1)} KB)</span>`;
                                                 }
                                                 if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = 'Save as Draft'; }
                                             }, 'image/jpeg', 0.85);
                                         } catch(err) {
-                                            statusText.innerHTML = `<span style="color:#f59e0b;font-weight:600;">⚠️ Using original file</span>`;
+                                            console.error(`[ImageProcessor] Canvas Error:`, err);
+                                            statusText.innerHTML = `<span style="color:#f59e0b;font-weight:600;">⚠️ Internal Error: Using original file</span>`;
                                             if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = 'Save as Draft'; }
                                         }
                                     };
                                     img.onerror = function() {
+                                        console.error(`[ImageProcessor] Image Load Error: Failed to decode ${file.type}`);
                                         statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ Could not read image. Please try another file.</span>`;
                                         if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = 'Save as Draft'; }
                                     };
                                     img.src = event.target.result;
+                                };
+                                reader.onerror = function(err) {
+                                    console.error(`[ImageProcessor] FileReader Error:`, err);
+                                    statusText.innerHTML = `<span style="color:#ef4444;font-weight:600;">❌ File access error.</span>`;
+                                    if (submitBtn) { submitBtn.disabled = false; submitBtn.innerText = 'Save as Draft'; }
                                 };
                                 reader.readAsDataURL(file);
                             });

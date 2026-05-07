@@ -57,7 +57,7 @@
             <p style="color: #64748b; margin-top: 0.5rem;">Create your student account to start learning</p>
         </div>
         
-        {% include 'includes/local_messages.html' %}
+        {% include 'includes/messages.html' %}
 
         <form method="POST" enctype="multipart/form-data" id="signupForm">
             {% csrf_token %}
@@ -222,6 +222,18 @@
 
             if (phone.length !== 10) { e.preventDefault(); alert("Please enter exactly 10 digits for the contact number."); return; }
             if (pass !== confirmPass) { e.preventDefault(); alert("Passwords do not match!"); return; }
+
+            // Password complexity check
+            const hasUpper = /[A-Z]/.test(pass);
+            const hasLower = /[a-z]/.test(pass);
+            const hasSpecial = /[@$!%*?&#]/.test(pass);
+            const isLongEnough = pass.length >= 8;
+
+            if (!isLongEnough || !hasUpper || !hasLower || !hasSpecial) {
+                e.preventDefault();
+                alert("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one special character (@$!%*?&#).");
+                return;
+            }
 
             // If it's an image, force is_mobile=true so the backend converts it to PDF
             if (isImage) {
