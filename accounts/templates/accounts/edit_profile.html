@@ -199,9 +199,54 @@
             ]
         });
 
-        profileForm.addEventListener('submit', function() {
-            // Additional custom cleanup if needed
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.innerText = 'Uploading...';
+
+            const formData = new FormData(this);
+            
+            fetch(window.location.href, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast(data.message, 'success');
+                    setTimeout(() => {
+                        window.location.href = "{% url 'profile' %}";
+                    }, 1500);
+                } else {
+                    showToast(data.message || 'Update failed', 'error');
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                    submitBtn.innerText = 'Update Photo';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('A connection error occurred.', 'error');
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1';
+                submitBtn.innerText = 'Update Photo';
+            });
         });
+
+        function showToast(message, type) {
+            // Use existing Toast engine if available, or simple alert fallback
+            if (window.Toast) {
+                window.Toast.show(message, type);
+            } else {
+                alert(message);
+            }
+        }
     </script>
     </div>
 </body>

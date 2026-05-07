@@ -34,23 +34,16 @@ class CustomUser(AbstractUser):
 
     @property
     def avatar_url(self):
-        """Returns optimized Cloudinary image URL, falling back to legacy profile_photo."""
-        url = self.image if self.image else None
+        """Returns the raw Cloudinary image URL or a fallback default."""
+        if self.image:
+            return self.image.strip()
         
-        if not url and self.profile_photo:
+        if self.profile_photo:
             try:
-                url = self.profile_photo.url
+                return self.profile_photo.url
             except ValueError:
                 pass
         
-        if url:
-            # Inject Cloudinary auto-optimization if it's a Cloudinary URL
-            if 'res.cloudinary.com' in url and 'upload/' in url:
-                if 'f_auto,q_auto' not in url:
-                    return url.replace('upload/', 'upload/f_auto,q_auto/')
-            return url
-            
-        # High-quality dynamic default avatar (Fast CDN)
         return f"https://ui-avatars.com/api/?name={self.username}&background=random&color=fff&size=256"
 
     @property
@@ -95,19 +88,16 @@ class Course(models.Model):
 
     @property
     def thumbnail_url(self):
-        """Returns optimized Cloudinary image URL, falling back to legacy thumbnail."""
-        url = self.image if self.image else None
-        
-        if not url and self.thumbnail:
+        """Returns the raw course thumbnail URL."""
+        if self.image:
+            return self.image.strip()
+            
+        if self.thumbnail:
             try:
-                url = self.thumbnail.url
+                return self.thumbnail.url
             except ValueError:
                 pass
-        
-        if url and 'res.cloudinary.com' in url and 'upload/' in url:
-            if 'f_auto,q_auto' not in url:
-                return url.replace('upload/', 'upload/f_auto,q_auto/')
-        return url
+        return None
 
     def __str__(self):
         return self.title

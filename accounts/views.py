@@ -1026,7 +1026,12 @@ def edit_profile(request):
             
             from .utils.cloudinary_helpers import update_image
             if update_image(request.user, profile_photo, folder="edustream/profiles"):
-                return JsonResponse({'status': 'success', 'message': '✅ Profile photo updated successfully!'})
+                # Support both AJAX and Standard Form Submission
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                    return JsonResponse({'status': 'success', 'message': '✅ Profile photo updated successfully!'})
+                
+                messages.success(request, '✅ Profile photo updated successfully!')
+                return redirect('profile')
             else:
                 return JsonResponse({'status': 'error', 'message': 'Failed to upload photo. Please try again.'}, status=500)
         else:
