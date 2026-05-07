@@ -493,11 +493,11 @@ def analytics_view(request):
     context = cache.get(cache_key)
     
     if not context:
-        # Stats Cards
-        total_students = CustomUser.objects.filter(user_type='STUDENT').count()
-        total_teachers = CustomUser.objects.filter(user_type='TEACHER').count()
-        total_courses = Course.objects.count()
-        total_lessons = Lesson.objects.count()
+        # Stats Cards: Show only active/approved platform content
+        total_students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE').count()
+        total_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
+        total_courses = Course.objects.filter(status='PUBLISHED').count()
+        total_lessons = Lesson.objects.filter(is_approved=True).count()
 
         # Month-wise Data
         def get_monthly_data(queryset, date_field='created_at'):
@@ -508,9 +508,9 @@ def analytics_view(request):
                     data[entry['month']-1] = entry['count']
             return data
 
-        student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT'), 'date_joined')
-        teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER'), 'date_joined')
-        course_data = get_monthly_data(Course.objects.all())
+        student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE'), 'date_joined')
+        teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE'), 'date_joined')
+        course_data = get_monthly_data(Course.objects.filter(status='PUBLISHED'))
 
         # Approval Stats
         approval_stats = {
@@ -530,10 +530,10 @@ def analytics_view(request):
             lesson_count=Count('lessons')
         ).select_related('teacher').order_by('-enrollment_count')[:5]
 
-        # Top Educators (by total content uploaded)
-        top_educators = CustomUser.objects.filter(user_type='TEACHER').annotate(
-            total_content=Count('courses__lessons'),
-            total_courses=Count('courses', distinct=True)
+        # Top Educators (by total approved content uploaded)
+        top_educators = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
+            total_content=Count('courses__lessons', filter=Q(courses__lessons__is_approved=True)),
+            total_courses=Count('courses', filter=Q(courses__status='PUBLISHED'), distinct=True)
         ).order_by('-total_content')[:5]
 
         pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
@@ -556,8 +556,8 @@ def analytics_view(request):
             'pending_students_count': pending_students_count,
             'pending_teachers_count': pending_teachers_count,
         }
-        # Cache for 5 minutes
-        cache.set(cache_key, context, 300)
+        # Cache for 1 minute (reduced from 5 to prevent mismatch)
+        cache.set(cache_key, context, 60)
 
     # These shouldn't be cached as they are user-specific/time-sensitive
     context['notifications'] = Notification.objects.filter(user=request.user, is_read=False)[:10]
@@ -568,7 +568,10 @@ def analytics_view(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
     status_filter = request.GET.get('status', 'PUBLISHED')
-    courses = Course.objects.all().select_related('teacher').prefetch_related('lessons')
+    courses = Course.objects.all().annotate(
+        total_lessons_count=Count('lessons'),
+        approved_lessons_count=Count('lessons', filter=Q(lessons__is_approved=True))
+    ).select_related('teacher')
     
     if status_filter != 'ALL':
         courses = courses.filter(status=status_filter)
