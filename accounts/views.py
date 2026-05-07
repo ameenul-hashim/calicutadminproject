@@ -157,10 +157,10 @@ def signup_view(request):
             import traceback
             print(f"❌ SIGNUP ERROR: {str(e)}")
             print(traceback.format_exc())
-            if 'user' in locals(): user.delete()
+            if 'user' in locals() and user: user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return redirect('login')
+
 
     return render(request, 'accounts/signup.html')
 
@@ -278,9 +278,9 @@ def teacher_signup_view(request):
             import traceback
             print(f"❌ TEACHER SIGNUP ERROR: {str(e)}")
             print(traceback.format_exc())
-            if 'user' in locals(): user.delete()
+            if 'user' in locals() and user: user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return redirect('teacher_login')
 
     return render(request, 'accounts/teacher_signup.html')
 
