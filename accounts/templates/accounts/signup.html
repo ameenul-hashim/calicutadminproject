@@ -156,6 +156,24 @@
                     return;
                 }
 
+                // SIZE VALIDATION:
+                const MAX_PDF_SIZE = 200 * 1024; // 200KB
+                const MAX_IMG_SIZE = 15 * 1024 * 1024; // 15MB
+
+                if (isPDF && file.size > MAX_PDF_SIZE) {
+                    alert("PDF is too large (" + Math.round(file.size/1024) + "KB). Please keep it under 200KB.");
+                    input.value = "";
+                    resetUploadUI(display, label);
+                    return;
+                }
+                
+                if (isImage && file.size > MAX_IMG_SIZE) {
+                    alert("Image is too large. Please keep it under 15MB.");
+                    input.value = "";
+                    resetUploadUI(display, label);
+                    return;
+                }
+
                 if (!isPDF && !isTouch) {
                     alert("On laptop/desktop devices, only PDF documents are allowed.");
                     input.value = "";
