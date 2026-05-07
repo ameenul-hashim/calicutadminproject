@@ -216,16 +216,22 @@
         });
 
         window.addEventListener('load', function() {
-            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth <= 1024;
+            // Robust device detection (Screen width + Touch capability)
+            const isSmallScreen = window.innerWidth <= 1024;
+            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            const isMobile = isSmallScreen || isTouch;
+            
             const fileInput = document.getElementById('proof_file');
             const helpText = document.getElementById('upload-help-text');
             const mobileInput = document.getElementById('is_mobile');
 
-            if (isTouch) {
-                fileInput.setAttribute('accept', 'application/pdf,image/*,.heic,.heif');
+            if (isMobile) {
+                // On mobile, prioritize camera/gallery but allow PDF
+                fileInput.setAttribute('accept', 'image/*,application/pdf,.heic,.heif');
                 mobileInput.value = "true";
                 helpText.innerText = "Upload Photo (Max 15MB) or PDF (Max 200KB)";
             } else {
+                // On desktop, enforce PDF for professional documents
                 fileInput.setAttribute('accept', 'application/pdf');
                 mobileInput.value = "false";
                 helpText.innerText = "Upload PDF Document Only (Max 200KB)";
