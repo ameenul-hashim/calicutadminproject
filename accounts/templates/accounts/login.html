@@ -31,6 +31,7 @@
         
         <form method="POST" id="loginForm" novalidate>
             {% include 'includes/messages.html' %}
+            {% include 'includes/validation_engine.html' %}
             {% csrf_token %}
             <div class="input-group">
                 <label for="username">Username</label>
@@ -75,15 +76,11 @@
             }
         }
 
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const username = document.getElementById('username').value;
-            const pass = document.getElementById('password').value;
-            if(username.trim() !== '' && pass.trim() !== '') {
-                const btn = document.getElementById('loginBtn');
-                btn.innerHTML = 'Verifying... <div class="loader" style="width:16px;height:16px;border:3px solid rgba(255,255,255,0.3);border-radius:50%;border-top-color:#fff;animation:spin 1s ease-in-out infinite;"></div>';
-                btn.style.opacity = '0.8';
-                btn.style.pointerEvents = 'none';
-            }
+        Validation.initForm('loginForm', {
+            fields: [
+                { id: 'username', label: 'Username', required: true },
+                { id: 'password', label: 'Password', required: true }
+            ]
         });
     </script>
     <style>

@@ -1,34 +1,45 @@
-{% if messages %}
-<div class="toast-container" id="toast-container">
-    {% for message in messages %}
-        <div class="toast-card toast-{{ message.tags }} animate-slide-in">
-            <div class="toast-content">
-                <div class="toast-icon">
-                    {% if message.tags == 'success' %}
-                        <i class="fas fa-check-circle"></i>
-                    {% elif message.tags == 'error' %}
-                        <i class="fas fa-exclamation-circle"></i>
-                    {% elif message.tags == 'warning' %}
-                        <i class="fas fa-exclamation-triangle"></i>
-                    {% else %}
-                        <i class="fas fa-info-circle"></i>
-                    {% endif %}
-                </div>
-                <div class="toast-body">
-                    <div class="toast-title">
-                        {% if message.tags == 'success' %}Success{% elif message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Warning{% else %}Note{% endif %}
+{% if messages or True %}
+<div id="notification-hub" class="notification-hub">
+    <div id="toast-container" class="toast-container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast-card toast-{{ message.tags }} animate-slide-in" role="alert" aria-live="polite">
+                    <div class="toast-content">
+                        <div class="toast-icon">
+                            {% if message.tags == 'success' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% elif message.tags == 'error' %}
+                                <i class="fas fa-exclamation-circle"></i>
+                            {% elif message.tags == 'warning' %}
+                                <i class="fas fa-exclamation-triangle"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle"></i>
+                            {% endif %}
+                        </div>
+                        <div class="toast-body">
+                            <div class="toast-title">
+                                {% if message.tags == 'success' %}Success{% elif message.tags == 'error' %}Error{% elif message.tags == 'warning' %}Warning{% else %}Note{% endif %}
+                            </div>
+                            <div class="toast-message">{{ message }}</div>
+                        </div>
+                        <button class="toast-close" onclick="Toast.dismiss(this.parentElement.parentElement)" aria-label="Close notification">&times;</button>
                     </div>
-                    <div class="toast-message">{{ message }}</div>
+                    <div class="toast-progress"></div>
                 </div>
-                <button class="toast-close" onclick="this.closest('.toast-card').remove()">&times;</button>
-            </div>
-            <div class="toast-progress"></div>
-        </div>
-    {% endfor %}
+            {% endfor %}
+        {% endif %}
+    </div>
 </div>
 
 <style>
-    /* Premium Toast Container */
+    :root {
+        --toast-success-bg: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        --toast-error-bg: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+        --toast-warning-bg: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+        --toast-info-bg: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+        --toast-glass: rgba(255, 255, 255, 0.95);
+    }
+
     .toast-container {
         position: fixed;
         bottom: 30px;
@@ -36,147 +47,225 @@
         z-index: 10000;
         display: flex;
         flex-direction: column;
-        gap: 15px;
-        max-width: 400px;
+        gap: 12px;
+        max-width: 420px;
         width: calc(100% - 60px);
+        pointer-events: none;
     }
 
-    /* Modern Card Styling */
     .toast-card {
-        background: rgba(255, 255, 255, 0.9);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        background: var(--toast-glass);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-radius: 16px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.12);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.15);
         overflow: hidden;
         position: relative;
-        border: 1px solid rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        pointer-events: auto;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .toast-content {
-        padding: 16px 20px;
+        padding: 18px 24px;
         display: flex;
         align-items: flex-start;
-        gap: 15px;
+        gap: 16px;
     }
 
     .toast-icon {
-        font-size: 24px;
+        font-size: 26px;
         flex-shrink: 0;
-        margin-top: 2px;
+        background: -webkit-linear-gradient(135deg, #6366f1, #4f46e5);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
 
-    .toast-body {
-        flex: 1;
-    }
+    .toast-body { flex: 1; }
+    .toast-title { font-weight: 800; font-size: 14px; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.8px; color: #1e293b; }
+    .toast-message { font-size: 15px; color: #475569; line-height: 1.5; font-weight: 500; }
+    .toast-close { background: none; border: none; font-size: 22px; color: #94a3b8; cursor: pointer; padding: 0; line-height: 1; transition: 0.2s; }
+    .toast-close:hover { color: #1e293b; transform: scale(1.1); }
 
-    .toast-title {
-        font-weight: 700;
-        font-size: 15px;
-        margin-bottom: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .toast-message {
-        font-size: 14px;
-        color: #475569;
-        line-height: 1.5;
-        font-weight: 500;
-    }
-
-    .toast-close {
-        background: none;
-        border: none;
-        font-size: 24px;
-        color: #94a3b8;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-        transition: color 0.2s;
-    }
-
-    .toast-close:hover { color: #1e293b; }
-
-    /* Progressive Color Themes */
+    /* Animated Themes */
     .toast-success { border-left: 6px solid #10b981; }
-    .toast-success .toast-icon, .toast-success .toast-title { color: #10b981; }
-    .toast-success .toast-progress { background: #10b981; }
+    .toast-success .toast-icon { background: var(--toast-success-bg); -webkit-background-clip: text; }
+    .toast-success .toast-progress { background: var(--toast-success-bg); }
 
-    .toast-error { border-left: 6px solid #ef4444; }
-    .toast-error .toast-icon, .toast-error .toast-title { color: #ef4444; }
-    .toast-error .toast-progress { background: #ef4444; }
+    .toast-error { border-left: 6px solid #ef4444; animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+    .toast-error .toast-icon { background: var(--toast-error-bg); -webkit-background-clip: text; }
+    .toast-error .toast-progress { background: var(--toast-error-bg); }
 
     .toast-warning { border-left: 6px solid #f59e0b; }
-    .toast-warning .toast-icon, .toast-warning .toast-title { color: #f59e0b; }
-    .toast-warning .toast-progress { background: #f59e0b; }
+    .toast-warning .toast-icon { background: var(--toast-warning-bg); -webkit-background-clip: text; }
+    .toast-warning .toast-progress { background: var(--toast-warning-bg); }
 
     .toast-info { border-left: 6px solid #3b82f6; }
-    .toast-info .toast-icon, .toast-info .toast-title { color: #3b82f6; }
-    .toast-info .toast-progress { background: #3b82f6; }
+    .toast-info .toast-icon { background: var(--toast-info-bg); -webkit-background-clip: text; }
+    .toast-info .toast-progress { background: var(--toast-info-bg); }
 
-    /* Animated Progress Bar */
-    .toast-progress {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        height: 4px;
-        width: 100%;
-        opacity: 0.6;
-        animation: toast-progress-anim 6s linear forwards;
+    .toast-progress { position: absolute; bottom: 0; left: 0; height: 4px; width: 100%; opacity: 0.8; }
+    
+    @keyframes toast-progress-anim { from { width: 100%; } to { width: 0%; } }
+    @keyframes slideIn { from { transform: translateX(100%) scale(0.9); opacity: 0; } to { transform: translateX(0) scale(1); opacity: 1; } }
+    @keyframes fadeOut { from { transform: scale(1); opacity: 1; } to { transform: scale(0.9); opacity: 0; } }
+    @keyframes shake {
+        10%, 90% { transform: translate3d(-1px, 0, 0); }
+        20%, 80% { transform: translate3d(2px, 0, 0); }
+        30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+        40%, 60% { transform: translate3d(4px, 0, 0); }
     }
 
-    @keyframes toast-progress-anim {
-        from { width: 100%; }
-        to { width: 0%; }
-    }
+    .animate-slide-in { animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .animate-fade-out { animation: fadeOut 0.4s ease-in forwards; }
 
-    /* Animations */
-    .animate-slide-in {
-        animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-
-    .animate-fade-out {
-        animation: fadeOut 0.4s ease-in forwards;
-    }
-
-    @keyframes slideIn {
-        from { transform: translateX(100%) scale(0.9); opacity: 0; }
-        to { transform: translateX(0) scale(1); opacity: 1; }
-    }
-
-    @keyframes fadeOut {
-        from { transform: scale(1); opacity: 1; }
-        to { transform: scale(0.9); opacity: 0; }
-    }
-
-    /* Mobile Adaptations */
     @media (max-width: 640px) {
-        .toast-container {
-            bottom: auto;
-            top: 20px;
-            right: 15px;
-            left: 15px;
-            width: auto;
-            max-width: none;
-        }
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
+        .toast-container { bottom: auto; top: 20px; right: 15px; left: 15px; width: auto; max-width: none; }
+        @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     }
 </style>
 
 <script>
+    const Toast = {
+        show: function(message, type = 'info', duration = 5000) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = `toast-card toast-${type} animate-slide-in`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'polite');
+
+            const icons = {
+                success: 'fa-check-circle',
+                error: 'fa-exclamation-circle',
+                warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle'
+            };
+
+            const titles = {
+                success: 'Success',
+                error: 'Error',
+                warning: 'Warning',
+                info: 'Note'
+            };
+
+            toast.innerHTML = `
+                <div class="toast-content">
+                    <div class="toast-icon"><i class="fas ${icons[type]}"></i></div>
+                    <div class="toast-body">
+                        <div class="toast-title">${titles[type]}</div>
+                        <div class="toast-message">${message}</div>
+                    </div>
+                    <button class="toast-close" onclick="Toast.dismiss(this.parentElement.parentElement)">&times;</button>
+                </div>
+                <div class="toast-progress" style="animation: toast-progress-anim ${duration/1000}s linear forwards"></div>
+            `;
+
+            container.appendChild(toast);
+            setTimeout(() => this.dismiss(toast), duration);
+        },
+        dismiss: function(toast) {
+            if (!toast || toast.classList.contains('animate-fade-out')) return;
+            toast.classList.add('animate-fade-out');
+            setTimeout(() => toast.remove(), 400);
+        },
+        confirm: function(message, onConfirm, options = {}) {
+            const backdrop = document.createElement('div');
+            backdrop.className = 'confirm-backdrop animate-fade-in';
+            backdrop.innerHTML = `
+                <div class="confirm-modal animate-scale-up">
+                    <div class="confirm-icon"><i class="fas fa-question-circle"></i></div>
+                    <h3>${options.title || 'Are you sure?'}</h3>
+                    <p>${message}</p>
+                    <div class="confirm-actions">
+                        <button class="confirm-btn-cancel">${options.cancelText || 'Cancel'}</button>
+                        <button class="confirm-btn-ok">${options.okText || 'Confirm'}</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(backdrop);
+
+            const okBtn = backdrop.querySelector('.confirm-btn-ok');
+            const cancelBtn = backdrop.querySelector('.confirm-btn-cancel');
+
+            const close = () => {
+                backdrop.classList.add('animate-fade-out');
+                backdrop.querySelector('.confirm-modal').classList.add('animate-scale-down');
+                setTimeout(() => backdrop.remove(), 400);
+            };
+
+            okBtn.onclick = () => { onConfirm(); close(); };
+            cancelBtn.onclick = close;
+            backdrop.onclick = (e) => { if (e.target === backdrop) close(); };
+        },
+        success: (m, d) => Toast.show(m, 'success', d),
+        error: (m, d) => Toast.show(m, 'error', d),
+        warning: (m, d) => Toast.show(m, 'warning', d),
+        info: (m, d) => Toast.show(m, 'info', d)
+    };
+
+    // Auto-dismiss Django messages
     document.addEventListener('DOMContentLoaded', function() {
-        const toasts = document.querySelectorAll('.toast-card');
-        toasts.forEach(toast => {
-            setTimeout(() => {
-                toast.classList.add('animate-fade-out');
-                setTimeout(() => toast.remove(), 400);
-            }, 6000); // Dismiss after 6 seconds
+        const djangoToasts = document.querySelectorAll('.toast-card');
+        djangoToasts.forEach(toast => {
+            const progress = toast.querySelector('.toast-progress');
+            if (progress) progress.style.animation = 'toast-progress-anim 5s linear forwards';
+            setTimeout(() => Toast.dismiss(toast), 5000);
         });
     });
 </script>
+
+<style>
+    .confirm-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(8px);
+        z-index: 100000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .confirm-modal {
+        background: white;
+        border-radius: 24px;
+        padding: 32px;
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .confirm-icon {
+        font-size: 48px;
+        color: #6366f1;
+        margin-bottom: 20px;
+    }
+    .confirm-modal h3 { margin: 0 0 12px; font-weight: 800; color: #1e293b; font-size: 20px; }
+    .confirm-modal p { color: #64748b; font-size: 15px; margin-bottom: 30px; line-height: 1.6; }
+    .confirm-actions { display: flex; gap: 12px; }
+    .confirm-actions button {
+        flex: 1;
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 14px;
+        cursor: pointer;
+        transition: 0.2s;
+        border: none;
+    }
+    .confirm-btn-cancel { background: #f1f5f9; color: #64748b; }
+    .confirm-btn-cancel:hover { background: #e2e8f0; color: #1e293b; }
+    .confirm-btn-ok { background: #0ea5e9; color: white; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3); }
+    .confirm-btn-ok:hover { background: #0284c7; transform: translateY(-2px); }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes scaleDown { from { transform: scale(1); opacity: 1; } to { transform: scale(0.9); opacity: 0; } }
+
+    .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+    .animate-scale-up { animation: scaleUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+    .animate-scale-down { animation: scaleDown 0.3s ease-in forwards; }
+</style>
 {% endif %}

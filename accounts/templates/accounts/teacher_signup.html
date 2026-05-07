@@ -58,33 +58,34 @@
         </div>
         
         {% include 'includes/messages.html' %}
+        {% include 'includes/validation_engine.html' %}
 
         <form method="POST" enctype="multipart/form-data" id="signupForm">
             {% csrf_token %}
             <input type="hidden" name="is_mobile" id="is_mobile" value="false">
             <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">
-                <div class="input-group">
-                    <label for="username" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Username</label>
-                    <input type="text" name="username" id="username" value="{{ username|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; transition: border-color 0.2s;" onfocus="this.style.borderColor='#6366f1'">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" name="username" id="username" value="{{ username|default:'' }}" placeholder="Choose a professional username" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; transition: border-color 0.2s;">
                 </div>
                 
-                <div class="input-group">
-                    <label for="fullname" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Full Name</label>
-                    <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#6366f1'">
+                <div class="form-group">
+                    <label for="fullname">Full Name</label>
+                    <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" placeholder="Your legal full name" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
-                <div class="input-group">
-                    <label for="email" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Professional Email</label>
-                    <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#6366f1'">
+                <div class="form-group">
+                    <label for="email">Professional Email</label>
+                    <input type="email" name="email" id="email" value="{{ email|default:'' }}" placeholder="teacher@edustream.com" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
-                <div class="input-group">
-                    <label for="phone_number" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Contact Number <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 400;">(10 digits)</span></label>
-                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" placeholder="e.g., 9876543210" inputmode="numeric" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,10)" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;" onfocus="this.style.borderColor='#6366f1'">
+                <div class="form-group">
+                    <label for="phone_number">Contact Number</label>
+                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" placeholder="10-digit mobile number" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
-                <div class="input-group">
-                    <label style="font-weight: 600; font-size: 0.9rem; color: #475569; display: block; margin-bottom: 0.5rem;">Qualification Proof</label>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 0.5rem;">Qualification Proof</label>
                     <label for="proof_file" class="upload-area" id="upload-label" style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; padding: 1.25rem; background: #f8fafc; border: 2px dashed #cbd5e1; border-radius: 0.75rem; cursor: pointer; transition: all 0.2s;">
                         <span id="file-icon" style="font-size: 1.5rem;">📄</span>
                         <div style="text-align: left;">
@@ -96,17 +97,18 @@
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="input-group" style="position: relative;">
-                        <label for="password" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Password</label>
-                        <input type="password" name="password" id="password" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;" onfocus="this.style.borderColor='#6366f1'">
-                        <span onclick="togglePassword('password', 'eye-icon-1')" style="position: absolute; right: 12px; bottom: 10px; cursor: pointer; color: #94a3b8;">
+                    <div class="form-group" style="position: relative;">
+                        <label for="password">Password</label>
+                        <input type="password" name="password" id="password" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;">
+                        <div class="strength-meter"><div id="strength-bar" class="strength-bar"></div></div>
+                        <span onclick="togglePassword('password', 'eye-icon-1')" style="position: absolute; right: 12px; top: 40px; cursor: pointer; color: #94a3b8;">
                             <svg id="eye-icon-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap round="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </span>
                     </div>
-                    <div class="input-group" style="position: relative;">
-                        <label for="confirm_password" style="font-weight: 600; font-size: 0.9rem; color: #475569;">Confirm</label>
-                        <input type="password" name="confirm_password" id="confirm_password" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;" onfocus="this.style.borderColor='#6366f1'">
-                        <span onclick="togglePassword('confirm_password', 'eye-icon-2')" style="position: absolute; right: 12px; bottom: 10px; cursor: pointer; color: #94a3b8;">
+                    <div class="form-group" style="position: relative;">
+                        <label for="confirm_password">Confirm</label>
+                        <input type="password" name="confirm_password" id="confirm_password" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none; padding-right: 2.5rem;">
+                        <span onclick="togglePassword('confirm_password', 'eye-icon-2')" style="position: absolute; right: 12px; top: 40px; cursor: pointer; color: #94a3b8;">
                             <svg id="eye-icon-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap round="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </span>
                     </div>
@@ -136,138 +138,78 @@
             }
         }
 
+        // Live Password Strength Meter
+        document.getElementById('password').addEventListener('input', function(e) {
+            const score = Validation.password(e.target.value);
+            const bar = document.getElementById('strength-bar');
+            bar.className = 'strength-bar';
+            if (score === 1) bar.classList.add('strength-weak');
+            if (score === 2) bar.classList.add('strength-fair');
+            if (score === 3) bar.classList.add('strength-good');
+            if (score === 4) bar.classList.add('strength-strong');
+        });
+
         function handleFileSelection(input) {
             const display = document.getElementById('file-name-display');
             const label = document.getElementById('upload-label');
             const help = document.getElementById('upload-help-text');
             const file = input.files[0];
-            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+            if (!file) return;
 
-            if (file) {
-                const fileName = file.name.toLowerCase();
-                const allowedImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'];
-                const isImage = allowedImageExts.some(ext => fileName.endsWith(ext));
-                const isPDF = fileName.endsWith('.pdf');
+            const fileName = file.name.toLowerCase();
+            const isPDF = fileName.endsWith('.pdf');
+            const isImage = ['.jpg', '.jpeg', '.png', '.heic'].some(ext => fileName.endsWith(ext));
 
-                if (!isPDF && !isImage) {
-                    alert("Please upload a PDF or an image (JPG/PNG/HEIC).");
-                    input.value = "";
-                    resetUploadUI(display, label);
-                    return;
-                }
-
-                // SIZE VALIDATION:
-                const MAX_PDF_SIZE = 200 * 1024; // 200KB
-                const MAX_IMG_SIZE = 15 * 1024 * 1024; // 15MB
-
-                if (isPDF && file.size > MAX_PDF_SIZE) {
-                    alert("PDF is too large (" + Math.round(file.size/1024) + "KB). Please keep it under 200KB.");
-                    input.value = "";
-                    resetUploadUI(display, label);
-                    return;
-                }
-                
-                if (isImage && file.size > MAX_IMG_SIZE) {
-                    alert("Image is too large. Please keep it under 15MB.");
-                    input.value = "";
-                    resetUploadUI(display, label);
-                    return;
-                }
-
-                if (!isPDF && !isTouch) {
-                    alert("On laptop/desktop devices, only PDF documents are allowed.");
-                    input.value = "";
-                    resetUploadUI(display, label);
-                    return;
-                }
-
-                // Conditional limit: 200KB for PDF, 15MB for Images
-                let limit;
-                if (isPDF) {
-                    limit = 200 * 1024; // 200KB
-                } else {
-                    limit = 15 * 1024 * 1024; // 15MB
-                }
-                
-                if (file.size > limit) {
-                    alert("File too large. Maximum size for " + (isPDF ? "PDFs is 200KB." : "Images is 15MB."));
-                    input.value = "";
-                    resetUploadUI(display, label);
-                    return;
-                }
-
-                const sizeText = (file.size / 1024 / 1024).toFixed(2) + " MB";
-                display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
-                help.innerText = "Ready to upload (" + sizeText + ")";
-                label.style.borderColor = "#10b981";
-                label.style.background = "#f0fdf4";
-                label.style.color = "#166534";
-            }
-        }
-
-        function resetUploadUI(display, label) {
-            display.innerText = "Select qualification document";
-            label.style.borderColor = "#cbd5e1";
-            label.style.background = "#f8fafc";
-            label.style.color = "#475569";
-        }
-
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            const phone = document.getElementById('phone_number').value;
-            const pass = document.getElementById('password').value;
-            const confirmPass = document.getElementById('confirm_password').value;
-            const btn = document.getElementById('signup-btn');
-            const fileInput = document.getElementById('proof_file');
-            const isImage = fileInput.files.length > 0 && !fileInput.files[0].name.toLowerCase().endsWith('.pdf');
-
-            if (phone.length !== 10) { e.preventDefault(); alert("Please enter exactly 10 digits for the contact number."); return; }
-            if (pass !== confirmPass) { e.preventDefault(); alert("Passwords do not match!"); return; }
-
-            // Password complexity check
-            const hasUpper = /[A-Z]/.test(pass);
-            const hasLower = /[a-z]/.test(pass);
-            const hasSpecial = /[@$!%*?&#]/.test(pass);
-            const isLongEnough = pass.length >= 8;
-
-            if (!isLongEnough || !hasUpper || !hasLower || !hasSpecial) {
-                e.preventDefault();
-                alert("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, and one special character (@$!%*?&#).");
+            if (!isPDF && !isImage) {
+                Toast.error("Please upload a PDF or an image.");
+                input.value = "";
                 return;
             }
 
-            // If it's an image, force is_mobile=true so the backend converts it to PDF
-            if (isImage) {
-                document.getElementById('is_mobile').value = "true";
+            if (isPDF && file.size > 200 * 1024) {
+                Toast.error("PDF too large. Max 200KB.");
+                input.value = "";
+                return;
             }
 
-            btn.innerHTML = (isImage ? 'Processing Document...' : 'Creating Account...') + ' <div class="spinner"></div>';
-            btn.style.opacity = '0.8';
-            btn.style.pointerEvents = 'none';
+            display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
+            label.style.borderColor = "#6366f1";
+            label.style.background = "#f5f3ff";
+        }
+
+        // Initialize Validation Engine
+        Validation.initForm('signupForm', {
+            fields: [
+                { id: 'username', label: 'Username', required: true },
+                { id: 'fullname', label: 'Full Name', required: true },
+                { id: 'email', label: 'Email', required: true, type: 'email' },
+                { id: 'phone_number', label: 'Phone', required: true, type: 'phone' },
+                { id: 'password', label: 'Password', required: true, custom: (val) => {
+                    if (val.length < 8) return "Password must be at least 8 characters";
+                    if (!/[A-Z]/.test(val)) return "Include at least one uppercase letter";
+                    if (!/[@$!%*?&#]/.test(val)) return "Include at least one special character";
+                    return null;
+                }},
+                { id: 'confirm_password', label: 'Confirm Password', required: true, custom: (val, form) => {
+                    if (val !== form.querySelector('#password').value) return "Passwords do not match";
+                    return null;
+                }},
+                { id: 'proof_file', label: 'Qualification Document', custom: (val, form) => {
+                    const file = form.querySelector('#proof_file').files[0];
+                    if (!file) return "Please upload your qualification proof";
+                    return null;
+                }}
+            ]
         });
 
-        window.addEventListener('load', function() {
-            // Robust device detection (Screen width + Touch capability)
-            const isSmallScreen = window.innerWidth <= 1024;
-            const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-            const isMobile = isSmallScreen || isTouch;
-            
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
             const fileInput = document.getElementById('proof_file');
-            const helpText = document.getElementById('upload-help-text');
-            const mobileInput = document.getElementById('is_mobile');
-
-            if (isMobile) {
-                // On mobile, prioritize camera/gallery but allow PDF
-                fileInput.setAttribute('accept', '.pdf,image/*,.heic,.heif');
-                mobileInput.value = "true";
-                helpText.innerText = "Upload Photo (Max 15MB) or PDF (Max 200KB)";
-            } else {
-                // On desktop, enforce PDF for professional documents
-                fileInput.setAttribute('accept', '.pdf');
-                mobileInput.value = "false";
-                helpText.innerText = "Upload PDF Document Only (Max 200KB)";
-            }
+            const isImage = fileInput.files.length > 0 && !fileInput.files[0].name.toLowerCase().endsWith('.pdf');
+            if (isImage) document.getElementById('is_mobile').value = "true";
         });
     </script>
+</body>
+>
     <style>
         .spinner { width: 18px; height: 18px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }

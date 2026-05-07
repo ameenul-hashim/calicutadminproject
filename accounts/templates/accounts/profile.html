@@ -381,14 +381,14 @@
                     if (response.ok) {
                         window.location.reload();
                     } else {
-                        alert('Failed to update photo. Please try again.');
+                        Toast.error('Failed to update photo. Please try again.');
                         btn.disabled = false;
                         btn.textContent = 'Crop & Save';
                     }
                 })
                 .catch(err => {
                     console.error(err);
-                    alert('Error updating photo.');
+                    Toast.error('Error updating photo.');
                     btn.disabled = false;
                     btn.textContent = 'Crop & Save';
                 });

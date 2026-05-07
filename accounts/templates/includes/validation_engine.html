@@ -1,0 +1,134 @@
+<style>
+    /* Inline Validation Styles */
+    .validation-card {
+        margin-top: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: none;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 8px;
+        animation: slideDown 0.3s ease-out;
+    }
+    .validation-card.error { color: #ef4444; background: #fef2f2; display: flex; }
+    .validation-card.success { color: #10b981; background: #ecfdf5; display: flex; }
+    
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Password Strength Indicator */
+    .strength-meter {
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 2px;
+        margin-top: 8px;
+        overflow: hidden;
+        display: flex;
+    }
+    .strength-bar {
+        height: 100%;
+        width: 0;
+        transition: all 0.4s ease;
+    }
+    .strength-weak { background: #ef4444; width: 25%; }
+    .strength-fair { background: #f59e0b; width: 50%; }
+    .strength-good { background: #3b82f6; width: 75%; }
+    .strength-strong { background: #10b981; width: 100%; }
+
+    /* Loading Spinner Overlay */
+    .btn-loading {
+        pointer-events: none;
+        opacity: 0.7;
+        position: relative;
+    }
+    .btn-loading .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 0.8s linear infinite;
+        margin-left: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<script>
+    const Validation = {
+        email: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+        phone: (phone) => /^[0-9]{10}$/.test(phone),
+        password: (pass) => {
+            let score = 0;
+            if (pass.length >= 8) score++;
+            if (/[A-Z]/.test(pass)) score++;
+            if (/[0-9]/.test(pass)) score++;
+            if (/[@$!%*?&#]/.test(pass)) score++;
+            return score;
+        },
+        
+        setError: function(inputId, message) {
+            const input = document.getElementById(inputId);
+            let card = input.parentElement.querySelector('.validation-card');
+            if (!card) {
+                card = document.createElement('div');
+                card.className = 'validation-card error';
+                input.parentElement.appendChild(card);
+            }
+            card.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            card.className = 'validation-card error';
+            input.style.borderColor = '#ef4444';
+        },
+        
+        clearError: function(inputId) {
+            const input = document.getElementById(inputId);
+            const card = input.parentElement.querySelector('.validation-card');
+            if (card) card.className = 'validation-card';
+            input.style.borderColor = '';
+        },
+
+        initForm: function(formId, config) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            form.addEventListener('submit', (e) => {
+                let hasError = false;
+                const submitBtn = form.querySelector('button[type="submit"]');
+
+                config.fields.forEach(field => {
+                    const input = document.getElementById(field.id);
+                    if (!input) return;
+
+                    const val = input.value.trim();
+                    let error = null;
+
+                    if (field.required && !val) {
+                        error = `${field.label} is required`;
+                    } else if (field.type === 'email' && !this.email(val)) {
+                        error = "Invalid email format";
+                    } else if (field.type === 'phone' && !this.phone(val)) {
+                        error = "Phone must be exactly 10 digits";
+                    } else if (field.custom) {
+                        error = field.custom(val, form);
+                    }
+
+                    if (error) {
+                        this.setError(field.id, error);
+                        hasError = true;
+                    } else {
+                        this.clearError(field.id);
+                    }
+                });
+
+                if (hasError) {
+                    e.preventDefault();
+                    Toast.error("Please fix the errors in the form.");
+                } else {
+                    submitBtn.classList.add('btn-loading');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = `Processing... <span class="spinner"></span>`;
+                }
+            });
+        }
+    };
+</script>
