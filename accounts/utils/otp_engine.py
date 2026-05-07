@@ -53,7 +53,7 @@ class OTPEngine:
             user_type=user.user_type,
             purpose=purpose,
             otp_hash=hashed_otp,
-            expires_at=timezone.now() + timedelta(minutes=5),
+            expires_at=timezone.now() + timedelta(minutes=2),
             ip_address=ip,
             user_agent=ua
         )
@@ -79,12 +79,12 @@ class OTPEngine:
             'user': user,
             'otp': raw_otp,
             'purpose': purpose.replace('_', ' ').title(),
-            'expiry': '5 minutes',
+            'expiry': '2 minutes',
             'year': timezone.now().year
         }
         
         html_content = render_to_string('emails/otp_email.html', context)
-        text_content = f"Your EduStream verification code is: {raw_otp}. Valid for 5 minutes."
+        text_content = f"Your EduStream verification code is: {raw_otp}. Valid for 2 minutes."
 
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to_email])
         msg.attach_alternative(html_content, "text/html")

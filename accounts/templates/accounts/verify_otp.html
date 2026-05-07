@@ -18,7 +18,7 @@
                 <div class="otp-input-wrapper">
                     <input type="text" name="otp" id="otp" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required autofocus>
                 </div>
-                <small class="form-hint">Code expires at {{ expires_at|time:"H:i" }}</small>
+                <small class="form-hint">Code expires at {{ expires_at|time:"h:i A" }}</small>
             </div>
 
             <button type="submit" class="btn-primary" id="submit-btn">

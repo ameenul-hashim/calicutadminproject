@@ -1285,7 +1285,7 @@ def forgot_password(request):
             
             if not success:
                 print(f"📧 [DEV/FALLBACK] OTP for {email}: {raw_otp}")
-                messages.warning(request, f"⚠️ Delivery service busy. Your recovery code is: {raw_otp} (Valid 5m)")
+                messages.warning(request, f"⚠️ Delivery service busy. Your recovery code is: {raw_otp} (Valid 2m)")
             else:
                 messages.success(request, f"✅ A secure recovery code has been sent to {email}.")
             
@@ -1326,28 +1326,33 @@ def verify_otp(request):
         messages.error(request, "Session expired. Please restart recovery.")
         return redirect('forgot_password')
         
-    otp_obj = get_object_or_404(EmailOTP, uid=otp_uid)
-    user = get_object_or_404(CustomUser, uid=user_uid)
-    
-    if request.method == 'POST':
-        raw_otp = request.POST.get('otp')
-        success, msg = OTPEngine.verify_otp(user, raw_otp, otp_obj.purpose)
+    try:
+        otp_obj = get_object_or_404(EmailOTP, uid=otp_uid)
+        user = get_object_or_404(CustomUser, uid=user_uid)
         
-        if success:
-            messages.success(request, "✅ Verification successful.")
-            if otp_obj.purpose == 'PASSWORD_RESET':
-                request.session['otp_verified_for_reset'] = True
-                return redirect('reset_password')
-            elif otp_obj.purpose == 'USERNAME_RECOVERY':
-                return render(request, 'accounts/username_revealed.html', {'target_user': user})
-        else:
-            messages.error(request, f"❌ {msg}")
+        if request.method == 'POST':
+            raw_otp = request.POST.get('otp')
+            success, msg = OTPEngine.verify_otp(user, raw_otp, otp_obj.purpose)
             
-    return render(request, 'accounts/verify_otp.html', {
-        'user': user,
-        'purpose': otp_obj.get_purpose_display(),
-        'expires_at': otp_obj.expires_at
-    })
+            if success:
+                messages.success(request, "✅ Verification successful.")
+                if otp_obj.purpose == 'PASSWORD_RESET':
+                    request.session['otp_verified_for_reset'] = True
+                    return redirect('reset_password')
+                elif otp_obj.purpose == 'USERNAME_RECOVERY':
+                    return render(request, 'accounts/username_revealed.html', {'target_user': user})
+            else:
+                messages.error(request, f"❌ {msg}")
+                
+        return render(request, 'accounts/verify_otp.html', {
+            'user': user,
+            'purpose': otp_obj.get_purpose_display(),
+            'expires_at': otp_obj.expires_at
+        })
+    except Exception as e:
+        logger.error(f"OTP Verification Error: {str(e)}")
+        messages.error(request, "An unexpected error occurred during verification. Please try again.")
+        return redirect('forgot_password')
 
 def reset_password(request):
     user_uid = request.session.get('recovery_user_uid')
