@@ -171,7 +171,7 @@
 <body>
     <div class="profile-container">
         <header style="margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
-            <a href="{% if user.user_type == 'STUDENT' %}{% url 'dashboard' %}{% else %}{% url 'teacher_dashboard' %}{% endif %}" style="color: var(--text-muted); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
+            <a href="{% if user.user_type == 'STUDENT' %}{% url 'dashboard' %}{% elif user.user_type == 'TEACHER' %}{% url 'teacher_dashboard' %}{% else %}{% url 'admin_dashboard' %}{% endif %}" style="color: var(--text-muted); text-decoration: none; font-weight: 500; display: flex; align-items: center; gap: 0.5rem;">
                 ← Back to Dashboard
             </a>
             <h3 style="margin: 0; font-weight: 700; color: var(--primary);">EduStream Profile</h3>
@@ -222,7 +222,11 @@
 
                 <div class="action-bar">
                     <a href="{% url 'edit_profile' %}" class="btn-profile btn-primary">Edit Photo</a>
-                    <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout Account</a>
+                    {% if user.user_type == 'ADMIN' %}
+                        <a href="{% url 'admin_dashboard' %}" class="btn-profile btn-outline" style="color: #0ea5e9;">Back to Admin Panel</a>
+                    {% else %}
+                        <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout Account</a>
+                    {% endif %}
                 </div>
             </div>
         </div>
