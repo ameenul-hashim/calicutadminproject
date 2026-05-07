@@ -574,12 +574,12 @@ def dashboard_view(request):
 
     if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
         # Admin or Teacher in Student View - strictly mimic student by showing only approved courses
-        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
     elif request.user.user_type == 'TEACHER' and not is_admin:
         # Teacher viewing normally - show their own courses (all statuses)
         courses = Course.objects.filter(teacher=request.user).annotate(
             lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
-        ).only('id', 'title', 'image', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
+        ).only('id', 'uid', 'title', 'image', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     else:
         # Real Student - show only their enrolled courses that are PUBLISHED and APPROVED
         courses = Course.objects.filter(
@@ -588,7 +588,7 @@ def dashboard_view(request):
             status='PUBLISHED'
         ).annotate(
             lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
-        ).only('id', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        ).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
     
     search_query = request.GET.get('search', '')
     if search_query:
@@ -633,7 +633,7 @@ def teacher_dashboard(request):
         total_lessons=Count('lessons'),
         approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
         pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING'))
-    ).only('id', 'title', 'status', 'created_at', 'image', 'thumbnail')
+    ).only('id', 'uid', 'title', 'status', 'created_at', 'image', 'thumbnail')
     
     total_students = Enrollment.objects.filter(course__teacher=request.user).count()
     
@@ -1119,9 +1119,9 @@ def get_chat_list(request):
     # For Admin: list all teachers with messages
     # For Teacher: list all admins
     if request.user.user_type == 'ADMIN' or request.user.is_superuser:
-        users = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'profile_photo')
+        users = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'image', 'profile_photo')
     else:
-        users = CustomUser.objects.filter(is_superuser=True).only('uid', 'full_name', 'username', 'profile_photo')
+        users = CustomUser.objects.filter(is_superuser=True).only('uid', 'full_name', 'username', 'image', 'profile_photo')
         
     data = []
     for u in users:
