@@ -348,26 +348,21 @@ def create_student_admin(request):
         phone_number = request.POST.get('phone_number')
         proof_file = request.FILES.get('proof_file')
         
+        # 1. Mandatory Field Check
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields including contact number and verification document (PDF) are required.")
+            messages.error(request, "All fields including contact number and verification document (PDF/Image) are required.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        if proof_file.size > 200 * 1024:
-            messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'custom_admin/create_student.html', {
-                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
-            })
-
-        # Email format validation
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        if not re.match(email_regex, email):
+        # 2. Email Format Check
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             messages.error(request, "The email address you entered is not in a valid format.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
+        # 3. Unique Identification Checks
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "This username is already taken. Please choose another one.")
             return render(request, 'custom_admin/create_student.html', {
@@ -380,13 +375,21 @@ def create_student_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        # Phone uniqueness check (excluding REJECTED users)
         if phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
             messages.error(request, "This contact number is already registered and in use. Please use another one.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
+        # 4. Contact Number Format Check (10 Digits)
+        phone_digits = ''.join(filter(str.isdigit, phone_number))
+        if len(phone_digits) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # 5. Password Integrity Checks
         if password != confirm_password:
             messages.error(request, "The passwords you entered do not match.")
             return render(request, 'custom_admin/create_student.html', {
@@ -394,7 +397,14 @@ def create_student_admin(request):
             })
 
         if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # 6. Document Size & Type Check (200KB limit)
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -435,26 +445,21 @@ def create_teacher_admin(request):
         phone_number = request.POST.get('phone_number')
         proof_file = request.FILES.get('proof_file')
         
+        # 1. Mandatory Field Check
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields including contact number and verification document (PDF) are required.")
+            messages.error(request, "All fields including contact number and verification document (PDF/Image) are required.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        if proof_file.size > 200 * 1024:
-            messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'custom_admin/create_teacher.html', {
-                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
-            })
-
-        # Email format validation
-        email_regex = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        if not re.match(email_regex, email):
+        # 2. Email Format Check
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             messages.error(request, "The email address you entered is not in a valid format.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
+        # 3. Unique Identification Checks
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "This username is already taken. Please choose another one.")
             return render(request, 'custom_admin/create_teacher.html', {
@@ -467,13 +472,21 @@ def create_teacher_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        # Phone uniqueness check (excluding REJECTED users)
         if phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
             messages.error(request, "This contact number is already registered and in use. Please use another one.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
+        # 4. Contact Number Format Check (10 Digits)
+        phone_digits = ''.join(filter(str.isdigit, phone_number))
+        if len(phone_digits) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # 5. Password Integrity Checks
         if password != confirm_password:
             messages.error(request, "The passwords you entered do not match.")
             return render(request, 'custom_admin/create_teacher.html', {
@@ -481,7 +494,14 @@ def create_teacher_admin(request):
             })
 
         if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Your password must be at least 8 characters long and contain uppercase, lowercase, and a special character.")
+            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # 6. Document Size & Type Check (200KB limit)
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -712,17 +732,21 @@ def edit_user_admin(request, user_uid):
         profile_photo = request.FILES.get('profile_photo')
         
         if not all([username, email, fullname]):
-            messages.error(request, "All fields are required for updating.")
+            messages.error(request, "Username, Email, and Full Name are mandatory fields.")
+        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+            messages.error(request, "The email address you entered is not in a valid format.")
         elif password and (password != confirm_password):
-            messages.error(request, "Passwords do not match.")
+            messages.error(request, "The new passwords you entered do not match.")
         elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
-            messages.error(request, "Password length 8 needed and one uppercase lowercase and a special character needed.")
+            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
         elif CustomUser.objects.filter(username=username).exclude(uid=user_uid).exists():
-            messages.error(request, "This username is already taken by another user. Please use a unique username.")
+            messages.error(request, "This username is already taken by another user.")
         elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
-            messages.error(request, "The email is already exist in the database. The email is already taken, please use another one.")
+            messages.error(request, "This email is already registered to another account.")
         elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(uid=user_uid).exclude(status='REJECTED').exists():
             messages.error(request, "This contact number is already in use by another active account.")
+        elif phone_number and len(''.join(filter(str.isdigit, phone_number))) != 10:
+            messages.error(request, "Contact number must be exactly 10 digits.")
         else:
             user.username = username
             user.email = email
