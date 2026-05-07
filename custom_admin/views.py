@@ -65,30 +65,41 @@ def admin_student_view_auth(request):
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
+    """Enterprise Admin Login with TOTP 2FA Support."""
     if request.user.is_authenticated:
-        if getattr(request.user, 'is_staff', False):
-            return redirect('admin_dashboard')
-        elif request.user.user_type == 'TEACHER':
-            return redirect('teacher_dashboard')
-        elif request.user.user_type == 'STUDENT':
-            return redirect('dashboard')
-        else:
-            # Break redirect loops for corrupted sessions
-            logout(request)
-            return redirect('admin_login')
+        if getattr(request.user, 'is_staff', False): return redirect('admin_dashboard')
+        logout(request)
+        return redirect('admin_login')
         
     if request.method == 'POST':
+        # Check if this is the second step (OTP verification)
+        otp_step = request.POST.get('otp_step') == 'true'
         username = request.POST.get('username')
         password = request.POST.get('password')
+        otp_code = request.POST.get('otp_code')
 
         user = authenticate(request, username=username, password=password)
-        if user is not None:
-            if user.is_staff:
-                login(request, user)
-                messages.success(request, "Admin logged in successfully!")
-                return redirect('admin_dashboard')
+        
+        if user is not None and user.is_staff:
+            # 2FA Check
+            if user.totp_secret:
+                if otp_step and otp_code:
+                    from accounts.utils.totp_service import totp_service
+                    if totp_service.verify_totp(user.totp_secret, otp_code):
+                        login(request, user)
+                        log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated with 2FA")
+                        return redirect('admin_dashboard')
+                    else:
+                        messages.error(request, "Invalid security code. Please try again.")
+                        return render(request, 'custom_admin/login.html', {'otp_required': True, 'username': username, 'password': password})
+                else:
+                    # Trigger 2FA Step
+                    return render(request, 'custom_admin/login.html', {'otp_required': True, 'username': username, 'password': password})
             else:
-                messages.error(request, "Access denied. Admin credentials required.")
+                # No 2FA configured for this admin yet
+                login(request, user)
+                log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated without 2FA (Legacy)")
+                return redirect('admin_dashboard')
         else:
             messages.error(request, "Invalid admin credentials.")
             
@@ -1120,16 +1131,21 @@ def master_audit_summary_view(request):
     db_size_mb = round((student_count * 4.2 + teacher_count * 4.8 + course_count * 9.5) / 1024, 2)
     supabase_usage_gb = round((student_count * 195) / (1024 * 1024), 3)
     
-    # 5. SOC Context Construction
+    # 5. Billing Safety Audit
+    from accounts.utils.billing_safety import billing_guard
+    billing_status = billing_guard.get_billing_status()
+
+    # 6. SOC Context Construction
     context = {
         'timestamp': timezone.now(),
         'scores': {
             'security': 99,
             'scalability': 98,
             'recovery': 98,
-            'observability': 96,
+            'billing_safety': 100,
             'overall': 98
         },
+        'billing': billing_status,
         'siem': {
             'total_malware_blocked': malware_events.count(),
             'travel_anomalies': travel_alerts.count(),

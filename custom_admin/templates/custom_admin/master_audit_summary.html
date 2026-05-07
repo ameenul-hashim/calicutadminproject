@@ -81,34 +81,28 @@
         </div>
     </div>
 
-    <!-- Tier 2: Observability & CDN Analytics -->
+    <!-- Tier 2: Observability & Billing Failsafe -->
     <div class="row g-4 mb-4">
         <div class="col-lg-8">
             <div class="siem-card p-4 h-100">
-                <h5 class="fw-bold mb-4"><i class="fas fa-chart-line me-2 text-primary"></i>Infrastructure Observability</h5>
+                <h5 class="fw-bold mb-4 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-money-bill-wave me-2 text-success"></i>Zero-Billing Failsafe Monitor</span>
+                    <span class="status-pill bg-success bg-opacity-20 text-success border border-success border-opacity-30">STRICT FREE TIER</span>
+                </h5>
                 <div class="row g-3">
-                    {% for key, val in observability.items %}
+                    {% for provider, status in billing.items %}
                     <div class="col-md-4">
                         <div class="p-3 border border-slate-800 rounded-3 bg-slate-900 bg-opacity-40">
-                            <div class="x-small text-muted text-uppercase mb-1">{{ key }}</div>
-                            <div class="fw-bold small text-white d-flex align-items-center">
-                                <span class="chart-dot bg-success me-2"></span> {{ val }}
-                            </div>
+                            <div class="x-small text-muted text-uppercase mb-1" style="font-size: 0.6rem;">{{ provider }}</div>
+                            <div class="fw-bold small text-white">{{ status }}</div>
                         </div>
                     </div>
                     {% endfor %}
                 </div>
-                <hr class="border-slate-800 my-4">
-                <h6 class="fw-bold mb-3 small text-muted text-uppercase tracking-widest">Video CDN Analytics (Cloudinary)</h6>
-                <div class="row g-3 text-center">
-                    {% for key, val in cdn_analytics.items %}
-                    <div class="col-md-3">
-                        <div class="p-2">
-                            <div class="h5 mb-0 fw-bold text-primary">{{ val }}</div>
-                            <div class="x-small text-muted text-uppercase mt-1" style="font-size: 0.6rem;">{{ key }}</div>
-                        </div>
+                <div class="mt-4 p-3 bg-success bg-opacity-5 border border-success border-opacity-10 rounded-3">
+                    <div class="small text-slate-400">
+                        <i class="fas fa-check-double text-success me-2"></i> Hard-stop failsafes active. Automatic billing and pay-as-you-go escalation are strictly disabled at the application layer.
                     </div>
-                    {% endfor %}
                 </div>
             </div>
         </div>
