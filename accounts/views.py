@@ -946,8 +946,10 @@ def edit_profile(request):
     if request.method == 'POST':
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
-            if profile_photo.size > 2 * 1024 * 1024:
-                messages.error(request, "Profile photo exceeds 2MB limit.")
+            # Objective: Accept any size up to 2GB and process
+            MAX_SIZE = 2 * 1024 * 1024 * 1024 # 2GB
+            if profile_photo.size > MAX_SIZE:
+                messages.error(request, "File is too large (Maximum 2GB allowed).")
             else:
                 from .utils.cloudinary_helpers import update_image
                 if update_image(request.user, profile_photo, folder="edustream/profiles"):

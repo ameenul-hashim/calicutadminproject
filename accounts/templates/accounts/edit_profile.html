@@ -79,21 +79,25 @@
 
         {% include 'includes/messages.html' %}
 
-        <form method="POST" enctype="multipart/form-data">
+        <form method="POST" enctype="multipart/form-data" id="profileForm">
             {% csrf_token %}
             
-            <div class="photo-preview">
+            <div class="photo-preview" id="previewContainer">
                 {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="Current Photo">
+                    <img src="{{ user.avatar_url }}" alt="Current Photo" id="previewImg">
                 {% else %}
-                    <span style="font-size: 3rem;">👤</span>
+                    <span style="font-size: 3rem;" id="previewPlaceholder">👤</span>
                 {% endif %}
             </div>
 
             <div class="form-group">
                 <label>PASSPORT SIZE PHOTO</label>
-                <input type="file" name="profile_photo" class="file-input" accept="image/*" required>
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;">* Only images are allowed. Passport size recommended.</p>
+                <input type="file" id="imageInput" class="file-input" accept="image/*" required>
+                <!-- Hidden input to store the actual file being sent -->
+                <input type="file" name="profile_photo" id="finalPhoto" style="display: none;">
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;" id="statusText">
+                    * Any size accepted (up to 2GB). We'll optimize it automatically for you.
+                </p>
             </div>
 
             <div class="form-group">
@@ -101,11 +105,97 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <button type="submit" class="btn-save">Update Photo</button>
+            <button type="submit" class="btn-save" id="submitBtn">Update Photo</button>
             {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
             {% endif %}
         </form>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const finalPhotoInput = document.getElementById('finalPhoto');
+        const previewImg = document.getElementById('previewImg');
+        const previewContainer = document.getElementById('previewContainer');
+        const statusText = document.getElementById('statusText');
+        const submitBtn = document.getElementById('submitBtn');
+        const profileForm = document.getElementById('profileForm');
+
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            // Show loading status
+            statusText.innerHTML = `<span style="color: #6366f1; font-weight: 600;">⚡ Processing ${file.name} (${(file.size / (1024*1024)).toFixed(2)} MB)...</span>`;
+            submitBtn.disabled = true;
+            submitBtn.style.opacity = '0.5';
+            submitBtn.innerText = 'Processing Image...';
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    // Standard Passport/Profile Size Logic (Max 1024px)
+                    const MAX_WIDTH = 1024;
+                    const MAX_HEIGHT = 1024;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) {
+                            height *= MAX_WIDTH / width;
+                            width = MAX_WIDTH;
+                        }
+                    } else {
+                        if (height > MAX_HEIGHT) {
+                            width *= MAX_HEIGHT / height;
+                            height = MAX_HEIGHT;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // Convert to Blob (JPEG with 0.8 quality)
+                    canvas.toBlob(function(blob) {
+                        // Create a new File object from the blob
+                        const compressedFile = new File([blob], file.name.split('.')[0] + '.jpg', {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+
+                        // Use DataTransfer to put the file into the hidden input
+                        const dataTransfer = new DataTransfer();
+                        dataTransfer.items.add(compressedFile);
+                        finalPhotoInput.files = dataTransfer.files;
+
+                        // Update Preview
+                        if (previewImg) {
+                            previewImg.src = URL.createObjectURL(blob);
+                        } else {
+                            previewContainer.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="New Photo">`;
+                        }
+
+                        statusText.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Optimized! Ready to upload (${(compressedFile.size / 1024).toFixed(2)} KB)</span>`;
+                        submitBtn.disabled = false;
+                        submitBtn.style.opacity = '1';
+                        submitBtn.innerText = 'Update Photo';
+                    }, 'image/jpeg', 0.8);
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        profileForm.addEventListener('submit', function() {
+            submitBtn.innerText = 'Uploading...';
+            submitBtn.style.opacity = '0.8';
+        });
+    </script>
     </div>
 </body>
 
