@@ -111,8 +111,8 @@
         
         /* Video Area */
         .video-main { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; min-height: 0; }
-        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; position: relative; min-height: 0; }
-        .plyr-container { width: 100%; height: 100%; display: none; }
+        .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; position: relative; min-height: 0; z-index: 1; }
+        .plyr-container { width: 100%; height: 100%; display: none; background: #000; overflow: visible !important; }
         .plyr { width: 100% !important; height: 100% !important; }
         .plyr--video { height: 100% !important; width: 100% !important; }
         .video-wrapper embed { width: 100%; height: 100%; border: none; }
@@ -326,14 +326,21 @@
             </div>`;
             player = new Plyr(playerElement, plyrOptions);
         } else {
-            // HTML5 Video: Remove hardcoded type to allow browser auto-detection
-            // Added explicit sizing to prevent 'voice-only' layout collapses
+            // Enterprise Grade Video Delivery Optimization
+            let finalSource = source;
+            if (finalSource.includes('cloudinary.com') && !finalSource.includes('f_auto')) {
+                // Force H.264 video codec and auto-format for maximum compatibility
+                finalSource = finalSource.replace('/upload/', '/upload/f_auto,q_auto,vc_h264/');
+            }
+
             playerElement.innerHTML = `
-                <video playsinline controls crossorigin style="width:100%; height:100%; object-fit:contain;">
-                    <source src="${source}">
+                <video playsinline controls crossorigin preload="auto" style="width:100% !important; height:100% !important; object-fit:contain !important; z-index: 1;">
+                    <source src="${finalSource}" type="video/mp4">
+                    <source src="${finalSource}">
                     Your browser does not support video playback.
                 </video>`;
-            player = new Plyr(playerElement.querySelector('video'), plyrOptions);
+            const videoEl = playerElement.querySelector('video');
+            player = new Plyr(videoEl, plyrOptions);
         }
     }
 
