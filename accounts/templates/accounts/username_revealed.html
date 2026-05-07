@@ -1,0 +1,61 @@
+{% extends "accounts/base.html" %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card animate-fade-in">
+        <div class="auth-header">
+            <div class="auth-icon success">
+                <i class="fas fa-id-card"></i>
+            </div>
+            <h2>Username Recovered</h2>
+            <p>Verification successful! Below are your account details.</p>
+        </div>
+
+        <div class="revealed-info">
+            <div class="info-label">Account Username</div>
+            <div class="info-value">{{ target_user.username }}</div>
+            <div class="info-hint">Please use this username to log in to your account.</div>
+        </div>
+
+        <div class="auth-actions">
+            {% if target_user.user_type == 'TEACHER' %}
+                <a href="{% url 'teacher_login' %}" class="btn-primary">Back to Teacher Login</a>
+            {% else %}
+                <a href="{% url 'login' %}" class="btn-primary">Back to Student Login</a>
+            {% endif %}
+            <a href="{% url 'forgot_password' %}?type={{ target_user.user_type|lower }}" class="btn-secondary">Forgot Password?</a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .revealed-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 30px;
+        text-align: center;
+        margin: 20px 0;
+        border: 1px solid #e2e8f0;
+    }
+    .info-label {
+        font-size: 14px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+    }
+    .info-value {
+        font-size: 32px;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 10px;
+    }
+    .info-hint {
+        font-size: 13px;
+        color: #94a3b8;
+    }
+    .auth-icon.success {
+        background: #ecfdf5;
+        color: #10b981;
+    }
+</style>
+{% endblock %}

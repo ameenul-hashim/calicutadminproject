@@ -185,14 +185,41 @@ class ChatMessage(models.Model):
     class Meta:
         ordering = ['timestamp']
 
-class PasswordResetOTP(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    otp = models.CharField(max_length=6)
+class EmailOTP(models.Model):
+    PURPOSE_CHOICES = (
+        ('PASSWORD_RESET', 'Password Reset'),
+        ('EMAIL_VERIFICATION', 'Email Verification'),
+        ('USERNAME_RECOVERY', 'Username Recovery'),
+        ('EMAIL_UPDATE', 'Email Update'),
+        ('USERNAME_UPDATE', 'Username Update'),
+    )
+    USER_TYPE_CHOICES = (
+        ('STUDENT', 'Student'),
+        ('TEACHER', 'Teacher'),
+        ('ADMIN', 'Admin'),
+    )
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='otps')
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='STUDENT')
+    purpose = models.CharField(max_length=20, choices=PURPOSE_CHOICES, default='PASSWORD_RESET')
+    otp_hash = models.CharField(max_length=255) # Hashed for security
     created_at = models.DateTimeField(auto_now_add=True)
-    is_verified = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    attempt_count = models.IntegerField(default=0)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(null=True, blank=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Email OTP"
+        verbose_name_plural = "Email OTPs"
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
 
     def __str__(self):
-        return f"{self.user.username} - {self.otp}"
+        return f"{self.user.username} - {self.purpose} ({self.created_at})"
 
 class DeletionRequest(models.Model):
     teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='deletion_requests')
