@@ -80,7 +80,7 @@
             {% include 'includes/messages.html' %}
 
             <form method="GET" class="search-bar">
-                <input type="text" name="search" class="search-input" placeholder="Search by username" value="{{ search_query }}">
+                <input type="text" name="search" class="search-input" value="{{ search_query }}">
                 <button type="submit" class="btn btn-search">Search</button>
                 <a href="{% url 'admin_dashboard' %}" class="btn btn-refresh">Refresh</a>
             </form>

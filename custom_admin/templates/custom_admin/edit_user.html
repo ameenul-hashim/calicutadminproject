@@ -175,13 +175,13 @@
                     </div>
                     <div class="input-group">
                         <label for="phone_number">Contact Number</label>
-                        <input type="tel" name="phone_number" id="phone_number" value="{{ edit_user.phone_number|default:'' }}" placeholder="e.g., +1234567890">
+                        <input type="tel" name="phone_number" id="phone_number" value="{{ edit_user.phone_number|default:'' }}">
                     </div>
                     <div style="margin: 2rem 0; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
                         <h3 style="font-size: 1rem; margin-bottom: 1rem;">Update Password (Optional)</h3>
                         <div class="input-group">
                             <label for="password">New Password</label>
-                            <input type="password" name="password" id="password" placeholder="Leave blank to keep current password">
+                            <input type="password" name="password" id="password">
                         </div>
                         <div class="input-group">
                             <label for="confirm_password">Confirm New Password</label>

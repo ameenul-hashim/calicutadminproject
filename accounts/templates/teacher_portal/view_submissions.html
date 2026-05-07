@@ -84,7 +84,7 @@
                     {% endif %}
                     <form method="POST" action="{% url 'grade_submission' sub.id %}" class="grade-form" style="margin-top: 0.5rem;">
                         {% csrf_token %}
-                        <input type="text" name="grade" placeholder="A+, B, etc." required>
+                        <input type="text" name="grade" required>
                         <button type="submit">Grade</button>
                     </form>
                 </div>

@@ -86,7 +86,7 @@
                         </div>
                         <form id="reject-form-{{ u.uid }}" method="POST" action="{% url 'decline_user' u.uid %}" style="display: none; margin-top: 0.75rem;">
                             {% csrf_token %}
-                            <input type="text" name="reason" placeholder="Reason for rejection..." required
+                            <input type="text" name="reason" required
                                    style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; font-size: 0.85rem; margin-bottom: 0.5rem; box-sizing: border-box;">
                             <div style="display: flex; gap: 0.5rem;">
                                 <button type="submit" style="padding: 0.4rem 0.9rem; background: #1e293b; color: white; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.8rem; cursor: pointer;">Confirm</button>

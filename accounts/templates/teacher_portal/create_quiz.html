@@ -80,11 +80,11 @@
                     {% csrf_token %}
                     <div class="input-group">
                         <label for="title">Quiz Title</label>
-                        <input type="text" name="title" id="title" placeholder="e.g. Chapter 1 Quiz" required>
+                        <input type="text" name="title" id="title" required>
                     </div>
                     <div class="input-group">
                         <label for="timer_minutes">Time Limit (Minutes)</label>
-                        <input type="number" name="timer_minutes" id="timer_minutes" placeholder="Leave 0 for no limit" value="0" required>
+                        <input type="number" name="timer_minutes" id="timer_minutes" value="0" required>
                     </div>
                     
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
