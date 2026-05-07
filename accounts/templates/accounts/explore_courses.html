@@ -93,8 +93,14 @@
                 {% endif %}
                 <a href="{% url 'profile' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem;">👤 Profile</a>
             </nav>
-            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9; margin-top: auto;">
-                <a href="{% url 'logout' %}" style="padding: 1rem; color: #ef4444; text-decoration: none; border-radius: 0.75rem; display: flex; align-items: center; gap: 1rem;">🚪 Logout</a>
+            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+                {% if user.user_type == 'ADMIN' or user.is_staff %}
+                    <a href="{% url 'admin_dashboard' %}" class="nav-link" style="color: #0ea5e9; font-weight: 600; background: #f0f9ff;"><span>🔙</span> Back to Admin Panel</a>
+                {% elif user.user_type == 'TEACHER' %}
+                    <a href="{% url 'teacher_dashboard' %}" class="nav-link" style="color: #6366f1; font-weight: 600; background: #f5f3ff;"><span>🔙</span> Back to Teacher Panel</a>
+                {% else %}
+                    <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
+                {% endif %}
             </div>
         </aside>
 

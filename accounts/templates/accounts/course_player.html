@@ -186,7 +186,13 @@
         <header class="player-header">
             <div style="display: flex; align-items: center; gap: 1rem;">
                 <button class="mobile-sidebar-toggle" onclick="togglePlayerSidebar()">☰</button>
-                <a href="{% url 'dashboard' %}" class="back-btn">← Back</a>
+                {% if user.user_type == 'ADMIN' or user.is_staff %}
+                    <a href="{% url 'admin_dashboard' %}" class="back-btn" style="background: #0ea5e9; color: white; padding: 0.4rem 1rem; border-radius: 0.5rem; text-decoration: none;">← Back to Admin Panel</a>
+                {% elif user.user_type == 'TEACHER' %}
+                    <a href="{% url 'teacher_dashboard' %}" class="back-btn" style="background: #6366f1; color: white; padding: 0.4rem 1rem; border-radius: 0.5rem; text-decoration: none;">← Back to Teacher Panel</a>
+                {% else %}
+                    <a href="{% url 'dashboard' %}" class="back-btn">← Back to Dashboard</a>
+                {% endif %}
                 <span style="font-weight: 600; color: #f1f5f9; font-size: 1.1rem;">{{ course.title }}</span>
             </div>
             <div style="display: flex; gap: 1rem;">
