@@ -78,6 +78,12 @@
             card.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
             card.className = 'validation-card error';
             input.style.borderColor = '#ef4444';
+
+            // Auto-clear error after 5 seconds
+            if (input._errorTimer) clearTimeout(input._errorTimer);
+            input._errorTimer = setTimeout(() => {
+                this.clearError(inputId);
+            }, 5000);
         },
         
         clearError: function(inputId) {

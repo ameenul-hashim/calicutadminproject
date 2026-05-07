@@ -81,7 +81,7 @@
 
                 <div class="form-group">
                     <label for="phone_number">Contact Number</label>
-                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" placeholder="10-digit mobile number" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
+                    <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" placeholder="10-digit mobile number" maxlength="10" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
                 <div class="form-group">
@@ -93,7 +93,7 @@
                             <div id="upload-help-text" style="font-size: 0.75rem; color: #94a3b8;">PDF Document Only (Max 200KB)</div>
                         </div>
                     </label>
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*,.heic,.heif" style="display: none;" onchange="handleFileSelection(this)">
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*" style="display: none;" onchange="handleFileSelection(this)">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -152,13 +152,20 @@
         function handleFileSelection(input) {
             const display = document.getElementById('file-name-display');
             const label = document.getElementById('upload-label');
-            const help = document.getElementById('upload-help-text');
             const file = input.files[0];
             if (!file) return;
 
+            const isMobile = window.innerWidth <= 1024;
             const fileName = file.name.toLowerCase();
             const isPDF = fileName.endsWith('.pdf');
-            const isImage = ['.jpg', '.jpeg', '.png', '.heic'].some(ext => fileName.endsWith(ext));
+            const isImage = ['.jpg', '.jpeg', '.png', '.heic', '.heif'].some(ext => fileName.endsWith(ext));
+
+            // On Laptop (non-mobile), only PDF is allowed
+            if (!isMobile && !isPDF) {
+                Toast.error("On laptop, only PDF files are allowed. Please use a mobile device for image uploads.");
+                input.value = "";
+                return;
+            }
 
             if (!isPDF && !isImage) {
                 Toast.error("Please upload a PDF or an image.");
