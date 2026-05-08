@@ -28,19 +28,28 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev-and-b
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # --- Dynamic Host & CSRF Configuration (Render-compatible) ---
-# Override these fully via Render Environment Variables.
-# Format: comma-separated, no spaces.
-_raw_hosts = os.getenv(
-    'ALLOWED_HOSTS',
-    'edustreamcalicut.onrender.com,eduaimsthinker.onrender.com,calicutadmin.onrender.com,localhost,127.0.0.1'
-)
-ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
+# Reads from environment variables — format: comma-separated, no spaces.
+_raw_hosts = os.getenv('ALLOWED_HOSTS', '')
+_env_hosts = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 
-_raw_csrf = os.getenv(
-    'CSRF_TRUSTED_ORIGINS',
-    'https://edustreamcalicut.onrender.com,https://eduaimsthinker.onrender.com,https://calicutadmin.onrender.com'
-)
-CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
+# Force-include critical hosts so a missing/wrong env var never causes 400
+_required_hosts = [
+    'edustreamcalicut.onrender.com',
+    'eduaimsthinker.onrender.com',
+    'calicutadmin.onrender.com',
+    'localhost',
+    '127.0.0.1',
+]
+ALLOWED_HOSTS = list(set(_env_hosts + _required_hosts))
+
+_raw_csrf = os.getenv('CSRF_TRUSTED_ORIGINS', '')
+_env_csrf = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
+_required_csrf = [
+    'https://edustreamcalicut.onrender.com',
+    'https://eduaimsthinker.onrender.com',
+    'https://calicutadmin.onrender.com',
+]
+CSRF_TRUSTED_ORIGINS = list(set(_env_csrf + _required_csrf))
 
 INSTALLED_APPS = [
     'daphne',
