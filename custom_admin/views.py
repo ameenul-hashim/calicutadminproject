@@ -764,7 +764,7 @@ def edit_user_admin(request, user_uid):
                 if profile_photo.size > 2 * 1024 * 1024:
                     messages.error(request, "Profile photo exceeds 2MB limit.")
                 else:
-                    if update_image(user, profile_photo, folder="edustream/profiles"):
+                    if update_image(user, profile_photo, folder="eduelevate/profiles"):
                         messages.success(request, "✅ Profile photo updated successfully!")
                     else:
                         messages.error(request, "Failed to update profile photo.")

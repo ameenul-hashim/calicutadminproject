@@ -49,7 +49,7 @@ def check_heartbeat():
     
     if not os.path.exists(heartbeat_file):
         send_alert(
-            "⚠️ EduStream Backup Watchdog: MISSING HEARTBEAT (UTC)",
+            "⚠️ EduElevate Backup Watchdog: MISSING HEARTBEAT (UTC)",
             "The file 'last_success.txt' was not found."
         )
         return
@@ -69,7 +69,7 @@ def check_heartbeat():
 
     if hours_since > max_hours:
         send_alert(
-            "🚨 EduStream Backup Watchdog: STALE BACKUP (UTC)",
+            "🚨 EduElevate Backup Watchdog: STALE BACKUP (UTC)",
             f"The last successful backup was at {last_success} ({hours_since:.1f} hours ago UTC).\n\nThis exceeds the threshold. Please check the server."
         )
     else:

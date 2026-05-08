@@ -1,9 +1,9 @@
 #!/bin/bash
-# EduStream Database Backup Script
+# EduElevate Database Backup Script
 # Run this manually or schedule via cron
 # Example cron: 0 2 * * * /path/to/backup.sh >> /var/log/db_backup.log 2>&1
 
-echo "Starting EduStream database backup..."
+echo "Starting EduElevate database backup..."
 
 # Ensure DATABASE_URL is set, or source it from .env
 if [ -z "$DATABASE_URL" ]; then

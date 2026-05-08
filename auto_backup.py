@@ -269,7 +269,7 @@ def run_backup():
         date_str = now_utc.strftime('%Y-%m-%d')
         
         log("=" * 60)
-        log(f"EDUSTREAM ENTERPRISE BACKUP {VERSION}")
+        log(f"EDUELEVATE ENTERPRISE BACKUP {VERSION}")
         log("=" * 60)
 
         service = authenticate_drive()
@@ -277,7 +277,7 @@ def run_backup():
         if not health["Google Drive"] or not health["Supabase Storage"]:
             raise RuntimeError(f"Critical API health check failed: {health}")
 
-        root_id = get_or_create_folder(service, "EduStream_Backups")
+        root_id = get_or_create_folder(service, "EduElevate_Backups")
         db_folder_id = get_or_create_folder(service, "database", parent_id=root_id)
         pdf_root_id = get_or_create_folder(service, "pdfs", parent_id=root_id)
 
@@ -309,7 +309,7 @@ def run_backup():
             total_size = sum(f.get('metadata', {}).get('size', 0) for f in res)
             if total_size > 500 * 1024 * 1024: # 500MB Threshold
                 log(f"COST ALERT: Archival payload ({total_size/1024/1024:.1f}MB) exceeds safety threshold!", level="warning")
-                send_alert("⚠️ EduStream Cost Guardrail Breach", f"Total PDF storage size ({total_size/1024/1024:.1f}MB) is approaching free tier limits.")
+                send_alert("⚠️ EduElevate Cost Guardrail Breach", f"Total PDF storage size ({total_size/1024/1024:.1f}MB) is approaching free tier limits.")
 
             if items:
                 daily_folder = get_or_create_folder(service, date_str, parent_id=pdf_root_id)
@@ -351,12 +351,12 @@ def run_backup():
             log("FULL_PIPELINE_SUCCESS")
         else:
             log("PARTIAL_PIPELINE_FAILURE", level="warning")
-            send_alert("⚠️ EduStream Backup: PARTIAL FAILURE", 
+            send_alert("⚠️ EduElevate Backup: PARTIAL FAILURE", 
                       f"Database: {'OK' if db_success else 'FAIL'}\nPDFs: {stats['pdfs_saved']}/{stats['pdfs_found']}")
 
     except Exception as e:
         log(f"CRITICAL SYSTEM ERROR: {e}", level="critical")
-        send_alert("🚨 EduStream Backup: CRITICAL SYSTEM ERROR", f"Error: {e}")
+        send_alert("🚨 EduElevate Backup: CRITICAL SYSTEM ERROR", f"Error: {e}")
         sys.exit(1)
     finally:
         if os.path.exists(lock_file): os.remove(lock_file)
