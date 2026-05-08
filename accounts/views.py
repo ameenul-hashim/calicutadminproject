@@ -431,6 +431,7 @@ def login_view(request):
                     Session.objects.filter(session_key=user.current_session_key).delete()
                 
                 login(request, user)
+                request.session.set_expiry(0)  # Instantly expire session on browser close
                 
                 if not request.session.session_key:
                     request.session.save()
@@ -541,6 +542,7 @@ def teacher_login_view(request):
                 
             if user.status == 'ACTIVE':
                 login(request, user)
+                request.session.set_expiry(0)  # Instantly expire session on browser close
                 messages.success(request, f"Welcome, {user.full_name}! Teacher Dashboard active.")
                 return redirect('teacher_dashboard')
             elif user.status == 'PENDING':
