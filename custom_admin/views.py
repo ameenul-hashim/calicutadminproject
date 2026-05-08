@@ -87,6 +87,7 @@ def admin_login_view(request):
                     from accounts.utils.totp_service import totp_service
                     if totp_service.verify_totp(user.totp_secret, otp_code):
                         login(request, user)
+                        request.session.set_expiry(0)  # Instantly expire session on browser close
                         log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated with 2FA")
                         return redirect('admin_dashboard')
                     else:
@@ -98,6 +99,7 @@ def admin_login_view(request):
             else:
                 # No 2FA configured for this admin yet
                 login(request, user)
+                request.session.set_expiry(0)  # Instantly expire session on browser close
                 log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated without 2FA (Legacy)")
                 return redirect('admin_dashboard')
         else:
