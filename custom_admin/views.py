@@ -55,6 +55,7 @@ def create_notification(user, message):
 def admin_student_view_auth(request):
     # Direct access as requested - no password required for admin switching
     request.session['student_view_unlocked'] = True
+    request.session.set_expiry(0)  # Re-enforce instant expiry
     request.session.modified = True
     messages.success(request, "Switched to Student View. You are now previewing the platform as a student.")
     return redirect('dashboard')
