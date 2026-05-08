@@ -1160,6 +1160,14 @@ def system_audit_view(request):
     
     combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:15]
 
+    return render(request, 'custom_admin/system_audit_hub.html', {
+        'audit': audit_results,
+        'audit_logs': combined_logs,
+        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
+        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+    })
+
+
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def master_audit_summary_view(request):
