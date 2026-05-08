@@ -47,8 +47,29 @@ class PortalSecurityMiddleware:
         
         if not is_public:
             if not request.user.is_authenticated:
-                # Store the attempted URL to redirect back after login
-                return redirect(f"{reverse('login')}?next={path}")
+                # 🛡️ HARDENING: Route to correct login page based on requested path
+                if path.startswith('/customadmin/') or path.startswith('/admin/'):
+                    return redirect(f"{reverse('admin_login')}?next={path}")
+                elif path.startswith('/teacher/'):
+                    return redirect(f"{reverse('teacher_login')}?next={path}")
+                else:
+                    return redirect(f"{reverse('login')}?next={path}")
+            
+            # --- IDLE TIMEOUT ENFORCEMENT (15 MINUTES) ---
+            # Defeats Chrome's "Continue where you left off" session resurrection
+            if getattr(request.user, 'is_staff', False) or getattr(request.user, 'user_type', '') == 'TEACHER':
+                import time
+                last_activity = request.session.get('last_activity', 0)
+                
+                # If idle for more than 15 minutes (900 seconds), force logout
+                if last_activity and (time.time() - last_activity > 900):
+                    request.session.flush()
+                    logout(request)
+                    messages.error(request, "Your session has expired due to inactivity. Please log in again.")
+                    return redirect('admin_login' if getattr(request.user, 'is_staff', False) else 'teacher_login')
+                
+                # Update last activity timestamp
+                request.session['last_activity'] = time.time()
             
             # Check for active status (Admin Approval)
             # Superusers are exempt from this check to prevent lockout
@@ -105,6 +126,12 @@ class PortalSecurityMiddleware:
                     if url_name != 'student_view_auth':
                         request.session['next_student_url'] = path
                         return redirect('student_view_auth')
+                        
+            # --- View Persistence Wiping ---
+            # If Admin returns to admin panel, wipe the student view flag so they don't get trapped
+            if path.startswith('/customadmin/') and request.session.get('student_view_unlocked'):
+                del request.session['student_view_unlocked']
+                request.session.modified = True
                     
             # --- Teacher View Step-Up Authentication for Admins ---
             teacher_url_names = [
