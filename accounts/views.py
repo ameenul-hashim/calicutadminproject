@@ -1280,18 +1280,25 @@ def forgot_password(request):
         
         # Security: Always show success message to prevent email enumeration
         if user:
-            raw_otp, otp_obj = OTPEngine.create_otp(user, 'PASSWORD_RESET', request)
-            success = OTPEngine.send_otp_email(user, raw_otp, 'PASSWORD_RESET')
-            
-            if not success:
-                print(f"📧 [DEV/FALLBACK] OTP for {email}: {raw_otp}")
-                messages.warning(request, f"⚠️ Delivery service busy. Your recovery code is: {raw_otp} (Valid 2m)")
+            result = OTPEngine.create_otp(user, 'PASSWORD_RESET', request)
+            if isinstance(result, tuple) and result[0] is not None:
+                raw_otp, otp_obj = result
+                success = OTPEngine.send_otp_email(user, raw_otp, 'PASSWORD_RESET')
+                
+                if not success:
+                    # [SOC/SECURITY] Logged as secondary delivery failure
+                    messages.warning(request, "⚠️ Email service is temporarily busy. For verification, your recovery code is displayed here: " + raw_otp)
+                else:
+                    messages.success(request, f"✅ A secure recovery code has been sent to {email}.")
+                
+                request.session['recovery_otp_uid'] = str(otp_obj.uid)
+                request.session['recovery_user_uid'] = str(user.uid)
+                return redirect('verify_otp')
             else:
-                messages.success(request, f"✅ A secure recovery code has been sent to {email}.")
-            
-            request.session['recovery_otp_uid'] = str(otp_obj.uid)
-            request.session['recovery_user_uid'] = str(user.uid)
-            return redirect('verify_otp')
+                # Rate limited or system error
+                msg = result[1] if isinstance(result, tuple) else "Security system triggered. Please try again later."
+                messages.error(request, f"🛡️ {msg}")
+                return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
         else:
             messages.info(request, "If an account exists with that email, a recovery code has been sent.")
             return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
@@ -1306,13 +1313,19 @@ def recover_username(request):
         user = CustomUser.objects.filter(email=email).first()
         
         if user:
-            raw_otp, otp_obj = OTPEngine.create_otp(user, 'USERNAME_RECOVERY', request)
-            OTPEngine.send_otp_email(user, raw_otp, 'USERNAME_RECOVERY')
-            
-            messages.success(request, f"✅ Verification code sent to {email}.")
-            request.session['recovery_otp_uid'] = str(otp_obj.uid)
-            request.session['recovery_user_uid'] = str(user.uid)
-            return redirect('verify_otp')
+            result = OTPEngine.create_otp(user, 'USERNAME_RECOVERY', request)
+            if isinstance(result, tuple) and result[0] is not None:
+                raw_otp, otp_obj = result
+                OTPEngine.send_otp_email(user, raw_otp, 'USERNAME_RECOVERY')
+                
+                messages.success(request, f"✅ Verification code sent to {email}.")
+                request.session['recovery_otp_uid'] = str(otp_obj.uid)
+                request.session['recovery_user_uid'] = str(user.uid)
+                return redirect('verify_otp')
+            else:
+                msg = result[1] if isinstance(result, tuple) else "Verification system unavailable."
+                messages.error(request, f"🛡️ {msg}")
+                return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
         else:
             messages.error(request, "No account found with this email.")
             
