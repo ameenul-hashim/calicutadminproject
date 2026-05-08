@@ -81,8 +81,9 @@
                             <a href="{{ lesson.video_file.url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original File ↗</a>
                         </div>
                         <video controls style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-                            <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                            <source src="{{ lesson.video_file.url }}">
                         </video>
+
                     {% elif lesson.video_url %}
                         <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
                             <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🔗 External Video URL</span>

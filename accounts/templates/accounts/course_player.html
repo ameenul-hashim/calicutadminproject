@@ -335,14 +335,17 @@
 
             playerElement.innerHTML = `
                 <video playsinline controls crossorigin preload="auto" style="width:100% !important; height:100% !important; object-fit:contain !important; z-index: 1;">
-                    <source src="${finalSource}" type="video/mp4">
                     <source src="${finalSource}">
                     Your browser does not support video playback.
                 </video>`;
             const videoEl = playerElement.querySelector('video');
-            player = new Plyr(videoEl, plyrOptions);
+            player = new Plyr(videoEl, {
+                ...plyrOptions,
+                type: 'video' // Force video mode to prevent audio-only UI
+            });
         }
     }
+
 
     function toggleAccordion(header) {
         const isActive = header.classList.contains('active');
