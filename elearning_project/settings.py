@@ -27,17 +27,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev-and-build')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [
-    "calicutadmin.onrender.com",
-    "eduaimsthinker.onrender.com",
-    "localhost",
-    "127.0.0.1",
-]
+# --- Dynamic Host & CSRF Configuration (Render-compatible) ---
+# Override these fully via Render Environment Variables.
+# Format: comma-separated, no spaces.
+_raw_hosts = os.getenv(
+    'ALLOWED_HOSTS',
+    'edustreamcalicut.onrender.com,eduaimsthinker.onrender.com,calicutadmin.onrender.com,localhost,127.0.0.1'
+)
+ALLOWED_HOSTS = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://calicutadmin.onrender.com",
-    "https://eduaimsthinker.onrender.com"
-]
+_raw_csrf = os.getenv(
+    'CSRF_TRUSTED_ORIGINS',
+    'https://edustreamcalicut.onrender.com,https://eduaimsthinker.onrender.com,https://calicutadmin.onrender.com'
+)
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
 
 INSTALLED_APPS = [
     'daphne',
