@@ -58,6 +58,9 @@ class OTPEngine:
         Creates and saves a new hashed OTP for a user.
         Includes abuse detection and rate limiting.
         """
+        # Automatically clean up old database records
+        cls.cleanup_old_otps()
+        
         # 0. Rate Limit Check
         ip = None
         if request:
@@ -134,6 +137,9 @@ class OTPEngine:
         Verifies a raw OTP against the hashed value in DB.
         Returns (success, message).
         """
+        if not raw_otp:
+            return False, "Please enter a valid verification code."
+            
         hashed_input = cls.hash_otp(raw_otp)
         
         # Find active OTP for this user and purpose
