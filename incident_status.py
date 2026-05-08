@@ -10,7 +10,7 @@ def get_health():
         return {"status": "unreachable"}
 
 def run_diagnostic():
-    print("🚑 EDUSTREAM INCIDENT COMMAND: SYSTEM DIAGNOSTIC")
+    print("🚑 EDUELEVATE INCIDENT COMMAND: SYSTEM DIAGNOSTIC")
     print("=" * 60)
     
     # 1. Health Endpoint
@@ -44,7 +44,7 @@ def run_diagnostic():
         print(f"\n📂 Local Backup Files: {len(files)}")
     
     print("=" * 60)
-    print("💡 NEXT STEP: Refer to edustream_runbooks.md for resolution steps.")
+    print("💡 NEXT STEP: Refer to eduelevate_runbooks.md for resolution steps.")
 
 if __name__ == "__main__":
     run_diagnostic()

@@ -65,7 +65,7 @@ def verify_cloudinary():
         res = resources(
             type="upload",
             resource_type="raw",
-            prefix="edustream/pdfs",
+            prefix="eduelevate/pdfs",
             max_results=5
         )
         files = res.get("resources", [])
@@ -75,7 +75,7 @@ def verify_cloudinary():
                 print(f"   - {f['public_id']}")
             return True
         else:
-            print("⚠️ Cloudinary connected, but no PDFs found with prefix 'edustream/pdfs'")
+            print("⚠️ Cloudinary connected, but no PDFs found with prefix 'eduelevate/pdfs'")
             # Check all raw to be sure
             res_all = resources(type="upload", resource_type="raw", max_results=5)
             all_files = res_all.get("resources", [])

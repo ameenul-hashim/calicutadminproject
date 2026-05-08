@@ -77,13 +77,13 @@ try:
     res = resources(
         type="upload",
         resource_type="raw",
-        prefix="edustream/pdfs",
+        prefix="eduelevate/pdfs",
         max_results=10
     )
 
     pdf_list = res.get("resources", [])
     print(f"  {PASS} Cloudinary connected successfully!")
-    print(f"  Found {len(pdf_list)} PDFs under 'edustream/pdfs' prefix")
+    print(f"  Found {len(pdf_list)} PDFs under 'eduelevate/pdfs' prefix")
 
     if pdf_list:
         for f in pdf_list[:5]:
@@ -92,7 +92,7 @@ try:
             print(f"    ... and {len(pdf_list) - 5} more")
     else:
         # Try listing ALL raw resources to find the actual prefix
-        print(f"\n  {WARN} No PDFs found with prefix 'edustream/pdfs'. Searching all raw uploads...")
+        print(f"\n  {WARN} No PDFs found with prefix 'eduelevate/pdfs'. Searching all raw uploads...")
         res_all = resources(
             type="upload",
             resource_type="raw",

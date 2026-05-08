@@ -29,14 +29,14 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
     "calicutadmin.onrender.com",
-    "edustreamcalicut.onrender.com",
+    "eduelevate.onrender.com",
     "localhost",
     "127.0.0.1",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://calicutadmin.onrender.com",
-    "https://edustreamcalicut.onrender.com"
+    "https://eduelevate.onrender.com"
 ]
 
 INSTALLED_APPS = [
@@ -178,8 +178,8 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_NAME = 'edustream_sessionid'
-CSRF_COOKIE_NAME = 'edustream_csrftoken'
+SESSION_COOKIE_NAME = 'eduelevate_sessionid'
+CSRF_COOKIE_NAME = 'eduelevate_csrftoken'
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -234,7 +234,7 @@ else:
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
     EMAIL_TIMEOUT = 10  # 10 second timeout to avoid hanging
 
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'noreply@edustream.com'))
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'noreply@eduelevate.com'))
 
 # Production & Security Logging
 LOGGING = {
