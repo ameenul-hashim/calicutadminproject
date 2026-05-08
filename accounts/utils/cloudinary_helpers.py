@@ -67,7 +67,7 @@ def delete_image(instance):
         print(f"❌ Cloudinary Cleanup Error: {str(e)}")
         return False
 
-def update_image(instance, image_file, folder="eduelevate/uploads"):
+def update_image(instance, image_file, folder="eduaimsthinker/uploads"):
     """
     Uploads a new image and updates the model instance.
     Deletes the old image from Cloudinary if it exists.

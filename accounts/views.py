@@ -788,7 +788,7 @@ def create_course(request):
             status='DRAFT'
         )
         if thumbnail:
-            success = update_image(course, thumbnail, folder="eduelevate/courses")
+            success = update_image(course, thumbnail, folder="eduaimsthinker/courses")
             if not success:
                 print(f"⚠️ Thumbnail upload failed for course '{title}' — course saved without thumbnail.")
         
@@ -808,7 +808,7 @@ def edit_course(request, course_uid):
         if request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed'):
             thumbnail_file = request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed')
             from .utils.cloudinary_helpers import update_image
-            success = update_image(course, thumbnail_file, folder="eduelevate/courses")
+            success = update_image(course, thumbnail_file, folder="eduaimsthinker/courses")
             if not success:
                 print(f"⚠️ Thumbnail update failed for course '{course.title}'")
         
@@ -1025,7 +1025,7 @@ def edit_profile(request):
                 return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 2GB allowed).'}, status=400)
             
             from .utils.cloudinary_helpers import update_image
-            if update_image(request.user, profile_photo, folder="eduelevate/profiles"):
+            if update_image(request.user, profile_photo, folder="eduaimsthinker/profiles"):
                 # Support both AJAX and Standard Form Submission
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
                     return JsonResponse({'status': 'success', 'message': '✅ Profile photo updated successfully!'})

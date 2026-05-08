@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class OTPEngine:
     """
-    Enterprise-grade centralized OTP engine for EduElevate.
+    Enterprise-grade centralized OTP engine for EduAimsThinker.
     Handles generation, hashing, delivery, and verification.
     """
 
@@ -95,13 +95,13 @@ class OTPEngine:
     def send_otp_email(cls, user, raw_otp, purpose):
         """Sends a branded HTML email with the OTP."""
         subject_map = {
-            'PASSWORD_RESET': 'EduElevate: Reset Your Password',
-            'EMAIL_VERIFICATION': 'EduElevate: Verify Your Email',
-            'USERNAME_RECOVERY': 'EduElevate: Recover Your Username',
-            'USERNAME_UPDATE': 'EduElevate: Verify Username Update',
+            'PASSWORD_RESET': 'EduAimsThinker: Reset Your Password',
+            'EMAIL_VERIFICATION': 'EduAimsThinker: Verify Your Email',
+            'USERNAME_RECOVERY': 'EduAimsThinker: Recover Your Username',
+            'USERNAME_UPDATE': 'EduAimsThinker: Verify Username Update',
         }
         
-        subject = subject_map.get(purpose, 'EduElevate Verification Code')
+        subject = subject_map.get(purpose, 'EduAimsThinker Verification Code')
         from_email = settings.DEFAULT_FROM_EMAIL
         to_email = user.email
 
@@ -115,7 +115,7 @@ class OTPEngine:
         }
         
         html_content = render_to_string('emails/otp_email.html', context)
-        text_content = f"Your EduElevate verification code is: {raw_otp}. Valid for 2 minutes."
+        text_content = f"Your EduAimsThinker verification code is: {raw_otp}. Valid for 2 minutes."
 
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to_email])
         msg.attach_alternative(html_content, "text/html")

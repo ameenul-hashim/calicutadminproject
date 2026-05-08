@@ -1,7 +1,7 @@
 {
-  "name": "EduElevate",
-  "short_name": "EduElevate",
-  "description": "EduElevate — Elevating Digital Learning",
+  "name": "EduAimsThinker",
+  "short_name": "EAT",
+  "description": "EduAimsThinker — Think Beyond Learning",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
