@@ -27,11 +27,47 @@ class OTPEngine:
         return hashlib.sha256(otp.encode()).hexdigest()
 
     @classmethod
+    def check_rate_limit(cls, user, ip=None):
+        """
+        Enterprise Abuse Prevention:
+        - Max 5 OTP requests per email per day
+        - Max 10 OTP requests per IP per hour
+        """
+        now = timezone.now()
+        day_ago = now - timedelta(days=1)
+        hour_ago = now - timedelta(hours=1)
+
+        # 1. User/Email Quota (5 per day)
+        user_daily_count = EmailOTP.objects.filter(user=user, created_at__gte=day_ago).count()
+        if user_daily_count >= 5:
+            logger.warning(f"⚠️ [SECURITY/QUOTA] User {user.email} exceeded daily OTP quota ({user_daily_count} requests).")
+            return False, "You have exceeded the maximum number of verification requests for today. Please try again tomorrow."
+
+        # 2. IP Quota (10 per hour)
+        if ip:
+            ip_hourly_count = EmailOTP.objects.filter(ip_address=ip, created_at__gte=hour_ago).count()
+            if ip_hourly_count >= 10:
+                logger.critical(f"🚨 [SECURITY/ABUSE] IP {ip} triggered rate limiting ({ip_hourly_count} requests in 1hr). Possible brute-force or spam attempt.")
+                return False, "Too many requests from your network. Please wait an hour before trying again."
+
+        return True, ""
+
+    @classmethod
     def create_otp(cls, user, purpose, request=None):
         """
         Creates and saves a new hashed OTP for a user.
-        Invalidates any previous active OTPs for the same purpose.
+        Includes abuse detection and rate limiting.
         """
+        # 0. Rate Limit Check
+        ip = None
+        if request:
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
+        
+        allowed, msg = cls.check_rate_limit(user, ip)
+        if not allowed:
+            return None, msg
+
         # 1. Invalidate existing active OTPs for this purpose
         EmailOTP.objects.filter(user=user, purpose=purpose, is_used=False).update(is_used=True)
 
@@ -40,12 +76,7 @@ class OTPEngine:
         hashed_otp = cls.hash_otp(raw_otp)
         
         # 3. Meta data
-        ip = None
-        ua = None
-        if request:
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
-            ua = request.META.get('HTTP_USER_AGENT', '')
+        ua = request.META.get('HTTP_USER_AGENT', '') if request else None
 
         # 4. Save
         otp_obj = EmailOTP.objects.create(
@@ -53,7 +84,7 @@ class OTPEngine:
             user_type=user.user_type,
             purpose=purpose,
             otp_hash=hashed_otp,
-            expires_at=timezone.now() + timedelta(minutes=2),
+            expires_at=timezone.now() + timedelta(minutes=5),
             ip_address=ip,
             user_agent=ua
         )
