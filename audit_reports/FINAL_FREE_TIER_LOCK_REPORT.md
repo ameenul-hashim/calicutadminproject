@@ -27,4 +27,4 @@ The `BillingSafetyWatchdog` utility prevents automatic billing escalation by:
 
 ---
 **Final Certification Verdict:**
-“EduElevate is operating in fully locked Free-Tier mode with no active automatic billing pathways.”
+“EduAimsThinker is operating in fully locked Free-Tier mode with no active automatic billing pathways.”

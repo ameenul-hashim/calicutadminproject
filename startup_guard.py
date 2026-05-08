@@ -68,7 +68,7 @@ def validate_config():
     return True
 
 def startup_check():
-    print("🚀 EduElevate Startup Guard: Initializing...")
+    print("🚀 EduAimsThinker Startup Guard: Initializing...")
     
     # 1. Config Validation
     if not validate_config():
@@ -87,12 +87,12 @@ def startup_check():
                 
                 if hours_since > 25:
                     send_alert(
-                        "🚩 EduElevate Startup Guard: BACKUP IS STALE",
+                        "🚩 EduAimsThinker Startup Guard: BACKUP IS STALE",
                         f"The system just started up, but the last successful backup was {hours_since:.1f} hours ago ({last_dt})."
                     )
             except: pass
     else:
-        send_alert("🚩 EduElevate Startup Guard: BACKUP NEVER SUCCEEDED", "No successful backup record found.")
+        send_alert("🚩 EduAimsThinker Startup Guard: BACKUP NEVER SUCCEEDED", "No successful backup record found.")
 
     print("🎯 Startup Guard Complete.")
 

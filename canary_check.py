@@ -9,7 +9,7 @@ django.setup()
 from accounts.utils.supabase_storage import supabase, generate_signed_url
 
 def run_canary():
-    print("🚦 EDUELEVATE WEEKLY CANARY CHECK")
+    print("🚦 EDUAIMSTHINKER WEEKLY CANARY CHECK")
     print("=" * 60)
     
     # A. Supabase Canary (Upload & Signed URL)
