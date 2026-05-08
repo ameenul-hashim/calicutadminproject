@@ -468,6 +468,7 @@ def student_view_auth(request):
     # Direct access for Teachers and Admins as requested
     if request.user.user_type == 'TEACHER' or getattr(request.user, 'is_staff', False):
         request.session['student_view_unlocked'] = True
+        request.session.set_expiry(0)  # Re-enforce instant expiry
         next_url = request.session.pop('next_student_url', 'dashboard')
         return redirect(next_url)
 
@@ -479,6 +480,7 @@ def student_view_auth(request):
         password = request.POST.get('password')
         if request.user.check_password(password):
             request.session['student_view_unlocked'] = True
+            request.session.set_expiry(0)  # Re-enforce instant expiry
             next_url = request.session.pop('next_student_url', 'dashboard')
             messages.success(request, "Student View access granted.")
             return redirect(next_url)
@@ -506,6 +508,7 @@ def teacher_view_auth(request):
         password = request.POST.get('password')
         if request.user.check_password(password):
             request.session['teacher_view_unlocked'] = True
+            request.session.set_expiry(0)  # Re-enforce instant expiry
             next_url = request.session.pop('next_teacher_url', 'teacher_dashboard')
             messages.success(request, "Teacher View access granted.")
             return redirect(next_url)
