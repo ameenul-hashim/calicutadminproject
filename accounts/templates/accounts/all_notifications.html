@@ -106,7 +106,7 @@
                     <div class="notif-item {% if not notif.is_read %}unread{% endif %}">
                         <div class="notif-message">{{ notif.message }}</div>
                         <div class="notif-meta">
-                            <span class="notif-time">{{ notif.created_at|date:"M d, Y H:i" }}</span>
+                            <span class="notif-time">{{ notif.created_at|date:"M d, Y h:i A" }}</span>
                             <span class="read-badge">✓ Read</span>
                         </div>
                     </div>

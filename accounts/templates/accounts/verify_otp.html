@@ -115,30 +115,5 @@
     #resend-link { font-weight: 600; color: #6366f1; text-decoration: none; cursor: pointer; }
 </style>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        let timeLeft = 60;
-        const timerElement = document.getElementById('timer');
-        const timerText = document.getElementById('timer-text');
-        const resendLink = document.getElementById('resend-link');
 
-        const countdown = setInterval(function() {
-            timeLeft--;
-            timerElement.textContent = timeLeft;
-            if (timeLeft <= 0) {
-                clearInterval(countdown);
-                timerText.classList.add('hidden');
-                resendLink.classList.remove('hidden');
-            }
-        }, 1000);
-
-        // Auto-submit when 6 digits are entered
-        const otpInput = document.getElementById('otp');
-        otpInput.addEventListener('input', function() {
-            if (this.value.length === 6) {
-                document.getElementById('otp-form').submit();
-            }
-        });
-    });
-</script>
 {% endblock %}
