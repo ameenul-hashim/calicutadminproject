@@ -129,7 +129,7 @@ class OTPEngine:
             return True
         except Exception as e:
             logger.error(f"❌ Failed to send OTP email: {str(e)}")
-            return False
+            return str(e)
 
     @classmethod
     def verify_otp(cls, user, raw_otp, purpose):
