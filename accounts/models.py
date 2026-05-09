@@ -1,6 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 import uuid
+from django.utils import timezone
 
 class CustomUser(AbstractUser):
     USER_TYPE_CHOICES = (
