@@ -87,7 +87,7 @@ class OTPEngine:
             user_type=user.user_type,
             purpose=purpose,
             otp_hash=hashed_otp,
-            expires_at=timezone.now() + timedelta(minutes=5),
+            expires_at=timezone.now() + timedelta(minutes=2),
             ip_address=ip,
             user_agent=ua
         )

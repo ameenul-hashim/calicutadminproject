@@ -25,7 +25,7 @@
                         <p style="margin: 0; color: #1e293b; font-size: 1rem; line-height: 1.5; font-weight: 500;">{{ notif.message }}</p>
                         <div style="margin-top: 0.5rem; display: flex; align-items: center; gap: 1rem;">
                             <span style="font-size: 0.8rem; color: #94a3b8; display: flex; align-items: center; gap: 0.25rem;">
-                                <span>🕒</span> {{ notif.created_at|date:"M d, Y" }} at {{ notif.created_at|time:"H:i" }} ({{ notif.created_at|timesince }} ago)
+                                <span>🕒</span> {{ notif.created_at|date:"M d, Y" }} at {{ notif.created_at|time:"h:i A" }} ({{ notif.created_at|timesince }} ago)
                             </span>
                         </div>
                     </div>

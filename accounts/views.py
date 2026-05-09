@@ -6,6 +6,9 @@ from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMe
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 import os
 from accounts.utils.supabase_storage import upload_pdf
 import random
@@ -1096,7 +1099,7 @@ def send_chat_message(request):
         return JsonResponse({
             'status': 'success',
             'message': msg.message,
-            'timestamp': msg.timestamp.strftime('%H:%M'),
+            'timestamp': msg.timestamp.strftime('%I:%M %p'),
             'sender': msg.sender.username
         })
     return JsonResponse({'status': 'error'}, status=400)
@@ -1119,7 +1122,7 @@ def get_chat_messages(request, other_user_uid):
             'sender_uid': m.sender.uid,
             'sender_name': m.sender.username,
             'message': m.message,
-            'timestamp': m.timestamp.strftime('%H:%M'),
+            'timestamp': m.timestamp.strftime('%I:%M %p'),
             'is_me': m.sender == request.user
         })
     
