@@ -1296,13 +1296,8 @@ def forgot_password(request):
             result = OTPEngine.create_otp(user, 'PASSWORD_RESET', request)
             if isinstance(result, tuple) and result[0] is not None:
                 raw_otp, otp_obj = result
-                success = OTPEngine.send_otp_email(user, raw_otp, 'PASSWORD_RESET')
-                
-                if success is not True:
-                    # [SOC/SECURITY] Logged as secondary delivery failure
-                    messages.warning(request, f"Demo Mode: Email blocked by server. Your recovery code is: {raw_otp}")
-                else:
-                    messages.success(request, f"✅ A secure recovery code has been sent to {email}.")
+                # Disable email sending as requested by user and display OTP directly
+                messages.success(request, f"✅ Verification successful! Your OTP is: {raw_otp}. (It will disappear in 15 seconds)")
                 
                 request.session['recovery_otp_uid'] = str(otp_obj.uid)
                 request.session['recovery_user_uid'] = str(user.uid)

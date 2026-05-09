@@ -211,7 +211,7 @@
         djangoToasts.forEach(toast => {
             let duration = 5000;
             const msgText = toast.querySelector('.toast-message')?.textContent || '';
-            if (msgText.includes('recovery code has been sent')) {
+            if (msgText.includes('recovery code has been sent') || msgText.includes('Your OTP is')) {
                 duration = 15000;
             }
             const progress = toast.querySelector('.toast-progress');
