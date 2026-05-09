@@ -1313,8 +1313,8 @@ def forgot_password(request):
                 messages.error(request, f"🛡️ {msg}")
                 return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
         else:
-            messages.info(request, "If an account exists with that email, a recovery code has been sent.")
-            return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
+            messages.error(request, "Username and email not correct please enter correctly")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
             
     return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
 

@@ -209,9 +209,14 @@
     document.addEventListener('DOMContentLoaded', function() {
         const djangoToasts = document.querySelectorAll('.toast-card');
         djangoToasts.forEach(toast => {
+            let duration = 5000;
+            const msgText = toast.querySelector('.toast-message')?.textContent || '';
+            if (msgText.includes('recovery code has been sent')) {
+                duration = 15000;
+            }
             const progress = toast.querySelector('.toast-progress');
-            if (progress) progress.style.animation = 'toast-progress-anim 5s linear forwards';
-            setTimeout(() => Toast.dismiss(toast), 5000);
+            if (progress) progress.style.animation = `toast-progress-anim ${duration/1000}s linear forwards`;
+            setTimeout(() => Toast.dismiss(toast), duration);
         });
     });
 </script>
