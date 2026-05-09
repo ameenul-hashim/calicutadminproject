@@ -1283,8 +1283,13 @@ def forgot_password(request):
     user_type = request.GET.get('type', 'student').upper()
     
     if request.method == 'POST':
+        username = request.POST.get('username')
         email = request.POST.get('email')
-        user = CustomUser.objects.filter(email=email).first()
+        
+        # Security: Verify both username and email belong to the same user
+        user = None
+        if username and email:
+            user = CustomUser.objects.filter(username=username, email=email).first()
         
         # Security: Always show success message to prevent email enumeration
         if user:
@@ -1389,7 +1394,6 @@ def reset_password(request):
     user = get_object_or_404(CustomUser, uid=user_uid)
     
     if request.method == 'POST':
-        new_username = request.POST.get('new_username')
         new_password = request.POST.get('new_password')
         confirm_password = request.POST.get('confirm_password')
         
@@ -1401,12 +1405,6 @@ def reset_password(request):
         if not is_strong:
             messages.error(request, strength_msg)
             return render(request, 'accounts/reset_password.html', {'user': user})
-            
-        if new_username and new_username != user.username:
-            if CustomUser.objects.filter(username=new_username).exclude(uid=user.uid).exists():
-                messages.error(request, "This username is already taken.")
-                return render(request, 'accounts/reset_password.html', {'user': user})
-            user.username = new_username
             
         user.set_password(new_password)
         user.save()
