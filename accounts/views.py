@@ -1293,9 +1293,9 @@ def forgot_password(request):
                 raw_otp, otp_obj = result
                 success = OTPEngine.send_otp_email(user, raw_otp, 'PASSWORD_RESET')
                 
-                if not success:
+                if success is not True:
                     # [SOC/SECURITY] Logged as secondary delivery failure
-                    messages.error(request, "⚠️ Failed to send recovery email. Please try again later or contact support.")
+                    messages.error(request, f"⚠️ Failed to send recovery email: {success}")
                     return redirect('forgot_password')
                 else:
                     messages.success(request, f"✅ A secure recovery code has been sent to {email}.")
@@ -1327,8 +1327,8 @@ def recover_username(request):
                 raw_otp, otp_obj = result
                 success = OTPEngine.send_otp_email(user, raw_otp, 'USERNAME_RECOVERY')
                 
-                if not success:
-                    messages.error(request, "⚠️ Failed to send recovery email. Please try again later or contact support.")
+                if success is not True:
+                    messages.error(request, f"⚠️ Failed to send recovery email: {success}")
                     return redirect('recover_username')
                     
                 messages.success(request, f"✅ Verification code sent to {email}.")
