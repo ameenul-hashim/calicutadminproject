@@ -307,23 +307,28 @@
                 'progress', 'current-time', 'duration', 'mute', 'volume',
                 'captions', 'settings', 'pip', 'airplay', 'fullscreen'
             ],
-            settings: ['quality', 'speed', 'loop'],
+            settings: ['quality', 'speed', 'loop', 'captions'],
             speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
             seekTime: 10,
             keyboard: { focused: true, global: true },
             tooltips: { controls: true, seek: true },
-            fullscreen: { enabled: true, fallback: true, iosNative: true }
+            fullscreen: { enabled: true, fallback: true, iosNative: true },
+            youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
         };
 
         if (type === 'youtube') {
             const container = document.getElementById('playerContainer');
             container.innerHTML = `<div id="player" data-plyr-provider="youtube" data-plyr-embed-id="${source}"></div>`;
             player = new Plyr('#player', plyrOptions);
+            
+            // YouTube specific boost (only via player API volume)
+            player.on('ready', () => {
+                player.volume = 1; // Start at max
+            });
         } else {
             // Enterprise Grade Video Delivery Optimization
             let finalSource = source;
             if (finalSource.includes('cloudinary.com') && !finalSource.includes('f_auto')) {
-                // Force H.264 video codec and auto-format for maximum compatibility
                 finalSource = finalSource.replace('/upload/', '/upload/f_auto,q_auto,vc_h264/');
             }
 
@@ -331,11 +336,43 @@
                 <video playsinline controls crossorigin preload="auto" style="width:100% !important; height:100% !important; object-fit:contain !important; z-index: 1;">
                     <source src="${finalSource}" type="video/mp4">
                     Your browser does not support video playback.
-                </video>`;
+                </video>
+                <div id="volumeBoostBadge" style="position: absolute; top: 10px; right: 10px; background: rgba(14, 165, 233, 0.8); color: white; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; z-index: 10; display: none; backdrop-filter: blur(4px);">
+                    🔊 Audio Boost: 2x
+                </div>`;
+            
             const videoEl = playerElement.querySelector('video');
             player = new Plyr(videoEl, {
                 ...plyrOptions,
-                type: 'video' // Force video mode to prevent audio-only UI
+                type: 'video'
+            });
+
+            // --- AUDIO BOOST (GAIN STAGE) IMPLEMENTATION ---
+            player.on('ready', () => {
+                try {
+                    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    const sourceNode = audioCtx.createMediaElementSource(videoEl);
+                    const gainNode = audioCtx.createGain();
+                    
+                    // Default gain is 1 (100%), we boost it to 2 (200%) to help with low-voice videos
+                    gainNode.gain.value = 2.0; 
+                    
+                    sourceNode.connect(gainNode);
+                    gainNode.connect(audioCtx.destination);
+                    
+                    document.getElementById('volumeBoostBadge').style.display = 'block';
+                    
+                    // Resume audio context on user interaction (browser policy)
+                    ['click', 'touchstart', 'keydown'].forEach(ev => {
+                        document.addEventListener(ev, () => {
+                            if (audioCtx.state === 'suspended') audioCtx.resume();
+                        }, { once: true });
+                    });
+                } catch (e) {
+                    console.warn("Audio boost not supported in this browser:", e);
+                }
+                
+                player.volume = 1; // Ensure UI shows 100% (but output is 200% due to gain node)
             });
         }
     }
