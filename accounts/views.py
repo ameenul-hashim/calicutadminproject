@@ -622,16 +622,13 @@ def dashboard_view(request):
         for l in new_lessons:
             platform_updates.append(f"📖 Content Released: New lesson '{l.title}' added to your course '{l.course.title}'.")
 
-    # Add platform updates to Django messages so they appear in the dashboard message card
-    for update in platform_updates:
-        messages.info(request, update, extra_tags='platform_update')
-
     # Build initial context
     context = {
         'courses': courses,
         'search_query': search_query,
         'total_lessons': sum(c.lesson_count for c in courses),
         'is_admin_preview': is_unlocked,
+        'platform_updates': platform_updates,
     }
     return render(request, 'accounts/dashboard.html', context)
 
