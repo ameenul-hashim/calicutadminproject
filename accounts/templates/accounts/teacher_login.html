@@ -17,50 +17,53 @@
       }
     </script>
 </head>
-<body style="display: flex; align-items: center; justify-content: center; background: #e0f7fa;">
-    <div class="glass-card" style="width: 100%; max-width: 400px; background: white; border-top: 4px solid #6366f1;">
-        <h1 style="text-align: center; margin-bottom: 1.5rem; color: #1e293b;">Teacher Portal</h1>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 1.5rem; background: #f0f7ff; flex-direction: column; box-sizing: border-box;">
+    <div class="glass-card" style="width: 100%; max-width: 400px; background: white; border-top: 4px solid #6366f1; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-radius: 1rem; padding: 2rem;">
+        <h1 style="text-align: center; margin-bottom: 1.5rem; color: #1e293b; font-weight: 800;">Teacher Portal</h1>
 
         <!-- Persistent Approval Notice -->
         <div style="background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 0.75rem; padding: 0.85rem; margin-bottom: 1.5rem; display: flex; align-items: flex-start; gap: 0.75rem;">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6d28d9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
             <p style="margin: 0; font-size: 0.85rem; color: #6d28d9; line-height: 1.4; font-weight: 500;">
-                approval required for login. please wait a while or contact the institution.
+                Approval required for login. Please wait for admin review or contact the institution.
             </p>
         </div>
         
-        {% include 'includes/messages.html' %}
-        {% include 'includes/validation_engine.html' %}
-
         <form method="POST" id="loginForm" novalidate>
             {% csrf_token %}
+            {% include 'includes/messages.html' %}
+            {% include 'includes/validation_engine.html' %}
+            
             <div class="input-group">
-                <label for="username">Teacher Username</label>
-                <input type="text" name="username" id="username" required>
+                <label for="username" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #475569;">Teacher Username</label>
+                <input type="text" name="username" id="username" required style="width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; box-sizing: border-box;">
             </div>
-            <div class="input-group" style="position: relative;">
-                <label for="password">Password</label>
-                <input type="password" name="password" id="password" required style="padding-right: 2.5rem; width: 100%; box-sizing: border-box;">
-                <span onclick="togglePassword('password', 'eye-icon-1')" style="position: absolute; right: 12px; bottom: 35px; cursor: pointer; z-index: 10;">
-                    <svg id="eye-icon-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            <div class="input-group" style="position: relative; margin-top: 1rem;">
+                <label for="password" style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #475569;">Password</label>
+                <input type="password" name="password" id="password" required style="padding: 0.75rem; padding-right: 2.5rem; width: 100%; box-sizing: border-box; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+                <span onclick="togglePassword('password', 'eye-icon-1')" style="position: absolute; right: 12px; top: 40px; cursor: pointer; z-index: 10; color: #94a3b8;">
+                    <svg id="eye-icon-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                 </span>
                 <div style="text-align: right; margin-top: 0.5rem;">
-                    <a href="{% url 'forgot_password' %}" style="color: #6366f1; font-size: 0.85rem; text-decoration: none; font-weight: 500;">Forgot Password?</a>
+                    <a href="{% url 'forgot_password' %}" style="color: #6366f1; font-size: 0.85rem; text-decoration: none; font-weight: 600;">Forgot Password?</a>
                 </div>
             </div>
-            <button type="submit" id="loginBtn" class="btn btn-primary" style="width: 100%; background: #6366f1; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">Teacher Sign In</button>
+            <button type="submit" id="loginBtn" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem; background: #6366f1; color: white; border: none; padding: 0.85rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+                Teacher Sign In
+            </button>
         </form>
 
-        <p style="text-align: center; margin-top: 1.5rem; color: #64748b;">
-            Don't have a teacher account? <a href="{% url 'teacher_signup' %}" style="color: #6366f1; text-decoration: none; font-weight: 600;">Sign up as Teacher</a>
+        <p style="text-align: center; margin-top: 1.5rem; color: #64748b; font-size: 0.9rem;">
+            Don't have a teacher account? <a href="{% url 'teacher_signup' %}" style="color: #6366f1; text-decoration: none; font-weight: 700;">Sign up as Teacher</a>
         </p>
-        <p style="text-align: center; margin-top: 1rem; padding-top: 0.5rem; border-top: 1px solid #f1f5f9;">
+        <p style="text-align: center; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #f1f5f9;">
             <a href="{% url 'login' %}" style="color: #0ea5e9; font-weight: 700; text-decoration: none; font-size: 0.85rem; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.4rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 Student Login
             </a>
         </p>
     </div>
+
 
     <script>
         function togglePassword(inputId, iconId) {
