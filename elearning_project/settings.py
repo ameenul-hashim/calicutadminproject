@@ -32,7 +32,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 _raw_hosts = os.getenv('ALLOWED_HOSTS', '')
 _env_hosts = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 
-# Force-include critical hosts so a missing/wrong env var never causes 400
+# Force-include specific authorized portals only (No wildcards for shared domains)
 _required_hosts = [
     'edustreamcalicut.onrender.com',
     'eduaimsthinker.onrender.com',
@@ -185,13 +185,17 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_COOKIE_DOMAIN = None
 SECURE_REFERRER_POLICY = 'same-origin'
 
-# Stable Session Management
+# Stable Session & CSRF Management
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 SESSION_COOKIE_NAME = 'eduaimsthinker_sessionid'
+
+# Enterprise CSRF Hardening: Store token in session to prevent subdomain clashes
+CSRF_USE_SESSIONS = True
 CSRF_COOKIE_NAME = 'eduaimsthinker_csrftoken'
+CSRF_COOKIE_HTTPONLY = False  # Must be false for AJAX if needed later
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

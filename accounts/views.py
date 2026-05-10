@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
 import logging
+from django.views.decorators.csrf import csrf_protect
 
 logger = logging.getLogger(__name__)
 import os
@@ -398,6 +399,7 @@ def status_page(request):
     })
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@csrf_protect
 def login_view(request):
     if request.user.is_authenticated:
         if request.user.user_type == 'STUDENT':
@@ -522,6 +524,7 @@ def teacher_view_auth(request):
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
+@csrf_protect
 def teacher_login_view(request):
     if request.user.is_authenticated:
         if request.user.user_type == 'TEACHER':
@@ -540,6 +543,19 @@ def teacher_login_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
 
+        # Check for inactive/pending users FIRST because authenticate() returns None for them
+        user_candidate = CustomUser.objects.filter(username=username).first()
+        if user_candidate:
+            if user_candidate.status == 'PENDING':
+                messages.warning(request, "Your teacher account is PENDING approval. Admin approval is needed to login. Please wait for a while or contact the administration.")
+                return render(request, 'accounts/teacher_login.html')
+            elif user_candidate.status == 'REJECTED':
+                messages.error(request, "Your teacher application was REJECTED. Please contact admin for details.")
+                return render(request, 'accounts/teacher_login.html')
+            elif user_candidate.status == 'BLOCKED':
+                messages.error(request, "Your teacher account has been BLOCKED.")
+                return render(request, 'accounts/teacher_login.html')
+
         user = authenticate(request, username=username, password=password)
         if user is not None:
             if user.user_type != 'TEACHER':
@@ -551,15 +567,9 @@ def teacher_login_view(request):
                 request.session.set_expiry(0)  # Instantly expire session on browser close
                 messages.success(request, f"Welcome, {user.full_name}! Teacher Dashboard active.")
                 return redirect('teacher_dashboard')
-            elif user.status == 'PENDING':
-                messages.warning(request, "Your teacher account is PENDING approval. Admin approval is needed to login. Please wait for a while or contact the administration.")
-            elif user.status == 'REJECTED':
-                messages.error(request, "Your teacher application was REJECTED. Please contact admin for details.")
-            elif user.status == 'BLOCKED':
-                messages.error(request, "Your teacher account has been BLOCKED.")
         else:
             # Check existence vs wrong password
-            if CustomUser.objects.filter(username=username).exists():
+            if user_candidate:
                 messages.error(request, "Incorrect password. Please try again.")
             else:
                 messages.error(request, "Teacher account not found. Please check your username or apply.")
