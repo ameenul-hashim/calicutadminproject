@@ -316,15 +316,9 @@
         };
 
         if (type === 'youtube') {
-            playerElement.innerHTML = `<div class="plyr__video-embed" id="player">
-                <iframe
-                    src="https://www.youtube.com/embed/${source}?origin=${window.location.origin}&iv_load_policy=3&modestbranding=1&playsinline=1&showinfo=0&rel=0&enablejsapi=1"
-                    allowfullscreen
-                    allowtransparency
-                    allow="autoplay"
-                ></iframe>
-            </div>`;
-            player = new Plyr(playerElement, plyrOptions);
+            const container = document.getElementById('playerContainer');
+            container.innerHTML = `<div id="player" data-plyr-provider="youtube" data-plyr-embed-id="${source}"></div>`;
+            player = new Plyr('#player', plyrOptions);
         } else {
             // Enterprise Grade Video Delivery Optimization
             let finalSource = source;
@@ -335,7 +329,7 @@
 
             playerElement.innerHTML = `
                 <video playsinline controls crossorigin preload="auto" style="width:100% !important; height:100% !important; object-fit:contain !important; z-index: 1;">
-                    <source src="${finalSource}">
+                    <source src="${finalSource}" type="video/mp4">
                     Your browser does not support video playback.
                 </video>`;
             const videoEl = playerElement.querySelector('video');

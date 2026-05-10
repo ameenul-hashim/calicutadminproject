@@ -81,7 +81,7 @@
                             <a href="{{ lesson.video_file.url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original File ↗</a>
                         </div>
                         <video controls style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-                            <source src="{{ lesson.video_file.url }}">
+                            <source src="{{ lesson.video_file.url }}" type="video/mp4">
                         </video>
 
                     {% elif lesson.video_url %}
@@ -89,14 +89,21 @@
                             <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🔗 External Video URL</span>
                             <a href="{{ lesson.video_url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original Link ↗</a>
                         </div>
-                        <div style="background: #f1f5f9; border-radius: 0.75rem; border: 1.5px dashed #cbd5e1; padding: 2rem; text-align: center;">
-                            <div style="font-size: 2rem; margin-bottom: 1rem;">🔗</div>
-                            <p style="margin: 0 0 1rem 0; color: #475569; font-size: 0.9rem; font-weight: 600;">YouTube / External Video</p>
-                            <a href="{{ lesson.video_url }}" target="_blank" style="display: inline-block; background: #6366f1; color: white; padding: 0.6rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.85rem; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">View Content on YouTube ↗</a>
+                        <div id="yt-preview-{{ lesson.uid }}" style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                            <!-- JS will inject iframe here -->
                         </div>
-                        <style>
-                            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-                        </style>
+                        <script>
+                            (function() {
+                                const url = "{{ lesson.video_url|escapejs }}";
+                                const container = document.getElementById('yt-preview-{{ lesson.uid }}');
+                                const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+                                if (match && match[1]) {
+                                    container.innerHTML = '<iframe src="https://www.youtube.com/embed/' + match[1] + '" style="width: 100%; height: 100%; border: none;" allowfullscreen allow="autoplay; encrypted-media"></iframe>';
+                                } else {
+                                    container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f1f5f9; flex-direction: column; text-align: center; padding: 2rem;"><div style="font-size: 2rem; margin-bottom: 1rem;">🔗</div><p style="margin: 0 0 1rem 0; color: #475569; font-size: 0.9rem; font-weight: 600;">External Link</p><a href="' + url + '" target="_blank" style="display: inline-block; background: #6366f1; color: white; padding: 0.6rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.85rem;">Visit Link ↗</a></div>';
+                                }
+                            })();
+                        </script>
                     {% else %}
                         <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #f1f5f9; border-radius: 0.75rem; overflow: hidden; display: flex; align-items: center; justify-content: center;">
                             <img src="/accounts/media/video_unavailable_placeholder_1778052450152.png" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.4;">
