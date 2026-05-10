@@ -1290,6 +1290,9 @@ def forgot_password(request):
         user = None
         if username and email:
             user = CustomUser.objects.filter(username=username, email=email).first()
+            if user and user.is_superuser:
+                messages.error(request, "This is not changeable credentials")
+                return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
         
         # Security: Always show success message to prevent email enumeration
         if user:
