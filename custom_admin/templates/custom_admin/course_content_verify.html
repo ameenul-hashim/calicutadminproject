@@ -97,10 +97,20 @@
                                 const url = "{{ lesson.video_url|escapejs }}";
                                 const container = document.getElementById('yt-preview-{{ lesson.uid }}');
                                 const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+                                
                                 if (match && match[1]) {
                                     container.innerHTML = '<iframe src="https://www.youtube.com/embed/' + match[1] + '" style="width: 100%; height: 100%; border: none;" allowfullscreen allow="autoplay; encrypted-media"></iframe>';
                                 } else {
-                                    container.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f1f5f9; flex-direction: column; text-align: center; padding: 2rem;"><div style="font-size: 2rem; margin-bottom: 1rem;">🔗</div><p style="margin: 0 0 1rem 0; color: #475569; font-size: 0.9rem; font-weight: 600;">External Link</p><a href="' + url + '" target="_blank" style="display: inline-block; background: #6366f1; color: white; padding: 0.6rem 1.25rem; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.85rem;">Visit Link ↗</a></div>';
+                                    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
+                                    container.innerHTML = `
+                                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8fafc; flex-direction: column; text-align: center; padding: 1.5rem; border: 2px dashed #e2e8f0; border-radius: 0.75rem;">
+                                            <div style="font-size: 3rem; margin-bottom: 0.5rem;">${isYouTube ? '🎬' : '🔗'}</div>
+                                            <p style="margin: 0 0 0.5rem 0; color: #1e293b; font-size: 1rem; font-weight: 700;">${isYouTube ? 'YouTube Video Content' : 'External Resource'}</p>
+                                            <p style="margin: 0 0 1.25rem 0; color: #64748b; font-size: 0.75rem; word-break: break-all; max-width: 90%; font-family: monospace;">${url}</p>
+                                            <a href="${url}" target="_blank" style="display: inline-block; background: ${isYouTube ? '#ef4444' : '#6366f1'}; color: white; padding: 0.7rem 1.5rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.9rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                                                Open ${isYouTube ? 'YouTube' : 'Link'} ↗
+                                            </a>
+                                        </div>`;
                                 }
                             })();
                         </script>
