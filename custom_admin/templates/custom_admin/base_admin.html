@@ -294,60 +294,12 @@
         }
         .notif-dropdown.active { display: block !important; }
     
-        /* RESPONSIVE INJECTIONS */
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
-            .sidebar.active { transform: translateX(0); }
-            header { padding-top: 4.5rem !important; padding-bottom: 1rem !important; }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; padding-top: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
-            /* Forms */
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
-        }
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
-        /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
         /* Django Messages Toast */
         .messages { max-width: 24rem; word-wrap: break-word; }
         @media (max-width: 640px) {
             .messages { max-width: 90vw; }
         }
 
-        /* Device Restriction Overlay */
-        #device-restriction-overlay {
-            display: none;
-        }
-        @media (max-width: 1023px) {
-            #device-restriction-overlay {
-                display: flex !important;
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100vw;
-                height: 100vh;
-                background: #0f172a;
-                color: white;
-                z-index: 999999;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                text-align: center;
-                padding: 2rem;
-                box-sizing: border-box;
-            }
-            .admin-layout, .mobile-toggle, #page-loader {
-                display: none !important;
-            }
-        }
         </style>
     
     {% block extra_css %}{% endblock %}
@@ -361,19 +313,6 @@
 </head>
 <body>
     <div id="page-loader"><div class="progress"></div></div>
-    
-    <!-- Device Restriction Overlay (Mobile/Tablet Block) -->
-    <div id="device-restriction-overlay">
-        <div style="background: #1e293b; padding: 3rem; border-radius: 2rem; border: 1px solid #334155; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); max-width: 400px;">
-            <div style="font-size: 4rem; margin-bottom: 1.5rem;">💻</div>
-            <h1 style="font-size: 1.75rem; font-weight: 800; margin-bottom: 1rem; color: #f8fafc;">Admin Access Restricted</h1>
-            <p style="font-size: 1rem; color: #94a3b8; line-height: 1.6; margin-bottom: 2rem;">
-                The EduAimsThinker Admin Panel is optimized for <strong>Laptop/Desktop</strong> devices only.<br><br>
-                Please use a larger screen to manage the platform securely.
-            </p>
-            <a href="{% url 'admin_logout' %}" style="display: block; background: #ef4444; color: white; padding: 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; transition: background 0.2s;">Logout Session</a>
-        </div>
-    </div>
     
     <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9998;" onclick="closeSidebar()"></div>
     <button class="mobile-toggle" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Toggle navigation">

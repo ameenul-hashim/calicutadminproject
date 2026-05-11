@@ -63,10 +63,13 @@ class PortalSecurityMiddleware:
                 
                 # If idle for more than 15 minutes (900 seconds), force logout
                 if last_activity and (time.time() - last_activity > 900):
+                    # Capture role before logout wipes the user object
+                    is_admin_path = getattr(request.user, 'is_staff', False) or path.startswith('/customadmin/')
+                    
                     request.session.flush()
                     logout(request)
                     messages.error(request, "Your session has expired due to inactivity. Please log in again.")
-                    return redirect('admin_login' if getattr(request.user, 'is_staff', False) else 'teacher_login')
+                    return redirect('admin_login' if is_admin_path else 'teacher_login')
                 
                 # Update last activity timestamp
                 request.session['last_activity'] = time.time()
