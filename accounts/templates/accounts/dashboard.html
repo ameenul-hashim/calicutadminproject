@@ -97,7 +97,7 @@
             display: none;
             position: fixed;
             top: 1rem;
-            left: 1.25rem;
+            right: 1.25rem;
             z-index: 1101;
             background: #0ea5e9;
             color: white;
@@ -110,6 +110,7 @@
             cursor: pointer;
             box-shadow: 0 4px 6px rgba(14, 165, 233, 0.2);
             font-size: 1.2rem;
+            transition: all 0.3s ease;
         }
 
         .top-header {
@@ -492,20 +493,25 @@
     function toggleSidebar() {
         var sb = document.querySelector('.sidebar');
         var bd = document.getElementById('sidebar-backdrop');
+        var btn = document.getElementById('hamburger-btn');
         if (!sb) return;
         if (sb.classList.contains('active')) {
             sb.classList.remove('active');
             if (bd) bd.style.display = 'none';
+            if (btn) btn.innerHTML = '☰';
         } else {
             sb.classList.add('active');
             if (bd) bd.style.display = 'block';
+            if (btn) btn.innerHTML = '✕';
         }
     }
     function closeSidebar() {
         var sb = document.querySelector('.sidebar');
         var bd = document.getElementById('sidebar-backdrop');
+        var btn = document.getElementById('hamburger-btn');
         if (sb) sb.classList.remove('active');
         if (bd) bd.style.display = 'none';
+        if (btn) btn.innerHTML = '☰';
     }
 
     // Close sidebar when clicking main content on mobile
