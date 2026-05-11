@@ -841,31 +841,41 @@ def admin_view_course_content(request, course_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_course_secure(request, course_uid):
     if request.method == 'POST':
-        username = request.POST.get('admin_username')
-        password = request.POST.get('admin_password')
+        username = request.POST.get('admin_username', '').strip()
+        password = request.POST.get('admin_password', '')
         
-        # Verify credentials
-        user = authenticate(request, username=username, password=password)
-        if user is not None and user == request.user and user.is_staff:
+        # Robust verification: Support both username and email (case-insensitive)
+        admin_user = request.user
+        is_identity_match = (
+            username.lower() == admin_user.username.lower() or 
+            username.lower() == admin_user.email.lower()
+        )
+        
+        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
             course.delete()
             messages.success(request, f"✅ {course_title} removed successfully.")
             return redirect('admin_content')
         else:
-            messages.error(request, "Authentication failed. Incorrect username or password, or you don't have permission.")
+            messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_lesson_secure(request, lesson_uid):
     if request.method == 'POST':
-        username = request.POST.get('admin_username')
-        password = request.POST.get('admin_password')
+        username = request.POST.get('admin_username', '').strip()
+        password = request.POST.get('admin_password', '')
         
-        # Verify credentials
-        user = authenticate(request, username=username, password=password)
-        if user is not None and user == request.user and user.is_staff:
+        # Robust verification
+        admin_user = request.user
+        is_identity_match = (
+            username.lower() == admin_user.username.lower() or 
+            username.lower() == admin_user.email.lower()
+        )
+        
+        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
             lesson = get_object_or_404(Lesson, uid=lesson_uid)
             lesson_title = lesson.title
             course_uid = lesson.course.uid
@@ -873,7 +883,7 @@ def admin_delete_lesson_secure(request, lesson_uid):
             messages.success(request, f"✅ {lesson_title} removed successfully.")
             return redirect('admin_view_course_content', course_uid=course_uid)
         else:
-            messages.error(request, "Action not allowed. Please verify credentials.")
+            messages.error(request, "Action not allowed. Please verify administrator credentials.")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
@@ -882,12 +892,17 @@ def delete_user_admin(request, user_uid):
     target_user = get_object_or_404(CustomUser, uid=user_uid)
     
     if request.method == 'POST':
-        username = request.POST.get('admin_username')
-        password = request.POST.get('admin_password')
+        username = request.POST.get('admin_username', '').strip()
+        password = request.POST.get('admin_password', '')
         
-        # Verify admin credentials
-        user = authenticate(request, username=username, password=password)
-        if user is not None and user == request.user and user.is_staff:
+        # Robust verification
+        admin_user = request.user
+        is_identity_match = (
+            username.lower() == admin_user.username.lower() or 
+            username.lower() == admin_user.email.lower()
+        )
+        
+        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
             user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
             
             # Explicitly cleanup logs that don't cascade
@@ -901,7 +916,7 @@ def delete_user_admin(request, user_uid):
                 return redirect('manage_teachers')
             return redirect('manage_students')
         else:
-            messages.error(request, "Action not allowed. Please verify credentials.")
+            messages.error(request, "Action not allowed. Please verify administrator credentials.")
             
     return render(request, 'custom_admin/delete_user_confirm.html', {
         'target_user': target_user
