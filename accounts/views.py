@@ -1063,20 +1063,18 @@ def edit_profile(request):
         else:
             return JsonResponse({'status': 'error', 'message': 'Please select an avatar or photo.'}, status=400)
     
-    avatars = []
     if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
-        avatars = [f"/static/avatars/admins_1_{i}.png" for i in range(4)] + \
-                  [f"/static/avatars/teacher_males_{i}.png" for i in range(2)] + \
-                  [f"/static/avatars/teacher_females_{i}.png" for i in range(2)] + \
-                  [f"/static/avatars/student_males_{i}.png" for i in range(2)]
+        # 10 Professional Admin Avatars (5 Male, 5 Female)
+        avatars = [f"/static/avatars/admin_m_{i}.png" for i in range(5)] + \
+                  [f"/static/avatars/admin_f_{i}.png" for i in range(5)]
     elif request.user.user_type == 'TEACHER':
-        avatars = [f"/static/avatars/teacher_males_{i}.png" for i in range(4)] + \
-                  [f"/static/avatars/teacher_females_{i}.png" for i in range(4)] + \
-                  ["/static/avatars/student_m_1_0.png", "/static/avatars/student_m_1_1.png"]
+        # 10 Professional Teacher Avatars (5 Male, 5 Female)
+        avatars = [f"/static/avatars/teacher_m_{i}.png" for i in range(5)] + \
+                  [f"/static/avatars/teacher_f_{i}.png" for i in range(5)]
     else:
-        # 5 Female + 5 Male = 10 Professional Student Avatars
-        avatars = [f"/static/avatars/student_f_{i}.png" for i in range(5)] + \
-                  [f"/static/avatars/student_m_{i}.png" for i in range(5)]
+        # 10 Professional Student Avatars (5 Male, 5 Female)
+        avatars = [f"/static/avatars/student_m_{i}.png" for i in range(5)] + \
+                  [f"/static/avatars/student_f_{i}.png" for i in range(5)]
 
     return render(request, 'accounts/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
