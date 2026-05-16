@@ -48,12 +48,12 @@ def main():
     # Admin Sheet
     crop_high_quality(os.path.join(brain_dir, "media__1778956880547.jpg"), output_dir, "admin_m", "admin_f", 0.14, 0.52, 0.34, 0.86)
     
-    # Teacher Sheet
+    # Teacher Sheet (Keeping the unique professional educators)
     crop_high_quality(os.path.join(brain_dir, "teacher_avatars_new_sheet_1778961232982.png"), output_dir, "teacher_m", "teacher_f", 0.02, 0.52, 0.45, 0.90)
     
-    # Student Sheet (PROFESSIONAL ACADEMIC UNIFORMS - NEW)
-    # File: professional_student_avatars_sheet_v2_1778962012585.png
-    crop_high_quality(os.path.join(brain_dir, "professional_student_avatars_sheet_v2_1778962012585.png"), output_dir, "student_m", "student_f", 0.0, 0.50, 0.49, 0.98)
+    # Student Sheet (REVERTING TO THE ORIGINAL PROFESSIONAL STUDENT SHEET)
+    # File: media__1778957043907.jpg
+    crop_high_quality(os.path.join(brain_dir, "media__1778957043907.jpg"), output_dir, "student_m", "student_f", 0.14, 0.52, 0.34, 0.86)
 
 if __name__ == "__main__":
     main()
