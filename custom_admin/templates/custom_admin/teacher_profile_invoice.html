@@ -22,16 +22,16 @@
     </div>
 </div>
 
-<div id="printable-area" style="background: white; padding: 4rem; margin: 0 auto; max-width: 900px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); color: #1e293b; font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0;">
+<div id="printable-area" style="background: white; padding: 4rem; margin: 0 auto; max-width: 900px; box-shadow: 0 20px 50px rgba(0,0,0,0.05); color: #1e293b; font-family: 'Inter', sans-serif; border: 1px solid #e2e8f0; border-radius: 1rem; overflow: hidden;">
     
     <!-- Invoice Header -->
-    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 2rem;">
+    <div class="invoice-header" style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 2rem;">
         <div>
             <h1 style="color: #6366f1; font-size: 2rem; margin: 0; font-weight: 800;">EduAimsThinker</h1>
             <p style="color: #64748b; margin: 0.5rem 0 0 0;">Faculty Administration Portal</p>
             <p style="font-size: 0.85rem; color: #94a3b8;">123 Academy Way, Digital City</p>
         </div>
-        <div style="text-align: right;">
+        <div class="invoice-header-right" style="text-align: right;">
             <h2 style="font-size: 2.5rem; margin: 0; color: #cbd5e1; text-transform: uppercase; letter-spacing: 2px;">EARNINGS</h2>
             <p style="margin: 0.5rem 0 0 0; font-weight: 600;"># {{ invoice_number }}</p>
             <p style="margin: 0.2rem 0 0 0; color: #64748b;">Report Date: {{ invoice_date|date:"M d, Y" }}</p>
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Faculty Info Section -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 4rem;">
+    <div class="bill-to-section" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 4rem;">
         <div>
             <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Faculty Member:</h3>
             <div style="display: flex; align-items: center; gap: 1rem;">
@@ -57,7 +57,7 @@
             <a href="{% url 'proxy_pdf_access' teacher.uid %}" target="_blank" class="no-print" style="display: inline-block; margin-top: 0.8rem; font-size: 0.8rem; color: #0ea5e9; text-decoration: none; font-weight: 600; border: 1px solid #0ea5e9; padding: 0.2rem 0.5rem; border-radius: 0.3rem;">📄 View ID Proof</a>
             {% endif %}
         </div>
-        <div style="text-align: right;">
+        <div class="bill-to-right" style="text-align: right;">
             <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Revenue Summary:</h3>
             <div style="background: #f5f3ff; padding: 1rem; border-radius: 0.5rem; display: inline-block; min-width: 200px; text-align: left; border: 1px solid #ddd6fe;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -73,8 +73,8 @@
     </div>
 
     <!-- Items Table -->
-    <div style="margin-bottom: 4rem;">
-        <table style="width: 100%; border-collapse: collapse;">
+    <div class="table-wrapper" style="margin-bottom: 4rem;">
+        <table class="invoice-table" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="background: #1e293b; color: white;">
                     <th style="padding: 1rem; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px;">Course Portfolio</th>
@@ -102,8 +102,8 @@
     </div>
 
     <!-- Financial Summary -->
-    <div style="display: flex; justify-content: flex-end;">
-        <div style="width: 300px;">
+    <div class="summary-container" style="display: flex; justify-content: flex-end;">
+        <div class="summary-section" style="width: 300px;">
             <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
                 <span style="color: #64748b;">Total Sales Value:</span>
                 <span style="font-weight: 600;">${{ current_balance }}</span>
@@ -127,6 +127,17 @@
 </div>
 
 <style>
+    @media (max-width: 768px) {
+        #printable-area { padding: 1.5rem !important; border-radius: 0.5rem !important; }
+        .invoice-header { flex-direction: column; align-items: flex-start !important; gap: 1.5rem; }
+        .invoice-header-right { text-align: left !important; }
+        .bill-to-section { grid-template-columns: 1fr !important; gap: 1.5rem !important; }
+        .bill-to-right { text-align: left !important; }
+        .table-wrapper { overflow-x: auto; width: 100%; }
+        .invoice-table { min-width: 500px; }
+        .summary-container { justify-content: flex-start !important; }
+        .summary-section { width: 100% !important; }
+    }
     @media print {
         body { background: white !important; }
         .sidebar, .view-btn, header, .notification-wrapper, .mobile-toggle, .no-print { display: none !important; }

@@ -1141,10 +1141,10 @@ def get_chat_list(request):
     from django.db.models import Q
     # For Admin: list all teachers with messages
     # For Teacher: list all admins
-    if request.user.user_type == 'ADMIN' or request.user.is_superuser:
+    if request.user.is_superuser or (request.user.is_staff and request.user.user_type != 'TEACHER'):
         users = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'image', 'profile_photo')
     else:
-        users = CustomUser.objects.filter(is_superuser=True).only('uid', 'full_name', 'username', 'image', 'profile_photo')
+        users = CustomUser.objects.filter(Q(is_superuser=True) | Q(is_staff=True)).exclude(user_type='TEACHER').exclude(user_type='STUDENT').only('uid', 'full_name', 'username', 'image', 'profile_photo')
         
     data = []
     for u in users:
