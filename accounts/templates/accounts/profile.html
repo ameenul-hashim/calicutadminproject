@@ -373,7 +373,7 @@
             {% include 'includes/messages.html' %}
             <div class="profile-banner"></div>
             <div class="profile-info-section">
-                <div class="profile-photo-container" onclick="window.location.href='{% url \'edit_profile\' %}'" style="cursor: pointer;" title="Change Avatar">
+                <div class="profile-photo-container" onclick="location.href='{% url 'edit_profile' %}'" style="cursor: pointer;" title="Change Avatar">
                     {% if user.avatar_url %}
                     <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="profileDisplay">
                     {% else %}
@@ -472,7 +472,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-    </script>
     </script>
 </body>
 
