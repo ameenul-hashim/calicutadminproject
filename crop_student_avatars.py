@@ -22,13 +22,16 @@ def crop_avatars(input_path, output_dir):
         right = (c + 1) * cell_width
         bottom = cell_height
         
-        # Add some padding removal if needed, but let's try direct first
         avatar = img.crop((left, top, right, bottom))
-        # Center crop to square
+        # Smarter crop: Square from the top/center to ensure hair is visible
         w, h = avatar.size
         size = min(w, h)
         left_p = (w - size) // 2
-        top_p = (h - size) // 2
+        # Use a small top offset (e.g. 10%) instead of centering vertically to keep hair
+        top_p = int(h * 0.05) 
+        if top_p + size > h:
+            top_p = h - size
+            
         avatar = avatar.crop((left_p, top_p, left_p + size, top_p + size))
         
         avatar.save(os.path.join(output_dir, f'student_f_{c}.png'))
@@ -42,11 +45,14 @@ def crop_avatars(input_path, output_dir):
         bottom = 2 * cell_height
         
         avatar = img.crop((left, top, right, bottom))
-        # Center crop to square
+        # Smarter crop
         w, h = avatar.size
         size = min(w, h)
         left_p = (w - size) // 2
-        top_p = (h - size) // 2
+        top_p = int(h * 0.05)
+        if top_p + size > h:
+            top_p = h - size
+            
         avatar = avatar.crop((left_p, top_p, left_p + size, top_p + size))
         
         avatar.save(os.path.join(output_dir, f'student_m_{c}.png'))
