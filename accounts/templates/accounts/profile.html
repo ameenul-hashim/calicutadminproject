@@ -373,7 +373,7 @@
             {% include 'includes/messages.html' %}
             <div class="profile-banner"></div>
             <div class="profile-info-section">
-                <div class="profile-photo-container" onclick="document.getElementById('photoInput').click()">
+                <div class="profile-photo-container" onclick="window.location.href='{% url \'edit_profile\' %}'" style="cursor: pointer;" title="Change Avatar">
                     {% if user.avatar_url %}
                     <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="profileDisplay">
                     {% else %}
@@ -383,10 +383,9 @@
                     </div>
                     {% endif %}
                     <div class="upload-overlay">
-                        <div class="plus-icon">+</div>
+                        <div class="plus-icon">✏️</div>
                     </div>
                 </div>
-                <input type="file" id="photoInput" style="display: none;" accept="image/*">
 
                 <div class="profile-meta">
                     <h1>{{ user.full_name|default:user.username }}</h1>
@@ -468,143 +467,12 @@
         {% endif %}
     </div>
 
-    <!-- Cropping Modal -->
-    <div id="cropModal" class="modal">
-        <div class="modal-content">
-            <h3 style="margin-top: 0; margin-bottom: 1rem;">Crop Your Photo</h3>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1.5rem;">Adjust the image to fit the
-                passport-size frame.</p>
-            <div class="crop-container">
-                <img id="imageToCrop">
-            </div>
-            <div style="display: flex; gap: 1rem;">
-                <button onclick="saveCrop()" id="saveCropBtn" class="btn-profile btn-primary" style="flex: 1;">Crop &
-                    Save</button>
-                <button onclick="closeModal()" class="btn-profile btn-outline" style="flex: 1;">Cancel</button>
-            </div>
-        </div>
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
-
-        let cropper;
-        const photoInput = document.getElementById('photoInput');
-        const cropModal = document.getElementById('cropModal');
-        const imageToCrop = document.getElementById('imageToCrop');
-
-        photoInput.addEventListener('change', function (e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-
-            if (file.type === 'application/pdf') {
-                reader.onload = function () {
-                    const typedarray = new Uint8Array(this.result);
-                    pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
-                        pdf.getPage(1).then(function (page) {
-                            // High scale for better quality
-                            const viewport = page.getViewport({ scale: 1.5 });
-                            const canvas = document.createElement('canvas');
-                            const context = canvas.getContext('2d');
-                            canvas.height = viewport.height;
-                            canvas.width = viewport.width;
-
-                            const renderContext = {
-                                canvasContext: context,
-                                viewport: viewport
-                            };
-
-                            const renderTask = page.render(renderContext);
-                            renderTask.promise.then(function () {
-                                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                                imageToCrop.src = dataUrl;
-                                // Wait for image to load before starting cropper
-                                imageToCrop.onload = function () {
-                                    startCropper();
-                                };
-                            });
-                        });
-                    });
-                };
-                reader.readAsArrayBuffer(file);
-            } else {
-                reader.onload = function (event) {
-                    imageToCrop.src = event.target.result;
-                    startCropper();
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        function startCropper() {
-            cropModal.style.display = 'flex';
-            if (cropper) {
-                cropper.destroy();
-            }
-
-            // Short delay to ensure modal is visible and dimensions are calculated
-            setTimeout(() => {
-                cropper = new Cropper(imageToCrop, {
-                    aspectRatio: 3.5 / 4.5,
-                    viewMode: 1,
-                    dragMode: 'move',
-                    autoCropArea: 1,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                });
-            }, 100);
-        }
-
-        function closeModal() {
-            cropModal.style.display = 'none';
-            photoInput.value = '';
-        }
-
-        function saveCrop() {
-            const btn = document.getElementById('saveCropBtn');
-            btn.disabled = true;
-            btn.textContent = 'Saving...';
-
-            const canvas = cropper.getCroppedCanvas({
-                width: 350,
-                height: 450
-            });
-
-            canvas.toBlob((blob) => {
-                const formData = new FormData();
-                formData.append('profile_photo', blob, 'profile_photo.jpg');
-                formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-
-                fetch("{% url 'edit_profile' %}", {
-                    method: 'POST',
-                    body: formData
-                })
-                    .then(response => {
-                        if (response.ok) {
-                            window.location.reload();
-                        } else {
-                            Toast.error('Failed to update photo. Please try again.');
-                            btn.disabled = false;
-                            btn.textContent = 'Crop & Save';
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        Toast.error('Error updating photo.');
-                        btn.disabled = false;
-                        btn.textContent = 'Crop & Save';
-                    });
-            }, 'image/jpeg', 0.9);
-        }
+    </script>
     </script>
 </body>
 
