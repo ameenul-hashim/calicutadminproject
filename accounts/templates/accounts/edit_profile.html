@@ -16,7 +16,7 @@
         .title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-align: center; }
         .subtitle { color: #64748b; text-align: center; margin-bottom: 2.5rem; font-size: 0.95rem; }
         
-        .photo-preview { width: 130px; height: 160px; border-radius: 0.5rem; margin: 0 auto 2rem; border: 1px solid #e2e8f0; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        .photo-preview { width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 2.5rem; border: 4px solid white; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
         
         .form-group { margin-bottom: 2rem; }
@@ -68,8 +68,8 @@
 </head>
 <body>
     <div class="edit-card">
-        <h1 class="title">Update Profile Photo</h1>
-        <p class="subtitle">Upload your passport-size photo to keep your profile professional.</p>
+        <h1 class="title">Personalize Your Profile</h1>
+        <p class="subtitle">Choose a professional 3D avatar that best represents you.</p>
         
         <div style="background-color: #fffbeb; border-left: 4px solid #f59e0b; padding: 1rem; margin-bottom: 2rem; border-radius: 0.5rem;">
             <p style="margin: 0; color: #b45309; font-weight: 700; font-size: 0.95rem;">
@@ -92,17 +92,22 @@
             </div>
 
             <div class="form-group">
-                <label style="text-align:center;">SELECT AN AVATAR</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 1rem;">
+                <label style="text-align:center; color: #6366f1; font-size: 0.75rem; letter-spacing: 0.1em;">PREMIUM AVATAR SELECTION</label>
+                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; justify-items: center; margin-top: 1.5rem;">
                     {% for avatar in avatars %}
-                    <div class="avatar-option" data-url="{{ avatar }}" style="width: 60px; height: 60px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; overflow: hidden; transition: all 0.2s; background: #f1f5f9;">
-                        <img src="{{ avatar }}" alt="Avatar" style="width:100%; height:100%; object-fit: cover;">
+                    <div class="avatar-option" data-url="{{ avatar }}" style="width: 75px; height: 75px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                        <img src="{{ avatar }}" alt="Avatar" style="width:100%; height:100%; object-fit: cover; transition: transform 0.3s;">
                     </div>
                     {% endfor %}
                 </div>
                 <input type="hidden" name="avatar_url" id="avatarUrlInput">
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;" id="statusText">
-                    * Please choose one of the professional avatars.
+                <style>
+                    .avatar-option:hover { transform: scale(1.1); box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2); }
+                    .avatar-option:hover img { transform: scale(1.05); }
+                    .avatar-option.selected { border-color: #6366f1; transform: scale(1.1); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2); }
+                </style>
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1.5rem; text-align: center;" id="statusText">
+                    * Select one of the high-quality professional avatars above.
                 </p>
             </div>
 
@@ -128,8 +133,8 @@
 
         avatarOptions.forEach(option => {
             option.addEventListener('click', function() {
-                avatarOptions.forEach(opt => opt.style.borderColor = 'transparent');
-                this.style.borderColor = '#6366f1';
+                avatarOptions.forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
                 const url = this.getAttribute('data-url');
                 avatarUrlInput.value = url;
                 
