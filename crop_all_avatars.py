@@ -1,55 +1,57 @@
 from PIL import Image
 import os
 
-def crop_full_view(input_path, output_dir, prefix_m, prefix_f):
+def crop_exact(input_path, output_dir, prefix_m, prefix_f, top_row_y, bottom_row_y, row_h, col_w_ratio):
     img = Image.open(input_path)
     width, height = img.size
     
+    # We want 5 columns
     cols = 5
-    rows = 2
     cell_w = width // cols
-    cell_h = height // rows
     
-    # Process males (top row)
+    # Exact width of the colored box (approx 90% of cell)
+    exact_w = int(cell_w * col_w_ratio)
+    h_offset = (cell_w - exact_w) // 2
+    
+    # Row height in pixels
+    h_px = int(height * row_h)
+    
+    # Top Row
     for i in range(5):
-        # Crop the full cell to ensure no hair/shoulder is lost
-        left = i * cell_w
-        top = 0
-        right = (i + 1) * cell_w
-        bottom = cell_h
+        left = i * cell_w + h_offset
+        top = int(height * top_row_y)
+        right = left + exact_w
+        bottom = top + h_px
         
         avatar = img.crop((left, top, right, bottom))
-        
-        # Now tight crop but keep vertical space
-        aw, ah = avatar.size
-        # Remove only the most extreme white space
-        tight_avatar = avatar.crop((int(aw*0.05), int(ah*0.05), int(aw*0.95), int(ah*0.95)))
-        
-        tight_avatar.save(os.path.join(output_dir, f'{prefix_m}_{i}.png'))
-        print(f"Saved full-view {prefix_m}_{i}.png")
+        avatar.save(os.path.join(output_dir, f'{prefix_m}_{i}.png'))
+        print(f"Saved exact {prefix_m}_{i}.png")
 
-    # Process females (bottom row)
+    # Bottom Row
     for i in range(5):
-        left = i * cell_w
-        top = cell_h
-        right = (i + 1) * cell_w
-        bottom = 2 * cell_h
+        left = i * cell_w + h_offset
+        top = int(height * bottom_row_y)
+        right = left + exact_w
+        bottom = top + h_px
         
         avatar = img.crop((left, top, right, bottom))
-        aw, ah = avatar.size
-        tight_avatar = avatar.crop((int(aw*0.05), int(ah*0.05), int(aw*0.95), int(ah*0.95)))
-        
-        tight_avatar.save(os.path.join(output_dir, f'{prefix_f}_{i}.png'))
-        print(f"Saved full-view {prefix_f}_{i}.png")
+        avatar.save(os.path.join(output_dir, f'{prefix_f}_{i}.png'))
+        print(f"Saved exact {prefix_f}_{i}.png")
 
 def main():
     brain_dir = r"C:\Users\lenov\.\.gemini\antigravity\brain\394f4604-ecbd-42cf-9d05-de5e07439c42"
     output_dir = r"c:\Users\lenov\OneDrive\Desktop\all degree projects\calicutadminproject\static\avatars"
     
-    # Process all 3 sets with the "Full View" logic
-    crop_full_view(os.path.join(brain_dir, "media__1778956880547.jpg"), output_dir, "admin_m", "admin_f")
-    crop_full_view(os.path.join(brain_dir, "media__1778957043907.jpg"), output_dir, "student_m", "student_f")
-    crop_full_view(os.path.join(brain_dir, "media__1778957107973.jpg"), output_dir, "teacher_m", "teacher_f")
+    # Admin Sheet
+    # Photos are between y=140 and y=460 (top row) and y=520 and y=840 (bottom row) in a 1024 height image
+    # Let's use more precise ratios based on visual check
+    crop_exact(os.path.join(brain_dir, "media__1778956880547.jpg"), output_dir, "admin_m", "admin_f", 0.14, 0.52, 0.34, 0.86)
+    
+    # Student Sheet
+    crop_exact(os.path.join(brain_dir, "media__1778957043907.jpg"), output_dir, "student_m", "student_f", 0.14, 0.52, 0.34, 0.86)
+    
+    # Teacher Sheet
+    crop_exact(os.path.join(brain_dir, "media__1778957107973.jpg"), output_dir, "teacher_m", "teacher_f", 0.14, 0.52, 0.34, 0.86)
 
 if __name__ == "__main__":
     main()
