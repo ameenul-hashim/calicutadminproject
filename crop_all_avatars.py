@@ -1,58 +1,55 @@
 from PIL import Image
 import os
 
-def crop_tight(input_path, output_dir, prefix_m, prefix_f, top_y, row_h):
+def crop_full_view(input_path, output_dir, prefix_m, prefix_f):
     img = Image.open(input_path)
     width, height = img.size
     
     cols = 5
+    rows = 2
     cell_w = width // cols
-    
-    # Tight width (remove side white space)
-    tight_w = int(cell_w * 0.88)
-    # Horizontal offset to center the tight crop
-    h_offset = (cell_w - tight_w) // 2
+    cell_h = height // rows
     
     # Process males (top row)
     for i in range(5):
-        left = i * cell_w + h_offset
-        top = int(height * top_y)
-        right = left + tight_w
-        bottom = top + int(height * row_h)
+        # Crop the full cell to ensure no hair/shoulder is lost
+        left = i * cell_w
+        top = 0
+        right = (i + 1) * cell_w
+        bottom = cell_h
         
         avatar = img.crop((left, top, right, bottom))
-        # No square crop here, we want the full professional rectangle
-        avatar.save(os.path.join(output_dir, f'{prefix_m}_{i}.png'))
-        print(f"Saved tight {prefix_m}_{i}.png")
+        
+        # Now tight crop but keep vertical space
+        aw, ah = avatar.size
+        # Remove only the most extreme white space
+        tight_avatar = avatar.crop((int(aw*0.05), int(ah*0.05), int(aw*0.95), int(ah*0.95)))
+        
+        tight_avatar.save(os.path.join(output_dir, f'{prefix_m}_{i}.png'))
+        print(f"Saved full-view {prefix_m}_{i}.png")
 
     # Process females (bottom row)
     for i in range(5):
-        left = i * cell_w + h_offset
-        # Offset for bottom row
-        top = int(height * (top_y + row_h + 0.05))
-        right = left + tight_w
-        bottom = top + int(height * row_h)
+        left = i * cell_w
+        top = cell_h
+        right = (i + 1) * cell_w
+        bottom = 2 * cell_h
         
         avatar = img.crop((left, top, right, bottom))
-        avatar.save(os.path.join(output_dir, f'{prefix_f}_{i}.png'))
-        print(f"Saved tight {prefix_f}_{i}.png")
+        aw, ah = avatar.size
+        tight_avatar = avatar.crop((int(aw*0.05), int(ah*0.05), int(aw*0.95), int(ah*0.95)))
+        
+        tight_avatar.save(os.path.join(output_dir, f'{prefix_f}_{i}.png'))
+        print(f"Saved full-view {prefix_f}_{i}.png")
 
 def main():
     brain_dir = r"C:\Users\lenov\.\.gemini\antigravity\brain\394f4604-ecbd-42cf-9d05-de5e07439c42"
     output_dir = r"c:\Users\lenov\OneDrive\Desktop\all degree projects\calicutadminproject\static\avatars"
     
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    # All three sheets follow a similar layout
-    # Admin Set
-    crop_tight(os.path.join(brain_dir, "media__1778956880547.jpg"), output_dir, "admin_m", "admin_f", 0.12, 0.38)
-    
-    # Student Set
-    crop_tight(os.path.join(brain_dir, "media__1778957043907.jpg"), output_dir, "student_m", "student_f", 0.12, 0.38)
-    
-    # Teacher Set
-    crop_tight(os.path.join(brain_dir, "media__1778957107973.jpg"), output_dir, "teacher_m", "teacher_f", 0.12, 0.38)
+    # Process all 3 sets with the "Full View" logic
+    crop_full_view(os.path.join(brain_dir, "media__1778956880547.jpg"), output_dir, "admin_m", "admin_f")
+    crop_full_view(os.path.join(brain_dir, "media__1778957043907.jpg"), output_dir, "student_m", "student_f")
+    crop_full_view(os.path.join(brain_dir, "media__1778957107973.jpg"), output_dir, "teacher_m", "teacher_f")
 
 if __name__ == "__main__":
     main()
