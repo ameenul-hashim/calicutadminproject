@@ -1118,19 +1118,23 @@ def get_chat_messages(request, other_user_uid):
     messages = ChatMessage.objects.filter(
         (Q(sender=request.user) & Q(receiver=other_user)) |
         (Q(sender=other_user) & Q(receiver=request.user))
-    ).select_related('sender').only('sender__uid', 'sender__username', 'message', 'timestamp').order_by('timestamp')
+    ).select_related('sender').only('uid', 'sender__uid', 'sender__username', 'message', 'timestamp', 'is_edited', 'is_deleted').order_by('timestamp')
     
     # Mark as read
     messages.filter(receiver=request.user, is_read=False).update(is_read=True)
     
     data = []
     for m in messages:
+        if m.is_deleted:
+            continue # Skip deleted messages or send a placeholder if desired
         data.append({
+            'message_uid': str(m.uid),
             'sender_uid': m.sender.uid,
             'sender_name': m.sender.username,
             'message': m.message,
             'timestamp': m.timestamp.strftime('%I:%M %p'),
-            'is_me': m.sender == request.user
+            'is_me': m.sender == request.user,
+            'is_edited': m.is_edited
         })
     
     from django.http import JsonResponse

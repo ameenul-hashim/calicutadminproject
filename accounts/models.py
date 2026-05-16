@@ -170,6 +170,8 @@ class ChatMessage(models.Model):
     receiver = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='received_messages')
     message = models.TextField()
     is_read = models.BooleanField(default=False, db_index=True)
+    is_edited = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False)
     timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 

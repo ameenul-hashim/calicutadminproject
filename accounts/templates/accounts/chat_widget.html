@@ -253,7 +253,29 @@
 
         chatSocket.onmessage = function(e) {
             const data = JSON.parse(e.data);
-            appendMessage(data.message, data.sender_uid == currentUserUid, data.timestamp);
+            const action = data.action || 'send';
+            
+            if (action === 'send') {
+                appendMessage(data.message_uid, data.message, data.sender_uid == currentUserUid, data.timestamp, false);
+            } else if (action === 'edit') {
+                const msgDiv = document.getElementById(`msg-${data.message_uid}`);
+                if (msgDiv) {
+                    const textDiv = msgDiv.querySelector('.msg-text');
+                    if (textDiv) textDiv.innerText = data.message;
+                    if (!msgDiv.innerHTML.includes('(edited)')) {
+                        const timeSpan = msgDiv.querySelector('.msg-time');
+                        if (timeSpan) {
+                            const editedSpan = document.createElement('span');
+                            editedSpan.style = "font-size: 0.65rem; opacity: 0.7; margin-right: 5px;";
+                            editedSpan.innerText = "(edited)";
+                            msgDiv.insertBefore(editedSpan, timeSpan);
+                        }
+                    }
+                }
+            } else if (action === 'delete') {
+                const msgDiv = document.getElementById(`msg-${data.message_uid}`);
+                if (msgDiv) msgDiv.remove();
+            }
         };
 
         chatSocket.onclose = function(e) {
@@ -269,23 +291,42 @@
                 const box = document.getElementById('chat-messages');
                 box.innerHTML = '';
                 data.messages.forEach(m => {
-                    appendMessage(m.message, m.is_me, m.timestamp);
+                    appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited);
                 });
                 box.scrollTop = box.scrollHeight;
             });
     }
 
-    function appendMessage(text, isMe, timestamp) {
+    function appendMessage(msgId, text, isMe, timestamp, isEdited) {
         const box = document.getElementById('chat-messages');
         const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 2;
         
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `msg ${isMe ? 'me' : 'other'}`;
+        let msgDiv = document.getElementById(`msg-${msgId}`);
+        if (!msgDiv) {
+            msgDiv = document.createElement('div');
+            msgDiv.id = `msg-${msgId}`;
+            msgDiv.className = `msg ${isMe ? 'me' : 'other'}`;
+            box.appendChild(msgDiv);
+        }
+
+        let optionsHtml = '';
+        if (isMe) {
+            optionsHtml = `
+                <div class="msg-options" style="font-size: 0.65rem; margin-top: 0.3rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                    <span style="cursor: pointer; opacity: 0.8;" onclick="editMessage('${msgId}', this)">✏️</span>
+                    <span style="cursor: pointer; opacity: 0.8;" onclick="deleteMessage('${msgId}')">🗑️</span>
+                </div>
+            `;
+        }
+
+        // We use textContent/innerText for text to avoid XSS, but we set innerHTML for the structure
         msgDiv.innerHTML = `
-            ${text}
+            <div class="msg-text"></div>
+            ${isEdited ? '<span style="font-size: 0.65rem; opacity: 0.7; margin-right: 5px;">(edited)</span>' : ''}
             <span class="msg-time">${timestamp}</span>
+            ${optionsHtml}
         `;
-        box.appendChild(msgDiv);
+        msgDiv.querySelector('.msg-text').innerText = text;
 
         if (wasAtBottom || isMe) {
             box.scrollTop = box.scrollHeight;
@@ -298,6 +339,7 @@
         if (!text || !currentReceiverUid || !chatSocket) return;
 
         chatSocket.send(json_dumps({
+            'action': 'send',
             'message': text,
             'receiver_uid': currentReceiverUid
         }));
@@ -308,6 +350,30 @@
     // Helper for JSON.stringify in Django templates
     function json_dumps(obj) {
         return JSON.stringify(obj);
+    }
+
+    function editMessage(msgId, btnElement) {
+        const msgDiv = document.getElementById(`msg-${msgId}`);
+        const textDiv = msgDiv.querySelector('.msg-text');
+        const currentText = textDiv.innerText;
+        
+        const newText = prompt("Edit message:", currentText);
+        if (newText && newText.trim() !== "" && newText !== currentText) {
+            chatSocket.send(json_dumps({
+                'action': 'edit',
+                'message_uid': msgId,
+                'message': newText.trim()
+            }));
+        }
+    }
+
+    function deleteMessage(msgId) {
+        if (confirm("Are you sure you want to delete this message?")) {
+            chatSocket.send(json_dumps({
+                'action': 'delete',
+                'message_uid': msgId
+            }));
+        }
     }
 
     document.getElementById('chat-input-field').addEventListener('keypress', function(e) {
