@@ -45,17 +45,15 @@ def main():
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
-    # Admin Sheet (Mature Professionals)
-    # File: media__1778956880547.jpg
+    # Admin Sheet
     crop_high_quality(os.path.join(brain_dir, "media__1778956880547.jpg"), output_dir, "admin_m", "admin_f", 0.14, 0.52, 0.34, 0.86)
     
-    # Teacher Sheet (Educators - NEW)
-    # File: teacher_avatars_new_sheet_1778961232982.png
+    # Teacher Sheet
     crop_high_quality(os.path.join(brain_dir, "teacher_avatars_new_sheet_1778961232982.png"), output_dir, "teacher_m", "teacher_f", 0.02, 0.52, 0.45, 0.90)
     
-    # Student Sheet (Younger Students - NEW)
-    # File: student_avatars_new_sheet_1778961303119.png
-    crop_high_quality(os.path.join(brain_dir, "student_avatars_new_sheet_1778961303119.png"), output_dir, "student_m", "student_f", 0.04, 0.52, 0.38, 0.90)
+    # Student Sheet (PROFESSIONAL ACADEMIC UNIFORMS - NEW)
+    # File: professional_student_avatars_sheet_v2_1778962012585.png
+    crop_high_quality(os.path.join(brain_dir, "professional_student_avatars_sheet_v2_1778962012585.png"), output_dir, "student_m", "student_f", 0.0, 0.50, 0.49, 0.98)
 
 if __name__ == "__main__":
     main()
