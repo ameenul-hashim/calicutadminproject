@@ -1065,13 +1065,18 @@ def edit_profile(request):
     
     avatars = []
     if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
-        avatars = [f"https://api.dicebear.com/9.x/avataaars/svg?seed=Admin{i}" for i in range(1, 11)]
+        avatars = [f"/static/avatars/admins_1_{i}.png" for i in range(4)] + \
+                  [f"/static/avatars/teacher_males_{i}.png" for i in range(2)] + \
+                  [f"/static/avatars/teacher_females_{i}.png" for i in range(2)] + \
+                  [f"/static/avatars/student_males_{i}.png" for i in range(2)]
     elif request.user.user_type == 'TEACHER':
-        avatars = [f"https://api.dicebear.com/9.x/avataaars/svg?seed=TeacherM{i}" for i in range(1, 6)] + \
-                  [f"https://api.dicebear.com/9.x/avataaars/svg?seed=TeacherF{i}" for i in range(1, 6)]
+        avatars = [f"/static/avatars/teacher_males_{i}.png" for i in range(4)] + \
+                  [f"/static/avatars/teacher_females_{i}.png" for i in range(4)] + \
+                  ["/static/avatars/student_m_1_0.png", "/static/avatars/student_m_1_1.png"]
     else:
-        avatars = [f"https://api.dicebear.com/9.x/avataaars/svg?seed=StudentM{i}" for i in range(1, 6)] + \
-                  [f"https://api.dicebear.com/9.x/avataaars/svg?seed=StudentF{i}" for i in range(1, 6)]
+        avatars = [f"/static/avatars/student_males_{i}.png" for i in range(4)] + \
+                  [f"/static/avatars/student_females_{i}.png" for i in range(4)] + \
+                  ["/static/avatars/student_m_1_2.png", "/static/avatars/student_m_1_3.png"]
 
     return render(request, 'accounts/edit_profile.html', {'user': request.user, 'avatars': avatars})
 

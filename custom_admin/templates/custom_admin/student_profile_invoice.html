@@ -61,15 +61,19 @@
             </div>
         </div>
         <div class="bill-to-right" style="text-align: right;">
-            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Summary:</h3>
-            <div style="background: #f8fafc; padding: 1rem; border-radius: 0.5rem; display: inline-block; min-width: 200px; text-align: left;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                    <span style="color: #64748b;">Status:</span>
-                    <span style="font-weight: 700; color: #10b981;">PAID</span>
+            <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Payment Details:</h3>
+            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 0.5rem; display: inline-block; min-width: 250px; text-align: left; border: 1px solid #e2e8f0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.8rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.8rem;">
+                    <span style="color: #64748b; font-size: 0.9rem;">Status:</span>
+                    <span style="font-weight: 700; color: #10b981; background: #d1fae5; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.85rem;">PAID IN FULL</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem; color: #1e293b;">
-                    <span>Total:</span>
-                    <span>${{ current_balance }}</span>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: #64748b; font-size: 0.9rem;">Payment Method:</span>
+                    <span style="font-weight: 600; color: #334155; font-size: 0.9rem;">Credit Card</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                    <span style="color: #64748b; font-size: 0.9rem;">Transaction ID:</span>
+                    <span style="font-family: monospace; font-weight: 600; color: #334155; font-size: 0.9rem;">TXN-{{ student.id|stringformat:"05d" }}{{ invoice_date|date:"Ym" }}</span>
                 </div>
             </div>
         </div>
@@ -106,18 +110,26 @@
 
     <!-- Financial Summary -->
     <div class="summary-container" style="display: flex; justify-content: flex-end;">
-        <div class="summary-section" style="width: 300px;">
+        <div class="summary-section" style="width: 350px;">
             <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
                 <span style="color: #64748b;">Subtotal:</span>
                 <span style="font-weight: 600;">${{ current_balance }}</span>
             </div>
             <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
-                <span style="color: #0ea5e9; font-weight: 700;">Yesterday's Balance:</span>
+                <span style="color: #64748b;">Tax (0%):</span>
+                <span style="font-weight: 600;">$0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 0.8rem 0; border-bottom: 1px solid #f1f5f9;">
+                <span style="color: #0ea5e9; font-weight: 700;">Yesterday's Activity:</span>
                 <span style="font-weight: 700; color: #0ea5e9;">${{ yesterday_balance }}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 1.5rem 0; background: #f8fafc; margin-top: 1rem; padding: 1rem; border-radius: 0.5rem;">
-                <span style="font-size: 1.2rem; font-weight: 800;">Total Balance:</span>
+            <div style="display: flex; justify-content: space-between; padding: 1.5rem 0; background: #f8fafc; margin-top: 1rem; padding: 1rem; border-radius: 0.5rem; border: 1px solid #e2e8f0;">
+                <span style="font-size: 1.2rem; font-weight: 800;">Total Amount:</span>
                 <span style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">${{ current_balance }}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 1rem 0 0 0;">
+                <span style="color: #64748b; font-size: 0.9rem; font-weight: 700;">Amount Due:</span>
+                <span style="font-weight: 800; color: #10b981; font-size: 1.1rem;">$0.00</span>
             </div>
         </div>
     </div>
