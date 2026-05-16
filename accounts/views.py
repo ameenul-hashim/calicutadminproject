@@ -1074,9 +1074,9 @@ def edit_profile(request):
                   [f"/static/avatars/teacher_females_{i}.png" for i in range(4)] + \
                   ["/static/avatars/student_m_1_0.png", "/static/avatars/student_m_1_1.png"]
     else:
-        avatars = [f"/static/avatars/student_males_{i}.png" for i in range(4)] + \
-                  [f"/static/avatars/student_females_{i}.png" for i in range(4)] + \
-                  ["/static/avatars/student_m_1_2.png", "/static/avatars/student_m_1_3.png"]
+        # 5 Female + 5 Male = 10 Professional Student Avatars
+        avatars = [f"/static/avatars/student_f_{i}.png" for i in range(5)] + \
+                  [f"/static/avatars/student_m_{i}.png" for i in range(5)]
 
     return render(request, 'accounts/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
