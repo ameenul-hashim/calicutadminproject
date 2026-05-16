@@ -274,13 +274,28 @@
                 }
             } else if (action === 'delete') {
                 const msgDiv = document.getElementById(`msg-${data.message_uid}`);
-                if (msgDiv) msgDiv.remove();
+                if (msgDiv) {
+                    msgDiv.remove();
+                    checkEmptyChat();
+                }
             }
         };
 
         chatSocket.onclose = function(e) {
             console.error('Chat socket closed unexpectedly');
         };
+    }
+
+    function checkEmptyChat() {
+        const box = document.getElementById('chat-messages');
+        if (box.children.length === 0) {
+            box.innerHTML = `
+                <div id="no-messages-placeholder" style="text-align: center; padding: 2rem; color: #94a3b8; font-size: 0.85rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
+                    No messages yet.<br>Start a conversation!
+                </div>
+            `;
+        }
     }
 
     function loadMessages() {
@@ -290,15 +305,22 @@
             .then(data => {
                 const box = document.getElementById('chat-messages');
                 box.innerHTML = '';
-                data.messages.forEach(m => {
-                    appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited);
-                });
+                if (data.messages.length === 0) {
+                    checkEmptyChat();
+                } else {
+                    data.messages.forEach(m => {
+                        appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited);
+                    });
+                }
                 box.scrollTop = box.scrollHeight;
             });
     }
 
     function appendMessage(msgId, text, isMe, timestamp, isEdited) {
         const box = document.getElementById('chat-messages');
+        const placeholder = document.getElementById('no-messages-placeholder');
+        if (placeholder) placeholder.remove();
+        
         const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 2;
         
         let msgDiv = document.getElementById(`msg-${msgId}`);
