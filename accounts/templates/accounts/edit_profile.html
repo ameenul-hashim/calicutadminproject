@@ -19,6 +19,17 @@
         .photo-preview { width: 140px; height: 180px; border-radius: 0.5rem; margin: 0 auto 2.5rem; border: 4px solid white; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 15px 30px -10px rgba(0,0,0,0.15); }
         .photo-preview img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
         
+        @media (max-width: 768px) {
+            .avatar-grid {
+                grid-template-columns: repeat(2, 1fr) !important;
+                gap: 20px !important;
+            }
+            .avatar-option {
+                width: 120px !important;
+                height: 155px !important;
+            }
+        }
+        
         .form-group { margin-bottom: 2rem; }
         .form-group label { display: block; font-weight: 700; color: #334155; margin-bottom: 0.75rem; font-size: 0.9rem; }
         .file-input { width: 100%; padding: 0.8rem; border: 2px dashed #e2e8f0; border-radius: 1rem; cursor: pointer; transition: all 0.2s; }
@@ -93,7 +104,7 @@
 
             <div class="form-group">
                 <label style="text-align:center; color: #6366f1; font-size: 0.75rem; letter-spacing: 0.1em;">PREMIUM AVATAR SELECTION</label>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; justify-items: center; margin-top: 1.5rem;">
+                <div class="avatar-grid" style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; justify-items: center; margin-top: 1.5rem;">
                     {% for avatar in avatars %}
                     <div class="avatar-option" data-url="{{ avatar }}" style="width: 85px; height: 110px; border-radius: 0.4rem; cursor: pointer; border: 2px solid transparent; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                         <img src="{{ avatar }}" alt="Avatar" style="width:100%; height:100%; object-fit: cover; object-position: top; transition: transform 0.3s;">
