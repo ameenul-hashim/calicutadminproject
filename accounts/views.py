@@ -1148,7 +1148,10 @@ def get_chat_list(request):
     if request.user.is_superuser or (request.user.is_staff and request.user.user_type != 'TEACHER'):
         users = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'image', 'profile_photo')
     else:
-        users = CustomUser.objects.filter(Q(is_superuser=True) | Q(is_staff=True)).exclude(user_type='TEACHER').exclude(user_type='STUDENT').only('uid', 'full_name', 'username', 'image', 'profile_photo')
+        users = CustomUser.objects.filter(
+            Q(is_superuser=True) | 
+            (Q(is_staff=True) & ~Q(user_type='TEACHER') & ~Q(user_type='STUDENT'))
+        ).distinct().only('uid', 'full_name', 'username', 'image', 'profile_photo')
         
     data = []
     for u in users:
