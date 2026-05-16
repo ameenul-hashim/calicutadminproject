@@ -1029,9 +1029,20 @@ def edit_profile(request):
     url_name = request.resolver_match.url_name
     if not has_photo and url_name not in ['edit_profile', 'logout', 'student_view_auth', 'teacher_view_auth']:
         if request.user.user_type in ['STUDENT', 'TEACHER'] and not request.user.is_superuser:
-            messages.info(request, "👋 Welcome! Please upload a profile photo to complete your account setup.")
+            messages.info(request, "👋 Welcome! Please select an avatar to complete your account setup.")
 
     if request.method == 'POST':
+        avatar_url = request.POST.get('avatar_url')
+        if avatar_url:
+            request.user.image = avatar_url
+            request.user.save(update_fields=['image'])
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
+                return JsonResponse({'status': 'success', 'message': '✅ Avatar updated successfully!'})
+            
+            messages.success(request, '✅ Avatar updated successfully!')
+            return redirect('profile')
+
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
             # Objective: Accept any size up to 2GB and process
@@ -1050,9 +1061,19 @@ def edit_profile(request):
             else:
                 return JsonResponse({'status': 'error', 'message': 'Failed to upload photo. Please try again.'}, status=500)
         else:
-            return JsonResponse({'status': 'error', 'message': 'Please select a photo to upload.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'Please select an avatar or photo.'}, status=400)
     
-    return render(request, 'accounts/edit_profile.html', {'user': request.user})
+    avatars = []
+    if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
+        avatars = [f"https://api.dicebear.com/9.x/avataaars/svg?seed=Admin{i}" for i in range(1, 11)]
+    elif request.user.user_type == 'TEACHER':
+        avatars = [f"https://api.dicebear.com/9.x/avataaars/svg?seed=TeacherM{i}" for i in range(1, 6)] + \
+                  [f"https://api.dicebear.com/9.x/avataaars/svg?seed=TeacherF{i}" for i in range(1, 6)]
+    else:
+        avatars = [f"https://api.dicebear.com/9.x/avataaars/svg?seed=StudentM{i}" for i in range(1, 6)] + \
+                  [f"https://api.dicebear.com/9.x/avataaars/svg?seed=StudentF{i}" for i in range(1, 6)]
+
+    return render(request, 'accounts/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
 @login_required
 def course_player(request, course_uid):
