@@ -16,7 +16,7 @@
         .title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-align: center; }
         .subtitle { color: #64748b; text-align: center; margin-bottom: 2.5rem; font-size: 0.95rem; }
         
-        .photo-preview { width: 150px; height: 150px; border-radius: 50%; margin: 0 auto 2.5rem; border: 4px solid white; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .photo-preview { width: 140px; height: 180px; border-radius: 0.8rem; margin: 0 auto 2.5rem; border: 4px solid white; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
         
         .form-group { margin-bottom: 2rem; }
@@ -83,7 +83,7 @@
         <form method="POST" id="profileForm">
             {% csrf_token %}
             
-            <div class="photo-preview" id="previewContainer" style="border-radius: 50%;">
+            <div class="photo-preview" id="previewContainer">
                 {% if user.avatar_url %}
                     <img src="{{ user.avatar_url }}" alt="Current Photo" id="previewImg">
                 {% else %}
@@ -95,7 +95,7 @@
                 <label style="text-align:center; color: #6366f1; font-size: 0.75rem; letter-spacing: 0.1em;">PREMIUM AVATAR SELECTION</label>
                 <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; justify-items: center; margin-top: 1.5rem;">
                     {% for avatar in avatars %}
-                    <div class="avatar-option" data-url="{{ avatar }}" style="width: 75px; height: 75px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                    <div class="avatar-option" data-url="{{ avatar }}" style="width: 75px; height: 100px; border-radius: 0.8rem; cursor: pointer; border: 3px solid transparent; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); background: #f1f5f9; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
                         <img src="{{ avatar }}" alt="Avatar" style="width:100%; height:100%; object-fit: cover; transition: transform 0.3s;">
                     </div>
                     {% endfor %}
