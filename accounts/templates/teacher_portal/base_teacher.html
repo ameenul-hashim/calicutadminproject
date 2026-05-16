@@ -85,13 +85,18 @@
             
             .notif-dropdown {
                 position: fixed !important;
-                top: 4.5rem !important;
+                top: 5rem !important;
                 right: 1rem !important;
                 left: 1rem !important;
                 width: auto !important;
                 z-index: 99999 !important; /* Above everything */
                 max-height: 80vh;
                 overflow-y: auto;
+                background: white;
+                border-radius: 1rem;
+                box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+                border: 1px solid #e2e8f0;
+                padding: 1rem;
             }
             .notif-dropdown.active { display: block !important; }
             
@@ -168,10 +173,37 @@
     <!-- Floating Mobile Controls (Non-Laptop only) -->
     <div class="mobile-controls" style="display: none;">
         <button onclick="toggleSidebar()" class="floating-btn toggle-btn" style="right: 1rem;">☰</button>
-        <button id="mobileNotifBell" onclick="toggleNotifDropdown(event)" class="floating-btn bell-btn" style="left: 1rem;">
+        <button id="mobileNotifBell" onclick="toggleMobileNotifDropdown(event)" class="floating-btn bell-btn" style="left: 1rem;">
             🔔
             <span class="unread-dot" style="position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; background: #ef4444; border-radius: 50%; border: 2px solid white; display: {% if unread_teacher_notifs > 0 %}block{% else %}none{% endif %};"></span>
         </button>
+    </div>
+
+    <!-- Mobile-Only Notification Dropdown (outside all hidden wrappers) -->
+    <div id="mobileNotifDropdown" class="notif-dropdown" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+            <h4 style="margin: 0; font-size: 1rem; font-weight: 700;">Notifications</h4>
+            <div style="display: flex; gap: 0.5rem;">
+                <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark All Read</a>
+                <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none; font-weight: 600;">View All</a>
+            </div>
+        </div>
+        <div style="max-height: 400px; overflow-y: auto;">
+            {% for notif in notifications %}
+                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
+                    <div style="padding-right: 20px; line-height: 1.4;">{{ notif.message }}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                        <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
+                        <a href="{% url 'mark_notification_read' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Clear</a>
+                    </div>
+                </div>
+            {% empty %}
+                <div style="text-align: center; padding: 2rem 1rem; color: #94a3b8; font-size: 0.9rem;">
+                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">📭</div>
+                    No new notifications.
+                </div>
+            {% endfor %}
+        </div>
     </div>
 
     <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99990;" onclick="closeSidebar()"></div>
@@ -289,25 +321,39 @@
     </div>
     
     <script>
-        // Notification Dropdown Toggle
+        // Notification Dropdown Toggle (Desktop)
         function toggleNotifDropdown(event) {
             if (event) event.stopPropagation();
             const dropdown = document.getElementById('notifDropdown');
             if (dropdown) dropdown.classList.toggle('active');
+            const mobileDropdown = document.getElementById('mobileNotifDropdown');
+            if (mobileDropdown) mobileDropdown.classList.remove('active');
         }
 
-        // Close dropdown when clicking outside
+        // Notification Dropdown Toggle (Mobile)
+        function toggleMobileNotifDropdown(event) {
+            if (event) event.stopPropagation();
+            const mobileDropdown = document.getElementById('mobileNotifDropdown');
+            if (mobileDropdown) mobileDropdown.classList.toggle('active');
+            const desktopDropdown = document.getElementById('notifDropdown');
+            if (desktopDropdown) desktopDropdown.classList.remove('active');
+        }
+
+        // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
             const dropdown = document.getElementById('notifDropdown');
+            const mobileDropdown = document.getElementById('mobileNotifDropdown');
             const bell = document.getElementById('notifBell');
             const mobileBell = document.getElementById('mobileNotifBell');
             
             if (dropdown && dropdown.classList.contains('active')) {
-                const clickedInside = dropdown.contains(event.target) || 
-                                     (bell && bell.contains(event.target)) || 
-                                     (mobileBell && mobileBell.contains(event.target));
-                if (!clickedInside) {
+                if (!dropdown.contains(event.target) && !bell.contains(event.target)) {
                     dropdown.classList.remove('active');
+                }
+            }
+            if (mobileDropdown && mobileDropdown.classList.contains('active')) {
+                if (!mobileDropdown.contains(event.target) && !mobileBell.contains(event.target)) {
+                    mobileDropdown.classList.remove('active');
                 }
             }
         });
