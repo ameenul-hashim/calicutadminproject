@@ -80,10 +80,10 @@
         {% include 'includes/messages.html' %}
         {% include 'includes/validation_engine.html' %}
 
-        <form method="POST" enctype="multipart/form-data" id="profileForm">
+        <form method="POST" id="profileForm">
             {% csrf_token %}
             
-            <div class="photo-preview" id="previewContainer">
+            <div class="photo-preview" id="previewContainer" style="border-radius: 50%;">
                 {% if user.avatar_url %}
                     <img src="{{ user.avatar_url }}" alt="Current Photo" id="previewImg">
                 {% else %}
@@ -92,12 +92,17 @@
             </div>
 
             <div class="form-group">
-                <label>PASSPORT SIZE PHOTO</label>
-                <input type="file" id="imageInput" class="file-input" accept="image/*">
-                <!-- Hidden input to store the actual file being sent -->
-                <input type="file" name="profile_photo" id="finalPhoto" style="display: none;">
-                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;" id="statusText">
-                    * Any size accepted (up to 2GB). We'll optimize it automatically for you.
+                <label style="text-align:center;">SELECT AN AVATAR</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 1rem;">
+                    {% for avatar in avatars %}
+                    <div class="avatar-option" data-url="{{ avatar }}" style="width: 60px; height: 60px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; overflow: hidden; transition: all 0.2s; background: #f1f5f9;">
+                        <img src="{{ avatar }}" alt="Avatar" style="width:100%; height:100%; object-fit: cover;">
+                    </div>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="avatar_url" id="avatarUrlInput">
+                <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;" id="statusText">
+                    * Please choose one of the professional avatars.
                 </p>
             </div>
 
@@ -106,7 +111,7 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <button type="submit" class="btn-save" id="submitBtn">Update Photo</button>
+            <button type="submit" class="btn-save" id="submitBtn">Update Avatar</button>
             {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
             {% endif %}
@@ -114,97 +119,39 @@
     </div>
 
     <script>
-        const imageInput = document.getElementById('imageInput');
-        const finalPhotoInput = document.getElementById('finalPhoto');
+        const avatarOptions = document.querySelectorAll('.avatar-option');
+        const avatarUrlInput = document.getElementById('avatarUrlInput');
         const previewImg = document.getElementById('previewImg');
         const previewContainer = document.getElementById('previewContainer');
-        const statusText = document.getElementById('statusText');
         const submitBtn = document.getElementById('submitBtn');
         const profileForm = document.getElementById('profileForm');
 
-        imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            // Show loading status
-            statusText.innerHTML = `<span style="color: #6366f1; font-weight: 600;">⚡ Processing ${file.name} (${(file.size / (1024*1024)).toFixed(2)} MB)...</span>`;
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.5';
-            submitBtn.innerText = 'Processing Image...';
-
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-
-                    // Standard Passport/Profile Size Logic (Max 1024px)
-                    const MAX_WIDTH = 1024;
-                    const MAX_HEIGHT = 1024;
-
-                    if (width > height) {
-                        if (width > MAX_WIDTH) {
-                            height *= MAX_WIDTH / width;
-                            width = MAX_WIDTH;
-                        }
-                    } else {
-                        if (height > MAX_HEIGHT) {
-                            width *= MAX_HEIGHT / height;
-                            height = MAX_HEIGHT;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    // Convert to Blob (JPEG with 0.8 quality)
-                    canvas.toBlob(function(blob) {
-                        // Create a new File object from the blob
-                        const compressedFile = new File([blob], file.name.split('.')[0] + '.jpg', {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-
-                        // Use DataTransfer to put the file into the hidden input
-                        const dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(compressedFile);
-                        finalPhotoInput.files = dataTransfer.files;
-
-                        // Update Preview
-                        if (previewImg) {
-                            previewImg.src = URL.createObjectURL(blob);
-                        } else {
-                            previewContainer.innerHTML = `<img src="${URL.createObjectURL(blob)}" alt="New Photo">`;
-                        }
-
-                        statusText.innerHTML = `<span style="color: #10b981; font-weight: 600;">✅ Optimized! Ready to upload (${(compressedFile.size / 1024).toFixed(2)} KB)</span>`;
-                        submitBtn.disabled = false;
-                        submitBtn.style.opacity = '1';
-                        submitBtn.innerText = 'Update Photo';
-                    }, 'image/jpeg', 0.8);
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        });
-
-        // Initialize Validation Engine
-        Validation.initForm('profileForm', {
-            fields: [
-                { id: 'imageInput', label: 'Photo', required: true }
-            ]
+        avatarOptions.forEach(option => {
+            option.addEventListener('click', function() {
+                avatarOptions.forEach(opt => opt.style.borderColor = 'transparent');
+                this.style.borderColor = '#6366f1';
+                const url = this.getAttribute('data-url');
+                avatarUrlInput.value = url;
+                
+                if (previewImg) {
+                    previewImg.src = url;
+                } else {
+                    previewContainer.innerHTML = `<img src="${url}" alt="New Photo" id="previewImg" style="width:100%; height:100%; object-fit: cover;">`;
+                }
+            });
         });
 
         profileForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
+            if (!avatarUrlInput.value && !document.getElementById('previewImg')) {
+                showToast('Please select an avatar', 'error');
+                return;
+            }
+            
             submitBtn.disabled = true;
             submitBtn.style.opacity = '0.5';
-            submitBtn.innerText = 'Uploading...';
+            submitBtn.innerText = 'Updating...';
 
             const formData = new FormData(this);
             
@@ -227,7 +174,7 @@
                     showToast(data.message || 'Update failed', 'error');
                     submitBtn.disabled = false;
                     submitBtn.style.opacity = '1';
-                    submitBtn.innerText = 'Update Photo';
+                    submitBtn.innerText = 'Update Avatar';
                 }
             })
             .catch(error => {
@@ -235,12 +182,11 @@
                 showToast('A connection error occurred.', 'error');
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '1';
-                submitBtn.innerText = 'Update Photo';
+                submitBtn.innerText = 'Update Avatar';
             });
         });
 
         function showToast(message, type) {
-            // Use existing Toast engine if available, or simple alert fallback
             if (window.Toast) {
                 window.Toast.show(message, type);
             } else {
