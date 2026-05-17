@@ -64,6 +64,7 @@ class Course(models.Model):
         ('PENDING', 'Pending Approval'),
         ('PUBLISHED', 'Published'),
         ('REJECTED', 'Rejected'),
+        ('DELETED', 'Deleted'),
     )
     LEVEL_CHOICES = (
         ('BEGINNER', 'Beginner'),
