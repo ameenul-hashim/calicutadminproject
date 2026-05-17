@@ -422,14 +422,37 @@ def login_view(request):
             messages.error(request, "Please enter your username and password.")
             return render(request, 'accounts/login.html')
 
-        user = authenticate(request, username=username, password=password)
+        # 1. Check if user exists
+        user_candidate = CustomUser.objects.filter(username=username).first()
+        if not user_candidate:
+            messages.error(request, "Account not found. Please check your username or sign up.")
+            return render(request, 'accounts/login.html')
 
-        if user is not None:
-            if user.user_type != 'STUDENT':
-                messages.error(request, "This login area is strictly for Students. Teachers and Admins must use their respective portals.")
-                return render(request, 'accounts/login.html')
+        # 2. Check if password is correct
+        if not user_candidate.check_password(password):
+            messages.error(request, "Incorrect password. Please try again.")
+            return render(request, 'accounts/login.html')
 
-            if user.status == 'ACTIVE':
+        # 3. User exists and password is correct, check user_type
+        if user_candidate.user_type != 'STUDENT':
+            messages.error(request, "This login area is strictly for Students. Teachers and Admins must use their respective portals.")
+            return render(request, 'accounts/login.html')
+
+        # 4. Check account status
+        if user_candidate.status == 'PENDING':
+            messages.warning(request, "Your account is currently PENDING approval. Admin approval is required to login. Please wait for a while or contact the administration.")
+            return render(request, 'accounts/login.html')
+        elif user_candidate.status == 'REJECTED':
+            messages.error(request, "Your registration was REJECTED. Please contact admin for details.")
+            return render(request, 'accounts/login.html')
+        elif user_candidate.status == 'BLOCKED':
+            messages.error(request, "Your account has been BLOCKED. Access is restricted.")
+            return render(request, 'accounts/login.html')
+
+        # 5. Status is ACTIVE, proceed with authentication
+        if user_candidate.status == 'ACTIVE':
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
                 # Concurrent login restriction for students
                 from django.contrib.sessions.models import Session
                 if user.current_session_key:
@@ -445,18 +468,9 @@ def login_view(request):
                 
                 messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
                 return redirect('dashboard')
-            elif user.status == 'PENDING':
-                messages.warning(request, "Your account is currently PENDING approval. Admin approval is needed to login. Please wait for a while or contact the administration.")
-            elif user.status == 'REJECTED':
-                messages.error(request, "Your registration was REJECTED. Please contact admin for details.")
-            elif user.status == 'BLOCKED':
-                messages.error(request, "Your account has been BLOCKED. Access is restricted.")
-        else:
-            # Check if user exists but password is wrong OR user doesn't exist
-            if CustomUser.objects.filter(username=username).exists():
-                messages.error(request, "Incorrect password. Please try again.")
             else:
-                messages.error(request, "Account not found. Please check your username or sign up.")
+                messages.error(request, "Authentication failed. Please check your credentials.")
+                return render(request, 'accounts/login.html')
             
     return render(request, 'accounts/login.html')
 
