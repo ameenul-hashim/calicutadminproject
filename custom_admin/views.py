@@ -854,8 +854,10 @@ def admin_delete_course_secure(request, course_uid):
         if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
-            course.delete()
-            messages.success(request, f"✅ {course_title} removed successfully.")
+            course.status = 'DELETED'
+            course.is_approved = False
+            course.save()
+            messages.success(request, f"✅ '{course_title}' has been moved to the Deleted Courses area.")
             return redirect('admin_content')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
@@ -992,15 +994,62 @@ def approve_deletion_request(request, request_uid):
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
-            course.delete()
+            course.status = 'DELETED'
+            course.is_approved = False
+            course.save()
+            success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
         else:
             messages.warning(request, "Item already gone.")
-    
-    del_request.delete() # Objective: Free up space after processing
+            
+    del_request.delete() # Free up space after processing
     messages.success(request, f"✅ {success_msg}")
     create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
     return redirect('manage_deletion_requests')
 
+
+@user_passes_test(is_admin, login_url='admin_login')
+def deleted_courses_view(request):
+    courses = Course.objects.filter(status='DELETED').select_related('teacher').order_by('-created_at')
+    
+    # Pagination
+    from django.core.paginator import Paginator
+    paginator = Paginator(courses, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    
+    return render(request, 'custom_admin/deleted_courses.html', {
+        'courses': page_obj,
+        'page_obj': page_obj,
+        'notifications': notifications,
+        'unread_notifications_count': unread_notifications_count
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_permanent_delete_course_secure(request, course_uid):
+    if request.method == 'POST':
+        username = request.POST.get('admin_username', '').strip()
+        password = request.POST.get('admin_password', '')
+        
+        # Robust verification: Support both username and email (case-insensitive)
+        admin_user = request.user
+        is_identity_match = (
+            username.lower() == admin_user.username.lower() or 
+            username.lower() == admin_user.email.lower()
+        )
+        
+        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+            course = get_object_or_404(Course, uid=course_uid, status='DELETED')
+            course_title = course.title
+            course.delete()
+            messages.success(request, f"✅ Course '{course_title}' has been PERMANENTLY deleted from the database.")
+            return redirect('deleted_courses')
+        else:
+            messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
+            
+    return redirect(request.META.get('HTTP_REFERER', 'deleted_courses'))
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
