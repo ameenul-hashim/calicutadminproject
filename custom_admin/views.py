@@ -1050,6 +1050,27 @@ def admin_permanent_delete_course_secure(request, course_uid):
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
     return redirect(request.META.get('HTTP_REFERER', 'deleted_courses'))
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_restore_course(request, course_uid):
+    if request.method == 'POST':
+        course = get_object_or_404(Course, uid=course_uid, status='DELETED')
+        course_title = course.title
+        course.status = 'PUBLISHED'
+        course.is_approved = True
+        course.save()
+        
+        # Restore/Approve all lessons of this course so they are visible and playable
+        course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
+        
+        # Restore any deletion requests that were associated with this course
+        DeletionRequest.objects.filter(item_type='Course', item_id=course.id).delete()
+        
+        create_notification(course.teacher, f"Your course '{course_title}' has been successfully restored from the Recycle Bin and is now active!")
+        messages.success(request, f"✅ Course '{course_title}' has been successfully restored from the Recycle Bin.")
+        
+    return redirect('deleted_courses')
+
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
