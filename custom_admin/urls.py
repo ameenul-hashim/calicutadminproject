@@ -46,5 +46,6 @@ urlpatterns = [
     path('master-audit-summary/', views.master_audit_summary_view, name='master_audit_summary'),
     path('secure-pdf-access/<uuid:user_uid>/', views.proxy_pdf_access, name='proxy_pdf_access'),
     path('deleted-courses/', views.deleted_courses_view, name='deleted_courses'),
+    path('course/restore/<uuid:course_uid>/', views.admin_restore_course, name='admin_restore_course'),
     path('course/permanent-delete/secure/<uuid:course_uid>/', views.admin_permanent_delete_course_secure, name='admin_permanent_delete_course_secure'),
 ]

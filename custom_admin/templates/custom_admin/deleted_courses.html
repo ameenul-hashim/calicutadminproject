@@ -49,10 +49,22 @@
                         {{ course.created_at|date:"M d, Y" }}
                     </td>
                     <td style="padding: 1rem 1.5rem; text-align: right;">
-                        <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                            Permanently Delete
-                        </button>
+                        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; align-items: center;">
+                            <!-- Restore / Retrieve Button -->
+                            <form action="{% url 'admin_restore_course' course.uid %}" method="post" style="display: inline; margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#bae6fd'" onmouseout="this.style.background='#e0f2fe'">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                    Restore Course
+                                </button>
+                            </form>
+
+                            <!-- Permanently Delete Button -->
+                            <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="background: #fee2e2; color: #ef4444; border: 1px solid #fca5a5; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 0.5rem;" onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                Permanently Delete
+                            </button>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
