@@ -5,6 +5,17 @@
 {% block header_title %}
     <h1>Verify Course Content</h1>
     <p style="color: #64748b;">Review lessons for "{{ course.title }}".</p>
+    
+    <!-- Plyr Video Player Resources -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <style>
+        .plyr {
+            border-radius: 0.75rem;
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -80,9 +91,11 @@
                             <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🎞️ Uploaded Video File</span>
                             <a href="{{ lesson.video_file.url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original File ↗</a>
                         </div>
-                        <video controls style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
-                            <source src="{{ lesson.video_file.url }}" type="video/mp4">
-                        </video>
+                        <div style="width: 100%; border-radius: 0.75rem; overflow: hidden; aspect-ratio: 16/9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                            <video class="plyr-player" playsinline controls preload="auto" style="width: 100%; height: 100%;">
+                                <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                            </video>
+                        </div>
 
                     {% elif lesson.video_url %}
                         <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
@@ -96,10 +109,17 @@
                             (function() {
                                 const url = "{{ lesson.video_url|escapejs }}";
                                 const container = document.getElementById('yt-preview-{{ lesson.uid }}');
-                                const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
                                 
-                                if (match && match[1]) {
-                                    const videoId = match[1];
+                                function getYouTubeId(url) {
+                                    if (!url) return null;
+                                    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/;
+                                    const match = url.match(regExp);
+                                    return (match && match[2].length === 11) ? match[2] : null;
+                                }
+                                
+                                const videoId = getYouTubeId(url);
+                                
+                                if (videoId) {
                                     const thumbUrl = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
                                     container.innerHTML = `
                                         <div id="thumb-container-{{ lesson.uid }}" style="position: relative; width: 100%; height: 100%; cursor: pointer;">
@@ -112,19 +132,30 @@
                                         </div>
                                     `;
                                     document.getElementById('thumb-container-{{ lesson.uid }}').addEventListener('click', function() {
-                                        container.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" style="width: 100%; height: 100%; border: none;" allowfullscreen allow="autoplay; encrypted-media"></iframe>`;
+                                        container.innerHTML = `<div id="player-{{ lesson.uid }}" data-plyr-provider="youtube" data-plyr-embed-id="${videoId}"></div>`;
+                                        const player = new Plyr('#player-{{ lesson.uid }}', {
+                                            autoplay: true,
+                                            youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+                                        });
+                                        player.on('ready', () => { player.play(); });
                                     });
                                 } else {
-                                    const isYouTube = url.includes('youtube.com') || url.includes('youtu.be');
-                                    container.innerHTML = `
-                                        <div style="display: flex; align-items: center; justify-content: center; height: 100%; background: #f8fafc; flex-direction: column; text-align: center; padding: 1.5rem; border: 2px dashed #e2e8f0; border-radius: 0.75rem;">
-                                            <div style="font-size: 3rem; margin-bottom: 0.5rem;">${isYouTube ? '🎬' : '🔗'}</div>
-                                            <p style="margin: 0 0 0.5rem 0; color: #1e293b; font-size: 1rem; font-weight: 700;">${isYouTube ? 'YouTube Video Content' : 'External Resource'}</p>
-                                            <p style="margin: 0 0 1.25rem 0; color: #64748b; font-size: 0.75rem; word-break: break-all; max-width: 90%; font-family: monospace;">${url}</p>
-                                            <a href="${url}" target="_blank" style="display: inline-block; background: ${isYouTube ? '#ef4444' : '#6366f1'}; color: white; padding: 0.7rem 1.5rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.9rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                                                Open ${isYouTube ? 'YouTube' : 'Link'} ↗
-                                            </a>
-                                        </div>`;
+                                    const isDirectVideo = url.toLowerCase().includes('.mp4') || url.toLowerCase().includes('.webm') || url.toLowerCase().includes('cloudinary.com');
+                                    if (isDirectVideo) {
+                                        let finalSource = url;
+                                        if (finalSource.includes('cloudinary.com') && !finalSource.includes('f_auto')) {
+                                            finalSource = finalSource.replace('/upload/', '/upload/f_auto,q_auto,vc_h264/');
+                                        }
+                                        container.innerHTML = `
+                                            <video class="plyr-player" playsinline controls preload="auto" style="width: 100%; height: 100%;">
+                                                <source src="${finalSource}" type="video/mp4">
+                                            </video>`;
+                                        new Plyr(container.querySelector('.plyr-player'), {
+                                            autoplay: true
+                                        });
+                                    } else {
+                                        container.innerHTML = `<iframe src="${url}" style="width: 100%; height: 100%; border: none;" allowfullscreen></iframe>`;
+                                    }
                                 }
                             })();
                         </script>
@@ -294,5 +325,14 @@
         }
     }
 
+    // Initialize all existing HTML5 videos with Plyr
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.plyr-player').forEach(el => {
+            new Plyr(el, {
+                controls: ['play-large', 'restart', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
+                settings: ['quality', 'speed', 'loop']
+            });
+        });
+    });
 </script>
 {% endblock %}
