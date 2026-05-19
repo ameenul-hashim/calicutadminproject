@@ -44,7 +44,7 @@
             <h3 style="font-size: 0.8rem; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; margin-bottom: 1rem;">Faculty Member:</h3>
             <div style="display: flex; align-items: center; gap: 1rem;">
                 {% if teacher.avatar_url %}
-                    <img src="{{ teacher.avatar_url }}" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
+                    <img src="{{ teacher.avatar_url }}" style="width: 60px; height: 60px; border-radius: 0.5rem; object-fit: cover;">
                 {% endif %}
                 <div>
                     <h4 style="margin: 0; font-size: 1.2rem; color: #1e293b;">{{ teacher.full_name|default:teacher.username }}</h4>

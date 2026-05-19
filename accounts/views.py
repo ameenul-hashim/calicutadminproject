@@ -830,31 +830,63 @@ def create_course(request):
 def edit_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
-        course.title = request.POST.get('title')
-        course.description = request.POST.get('description')
-        course.category = request.POST.get('category')
-        course.level = request.POST.get('level')
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        category = request.POST.get('category')
+        level = request.POST.get('level')
+        
+        thumbnail_file = None
         if request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed'):
             thumbnail_file = request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed')
-            from .utils.cloudinary_helpers import update_image
-            success = update_image(course, thumbnail_file, folder="eduaimsthinker/courses")
-            if not success:
-                print(f"⚠️ Thumbnail update failed for course '{course.title}'")
-        
-        if course.status == 'REJECTED':
-            course.rejection_reason = ""
             
-        # Hardened Security: ANY edit to a course resets its approval status to PENDING
-        # This prevents teachers from bypassing admin review by editing a published course.
-        course.status = 'PENDING'
-        course.is_approved = False
-        course.save()
-        
-        # Notify admins about the update
-        notify_admins(f"🔄 COURSE UPDATE: Teacher {request.user.username} updated course '{course.title}'. It is now PENDING re-approval.")
-        messages.success(request, f"Course '{course.title}' updated successfully!")
+        if course.is_approved:
+            # Course is already approved, so store edits in pending fields to keep old version visible to student
+            course.pending_title = title
+            course.pending_description = description
+            course.pending_category = category
+            course.pending_level = level
+            course.has_pending_edits = True
+            
+            if thumbnail_file:
+                from .utils.cloudinary_helpers import upload_image_only
+                p_url, p_id = upload_image_only(thumbnail_file, folder="eduaimsthinker/courses")
+                if p_url:
+                    if course.pending_image_public_id:
+                        try:
+                            import cloudinary.uploader
+                            cloudinary.uploader.destroy(course.pending_image_public_id)
+                        except Exception:
+                            pass
+                    course.pending_image = p_url
+                    course.pending_image_public_id = p_id
+            
+            course.save()
+            notify_admins(f"🔄 PENDING EDITS: Teacher {request.user.username} edited the approved course '{course.title}'. Changes are pending admin approval.")
+            messages.success(request, f"Changes to '{course.title}' submitted for admin approval. Students will continue to see the previously approved version until approved.")
+        else:
+            # Course is not approved yet (draft or rejected), so overwrite main fields directly
+            course.title = title
+            course.description = description
+            course.category = category
+            course.level = level
+            
+            if thumbnail_file:
+                from .utils.cloudinary_helpers import update_image
+                success = update_image(course, thumbnail_file, folder="eduaimsthinker/courses")
+                if not success:
+                    print(f"⚠️ Thumbnail update failed for course '{course.title}'")
+            
+            if course.status == 'REJECTED':
+                course.rejection_reason = ""
+                
+            course.status = 'PENDING'
+            course.is_approved = False
+            course.save()
+            notify_admins(f"🔄 COURSE UPDATE: Teacher {request.user.username} updated course '{course.title}'. It is now PENDING re-approval.")
+            messages.success(request, f"Course '{course.title}' updated successfully!")
+            
         return redirect('my_courses')
-    
+        
     return render(request, 'teacher_portal/edit_course.html', {'course': course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -908,20 +940,42 @@ def add_lesson(request, course_uid):
 def edit_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
-        lesson.title = request.POST.get('title')
-        lesson.video_url = request.POST.get('video_url')
-        if request.FILES.get('video_file'):
-            lesson.video_file = request.FILES.get('video_file')
-                
-        lesson.order = request.POST.get('order', 1)
+        title = request.POST.get('title')
+        video_url = request.POST.get('video_url')
+        video_file = request.FILES.get('video_file')
+        order = request.POST.get('order', 1)
         
-        # Reset approval status on edit
-        lesson.is_approved = False
-        lesson.status = 'PENDING'
-        lesson.save()
-        
-        messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
-        notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}' in course '{lesson.course.title}'.")
+        if lesson.is_approved:
+            # Lesson is already approved, so store edits in pending fields
+            lesson.pending_title = title
+            lesson.pending_video_url = video_url
+            if video_file:
+                if lesson.pending_video_file:
+                    try:
+                        lesson.pending_video_file.delete(save=False)
+                    except Exception:
+                        pass
+                lesson.pending_video_file = video_file
+            lesson.pending_order = order
+            lesson.has_pending_edits = True
+            lesson.save()
+            
+            notify_admins(f"🔁 LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}' in course '{lesson.course.title}'. Changes are pending admin approval.")
+            messages.success(request, "Lesson edits submitted for approval! Students will continue to view the current version until approved.")
+        else:
+            # Lesson is not approved yet, overwrite main fields directly
+            lesson.title = title
+            lesson.video_url = video_url
+            if video_file:
+                lesson.video_file = video_file
+            lesson.order = order
+            lesson.is_approved = False
+            lesson.status = 'PENDING'
+            lesson.save()
+            
+            messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
+            notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}' in course '{lesson.course.title}'.")
+            
         return redirect('course_lessons', course_uid=lesson.course.uid)
     
     return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})

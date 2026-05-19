@@ -38,7 +38,11 @@
                                 {{ course.teacher.full_name|default:course.teacher.username }}
                             </td>
                             <td style="padding: 0.6rem;">
-                                {% if course.status == 'PENDING' %}
+                                {% if course.has_pending_edits %}
+                                    <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fef3c7; color: #b45309;">
+                                        🔄 Pending Edits
+                                    </span>
+                                {% elif course.status == 'PENDING' %}
                                     {% if course.rejection_reason %}
                                         <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; background: #fee2e2; color: #b91c1c;">
                                             🔁 Re-submitted

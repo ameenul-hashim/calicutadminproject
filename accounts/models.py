@@ -87,6 +87,13 @@ class Course(models.Model):
     approved_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_courses')
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    pending_title = models.CharField(max_length=255, blank=True, null=True)
+    pending_description = models.TextField(blank=True, null=True)
+    pending_category = models.CharField(max_length=100, blank=True, null=True)
+    pending_level = models.CharField(max_length=20, blank=True, null=True)
+    pending_image = models.URLField(max_length=1000, blank=True, null=True)
+    pending_image_public_id = models.CharField(max_length=255, blank=True, null=True)
+    has_pending_edits = models.BooleanField(default=False, db_index=True)
 
     @property
     def thumbnail_url(self):
@@ -115,6 +122,11 @@ class Lesson(models.Model):
     rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    pending_title = models.CharField(max_length=255, blank=True, null=True)
+    pending_video_url = models.URLField(max_length=500, blank=True, null=True)
+    pending_video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
+    pending_order = models.PositiveIntegerField(null=True, blank=True)
+    has_pending_edits = models.BooleanField(default=False, db_index=True)
 
 
     class Meta:
@@ -290,6 +302,12 @@ def cleanup_user_files(sender, instance, **kwargs):
 @receiver(pre_delete, sender=Course)
 def cleanup_course_image(sender, instance, **kwargs):
     delete_image(instance)
+    if hasattr(instance, 'pending_image_public_id') and instance.pending_image_public_id:
+        try:
+            import cloudinary.uploader
+            cloudinary.uploader.destroy(instance.pending_image_public_id)
+        except Exception:
+            pass
 
 @receiver(pre_delete, sender=Lesson)
 def cleanup_lesson_video(sender, instance, **kwargs):
@@ -297,5 +315,10 @@ def cleanup_lesson_video(sender, instance, **kwargs):
     if instance.video_file:
         try:
             instance.video_file.delete(save=False)
+        except Exception:
+            pass
+    if hasattr(instance, 'pending_video_file') and instance.pending_video_file:
+        try:
+            instance.pending_video_file.delete(save=False)
         except Exception:
             pass
