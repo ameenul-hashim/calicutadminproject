@@ -140,9 +140,9 @@
             
             <!-- Teacher Profile Quick View -->
             <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
-                <div style="width: 70px; height: 70px; border-radius: 0.75rem; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                <div style="width: 70px; height: 90px; border-radius: 0.5rem; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
                     {% if user.avatar_url %}
-                        <img src="{{ user.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="{{ user.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover; object-position: top; image-rendering: -webkit-optimize-contrast;">
                     {% else %}
                         <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
                     {% endif %}
