@@ -131,9 +131,9 @@
                         <p style="color: #64748b; font-size: 0.9rem; line-height: 1.5; margin-bottom: 1.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ course.description }}</p>
                         
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
-                                <div style="width: 32px; height: 32px; border-radius: 0.5rem; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0;">
+                                <div style="width: 32px; height: 41px; border-radius: 0.25rem; overflow: hidden; background: #f1f5f9; border: 1px solid #e2e8f0; flex-shrink: 0;">
                                     {% if course.teacher.avatar_url %}
-                                        <img src="{{ course.teacher.avatar_url }}" alt="Teacher Profile Photo" width="32" height="32" loading="lazy" style="width: 100%; height: 100%; object-fit: cover;">
+                                        <img src="{{ course.teacher.avatar_url }}" alt="Teacher Profile Photo" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; object-position: top; image-rendering: -webkit-optimize-contrast;">
                                     {% else %}
                                         <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700;">{{ course.teacher.username|slice:":1"|upper }}</div>
                                     {% endif %}
