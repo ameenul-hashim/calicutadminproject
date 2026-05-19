@@ -646,10 +646,12 @@ def content_management_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
-    # Show courses that are PENDING approval OR courses that are PUBLISHED but have new unapproved content
+    # Show courses that are PENDING approval OR courses that are PUBLISHED but have new unapproved content OR have pending edits
     courses = Course.objects.filter(
         Q(status='PENDING') | 
-        Q(lessons__is_approved=False)
+        Q(has_pending_edits=True) |
+        Q(lessons__is_approved=False) |
+        Q(lessons__has_pending_edits=True)
     ).prefetch_related('lessons').distinct().order_by('-created_at')
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
@@ -662,6 +664,35 @@ def pending_courses_view(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
+    
+    # If the course has pending edits, apply them
+    if course.has_pending_edits:
+        if course.pending_title:
+            course.title = course.pending_title
+            course.pending_title = ""
+        if course.pending_description:
+            course.description = course.pending_description
+            course.pending_description = ""
+        if course.pending_category:
+            course.category = course.pending_category
+            course.pending_category = ""
+        if course.pending_level:
+            course.level = course.pending_level
+            course.pending_level = ""
+        if course.pending_image:
+            # Clean up old main image if different
+            if course.image_public_id and course.image_public_id != course.pending_image_public_id:
+                try:
+                    import cloudinary.uploader
+                    cloudinary.uploader.destroy(course.image_public_id)
+                except Exception:
+                    pass
+            course.image = course.pending_image
+            course.image_public_id = course.pending_image_public_id
+            course.pending_image = ""
+            course.pending_image_public_id = ""
+        course.has_pending_edits = False
+        
     course.status = 'PUBLISHED'
     course.is_approved = True
     course.approved_by = request.user
@@ -669,9 +700,31 @@ def approve_course(request, course_uid):
     course.save()
     
     # Auto-approve ONLY lessons that are currently PENDING (awaiting first review).
-    # Do NOT touch REJECTED lessons — those require explicit re-submission.
-    # This prevents accidentally publishing content the admin hasn't reviewed.
     course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
+    
+    # Also approve any lessons that have pending edits!
+    for lesson in course.lessons.filter(has_pending_edits=True):
+        if lesson.pending_title:
+            lesson.title = lesson.pending_title
+            lesson.pending_title = ""
+        if lesson.pending_video_url:
+            lesson.video_url = lesson.pending_video_url
+            lesson.pending_video_url = ""
+        if lesson.pending_video_file:
+            if lesson.video_file:
+                try:
+                    lesson.video_file.delete(save=False)
+                except Exception:
+                    pass
+            lesson.video_file = lesson.pending_video_file
+            lesson.pending_video_file = None
+        if lesson.pending_order is not None:
+            lesson.order = lesson.pending_order
+            lesson.pending_order = None
+        lesson.has_pending_edits = False
+        lesson.status = 'APPROVED'
+        lesson.is_approved = True
+        lesson.save()
 
     create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
     
@@ -680,7 +733,6 @@ def approve_course(request, course_uid):
     teacher_name = course.teacher.full_name or course.teacher.username
     for student in students:
         create_notification(student, f"{teacher_name} added course {course.title}")
-
     
     ApprovalLog.objects.create(
         content_type='COURSE',
@@ -783,6 +835,28 @@ def edit_user_admin(request, user_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
+    
+    # If the lesson has pending edits, apply them
+    if lesson.has_pending_edits:
+        if lesson.pending_title:
+            lesson.title = lesson.pending_title
+            lesson.pending_title = ""
+        if lesson.pending_video_url:
+            lesson.video_url = lesson.pending_video_url
+            lesson.pending_video_url = ""
+        if lesson.pending_video_file:
+            if lesson.video_file:
+                try:
+                    lesson.video_file.delete(save=False)
+                except Exception:
+                    pass
+            lesson.video_file = lesson.pending_video_file
+            lesson.pending_video_file = None
+        if lesson.pending_order is not None:
+            lesson.order = lesson.pending_order
+            lesson.pending_order = None
+        lesson.has_pending_edits = False
+        
     lesson.status = 'APPROVED'
     lesson.is_approved = True
     lesson.save()

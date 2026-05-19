@@ -67,6 +67,30 @@ def delete_image(instance):
         print(f"❌ Cloudinary Cleanup Error: {str(e)}")
         return False
 
+def upload_image_only(image_file, folder="eduaimsthinker/uploads"):
+    """
+    Uploads an image to Cloudinary and returns (secure_url, public_id)
+    without updating or saving any model instances directly.
+    """
+    try:
+        if not image_file:
+            return None, None
+        import uuid
+        unique_id = f"img_{uuid.uuid4()}"
+        print(f"☁️ Uploading image only to Cloudinary (Folder: {folder})...")
+        result = cloudinary.uploader.upload(
+            image_file,
+            public_id=unique_id,
+            folder=folder,
+            resource_type="image",
+            quality="auto",
+            fetch_format="auto"
+        )
+        return result.get('secure_url'), result.get('public_id')
+    except Exception as e:
+        print(f"❌ Cloudinary Upload Only Error: {str(e)}")
+        return None, None
+
 def update_image(instance, image_file, folder="eduaimsthinker/uploads"):
     """
     Uploads a new image and updates the model instance.
