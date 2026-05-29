@@ -1124,11 +1124,15 @@ def admin_logout(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
-    requests = DeletionRequest.objects.filter(status='PENDING')
+    # Show ALL pending requests (Lesson, Course, and Resource types)
+    pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
+    # Also show recently processed requests for admin reference
+    history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_notifications_count = Notification.objects.filter(user=request.user, is_read=False).count()
     return render(request, 'custom_admin/manage_deletion_requests.html', {
-        'requests': requests,
+        'requests': pending_requests,
+        'history_requests': history_requests,
         'notifications': notifications,
         'unread_notifications_count': unread_notifications_count
     })
