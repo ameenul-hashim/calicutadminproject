@@ -1,7 +1,7 @@
 {% extends 'teacher_portal/base_teacher.html' %}
 {% load static %}
 
-{% block title %}My Courses | EduAimsThinker{% endblock %}
+{% block title %}My Courses | Neo Learner{% endblock %}
 
 {% block page_header %}
     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 1rem;">
@@ -9,7 +9,7 @@
             <a href="{% url 'teacher_dashboard' %}" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; color: #64748b; text-decoration: none; font-size: 1.2rem; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'; this.style.color='#6366f1';" onmouseout="this.style.background='white'; this.style.color='#64748b';">←</a>
             <h1 style="margin: 0; font-size: 1.8rem;">My Courses</h1>
         </div>
-        <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">+ Create Course</a>
+        <a href="{% url 'create_course' %}" class="btn" style="background: #6366f1; color: white; padding: 0.7rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 600; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">+ create Course</a>
     </div>
 {% endblock %}
 
@@ -99,3 +99,7 @@
 </div>
 {% endif %}
 {% endblock %}
+
+
+
+

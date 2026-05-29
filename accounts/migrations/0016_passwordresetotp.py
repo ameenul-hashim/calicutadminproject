@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
+        migrations.createModel(
             name='PasswordResetOTP',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -23,3 +23,6 @@ class Migration(migrations.Migration):
             ],
         ),
     ]
+
+
+

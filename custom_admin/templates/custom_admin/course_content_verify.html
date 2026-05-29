@@ -34,7 +34,7 @@
         <div>
             <span style="display: inline-block; padding: 0.25rem 0.75rem; background: #e0f2fe; color: #0369a1; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; margin-bottom: 0.5rem; text-transform: uppercase;">{{ course.category }}</span>
             <h2 style="margin: 0; color: #1e293b; font-size: 1.5rem;">{{ course.title }}</h2>
-            <p style="margin: 0.5rem 0 1rem 0; color: #64748b; font-size: 0.95rem;">Created by <span style="font-weight: 600; color: #4f46e5;">{{ course.teacher.full_name|default:course.teacher.username }}</span></p>
+            <p style="margin: 0.5rem 0 1rem 0; color: #64748b; font-size: 0.95rem;">created by <span style="font-weight: 600; color: #4f46e5;">{{ course.teacher.full_name|default:course.teacher.username }}</span></p>
             <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                 <form action="{% url 'approve_course' course.uid %}" method="post">
                     {% csrf_token %}
@@ -439,3 +439,6 @@
     });
 </script>
 {% endblock %}
+
+
+

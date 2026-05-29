@@ -40,7 +40,7 @@ def verify_db():
         
         if result.returncode == 0 and os.path.exists(filename) and os.path.getsize(filename) > 0:
             size = os.path.getsize(filename) / 1024
-            print(f"✅ Database dump successful! Created {filename} ({size:.2f} KB)")
+            print(f"✅ Database dump successful! created {filename} ({size:.2f} KB)")
             os.remove(filename) # Cleanup
             return True
         else:
@@ -65,7 +65,7 @@ def verify_cloudinary():
         res = resources(
             type="upload",
             resource_type="raw",
-            prefix="eduaimsthinker/pdfs",
+            prefix="Neo Learner/pdfs",
             max_results=5
         )
         files = res.get("resources", [])
@@ -75,7 +75,7 @@ def verify_cloudinary():
                 print(f"   - {f['public_id']}")
             return True
         else:
-            print("⚠️ Cloudinary connected, but no PDFs found with prefix 'eduaimsthinker/pdfs'")
+            print("⚠️ Cloudinary connected, but no PDFs found with prefix 'Neo Learner/pdfs'")
             # Check all raw to be sure
             res_all = resources(type="upload", resource_type="raw", max_results=5)
             all_files = res_all.get("resources", [])
@@ -98,3 +98,5 @@ if __name__ == "__main__":
     if db_ok and cl_ok:
         print("\n🚀 Both data sources are ready. As soon as you add 'credentials.json',")
         print("   the full 'python auto_backup.py' command will work end-to-end.")
+
+

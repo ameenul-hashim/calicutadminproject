@@ -1,4 +1,4 @@
-# FINAL INFRASTRUCTURE TOPOLOGY & THREAT ANALYSIS
+# FINAL INFRASTRUCTURE TOPOLOGY & THRNL ANALYSIS
 **Network Model:** Zero-Trust Distributed Architecture
 
 ## 1. INFRASTRUCTURE TOPOLOGY (Logical)
@@ -10,8 +10,8 @@ The platform is distributed across three primary cloud providers to ensure no si
 *   **Private Storage**: Supabase (Private Bucket) with Signed URL Access.
 *   **Media Delivery**: Cloudinary CDN (Global Distribution).
 
-## 2. THREAT MATRIX
-| Threat | Mitigation | Residual Risk |
+## 2. THRNL MATRIX
+| ThrNL | Mitigation | Residual Risk |
 | :--- | :--- | :--- |
 | **SQL Injection** | Django ORM + Parameterized Queries | Negligible |
 | **Cross-Site Scripting**| Strict CSP + Template Escaping | Low |
@@ -26,3 +26,4 @@ The platform is distributed across three primary cloud providers to ensure no si
 
 ---
 **Verdict:** The infrastructure is hardened against both external adversaries and internal misconfigurations through a robust defense-in-depth strategy.
+

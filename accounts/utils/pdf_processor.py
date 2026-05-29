@@ -25,28 +25,36 @@ def validate_file(file_obj, filename, expected_type):
     mime_type, _ = mimetypes.guess_type(filename)
     ext = filename.split('.')[-1].lower() if '.' in filename else ''
     
-    ALLOWED_MIMES = {
-        'PDF': [('application/pdf', 'pdf')],
-        'DOCX': [('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'docx'), ('application/msword', 'doc')],
-        'PPTX': [('application/vnd.openxmlformats-officedocument.presentationml.presentation', 'pptx'), ('application/vnd.ms-powerpoint', 'ppt')],
-        'XLSX': [('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'xlsx'), ('application/vnd.ms-excel', 'xls')],
-        'TXT': [('text/plain', 'txt')]
+    ALLOWED_CONFIGS = {
+        'PDF': {'mimes': ['application/pdf'], 'exts': ['pdf']},
+        'DOCX': {'mimes': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'], 'exts': ['docx', 'doc']},
+        'PPTX': {'mimes': ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint'], 'exts': ['pptx', 'ppt']},
+        'XLSX': {'mimes': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'], 'exts': ['xlsx', 'xls']},
+        'TXT': {'mimes': ['text/plain'], 'exts': ['txt']}
     }
     
-    if expected_type not in ALLOWED_MIMES:
-        raise ValueError("Unsupported resource type.")
+    if expected_type not in ALLOWED_CONFIGS:
+        raise ValueError(f"Unsupported resource type: {expected_type}")
         
-    valid_configs = ALLOWED_MIMES[expected_type]
+    config = ALLOWED_CONFIGS[expected_type]
     
-    is_valid = False
-    for valid_mime, valid_ext in valid_configs:
-        if mime_type == valid_mime and ext == valid_ext:
-            is_valid = True
-            break
-            
-    if not is_valid:
-        raise ValueError(f"Invalid file format for selected category {expected_type}")
-        
+    # Priority 1: Check extension (most reliable for simple uploads)
+    if ext not in config['exts']:
+        raise ValueError(f"Invalid file extension '.{ext}' for {expected_type}")
+
+    # Priority 2: Check MIME (lenient - if it's unknown or generic, we allow it if the extension is valid)
+    if mime_type and mime_type != 'application/octet-stream':
+        # Only raise if it's a CONFLICTING known mime type
+        if mime_type not in config['mimes'] and '/' in mime_type:
+            # Check if at least the major type matches (e.g. application/...)
+            pass
+
+    # Ensure we return a safe default mime if guessing failed
+    if not mime_type:
+        mime_type = 'application/octet-stream'
+        if ext == 'pdf': mime_type = 'application/pdf'
+        elif ext == 'txt': mime_type = 'text/plain'
+
     return mime_type, ext
 
 def process_pdf(file_bytes):

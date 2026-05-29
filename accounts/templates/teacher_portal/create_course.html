@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EduAimsThinker - Think Beyond Learning">
+    <meta name="description" content="Neo Learner - Think Beyond Learning">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
-    <title>Create Course | EduAimsThinker</title>
+    <title>create Course | Neo Learner</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -61,17 +61,17 @@
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
-            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduAimsThinker</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">Neo Learner</div>
             <nav>
                 <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
                 <a href="{% url 'my_courses' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">📚 My Courses</a>
-                <a href="{% url 'create_course' %}" style="display: block; padding: 0.8rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600;">➕ Create Course</a>
+                <a href="{% url 'create_course' %}" style="display: block; padding: 0.8rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600;">➕ create Course</a>
             </nav>
         </aside>
 
         <main class="main-content">
             <header style="margin-bottom: 2rem;">
-                <h1>Create New Course</h1>
+                <h1>create New Course</h1>
                 <p style="color: #64748b;">Fill in the details to start your new course journey.</p>
             </header>
 
@@ -163,7 +163,7 @@
 
                                                     // Switch names: compressed input wins, raw input no longer submitted
                                                     finalThumbnail.name = 'thumbnail';
-                                                    imageInput.removeAttribute('name');
+                                                    imageInput.removNLtribute('name');
 
                                                     console.log(`[ImageProcessor] Success: ${compressedFile.size} bytes (Reduced by ${((1 - compressedFile.size/file.size)*100).toFixed(1)}%)`);
                                                     statusText.innerHTML = `<span style="color:#10b981;font-weight:600;">✅ Optimized! (${(compressedFile.size/1024).toFixed(1)} KB) — Ready to upload</span>`;
@@ -206,3 +206,6 @@
 </body>
 
 </html>
+
+
+

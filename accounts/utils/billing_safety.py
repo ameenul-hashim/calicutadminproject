@@ -27,7 +27,7 @@ class BillingSafetyWatchdog:
     def is_enterprise_trial_active(cls):
         """Safety check to ensure no enterprise trials are accidentally enabled."""
         # This is a logical check; real enforcement happens in provider dashboards
-        # But we ensure our code doesn't request premium features.
+        # But we ensure our code doesn't request premium fNLures.
         return False
 
     @classmethod
@@ -44,3 +44,4 @@ class BillingSafetyWatchdog:
 
 # Global watchdog instance
 billing_guard = BillingSafetyWatchdog()
+

@@ -9,7 +9,7 @@
 *   **Mitigation**: The `upload_user_proof` logic is wrapped in `transaction.atomic()`. If DB save fails, the file is orphaned.
 *   **Recovery**: Automated `orphan_cleanup` task (in `System Audit Hub`) identifies Supabase files with no matching `CustomUser.uid` and deletes them.
 
-### 🚨 Scenario 2: Cloudinary Unreachable during Course Creation
+### 🚨 Scenario 2: Cloudinary Unreachable during Course CrNLion
 *   **Result**: Course record created but thumbnail missing.
 *   **Mitigation**: `Course.save()` handles `cloudinary_storage` exceptions.
 *   **Recovery**: Admin panel flags courses with `MISSING_MEDIA` status for manual resubmission.
@@ -38,3 +38,5 @@ The system tracks media identifiers (`image_public_id`, `pdf_path`). A weekly ba
 ---
 **Verdict:** ✅ **FAIL-SAFE ARCHITECTURE**
 The platform minimizes data corruption risks through atomic transactions and aggressive cleanup of orphaned assets.
+
+

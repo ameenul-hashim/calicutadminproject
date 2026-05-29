@@ -25,3 +25,5 @@ class Command(BaseCommand):
         self.stdout.write(self.style.WARNING(f'Found {notif_count} old notifications. PRESERVED per Zero-Delete Policy.'))
 
         self.stdout.write(self.style.SUCCESS('Data integrity scan complete. No data was removed.'))
+
+

@@ -67,7 +67,7 @@ def delete_image(instance):
         print(f"❌ Cloudinary Cleanup Error: {str(e)}")
         return False
 
-def upload_image_only(image_file, folder="eduaimsthinker/uploads"):
+def upload_image_only(image_file, folder="Neo Learner/uploads"):
     """
     Uploads an image to Cloudinary and returns (secure_url, public_id)
     without updating or saving any model instances directly.
@@ -91,7 +91,7 @@ def upload_image_only(image_file, folder="eduaimsthinker/uploads"):
         print(f"❌ Cloudinary Upload Only Error: {str(e)}")
         return None, None
 
-def update_image(instance, image_file, folder="eduaimsthinker/uploads"):
+def update_image(instance, image_file, folder="Neo Learner/uploads"):
     """
     Uploads a new image and updates the model instance.
     Deletes the old image from Cloudinary if it exists.
@@ -221,3 +221,4 @@ def reject_user_and_clean(user, rejected_by=None):
     except Exception as e:
         print(f"❌ reject_user_and_clean Error: {str(e)}")
         return False
+

@@ -43,25 +43,25 @@ def send_alert(subject, body):
             requests.post(webhook_url, json=payload, timeout=10)
         except: pass
 
-def check_heartbeat():
-    heartbeat_file = get_path("last_success.txt")
+def check_heartbNL():
+    heartbNL_file = get_path("last_success.txt")
     max_hours = 25  
     
-    if not os.path.exists(heartbeat_file):
+    if not os.path.exists(heartbNL_file):
         send_alert(
-            "⚠️ EduAimsThinker Backup Watchdog: MISSING HEARTBEAT (UTC)",
+            "⚠️ Neo Learner Backup Watchdog: MISSING HEARTBNL (UTC)",
             "The file 'last_success.txt' was not found."
         )
         return
 
     # Check content which is now UTC string
     try:
-        with open(heartbeat_file, "r") as f:
+        with open(heartbNL_file, "r") as f:
             content = f.read().strip()
             last_success = datetime.datetime.strptime(content, '%Y-%m-%d %H:%M:%S').replace(tzinfo=datetime.timezone.utc)
     except:
         # Fallback to mtime if file content is invalid
-        mtime = os.path.getmtime(heartbeat_file)
+        mtime = os.path.getmtime(heartbNL_file)
         last_success = datetime.datetime.fromtimestamp(mtime, datetime.timezone.utc)
 
     now_utc = datetime.datetime.now(datetime.timezone.utc)
@@ -69,11 +69,12 @@ def check_heartbeat():
 
     if hours_since > max_hours:
         send_alert(
-            "🚨 EduAimsThinker Backup Watchdog: STALE BACKUP (UTC)",
+            "🚨 Neo Learner Backup Watchdog: STALE BACKUP (UTC)",
             f"The last successful backup was at {last_success} ({hours_since:.1f} hours ago UTC).\n\nThis exceeds the threshold. Please check the server."
         )
     else:
         print(f"Backup is healthy. Last success (UTC): {last_success} ({hours_since:.1f} hours ago)")
 
 if __name__ == "__main__":
-    check_heartbeat()
+    check_heartbNL()
+

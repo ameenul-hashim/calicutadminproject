@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EduAimsThinker - Think Beyond Learning">
+    <meta name="description" content="Neo Learner - Think Beyond Learning">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
-    <title>All Notifications | EduAimsThinker</title>
+    <title>All Notifications | Neo Learner</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -103,11 +103,18 @@
             <div class="notif-list">
                 {% if notifications %}
                     {% for notif in notifications %}
-                    <div class="notif-item {% if not notif.is_read %}unread{% endif %}">
+                    <div class="notif-item {% if not notif.is_read %}unread{% endif %}" style="border-radius: 0.75rem; margin: 0.5rem 1rem; border: 1px solid #f1f5f9; transition: all 0.2s;">
                         <div class="notif-message">{{ notif.message }}</div>
                         <div class="notif-meta">
                             <span class="notif-time">{{ notif.created_at|date:"M d, Y h:i A" }}</span>
-                            <span class="read-badge">✓ Read</span>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                {% if not notif.is_read %}
+                                    <a href="{% url 'mark_notification_read' notif.uid %}" class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full text-xs font-bold no-underline hover:bg-indigo-100 transition-colors">Mark Read</a>
+                                {% else %}
+                                    <span class="read-badge">✓ Read</span>
+                                    <a href="{% url 'delete_notification' notif.uid %}" class="bg-rose-50 text-rose-600 px-3 py-1 rounded-full text-xs font-bold no-underline hover:bg-rose-100 transition-colors">Delete</a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     {% endfor %}
@@ -123,3 +130,6 @@
 </body>
 
 </html>
+
+
+

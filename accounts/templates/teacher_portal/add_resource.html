@@ -34,7 +34,7 @@
 <body>
     <div class="dashboard-container">
         <aside class="sidebar">
-            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduAimsThinker</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">Neo Learner</div>
             <nav>
                 <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
                 <a href="{% url 'course_lessons' course.uid %}" style="display: block; padding: 0.8rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600;">📚 Manage Content</a>
@@ -57,33 +57,36 @@
                     
                     <div class="input-group">
                         <label for="category">Category</label>
-                        <select name="category" id="category" required>
-                            <option value="ENGLISH">English Notes</option>
-                            <option value="MALAYALAM">Malayalam Notes</option>
-                            <option value="ONLINE">Online Class Notes</option>
+                        <select name="category" id="category" required style="cursor: pointer;">
+                            <option value="GENERAL">📚 General Study Material</option>
+                            <option value="ENGLISH">🇬🇧 English Resources</option>
+                            <option value="MALAYALAM">🇮🇳 Malayalam Resources</option>
+                            <option value="ONLINE">💻 Online Class Materials</option>
                         </select>
                     </div>
 
                     <div class="input-group">
                         <label for="resource_type">File Type</label>
-                        <select name="resource_type" id="resource_type" required>
-                            <option value="PDF">PDF Document</option>
-                            <option value="DOCX">Word Document (.docx)</option>
-                            <option value="PPTX">PowerPoint (.pptx)</option>
-                            <option value="XLSX">Excel Spreadsheet (.xlsx)</option>
-                            <option value="TXT">Text File (.txt)</option>
+                        <select name="resource_type" id="resource_type" required style="cursor: pointer;">
+                            <option value="PDF">📄 PDF Document</option>
+                            <option value="DOCX">📝 Word Document (.docx)</option>
+                            <option value="PPTX">📊 PowerPoint (.pptx)</option>
+                            <option value="XLSX">📈 Excel Spreadsheet (.xlsx)</option>
+                            <option value="TXT">🔤 Text File (.txt)</option>
                         </select>
                     </div>
                     
                     <div class="input-group">
                         <label for="upload_file">Upload File</label>
-                        <input type="file" name="upload_file" id="upload_file" required>
-                        <small style="color: #64748b; margin-top: 0.5rem; display: block;">Maximum PDF size: 10MB. File will be compressed securely.</small>
+                        <div style="border: 2px dashed #e2e8f0; padding: 2rem; border-radius: 1rem; text-align: center; background: #f8fafc; transition: all 0.2s;" onmouseover="this.style.borderColor='#4f46e5'; this.style.background='#f5f3ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
+                            <input type="file" name="upload_file" id="upload_file" required style="width: 100%; cursor: pointer;">
+                            <p style="margin-top: 1rem; font-size: 0.8rem; color: #64748b;">PDF, DOCX, PPTX, XLSX, TXT (Max 10MB)</p>
+                        </div>
                     </div>
 
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Upload Resource</button>
-                        <a href="{% url 'course_lessons' course.uid %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">Cancel</a>
+                        <button type="submit" class="btn" style="background: #4f46e5; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); flex: 1; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(79,70,229,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 12px rgba(79,70,229,0.3)'">Upload Resource</button>
+                        <a href="{% url 'course_lessons' course.uid %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; flex: 1; text-align: center; border: 1px solid #e2e8f0;">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -91,3 +94,4 @@
     </div>
 </body>
 </html>
+

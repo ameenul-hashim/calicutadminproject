@@ -41,6 +41,7 @@ urlpatterns = [
     path('chat/messages/<uuid:other_user_uid>/', views.get_chat_messages, name='get_chat_messages'),
     path('chat/list/', views.get_chat_list, name='get_chat_list'),
     path('notification/<uuid:notif_uid>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notification/<uuid:notif_uid>/delete/', views.delete_notification, name='delete_notification'),
     path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
     path('notifications/', views.all_notifications, name='all_notifications'),
     path('unread-counts/', views.get_unread_counts, name='get_unread_counts'),
@@ -49,4 +50,6 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
 ]
+
+
 

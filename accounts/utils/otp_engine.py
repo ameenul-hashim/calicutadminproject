@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class OTPEngine:
     """
-    Enterprise-grade centralized OTP engine for EduAimsThinker.
+    Enterprise-grade centralized OTP engine for Neo Learner.
     Handles generation, hashing, delivery, and verification.
     """
 
@@ -55,7 +55,7 @@ class OTPEngine:
     @classmethod
     def create_otp(cls, user, purpose, request=None):
         """
-        Creates and saves a new hashed OTP for a user.
+        creates and saves a new hashed OTP for a user.
         Includes abuse detection and rate limiting.
         """
         # Automatically clean up old database records
@@ -98,13 +98,13 @@ class OTPEngine:
     def send_otp_email(cls, user, raw_otp, purpose):
         """Sends a branded HTML email with the OTP."""
         subject_map = {
-            'PASSWORD_RESET': 'EduAimsThinker: Reset Your Password',
-            'EMAIL_VERIFICATION': 'EduAimsThinker: Verify Your Email',
-            'USERNAME_RECOVERY': 'EduAimsThinker: Recover Your Username',
-            'USERNAME_UPDATE': 'EduAimsThinker: Verify Username Update',
+            'PASSWORD_RESET': 'Neo Learner: Reset Your Password',
+            'EMAIL_VERIFICATION': 'Neo Learner: Verify Your Email',
+            'USERNAME_RECOVERY': 'Neo Learner: Recover Your Username',
+            'USERNAME_UPDATE': 'Neo Learner: Verify Username Update',
         }
         
-        subject = subject_map.get(purpose, 'EduAimsThinker Verification Code')
+        subject = subject_map.get(purpose, 'Neo Learner Verification Code')
         from_email = settings.DEFAULT_FROM_EMAIL
         to_email = user.email
 
@@ -118,7 +118,7 @@ class OTPEngine:
         }
         
         html_content = render_to_string('emails/otp_email.html', context)
-        text_content = f"Your EduAimsThinker verification code is: {raw_otp}. Valid for 2 minutes."
+        text_content = f"Your Neo Learner verification code is: {raw_otp}. Valid for 2 minutes."
 
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to_email])
         msg.attach_alternative(html_content, "text/html")
@@ -179,3 +179,6 @@ class OTPEngine:
         EmailOTP.objects.filter(expires_at__lt=now).delete()
         # Delete used older than 24h
         EmailOTP.objects.filter(is_used=True, created_at__lt=now - timedelta(hours=24)).delete()
+
+
+

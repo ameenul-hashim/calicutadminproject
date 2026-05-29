@@ -159,3 +159,5 @@ def upload_user_proof(instance, pdf_file):
     except Exception as e:
         logger.error(f"❌ Error in upload_user_proof for user {instance.username}: {str(e)}")
         return False
+
+

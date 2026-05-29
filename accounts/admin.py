@@ -23,3 +23,6 @@ admin.site.register(Enrollment)
 admin.site.register(Notification)
 admin.site.register(ChatMessage)
 admin.site.register(DeletionRequest)
+
+
+

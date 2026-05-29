@@ -4,12 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="EduAimsThinker - Think Beyond Learning">
+    <meta name="description" content="Neo Learner - Think Beyond Learning">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
-    <meta name="keywords" content="EduAimsThinker, Teacher, Course Management, E-Learning, Online Teaching">
-    <meta name="author" content="EduAimsThinker Platform">
-    <title>{% block title %}Teacher Portal | EduAimsThinker{% endblock %}</title>
+    <meta name="keywords" content="Neo Learner, Teacher, Course Management, E-Learning, Online Teaching">
+    <meta name="author" content="Neo Learner Platform">
+    <title>{% block title %}Teacher Portal | Neo Learner{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script>
@@ -22,10 +22,13 @@
     <style>
         :root {
             --sidebar-width: 280px;
-            --teacher-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+            --nl-primary: #4f46e5;
+            --nl-secondary: #6366f1;
+            --nl-accent: #10b981;
+            --teacher-gradient: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
         }
-        body { font-family: 'Inter', sans-serif; background: #e0f7fa; margin: 0; }
-        .dashboard-container { display: flex; min-height: 100vh; background: #e0f7fa; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; background: #f8fafc; }
         @media (max-width: 1024px) {
             .dashboard-container { min-height: auto; }
         }
@@ -42,7 +45,7 @@
             z-index: 1000;
             transition: transform 0.3s ease;
         }
-        .logo-area { font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 1.5rem; }
+        .logo-area { font-size: 1.5rem; font-weight: 800; color: var(--nl-primary); margin-bottom: 1.5rem; }
         .nav-list { list-style: none; padding: 0; flex: 1; }
         .nav-link {
             display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1rem; color: #64748b;
@@ -140,7 +143,7 @@
         table { min-width: 62.5rem; /* 1000px */ }
         
         /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
+        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; border-radius: 1rem; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
         video { width: 100%; height: 100%; }
         
         /* Django Messages Toast */
@@ -190,11 +193,17 @@
         </div>
         <div style="max-height: 400px; overflow-y: auto;">
             {% for notif in notifications %}
-                <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
-                    <div style="padding-right: 20px; line-height: 1.4;">{{ notif.message }}</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f5f3ff; border-left: 4px solid var(--nl-primary);{% endif %} position: relative; margin-bottom: 0.5rem; border-radius: 0.75rem;">
+                    <div style="line-height: 1.4; margin-bottom: 0.5rem;">{{ notif.message }}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                        <a href="{% url 'mark_notification_read' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Clear</a>
+                        <div style="display: flex; gap: 0.5rem;">
+                            {% if not notif.is_read %}
+                                <a href="{% url 'mark_notification_read' notif.uid %}" style="color: var(--nl-primary); font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #eef2ff; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
+                            {% else %}
+                                <a href="{% url 'delete_notification' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #fef2f2; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Delete</a>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             {% empty %}
@@ -211,10 +220,10 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem;">
-                <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#6366f1 0%,#4f46e5 100%); display:flex; align-items:center; justify-content:center; color:white; font-weight:900; font-size:0.85rem; font-family:'Outfit',sans-serif; letter-spacing:-0.5px; box-shadow:0 4px 12px rgba(99,102,241,0.3); flex-shrink:0;">EAT</div>
+                <div style="width:40px; height:40px; border-radius:10px; background:var(--teacher-gradient); display:flex; align-items:center; justify-content:center; color:white; font-weight:900; font-size:1rem; font-family:'Outfit',sans-serif; letter-spacing:-0.5px; box-shadow:0 4px 12px rgba(79,70,229,0.3); flex-shrink:0;">NL</div>
                 <div>
-                    <div style="color:#0f172a; font-weight:800; font-size:1rem; font-family:'Outfit',sans-serif; line-height:1.1;">EduAimsThinker</div>
-                    <div style="color:#6366f1; font-size:0.68rem; font-weight:600; letter-spacing:0.04em;">Teacher Portal</div>
+                    <div style="color:#0f172a; font-weight:800; font-size:1.1rem; font-family:'Outfit',sans-serif; line-height:1.1;">Neo Learner</div>
+                    <div style="color:var(--nl-primary); font-size:0.68rem; font-weight:600; letter-spacing:0.04em;">Teacher Portal</div>
                 </div>
             </div>
             
@@ -258,9 +267,9 @@
             </div>
 
             <!-- Copyright Attribution -->
-            <div style="margin-top: auto; padding: 1rem; text-align: center; background: linear-gradient(135deg,rgba(99,102,241,0.05) 0%,rgba(79,70,229,0.05) 100%); border-radius: 0.75rem; border: 1px solid rgba(99,102,241,0.15); margin-bottom: 1rem;">
-                <p style="margin: 0; font-size: 0.72rem; color: #94a3b8; font-weight: 500;">© 2026 EduAimsThinker</p>
-                <p style="margin: 0.3rem 0 0; font-size: 0.75rem; color: #6366f1; font-weight: 700; letter-spacing: 0.03em;">Built &amp; Managed Professionally</p>
+            <div style="margin-top: auto; padding: 1rem; text-align: center; background: linear-gradient(135deg,rgba(79,70,229,0.05) 0%,rgba(67,56,202,0.05) 100%); border-radius: 0.75rem; border: 1px solid rgba(79,70,229,0.1); margin-bottom: 1rem;">
+                <p style="margin: 0; font-size: 0.72rem; color: #94a3b8; font-weight: 500;">© 2026 Neo Learner</p>
+                <p style="margin: 0.3rem 0 0; font-size: 0.75rem; color: var(--nl-primary); font-weight: 700; letter-spacing: 0.03em;">Built &amp; Managed Professionally</p>
             </div>
         </aside>
 
@@ -295,11 +304,17 @@
                             </div>
                             <div id="notif-items-container" style="max-height: 400px; overflow-y: auto;">
                                 {% for notif in notifications %}
-                                    <div style="padding: 0.8rem; border-bottom: 1px solid #f8fafc; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f0f9ff; border-radius: 0.5rem;{% endif %} position: relative; margin-bottom: 0.5rem;">
-                                        <div style="padding-right: 20px; line-height: 1.4;">{{ notif.message }}</div>
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                                    <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f5f3ff; border-left: 4px solid var(--nl-primary);{% endif %} position: relative; margin-bottom: 0.5rem; border-radius: 0.75rem;">
+                                        <div style="line-height: 1.4; margin-bottom: 0.5rem;">{{ notif.message }}</div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
                                             <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                                            <a href="{% url 'mark_notification_read' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Clear</a>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                {% if not notif.is_read %}
+                                                    <a href="{% url 'mark_notification_read' notif.uid %}" style="color: var(--nl-primary); font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #eef2ff; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
+                                                {% else %}
+                                                    <a href="{% url 'delete_notification' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #fef2f2; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Delete</a>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                 {% empty %}
@@ -391,3 +406,6 @@
 </body>
 
 </html>
+
+
+

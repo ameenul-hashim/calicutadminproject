@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
             name='totp_secret',
             field=models.CharField(blank=True, max_length=32, null=True),
         ),
-        migrations.CreateModel(
+        migrations.createModel(
             name='AdminActivityLog',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
                 'ordering': ['-timestamp'],
             },
         ),
-        migrations.CreateModel(
+        migrations.createModel(
             name='LoginHistory',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -50,3 +50,6 @@ class Migration(migrations.Migration):
             },
         ),
     ]
+
+
+

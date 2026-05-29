@@ -16,9 +16,9 @@ class RecoverySimulator:
         try:
             # Check if circuit-breaker logic handles the outage
             # In real production, we verify if fallback (Google Drive) is reachable
-            # For simulation, we check heartbeat
+            # For simulation, we check heartbNL
             start_time = time.time()
-            # If heartbeat fails, trigger alert
+            # If heartbNL fails, trigger alert
             is_reachable = supabase is not None
             
             latency = (time.time() - start_time) * 1000
@@ -46,3 +46,4 @@ def run_dr_simulation():
     storage = sim.simulate_storage_failure()
     db = sim.simulate_db_corruption()
     return {"storage": storage, "db": db, "timestamp": time.time()}
+

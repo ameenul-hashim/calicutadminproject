@@ -77,13 +77,13 @@ try:
     res = resources(
         type="upload",
         resource_type="raw",
-        prefix="eduaimsthinker/pdfs",
+        prefix="Neo Learner/pdfs",
         max_results=10
     )
 
     pdf_list = res.get("resources", [])
     print(f"  {PASS} Cloudinary connected successfully!")
-    print(f"  Found {len(pdf_list)} PDFs under 'eduaimsthinker/pdfs' prefix")
+    print(f"  Found {len(pdf_list)} PDFs under 'Neo Learner/pdfs' prefix")
 
     if pdf_list:
         for f in pdf_list[:5]:
@@ -92,7 +92,7 @@ try:
             print(f"    ... and {len(pdf_list) - 5} more")
     else:
         # Try listing ALL raw resources to find the actual prefix
-        print(f"\n  {WARN} No PDFs found with prefix 'eduaimsthinker/pdfs'. Searching all raw uploads...")
+        print(f"\n  {WARN} No PDFs found with prefix 'Neo Learner/pdfs'. Searching all raw uploads...")
         res_all = resources(
             type="upload",
             resource_type="raw",
@@ -196,10 +196,13 @@ print(f"""
 if not has_gdrive:
     print("""  📋 NEXT STEPS TO COMPLETE SETUP:
   1. Go to https://console.cloud.google.com/apis/credentials
-  2. Create OAuth 2.0 Client ID (Desktop app)
+  2. create OAuth 2.0 Client ID (Desktop app)
   3. Download → save as 'credentials.json' in project root
-  4. Create Google Drive folders & set IDs in .env:
+  4. create Google Drive folders & set IDs in .env:
      DRIVE_DATABASE_FOLDER_ID=<id>
      DRIVE_PDF_FOLDER_ID=<id>
   5. Run: python auto_backup.py (will open browser for OAuth)
 """)
+
+
+

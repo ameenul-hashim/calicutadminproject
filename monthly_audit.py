@@ -11,7 +11,7 @@ from accounts.models import CustomUser, Course, PDFAccessLog
 from axes.models import AccessAttempt
 
 def run_monthly_audit():
-    print("🛡️ EDUAIMSTHINKER MONTHLY ENTERPRISE SECURITY AUDIT")
+    print("🛡️ Neo Learner MONTHLY ENTERPRISE SECURITY AUDIT")
     print("=" * 60)
     
     # A. Access Pattern Audit
@@ -49,3 +49,4 @@ def run_monthly_audit():
 
 if __name__ == "__main__":
     run_monthly_audit()
+

@@ -3,7 +3,7 @@
 **Security Level:** ENTERPRISE (Tier 4)
 
 ## 1. MULTI-LAYERED DEFENSE ARCHITECTURE
-The EduAimsThinker platform utilizes a "Defense-in-Depth" strategy across five isolated security rings.
+The Neo Learner platform utilizes a "Defense-in-Depth" strategy across five isolated security rings.
 
 ### 🛡️ Ring 1: Edge Protection (Cloudflare)
 *   **WAF Hardening**: Custom rules for `/portal-secure-access/` and `/admin/`.
@@ -47,4 +47,5 @@ The EduAimsThinker platform utilizes a "Defense-in-Depth" strategy across five i
 
 ---
 **Verdict:**
-The EduAimsThinker platform is architected to exceed standard e-learning security requirements, providing enterprise-grade protection for both student data and administrative operations.
+The Neo Learner platform is architected to exceed standard e-learning security requirements, providing enterprise-grade protection for both student data and administrative operations.
+

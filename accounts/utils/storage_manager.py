@@ -106,7 +106,7 @@ class StorageManager:
                 if parent_id: file_metadata['parents'] = [parent_id]
                 return service.files().create(body=file_metadata, fields='id').execute().get('id')
                 
-            root_id = get_or_create_folder("EduAimsThinker_Backups")
+            root_id = get_or_create_folder("Neo Learner_Backups")
             res_id = get_or_create_folder("Resources_Backup", parent_id=root_id)
             
             # 3. Upload to Google Drive directly from memory
@@ -184,3 +184,5 @@ class StorageManager:
         except Exception as e:
             logger.error(f"Supabase Signed URL generation failed for {file_path}: {e}")
             return None
+
+

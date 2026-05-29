@@ -1,10 +1,10 @@
 {% extends 'custom_admin/base_admin.html' %}
 
-{% block title %}Create Student | Admin{% endblock %}
+{% block title %}create Student | Admin{% endblock %}
 
 {% block header_title %}
     <div style="text-align: center; width: 100%;">
-        <h1>Create New Student</h1>
+        <h1>create New Student</h1>
         <p style="color: #64748b;">Add a new student to the platform manually.</p>
     </div>
 {% endblock %}
@@ -42,7 +42,7 @@
                 <div style="position: relative;">
                     <input type="password" id="password" name="password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
                     <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Special</div>
-                    <span onclick="toggleCreatePassword('password', 'eye-1')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
+                    <span onclick="togglecreatePassword('password', 'eye-1')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
                         <svg id="eye-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </span>
                 </div>
@@ -52,14 +52,14 @@
                 <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Confirm Password</label>
                 <div style="position: relative;">
                     <input type="password" id="confirm_password" name="confirm_password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
-                    <span onclick="toggleCreatePassword('confirm_password', 'eye-2')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
+                    <span onclick="togglecreatePassword('confirm_password', 'eye-2')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
                         <svg id="eye-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </span>
                 </div>
             </div>
             
             <div style="display: flex; gap: 1rem;">
-                <button type="submit" style="flex: 2; background: #0ea5e9; color: white; border: none; padding: 1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#0ea5e9'">Create Student Account</button>
+                <button type="submit" style="flex: 2; background: #0ea5e9; color: white; border: none; padding: 1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#0ea5e9'">create Student Account</button>
                 <a href="{% url 'manage_students' %}" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b; padding: 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Cancel</a>
             </div>
         </form>
@@ -96,7 +96,7 @@
         }
     }
 
-    function toggleCreatePassword(inputId, iconId) {
+    function togglecreatePassword(inputId, iconId) {
         const input = document.getElementById(inputId);
         const icon = document.getElementById(iconId);
         if (input.type === "password") {
@@ -135,3 +135,5 @@
     });
 </script>
 {% endblock %}
+
+
