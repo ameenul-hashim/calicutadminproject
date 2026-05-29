@@ -943,7 +943,8 @@ def admin_view_course_content(request, course_uid):
     lessons = course.lessons.exclude(status='REJECTED').order_by('order')
     
     from accounts.models import CourseResource
-    resources = course.resources.exclude(status='REJECTED').exclude(is_deleted=True).order_by('-created_at')
+    # Show all non-deleted resources — admin must be able to see REJECTED ones to re-approve after teacher fixes
+    resources = course.resources.exclude(is_deleted=True).order_by('-created_at')
     
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
