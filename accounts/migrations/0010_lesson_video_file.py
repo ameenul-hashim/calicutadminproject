@@ -16,3 +16,4 @@ class Migration(migrations.Migration):
             field=models.FileField(blank=True, null=True, upload_to='lessons/videos/'),
         ),
     ]
+

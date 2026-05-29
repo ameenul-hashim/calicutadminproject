@@ -20,3 +20,4 @@ class Migration(migrations.Migration):
             field=models.URLField(blank=True, help_text='YouTube or other video link', max_length=500, null=True),
         ),
     ]
+

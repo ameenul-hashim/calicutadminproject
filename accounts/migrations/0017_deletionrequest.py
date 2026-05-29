@@ -12,7 +12,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.createModel(
+        migrations.CreateModel(
             name='DeletionRequest',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -29,6 +29,7 @@ class Migration(migrations.Migration):
             },
         ),
     ]
+
 
 
 

@@ -27,3 +27,4 @@ class Migration(migrations.Migration):
             field=models.UUIDField(blank=True, default=uuid.uuid4, editable=False, null=True),
         ),
     ]
+

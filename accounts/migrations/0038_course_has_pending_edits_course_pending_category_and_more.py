@@ -76,3 +76,4 @@ class Migration(migrations.Migration):
             field=models.CharField(choices=[('DRAFT', 'Draft'), ('PENDING', 'Pending Approval'), ('PUBLISHED', 'Published'), ('REJECTED', 'Rejected'), ('DELETED', 'Deleted')], db_index=True, default='DRAFT', max_length=20),
         ),
     ]
+
