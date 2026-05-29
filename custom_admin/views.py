@@ -1208,6 +1208,31 @@ def approve_deletion_request(request, request_uid):
 
 
 @user_passes_test(is_admin, login_url='admin_login')
+def reject_deletion_request(request, request_uid):
+    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
+    
+    if del_request.status != 'PENDING':
+        messages.error(request, "This request has already been processed.")
+        return redirect('manage_deletion_requests')
+    
+    # If it's a Resource deletion request, restore the resource status to APPROVED
+    if del_request.item_type == 'Resource':
+        from accounts.models import CourseResource
+        resource = CourseResource.objects.filter(id=del_request.item_id).first()
+        if resource:
+            resource.status = 'APPROVED'
+            resource.save()
+    
+    del_request.status = 'REJECTED'
+    del_request.reviewed_by = request.user
+    del_request.reviewed_at = timezone.now()
+    del_request.save()
+    
+    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. The content remains live.")
+    messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Resource restored to Approved status.")
+    return redirect('manage_deletion_requests')
+
+@user_passes_test(is_admin, login_url='admin_login')
 def deleted_courses_view(request):
     courses = Course.objects.filter(status='DELETED').select_related('teacher').order_by('-created_at')
     
