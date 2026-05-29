@@ -238,7 +238,7 @@
                         <div class="accordion-content">
                             {% if lesson.video_url or lesson.video_file %}
                             <div class="sub-item video-link" 
-                                 onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:\"\" }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}')">
+                                 onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}')">
                                 🎥 Watch Video
                             </div>
                             {% endif %}
