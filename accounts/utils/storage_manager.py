@@ -70,9 +70,10 @@ class StorageManager:
                 raise ValueError("Failed to download resource from Supabase")
                 
             # 2. Authenticate to Google Drive
-            BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            token_file = os.path.join(BASE_DIR, "token.json")
-            creds_file = os.path.join(BASE_DIR, "credentials.json")
+            # Use the local directory where storage_manager.py resides
+            UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+            token_file = os.path.join(UTILS_DIR, "token.json")
+            creds_file = os.path.join(UTILS_DIR, "credentials.json")
             
             SCOPES = ['https://www.googleapis.com/auth/drive']
             creds = None
