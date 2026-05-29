@@ -80,7 +80,7 @@ def create_notification(user, message):
     from .models import Notification
     # Objective 1: No DB storage for Students
     if user.user_type == 'STUDENT':
-        return # Skip DB creation for students
+        return # Skip DB crNLion for students
         
     # Objective 3: Keep notifications only for important Admin/Teacher events
     important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
@@ -168,7 +168,7 @@ def signup_view(request):
         try:
             from accounts.utils.supabase_storage import upload_user_proof
             
-            # Create User First
+            # create User First
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
@@ -293,7 +293,7 @@ def teacher_signup_view(request):
         try:
             from accounts.utils.supabase_storage import upload_user_proof
             
-            # Create User First
+            # create User First
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
@@ -817,7 +817,7 @@ def create_course(request):
             status='DRAFT'
         )
         if thumbnail:
-            success = update_image(course, thumbnail, folder="eduaimsthinker/courses")
+            success = update_image(course, thumbnail, folder="Neo Learner/courses")
             if not success:
                 print(f"⚠️ Thumbnail upload failed for course '{title}' — course saved without thumbnail.")
         
@@ -849,7 +849,7 @@ def edit_course(request, course_uid):
             
             if thumbnail_file:
                 from .utils.cloudinary_helpers import upload_image_only
-                p_url, p_id = upload_image_only(thumbnail_file, folder="eduaimsthinker/courses")
+                p_url, p_id = upload_image_only(thumbnail_file, folder="Neo Learner/courses")
                 if p_url:
                     if course.pending_image_public_id:
                         try:
@@ -872,7 +872,7 @@ def edit_course(request, course_uid):
             
             if thumbnail_file:
                 from .utils.cloudinary_helpers import update_image
-                success = update_image(course, thumbnail_file, folder="eduaimsthinker/courses")
+                success = update_image(course, thumbnail_file, folder="Neo Learner/courses")
                 if not success:
                     print(f"⚠️ Thumbnail update failed for course '{course.title}'")
             
@@ -1051,7 +1051,7 @@ def add_resource(request, course_uid):
             thumb_public_id = None
             if thumbnail_bytes:
                 from accounts.utils.cloudinary_helpers import upload_image_only
-                t_url, t_pid = upload_image_only(thumbnail_bytes, folder="eduaimsthinker/course_thumbnails")
+                t_url, t_pid = upload_image_only(thumbnail_bytes, folder="Neo Learner/course_thumbnails")
                 if t_url and t_pid:
                     thumb_path = t_url
                     thumb_public_id = t_pid
@@ -1221,7 +1221,7 @@ def edit_profile(request):
                 return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 2GB allowed).'}, status=400)
             
             from .utils.cloudinary_helpers import update_image
-            if update_image(request.user, profile_photo, folder="eduaimsthinker/profiles"):
+            if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
                 # Support both AJAX and Standard Form Submission
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
                     return JsonResponse({'status': 'success', 'message': '✅ Profile photo updated successfully!'})
@@ -1376,12 +1376,26 @@ def get_chat_list(request):
 @login_required
 def mark_notification_read(request, notif_uid):
     from .models import Notification
-    # Objective 4: Mark as Read -> DELETE from DB
     notif = get_object_or_404(Notification, uid=notif_uid, user=request.user)
+    notif.is_read = True
+    notif.save()
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        from django.http import JsonResponse
+        return JsonResponse({"status": "read"})
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@login_required
+def delete_notification(request, notif_uid):
+    from .models import Notification
+    notif = get_object_or_404(Notification, uid=notif_uid, user=request.user)
+    if not notif.is_read:
+        messages.error(request, "Please mark as read before deleting.")
+        return redirect(request.META.get('HTTP_REFERER', '/'))
     notif.delete()
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         from django.http import JsonResponse
         return JsonResponse({"status": "deleted"})
+    messages.success(request, "Notification deleted.")
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -1652,3 +1666,6 @@ def reset_password(request):
         return redirect('login' if user.user_type == 'STUDENT' else 'teacher_login')
         
     return render(request, 'accounts/reset_password.html', {'user': user})
+
+
+

@@ -3,7 +3,7 @@ import re
 from datetime import datetime, timedelta
 
 def calculate_slos(log_file='security.log'):
-    print("📊 EDUAIMSTHINKER ENTERPRISE SLO TRACKER")
+    print("📊 Neo Learner ENTERPRISE SLO TRACKER")
     print("=" * 60)
     
     if not os.path.exists(log_file):
@@ -58,3 +58,4 @@ def calculate_slos(log_file='security.log'):
 
 if __name__ == "__main__":
     calculate_slos()
+

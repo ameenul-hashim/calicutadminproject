@@ -137,6 +137,7 @@ class CourseResource(models.Model):
         ('ENGLISH', 'English Notes'),
         ('MALAYALAM', 'Malayalam Notes'),
         ('ONLINE', 'Online Class Notes'),
+        ('GENERAL', 'General Resources'),
     )
     RESOURCE_TYPE_CHOICES = (
         ('PDF', 'PDF Document'),
@@ -386,3 +387,5 @@ def cleanup_lesson_video(sender, instance, **kwargs):
             instance.pending_video_file.delete(save=False)
         except Exception:
             pass
+
+

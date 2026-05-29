@@ -68,7 +68,7 @@ def validate_config():
     return True
 
 def startup_check():
-    print("🚀 EduAimsThinker Startup Guard: Initializing...")
+    print("🚀 Neo Learner Startup Guard: Initializing...")
     
     # 1. Config Validation
     if not validate_config():
@@ -77,9 +77,9 @@ def startup_check():
         print("✅ Config Validation Passed.")
 
     # 2. Backup Freshness Check
-    heartbeat_file = get_path("last_success.txt")
-    if os.path.exists(heartbeat_file):
-        with open(heartbeat_file, 'r') as f:
+    heartbNL_file = get_path("last_success.txt")
+    if os.path.exists(heartbNL_file):
+        with open(heartbNL_file, 'r') as f:
             try:
                 last_ts = f.read().strip()
                 last_dt = datetime.datetime.fromisoformat(last_ts)
@@ -87,14 +87,16 @@ def startup_check():
                 
                 if hours_since > 25:
                     send_alert(
-                        "🚩 EduAimsThinker Startup Guard: BACKUP IS STALE",
+                        "🚩 Neo Learner Startup Guard: BACKUP IS STALE",
                         f"The system just started up, but the last successful backup was {hours_since:.1f} hours ago ({last_dt})."
                     )
             except: pass
     else:
-        send_alert("🚩 EduAimsThinker Startup Guard: BACKUP NEVER SUCCEEDED", "No successful backup record found.")
+        send_alert("🚩 Neo Learner Startup Guard: BACKUP NEVER SUCCEEDED", "No successful backup record found.")
 
     print("🎯 Startup Guard Complete.")
 
 if __name__ == "__main__":
     startup_check()
+
+

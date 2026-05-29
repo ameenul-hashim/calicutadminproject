@@ -51,3 +51,5 @@ class Migration(migrations.Migration):
             field=models.DateTimeField(auto_now_add=True, db_index=True),
         ),
     ]
+
+

@@ -127,3 +127,5 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return True
         except ChatMessage.DoesNotExist:
             return False
+
+

@@ -1,6 +1,6 @@
 {% extends 'custom_admin/base_admin.html' %}
 
-{% block title %}Pending Resources | EduAimsThinker Admin{% endblock %}
+{% block title %}Pending Resources | Neo Learner Admin{% endblock %}
 
 {% block header_title %}<h1>⏳ Pending Resources Approval</h1>{% endblock %}
 
@@ -51,6 +51,7 @@
                     <td class="text-xs text-slate-500">{{ resource.created_at|date:"M d, Y H:i" }}</td>
                     <td>
                         <div class="flex gap-2">
+                            <a href="{% url 'access_resource' resource.uid %}" target="_blank" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">View</a>
                             <a href="{% url 'approve_resource' resource.uid %}" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Approve</a>
                             <a href="{% url 'reject_resource' resource.uid %}" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Reject</a>
                         </div>
@@ -69,3 +70,5 @@
     </div>
 </div>
 {% endblock %}
+
+

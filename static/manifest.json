@@ -1,7 +1,7 @@
 {
-  "name": "EduAimsThinker",
-  "short_name": "EAT",
-  "description": "EduAimsThinker — Think Beyond Learning",
+  "name": "Neo Learner",
+  "short_name": "NL",
+  "description": "Neo Learner — Think Beyond Learning",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f8fafc",
@@ -20,3 +20,4 @@
     }
   ]
 }
+

@@ -56,3 +56,5 @@ urlpatterns = [
     path('course/restore/<uuid:course_uid>/', views.admin_restore_course, name='admin_restore_course'),
     path('course/permanent-delete/secure/<uuid:course_uid>/', views.admin_permanent_delete_course_secure, name='admin_permanent_delete_course_secure'),
 ]
+
+

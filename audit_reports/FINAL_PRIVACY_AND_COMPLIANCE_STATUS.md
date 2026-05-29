@@ -14,9 +14,10 @@
 - [x] **De-Identification**: PDF metadata (EXIF/Author) is stripped during the RAM conversion process.
 
 ## 3. PROVIDER PRIVACY VALIDATION
-- [x] **Cloudinary**: No AI training features are enabled. Public asset usage only.
+- [x] **Cloudinary**: No AI training fNLures are enabled. Public asset usage only.
 - [x] **Supabase**: Data is encrypted at rest using AES-256 (standard provider level).
 - [x] **No Third-Party Sharing**: No analytics or tracking pixels (Google Analytics, Facebook Pixel) are integrated into the application core.
 
 ---
 **Privacy Verdict:** The platform adheres to strict data minimization principles and enforces zero-trust access to sensitive identity proofs.
+

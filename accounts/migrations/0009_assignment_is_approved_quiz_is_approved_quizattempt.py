@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
             name='is_approved',
             field=models.BooleanField(default=False),
         ),
-        migrations.CreateModel(
+        migrations.createModel(
             name='QuizAttempt',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -34,3 +34,6 @@ class Migration(migrations.Migration):
             ],
         ),
     ]
+
+
+
