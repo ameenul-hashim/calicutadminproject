@@ -132,6 +132,68 @@ class Lesson(models.Model):
     class Meta:
         ordering = ['order']
 
+class CourseResource(models.Model):
+    CATEGORY_CHOICES = (
+        ('ENGLISH', 'English Notes'),
+        ('MALAYALAM', 'Malayalam Notes'),
+        ('ONLINE', 'Online Class Notes'),
+    )
+    RESOURCE_TYPE_CHOICES = (
+        ('PDF', 'PDF Document'),
+        ('DOCX', 'Word Document'),
+        ('PPTX', 'PowerPoint Presentation'),
+        ('XLSX', 'Excel Spreadsheet'),
+        ('TXT', 'Text File'),
+    )
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='resources')
+    title = models.CharField(max_length=255)
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, db_index=True)
+    resource_type = models.CharField(max_length=10, choices=RESOURCE_TYPE_CHOICES, db_index=True)
+    
+    # Storage Paths
+    firebase_file_path = models.CharField(max_length=1000)
+    backup_file_path = models.CharField(max_length=1000, null=True, blank=True)
+    thumbnail_path = models.CharField(max_length=1000, null=True, blank=True)
+    
+    # Validation & Analytics
+    mime_type = models.CharField(max_length=100, blank=True, null=True)
+    file_extension = models.CharField(max_length=10, blank=True, null=True)
+    original_size = models.PositiveIntegerField(default=0, help_text="Size in bytes")
+    compressed_size = models.PositiveIntegerField(default=0, help_text="Size in bytes")
+    view_count = models.PositiveIntegerField(default=0)
+    download_count = models.PositiveIntegerField(default=0)
+    
+    # Approval Workflow
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING', db_index=True)
+    is_approved = models.BooleanField(default=False, db_index=True)
+    approved_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_resources')
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='rejected_resources')
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, null=True)
+    
+    # Lifecycle & Soft Deletes
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.get_category_display()}"
+        
+    def get_signed_url(self):
+        from accounts.utils.storage_manager import StorageManager
+        import datetime
+        try:
+            manager = StorageManager()
+            expiration = datetime.timedelta(hours=2)
+            return manager.generate_signed_url(self.firebase_file_path, expiration)
+        except Exception:
+            return None
 
 class LiveClass(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='live_classes')

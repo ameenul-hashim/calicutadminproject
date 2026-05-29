@@ -219,7 +219,15 @@
                 <div class="sidebar-header">
                     <h2>Course Content</h2>
                 </div>
-                <div class="lesson-accordion">
+                
+                <!-- Tab Navigation -->
+                <div style="display: flex; border-bottom: 1px solid #334155; margin-bottom: 1rem;">
+                    <button onclick="switchTab('videos')" id="tab-videos" style="flex: 1; width: 50%; padding: 0.75rem; background: transparent; color: white; border: none; border-bottom: 2px solid #6366f1; font-weight: 600; cursor: pointer; transition: all 0.2s;">Videos</button>
+                    <button onclick="switchTab('resources')" id="tab-resources" style="flex: 1; width: 50%; padding: 0.75rem; background: transparent; color: #94a3b8; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; transition: all 0.2s;">Resources</button>
+                </div>
+
+                <!-- Videos Section -->
+                <div id="content-videos" class="lesson-accordion">
                     {% for lesson in lessons %}
                     <div class="accordion-item" id="lesson-{{ lesson.id }}">
                         <div class="accordion-header" onclick="toggleAccordion(this)">
@@ -237,9 +245,61 @@
                         </div>
                     </div>
                     {% endfor %}
+                </div>
 
+                <!-- Resources Section -->
+                <div id="content-resources" style="display: none; padding: 0 1rem; padding-bottom: 2rem;">
+                    {% if course.resources.all %}
+                        {% for resource in course.resources.all %}
+                            {% if resource.status == 'APPROVED' and not resource.is_deleted %}
+                            <div style="background: #1e293b; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid #334155; transition: transform 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                                    <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; background: #6366f1; color: white; border-radius: 1rem; font-weight: 700; text-transform: uppercase;">{{ resource.get_category_display }}</span>
+                                    <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 700;">{{ resource.resource_type }}</span>
+                                </div>
+                                <h4 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; line-height: 1.3; color: white;">{{ resource.title }}</h4>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
+                                    <span style="font-size: 0.75rem; color: #94a3b8;">{% widthratio resource.compressed_size 1024 1 %} KB</span>
+                                    <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #10b981; color: white; border-radius: 0.5rem; padding: 0.4rem 0.8rem; font-size: 0.8rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 0.35rem; transition: background 0.2s;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                                        Access
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <div style="text-align: center; padding: 2rem 0;">
+                            <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">📄</span>
+                            <p style="color: #94a3b8; font-size: 0.9rem;">No resources available for this course yet.</p>
+                        </div>
+                    {% endif %}
                 </div>
             </aside>
+            <script>
+                function switchTab(tab) {
+                    const videoTab = document.getElementById('tab-videos');
+                    const resourceTab = document.getElementById('tab-resources');
+                    const videoContent = document.getElementById('content-videos');
+                    const resourceContent = document.getElementById('content-resources');
+                    
+                    if (tab === 'videos') {
+                        videoTab.style.color = 'white';
+                        videoTab.style.borderBottom = '2px solid #6366f1';
+                        resourceTab.style.color = '#94a3b8';
+                        resourceTab.style.borderBottom = '2px solid transparent';
+                        videoContent.style.display = 'block';
+                        resourceContent.style.display = 'none';
+                    } else if (tab === 'resources') {
+                        resourceTab.style.color = 'white';
+                        resourceTab.style.borderBottom = '2px solid #10b981';
+                        videoTab.style.color = '#94a3b8';
+                        videoTab.style.borderBottom = '2px solid transparent';
+                        resourceContent.style.display = 'block';
+                        videoContent.style.display = 'none';
+                    }
+                }
+            </script>
 
             <!-- Video/Content Main -->
             <main class="video-main">

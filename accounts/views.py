@@ -893,12 +893,16 @@ def edit_course(request, course_uid):
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved').order_by('order')
-    has_pending_content = lessons.filter(status='PENDING').exists()
-    any_lesson_rejected = lessons.filter(status='REJECTED').exists()
+    from .models import CourseResource
+    resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved').order_by('-created_at')
+    
+    has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
+    any_lesson_rejected = lessons.filter(status='REJECTED').exists() or resources.filter(status='REJECTED').exists()
     
     return render(request, 'teacher_portal/course_lessons.html', {
         'course': course, 
         'lessons': lessons,
+        'resources': resources,
         'has_pending_content': has_pending_content,
         'any_lesson_rejected': any_lesson_rejected,
     })
@@ -1003,6 +1007,83 @@ def delete_lesson(request, lesson_uid):
         notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete lesson '{lesson.title}'.")
         
     return redirect('course_lessons', course_uid=course_uid)
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def add_resource(request, course_uid):
+    from .utils.pdf_processor import validate_file, process_pdf
+    from .utils.storage_manager import StorageManager
+    from .models import CourseResource
+
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        category = request.POST.get('category')
+        resource_type = request.POST.get('resource_type')
+        upload_file = request.FILES.get('upload_file')
+
+        if not upload_file:
+            messages.error(request, "File upload missing.")
+            return redirect('course_lessons', course_uid=course.uid)
+            
+        try:
+            mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
+            file_bytes = upload_file.read()
+            original_size = len(file_bytes)
+            
+            backup_path = StorageManager.upload_to_drive(file_bytes, upload_file.name)
+            
+            compressed_bytes = file_bytes
+            thumbnail_bytes = None
+            if resource_type == 'PDF':
+                compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
+            
+            compressed_size = len(compressed_bytes)
+            
+            import uuid
+            dest_path = f"resources/{course.uid}/{uuid.uuid4()}_{ext}"
+            fb_path = StorageManager.upload_to_firebase(compressed_bytes, dest_path, mime_type)
+            
+            thumb_path = None
+            if thumbnail_bytes:
+                t_dest = f"thumbnails/{course.uid}/{uuid.uuid4()}.webp"
+                thumb_path = StorageManager.upload_to_firebase(thumbnail_bytes, t_dest, "image/webp")
+            
+            CourseResource.objects.create(
+                course=course,
+                title=title,
+                category=category,
+                resource_type=resource_type,
+                firebase_file_path=fb_path,
+                backup_file_path=backup_path,
+                thumbnail_path=thumb_path,
+                mime_type=mime_type,
+                file_extension=ext,
+                original_size=original_size,
+                compressed_size=compressed_size,
+                status='PENDING',
+                is_approved=False
+            )
+            messages.success(request, f"Resource '{title}' uploaded and pending approval.")
+            notify_admins(f"🆕 NEW RESOURCE: Teacher {request.user.username} uploaded a {resource_type} for course '{course.title}'.")
+        except Exception as e:
+            messages.error(request, f"Upload failed: {str(e)}")
+            
+        return redirect('course_lessons', course_uid=course.uid)
+        
+    return render(request, 'teacher_portal/add_resource.html', {'course': course})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def delete_resource(request, resource_uid):
+    from .models import CourseResource
+    from django.utils import timezone
+    resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
+    
+    resource.is_deleted = True
+    resource.deleted_at = timezone.now()
+    resource.save()
+    
+    messages.success(request, "Resource successfully moved to trash.")
+    return redirect('course_lessons', course_uid=resource.course.uid)
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def submit_course_approval(request, course_uid):
@@ -1324,6 +1405,33 @@ def mark_all_notifications_read(request):
     # Objective 4: Mass cleanup
     Notification.objects.filter(user=request.user).delete()
     return redirect(request.META.get('HTTP_REFERER', '/'))
+
+@login_required(login_url='login')
+def access_resource(request, resource_uid):
+    from accounts.models import CourseResource, Enrollment
+    from django.shortcuts import get_object_or_404, redirect
+    from django.http import HttpResponseForbidden
+    
+    resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False, status='APPROVED')
+    
+    # Verify access
+    is_teacher = (request.user.user_type == 'TEACHER' and resource.course.teacher == request.user)
+    is_admin = request.user.is_superuser or request.user.user_type == 'ADMIN'
+    
+    if not (is_teacher or is_admin):
+        has_enrollment = Enrollment.objects.filter(user=request.user, course=resource.course).exists()
+        if not has_enrollment:
+            return HttpResponseForbidden("You are not enrolled in this course.")
+            
+        # Increment analytics for students
+        resource.view_count += 1
+        resource.download_count += 1 
+        resource.save(update_fields=['view_count', 'download_count'])
+        
+    url = resource.get_signed_url()
+    if url:
+        return redirect(url)
+    return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required

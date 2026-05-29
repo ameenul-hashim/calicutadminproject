@@ -18,6 +18,12 @@ urlpatterns = [
     path('lesson/approve/<uuid:lesson_uid>/', views.approve_lesson, name='approve_lesson'),
     path('lesson/reject/<uuid:lesson_uid>/', views.reject_lesson, name='reject_lesson'),
     
+    # Resource actions
+    path('resource/approve/<uuid:resource_uid>/', views.approve_resource, name='approve_resource'),
+    path('resource/reject/<uuid:resource_uid>/', views.reject_resource, name='reject_resource'),
+    
+    path('storage-dashboard/', views.storage_dashboard, name='storage_dashboard'),
+    
 
     path('user/accept/<uuid:user_uid>/', views.accept_user, name='accept_user'),
     path('user/decline/<uuid:user_uid>/', views.decline_user, name='decline_user'),

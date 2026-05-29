@@ -893,6 +893,48 @@ def reject_lesson(request, lesson_uid):
         return redirect('admin_view_course_content', course_uid=course_uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
+@user_passes_test(is_admin, login_url='admin_login')
+def approve_resource(request, resource_uid):
+    from accounts.models import CourseResource, Enrollment
+    from accounts.views import create_notification
+    from django.utils import timezone
+    
+    resource = get_object_or_404(CourseResource, uid=resource_uid)
+    resource.status = 'APPROVED'
+    resource.is_approved = True
+    resource.approved_by = request.user
+    resource.approved_at = timezone.now()
+    resource.save()
+    
+    create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
+    
+    enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
+    for enrollment in enrollments:
+        if enrollment.user.status == 'ACTIVE':
+            create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
+
+    messages.success(request, f"Resource '{resource.title}' approved.")
+    return redirect('admin_view_course_content', course_uid=resource.course.uid)
+
+@user_passes_test(is_admin, login_url='admin_login')
+def reject_resource(request, resource_uid):
+    from accounts.models import CourseResource
+    from accounts.views import create_notification
+    from django.utils import timezone
+    resource = get_object_or_404(CourseResource, uid=resource_uid)
+    if request.method == 'POST':
+        reason = request.POST.get('reason')
+        resource.status = 'REJECTED'
+        resource.is_approved = False
+        resource.rejection_reason = reason
+        resource.rejected_by = request.user
+        resource.rejected_at = timezone.now()
+        resource.save()
+        
+        create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' was rejected. Reason: {reason}.")
+        messages.warning(request, f"Resource '{resource.title}' rejected.")
+        return redirect('admin_view_course_content', course_uid=resource.course.uid)
+    return render(request, 'custom_admin/decline_reason.html', {'lesson': resource, 'is_content': True, 'content_type': 'Resource', 'is_resource': True})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
@@ -900,12 +942,46 @@ def admin_view_course_content(request, course_uid):
     # Hide REJECTED content from admin view until it's resubmitted (PENDING)
     lessons = course.lessons.exclude(status='REJECTED').order_by('order')
     
+    from accounts.models import CourseResource
+    resources = course.resources.exclude(status='REJECTED').exclude(is_deleted=True).order_by('-created_at')
+    
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
         'lessons': lessons,
+        'resources': resources,
+        'notifications': notifications,
+        'unread_notifications_count': unread_count,
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
+def storage_dashboard(request):
+    from accounts.models import CourseResource
+    from django.db.models import Sum, Count, Avg
+    
+    resources = CourseResource.objects.filter(is_deleted=False)
+    metrics = resources.aggregate(
+        total_count=Count('id'),
+        total_original=Sum('original_size'),
+        total_compressed=Sum('compressed_size'),
+        avg_compressed=Avg('compressed_size')
+    )
+    
+    total_mb = (metrics['total_compressed'] or 0) / (1024 * 1024)
+    # Admin configured soft limit
+    max_mb = 1000 
+    usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
+    
+    notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+    
+    return render(request, 'custom_admin/storage_dashboard.html', {
+        'resources': resources.order_by('-created_at')[:50],
+        'metrics': metrics,
+        'total_mb': round(total_mb, 2),
+        'usage_percent': round(usage_percent, 1),
         'notifications': notifications,
         'unread_notifications_count': unread_count,
     })

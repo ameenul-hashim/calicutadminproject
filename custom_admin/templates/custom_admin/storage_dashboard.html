@@ -1,0 +1,121 @@
+{% extends 'custom_admin/base.html' %}
+{% load static %}
+
+{% block title %}Storage Dashboard{% endblock %}
+
+{% block content %}
+<div class="p-6 max-w-7xl mx-auto">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Storage Dashboard</h1>
+            <p class="text-gray-500 mt-1">Monitor Firebase and Cloud Storage capacities</p>
+        </div>
+    </div>
+    
+    <!-- Warning Threshold Banner -->
+    {% if usage_percent > 95 %}
+    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-lg">
+        <div class="flex">
+            <div class="flex-shrink-0">⚠️</div>
+            <div class="ml-3">
+                <h3 class="text-red-800 font-medium">Critical Storage Warning</h3>
+                <p class="text-red-700 mt-1">Storage is near maximum capacity. You must upgrade your Firebase plan or delete old resources.</p>
+            </div>
+        </div>
+    </div>
+    {% elif usage_percent > 85 %}
+    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-8 rounded-r-lg">
+        <div class="flex">
+            <div class="flex-shrink-0">⚠️</div>
+            <div class="ml-3">
+                <h3 class="text-orange-800 font-medium">Storage Nearing Capacity</h3>
+                <p class="text-orange-700 mt-1">Storage usage has exceeded 85%. Monitor closely.</p>
+            </div>
+        </div>
+    </div>
+    {% elif usage_percent > 70 %}
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 rounded-r-lg">
+        <div class="flex">
+            <div class="flex-shrink-0">⚠️</div>
+            <div class="ml-3">
+                <h3 class="text-yellow-800 font-medium">Storage Warning</h3>
+                <p class="text-yellow-700 mt-1">Storage usage has exceeded 70%.</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h3 class="text-gray-500 text-sm font-medium">Total Resources</h3>
+            <p class="text-3xl font-bold text-gray-900 mt-2">{{ metrics.total_count|default:0 }}</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+            <h3 class="text-gray-500 text-sm font-medium">Compressed Storage Used</h3>
+            <p class="text-3xl font-bold text-indigo-600 mt-2">{{ total_mb|floatformat:1 }} MB</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 md:col-span-2">
+            <h3 class="text-gray-500 text-sm font-medium">Storage Capacity Usage (1 GB Limit)</h3>
+            <div class="mt-4 w-full bg-gray-200 rounded-full h-4">
+                <div class="h-4 rounded-full {% if usage_percent > 90 %}bg-red-500{% elif usage_percent > 75 %}bg-yellow-400{% else %}bg-green-500{% endif %}" 
+                     style="width: {{ usage_percent }}%"></div>
+            </div>
+            <p class="text-right text-sm text-gray-600 mt-2">{{ usage_percent|floatformat:1 }}% Full</p>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+            <h2 class="text-lg font-bold text-gray-900">Recent Resources</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views / DLs</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for r in resources %}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ r.title }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ r.course.title|truncatechars:30 }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                {{ r.resource_type }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {% widthratio r.compressed_size 1024 1 %} KB
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ r.view_count }} / {{ r.download_count }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {% if r.status == 'APPROVED' %}
+                            <span class="text-green-600 font-medium">Active</span>
+                            {% elif r.status == 'PENDING' %}
+                            <span class="text-yellow-600 font-medium">Pending</span>
+                            {% else %}
+                            <span class="text-red-600 font-medium">{{ r.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">No resources on the platform yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
