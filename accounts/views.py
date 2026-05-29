@@ -1024,6 +1024,12 @@ def add_resource(request, course_uid):
         if not upload_file:
             messages.error(request, "File upload missing.")
             return redirect('course_lessons', course_uid=course.uid)
+
+        # Pre-read size gate: 50MB raw upload limit to prevent DoS
+        MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+        if upload_file.size > MAX_UPLOAD_BYTES:
+            messages.error(request, "File too large. Maximum upload size is 50MB.")
+            return redirect('course_lessons', course_uid=course.uid)
             
         try:
             mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
@@ -1074,15 +1080,26 @@ def add_resource(request, course_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def delete_resource(request, resource_uid):
+    if request.method != 'POST':
+        return redirect('teacher_dashboard')
     from .models import CourseResource
+    from .utils.storage_manager import StorageManager
     from django.utils import timezone
     resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
+    
+    # Clean up Firebase storage on delete
+    try:
+        StorageManager.delete_from_firebase(resource.firebase_file_path)
+        if resource.thumbnail_path:
+            StorageManager.delete_from_firebase(resource.thumbnail_path)
+    except Exception:
+        pass  # Don't block soft-delete if Firebase cleanup fails
     
     resource.is_deleted = True
     resource.deleted_at = timezone.now()
     resource.save()
     
-    messages.success(request, "Resource successfully moved to trash.")
+    messages.success(request, "Resource successfully deleted.")
     return redirect('course_lessons', course_uid=resource.course.uid)
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -1258,9 +1275,15 @@ def course_player(request, course_uid):
         # Filter: Students see APPROVED content only
         lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
 
+    from .models import CourseResource
+    approved_resources = CourseResource.objects.filter(
+        course=course, status='APPROVED', is_deleted=False
+    ).order_by('-created_at')
+
     context = {
         'course': course,
         'lessons': lessons,
+        'approved_resources': approved_resources,
         'first_lesson': lessons.first() if lessons.exists() else None,
         'is_admin': getattr(request.user, 'is_staff', False),
     }
@@ -1423,10 +1446,9 @@ def access_resource(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
             
-        # Increment analytics for students
+        # Increment view analytics only (download_count tracked separately via explicit download action)
         resource.view_count += 1
-        resource.download_count += 1 
-        resource.save(update_fields=['view_count', 'download_count'])
+        resource.save(update_fields=['view_count'])
         
     url = resource.get_signed_url()
     if url:

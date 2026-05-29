@@ -68,7 +68,8 @@ class StorageManager:
     def generate_signed_url(file_path, expiration=None):
         """Generates a short-lived temporary streaming URL. Expiration can be timedelta or int (minutes)."""
         if not firebase_app or not FIREBASE_BUCKET_NAME or not file_path:
-            return file_path
+            # Security: never expose raw storage paths — return None so caller can show a proper error
+            return None
             
         try:
             bucket = storage.bucket()

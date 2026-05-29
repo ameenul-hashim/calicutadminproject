@@ -249,9 +249,8 @@
 
                 <!-- Resources Section -->
                 <div id="content-resources" style="display: none; padding: 0 1rem; padding-bottom: 2rem;">
-                    {% if course.resources.all %}
-                        {% for resource in course.resources.all %}
-                            {% if resource.status == 'APPROVED' and not resource.is_deleted %}
+                    {% if approved_resources %}
+                        {% for resource in approved_resources %}
                             <div style="background: #1e293b; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem; border: 1px solid #334155; transition: transform 0.2s; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                                     <span style="font-size: 0.7rem; padding: 0.2rem 0.6rem; background: #6366f1; color: white; border-radius: 1rem; font-weight: 700; text-transform: uppercase;">{{ resource.get_category_display }}</span>
@@ -266,7 +265,6 @@
                                     </a>
                                 </div>
                             </div>
-                            {% endif %}
                         {% endfor %}
                     {% else %}
                         <div style="text-align: center; padding: 2rem 0;">
