@@ -106,7 +106,8 @@
     </div>
 
     <div class="resources-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-        {% for resource in course.resources.all %}
+        {% for resource in course.resources.filter(is_deleted=False) %}
+        {% if not resource.is_deleted %}
         <div class="lesson-card" style="margin-bottom: 0;">
             <div style="display: flex; gap: 1rem; align-items: center;">
                 <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; overflow: hidden;">
@@ -118,16 +119,43 @@
                 </div>
                 <div style="flex: 1;">
                     <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ resource.title }}</h4>
-                    <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">{{ resource.resource_type }} • {% if resource.compressed_size %}{{ resource.compressed_size|filesizeformat }}{% else %}Unknown size{% endif %}</p>
+                    <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">
+                        {{ resource.get_category_display }} • {{ resource.resource_type }}
+                        {% if resource.compressed_size %} • {{ resource.compressed_size|filesizeformat }}{% endif %}
+                    </p>
                 </div>
             </div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
-                <span class="status-badge" style="{% if resource.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;{% elif resource.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;{% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
-                    {{ resource.status }}
-                </span>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
+                {% if resource.status == 'APPROVED' %}
+                    <span class="status-badge" style="background: #ecfdf5; color: #10b981;">✓ Approved</span>
+                {% elif resource.status == 'REJECTED' %}
+                    <span class="status-badge" style="background: #fef2f2; color: #ef4444;">✗ Rejected</span>
+                {% elif resource.status == 'DELETION_PENDING' %}
+                    <span class="status-badge" style="background: #fff7ed; color: #f97316;">🕐 Deletion Pending</span>
+                {% else %}
+                    <span class="status-badge" style="background: #fffbeb; color: #f59e0b;">⏳ Pending Review</span>
+                {% endif %}
+
                 <div style="display: flex; gap: 0.75rem;">
-                    <a href="javascript:void(0)" onclick="Toast.confirm('Delete this resource?', () => { window.location.href = '{% url 'delete_resource' resource.uid %}'; })" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Delete</a>
+                    {% if resource.status == 'DELETION_PENDING' %}
+                        <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Awaiting admin approval</span>
+                    {% elif resource.status == 'APPROVED' %}
+                        <!-- For approved resources — show modal to request deletion with reason -->
+                        <button onclick="openDeleteModal('{{ resource.uid }}', '{{ resource.title|escapejs }}')"
+                            style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
+                            Request Deletion
+                        </button>
+                    {% else %}
+                        <!-- For PENDING / REJECTED — allow immediate deletion -->
+                        <form method="POST" action="{% url 'delete_resource' resource.uid %}" style="margin: 0;"
+                              onsubmit="return confirm('Delete this resource permanently?')">
+                            {% csrf_token %}
+                            <button type="submit" style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
+                                Delete
+                            </button>
+                        </form>
+                    {% endif %}
                 </div>
             </div>
 
@@ -138,6 +166,7 @@
             </div>
             {% endif %}
         </div>
+        {% endif %}
         {% empty %}
         <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 1rem; color: #94a3b8;">
             <p style="margin: 0;">No resources uploaded yet.</p>
@@ -145,6 +174,43 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Deletion Request Modal -->
+<div id="deleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Request Resource Deletion</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            You are requesting deletion of: <strong id="deleteResourceName"></strong><br>
+            This request will be sent to an admin for approval.
+        </p>
+        <form id="deleteForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; color:#1e293b; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for deletion (optional)</label>
+                <textarea name="reason" rows="3" placeholder="e.g. Outdated content, uploaded wrong file..."
+                    style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">
+                    Submit Deletion Request
+                </button>
+                <button type="button" onclick="closeDeleteModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function openDeleteModal(uid, name) {
+    document.getElementById('deleteResourceName').textContent = name;
+    document.getElementById('deleteForm').action = '/resource/' + uid + '/delete/';
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+function closeDeleteModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+}
+</script>
 {% endblock %}
 
 

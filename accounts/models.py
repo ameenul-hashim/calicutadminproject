@@ -137,7 +137,6 @@ class CourseResource(models.Model):
         ('ENGLISH', 'English Notes'),
         ('MALAYALAM', 'Malayalam Notes'),
         ('ONLINE', 'Online Class Notes'),
-        ('GENERAL', 'General Resources'),
     )
     RESOURCE_TYPE_CHOICES = (
         ('PDF', 'PDF Document'),
@@ -167,7 +166,7 @@ class CourseResource(models.Model):
     download_count = models.PositiveIntegerField(default=0)
     
     # Approval Workflow
-    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING', db_index=True)
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected'), ('DELETION_PENDING', 'Deletion Pending')], default='PENDING', db_index=True)
     is_approved = models.BooleanField(default=False, db_index=True)
     approved_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_resources')
     approved_at = models.DateTimeField(null=True, blank=True)
@@ -294,11 +293,15 @@ class EmailOTP(models.Model):
 
 class DeletionRequest(models.Model):
     teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='deletion_requests')
-    item_type = models.CharField(max_length=50) # e.g., 'Lesson'
+    item_type = models.CharField(max_length=50)  # e.g., 'Lesson' or 'Resource'
     item_id = models.IntegerField()
     item_name = models.CharField(max_length=255)
+    # Direct FK for Resource deletion requests (nullable for legacy lesson requests)
+    resource = models.ForeignKey('CourseResource', on_delete=models.CASCADE, null=True, blank=True, related_name='deletion_requests')
     reason = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
+    reviewed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_deletion_requests')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
