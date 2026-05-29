@@ -966,10 +966,17 @@ def admin_view_course_content(request, course_uid):
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
+    pending_resources = resources.filter(status__in=['PENDING', 'DELETION_PENDING'])
+    approved_resources = resources.filter(status='APPROVED')
+    rejected_resources = resources.filter(status='REJECTED')
+    
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
         'lessons': lessons,
         'resources': resources,
+        'pending_resources': pending_resources,
+        'approved_resources': approved_resources,
+        'rejected_resources': rejected_resources,
         'notifications': notifications,
         'unread_notifications_count': unread_count,
     })
@@ -1139,6 +1146,12 @@ def verify_deletion_request(request, request_uid):
         if course:
             messages.info(request, f"ℹ️ Verifying request for {course.title}.")
             return redirect('admin_view_course_content', course_uid=course.uid)
+    elif del_request.item_type == 'Resource':
+        from accounts.models import CourseResource
+        resource = CourseResource.objects.filter(id=del_request.item_id).first()
+        if resource:
+            messages.info(request, f"ℹ️ Verifying request for {resource.title}.")
+            return redirect('admin_view_course_content', course_uid=resource.course.uid)
             
     messages.error(request, "The item could not be found or verified.")
     return redirect('manage_deletion_requests')
@@ -1168,7 +1181,22 @@ def approve_deletion_request(request, request_uid):
             success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
         else:
             messages.warning(request, "Item already gone.")
-            
+    elif del_request.item_type == 'Resource':
+        from accounts.models import CourseResource
+        resource = CourseResource.objects.filter(id=del_request.item_id).first()
+        if resource:
+            from accounts.utils.storage_manager import StorageManager
+            from accounts.utils.cloudinary_helpers import delete_temp_image
+            try:
+                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                if resource.thumbnail_public_id:
+                    delete_temp_image(resource.thumbnail_public_id)
+            except Exception:
+                pass
+            resource.delete()
+        else:
+            messages.warning(request, "Resource already gone.")
+
     del_request.delete() # Free up space after processing
     messages.success(request, f"✅ {success_msg}")
     create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
@@ -1243,6 +1271,14 @@ def admin_restore_course(request, course_uid):
 def reject_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
     
+    # If the item is a resource, restore its status back to APPROVED so it's visible again
+    if del_request.item_type == 'Resource':
+        from accounts.models import CourseResource
+        resource = CourseResource.objects.filter(id=del_request.item_id).first()
+        if resource:
+            resource.status = 'APPROVED'
+            resource.save()
+
     del_request.delete() # Objective: Free up space
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected.")
     create_notification(del_request.teacher, f"Your request to delete '{del_request.item_name}' has been REJECTED by admin.")

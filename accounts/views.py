@@ -1085,25 +1085,49 @@ def add_resource(request, course_uid):
 def delete_resource(request, resource_uid):
     if request.method != 'POST':
         return redirect('teacher_dashboard')
-    from .models import CourseResource
-    from .utils.storage_manager import StorageManager
-    from django.utils import timezone
+    from .models import CourseResource, DeletionRequest
     resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
-    
-    # Clean up Storage on delete
-    try:
-        StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-        if hasattr(resource, 'thumbnail_public_id') and resource.thumbnail_public_id:
-            from accounts.utils.cloudinary_helpers import delete_temp_image
-            delete_temp_image(resource.thumbnail_public_id)
-    except Exception:
-        pass  # Don't block soft-delete if cleanup fails
-    
-    resource.is_deleted = True
-    resource.deleted_at = timezone.now()
+
+    # If still PENDING / REJECTED (not yet approved), allow immediate deletion
+    if resource.status in ('PENDING', 'REJECTED'):
+        from .utils.storage_manager import StorageManager
+        from django.utils import timezone
+        try:
+            StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+            if resource.thumbnail_public_id:
+                from accounts.utils.cloudinary_helpers import delete_temp_image
+                delete_temp_image(resource.thumbnail_public_id)
+        except Exception:
+            pass
+        resource.is_deleted = True
+        resource.deleted_at = timezone.now()
+        resource.save()
+        messages.success(request, "Resource deleted successfully.")
+        return redirect('course_lessons', course_uid=resource.course.uid)
+
+    # For APPROVED resources — create a deletion request and wait for admin approval
+    # Prevent duplicate PENDING deletion requests
+    existing = DeletionRequest.objects.filter(resource=resource, status='PENDING').exists()
+    if existing:
+        messages.warning(request, "A deletion request for this resource is already pending admin review.")
+        return redirect('course_lessons', course_uid=resource.course.uid)
+
+    reason = request.POST.get('reason', '').strip() or 'Teacher requested deletion.'
+    DeletionRequest.objects.create(
+        teacher=request.user,
+        item_type='Resource',
+        item_id=resource.id,
+        item_name=resource.title,
+        resource=resource,
+        reason=reason,
+        status='PENDING',
+    )
+    # Mark the resource as deletion-pending so students can't see it
+    resource.status = 'DELETION_PENDING'
     resource.save()
-    
-    messages.success(request, "Resource successfully deleted.")
+
+    notify_admins(f"🗑️ DELETION REQUEST: Teacher {request.user.username} requested deletion of resource '{resource.title}' in course '{resource.course.title}'.")
+    messages.success(request, f"Deletion request for '{resource.title}' submitted. Awaiting admin approval.")
     return redirect('course_lessons', course_uid=resource.course.uid)
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
