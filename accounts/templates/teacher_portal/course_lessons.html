@@ -106,7 +106,7 @@
     </div>
 
     <div class="resources-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-        {% for resource in course.resources.filter(is_deleted=False) %}
+        {% for resource in resources %}
         {% if not resource.is_deleted %}
         <div class="lesson-card" style="margin-bottom: 0;">
             <div style="display: flex; gap: 1rem; align-items: center;">
