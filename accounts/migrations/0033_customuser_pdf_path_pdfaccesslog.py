@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
             name='pdf_path',
             field=models.CharField(blank=True, max_length=1000, null=True),
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='PDFAccessLog',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -32,6 +32,7 @@ class Migration(migrations.Migration):
             },
         ),
     ]
+
 
 
 

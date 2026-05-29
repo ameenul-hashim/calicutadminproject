@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.createModel(
+        migrations.CreateModel(
             name='Subject',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -20,7 +20,7 @@ class Migration(migrations.Migration):
                 ('created_at', models.DateTimeField(auto_now_add=True)),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Note',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 ('subject', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='notes', to='accounts.subject')),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Video',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -41,6 +41,7 @@ class Migration(migrations.Migration):
             ],
         ),
     ]
+
 
 
 

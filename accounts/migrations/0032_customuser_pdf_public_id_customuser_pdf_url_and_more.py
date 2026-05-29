@@ -26,3 +26,4 @@ class Migration(migrations.Migration):
             field=models.CharField(choices=[('PENDING', 'Pending Approval'), ('ACTIVE', 'Active'), ('BLOCKED', 'Blocked'), ('REJECTED', 'Rejected')], db_index=True, default='ACTIVE', max_length=10),
         ),
     ]
+

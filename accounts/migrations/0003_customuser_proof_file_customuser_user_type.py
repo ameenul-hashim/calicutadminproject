@@ -21,3 +21,4 @@ class Migration(migrations.Migration):
             field=models.CharField(choices=[('STUDENT', 'Student'), ('TEACHER', 'Teacher')], default='STUDENT', max_length=10),
         ),
     ]
+

@@ -51,3 +51,4 @@ class Migration(migrations.Migration):
             field=models.BooleanField(db_index=True, default=False),
         ),
     ]
+

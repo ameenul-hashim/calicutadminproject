@@ -67,7 +67,7 @@ class Migration(migrations.Migration):
             name='user_type',
             field=models.CharField(choices=[('ADMIN', 'Admin'), ('TEACHER', 'Teacher'), ('STUDENT', 'Student')], default='STUDENT', max_length=10),
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='ApprovalLog',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -79,7 +79,7 @@ class Migration(migrations.Migration):
                 ('reviewed_by', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Report',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -92,6 +92,7 @@ class Migration(migrations.Migration):
             ],
         ),
     ]
+
 
 
 

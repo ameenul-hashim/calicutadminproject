@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
             model_name='video',
             name='subject',
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Course',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
                 ('teacher', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='courses', to=settings.AUTH_USER_MODEL)),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Assignment',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                 ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='assignments', to='accounts.course')),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Enrollment',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -57,7 +57,7 @@ class Migration(migrations.Migration):
                 'unique_together': {('user', 'course')},
             },
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Lesson',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -72,7 +72,7 @@ class Migration(migrations.Migration):
                 'ordering': ['order'],
             },
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='LiveClass',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
                 ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='live_classes', to='accounts.course')),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Quiz',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -92,7 +92,7 @@ class Migration(migrations.Migration):
                 ('course', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='quizzes', to='accounts.course')),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Question',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -105,7 +105,7 @@ class Migration(migrations.Migration):
                 ('quiz', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='questions', to='accounts.quiz')),
             ],
         ),
-        migrations.createModel(
+        migrations.CreateModel(
             name='Submission',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -126,6 +126,7 @@ class Migration(migrations.Migration):
             name='Video',
         ),
     ]
+
 
 
 

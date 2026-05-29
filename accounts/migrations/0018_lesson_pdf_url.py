@@ -16,3 +16,4 @@ class Migration(migrations.Migration):
             field=models.URLField(blank=True, help_text='Supabase PDF URL', max_length=1000, null=True),
         ),
     ]
+

@@ -16,3 +16,4 @@ class Migration(migrations.Migration):
             field=models.CharField(choices=[('PENDING', 'Pending'), ('SUCCESS', 'Success'), ('FAILED', 'Failed')], db_index=True, default='PENDING', max_length=10),
         ),
     ]
+
