@@ -15,7 +15,10 @@
             <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">Manage: {{ course.title }}</h1>
             <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Add and organize your course content.</p>
         </div>
-        <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Lesson</a>
+        <div style="display: flex; gap: 0.75rem;">
+            <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Resource</a>
+            <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Lesson</a>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -93,5 +96,53 @@
         <p>No lessons added yet. Start by adding your first lesson!</p>
     </div>
     {% endfor %}
+</div>
+
+<!-- Study Resources Section -->
+<div style="margin-top: 4rem; margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2 style="margin: 0; font-size: 1.4rem; color: #1e293b;">Study Resources</h2>
+        <p style="color: #64748b; font-size: 0.9rem;">PDFs, DOCX, and other materials for this course.</p>
+    </div>
+
+    <div class="resources-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+        {% for resource in course.resources.all %}
+        <div class="lesson-card" style="margin-bottom: 0;">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                    {% if resource.thumbnail_path %}
+                        <img src="{{ resource.thumbnail_path }}" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                        <span style="font-size: 1.2rem;">📄</span>
+                    {% endif %}
+                </div>
+                <div style="flex: 1;">
+                    <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ resource.title }}</h4>
+                    <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">{{ resource.resource_type }} • {% if resource.compressed_size %}{{ resource.compressed_size|filesizeformat }}{% else %}Unknown size{% endif %}</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.5rem;">
+                <span class="status-badge" style="{% if resource.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;{% elif resource.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;{% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
+                    {{ resource.status }}
+                </span>
+                <div style="display: flex; gap: 0.75rem;">
+                    <a href="javascript:void(0)" onclick="Toast.confirm('Delete this resource?', () => { window.location.href = '{% url 'delete_resource' resource.uid %}'; })" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Delete</a>
+                </div>
+            </div>
+
+            {% if resource.status == 'REJECTED' and resource.rejection_reason %}
+            <div style="margin-top: 0.5rem; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem; color: #c53030;">
+                <strong style="display: block; margin-bottom: 0.25rem;">Rejection Reason:</strong>
+                {{ resource.rejection_reason }}
+            </div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 1rem; color: #94a3b8;">
+            <p style="margin: 0;">No resources uploaded yet.</p>
+        </div>
+        {% endfor %}
+    </div>
 </div>
 {% endblock %}

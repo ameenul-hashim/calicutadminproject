@@ -1,0 +1,71 @@
+{% extends 'custom_admin/base_admin.html' %}
+
+{% block title %}Pending Resources | EduAimsThinker Admin{% endblock %}
+
+{% block header_title %}<h1>⏳ Pending Resources Approval</h1>{% endblock %}
+
+{% block content %}
+<div class="glass-card p-6">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-xl font-bold text-slate-800">Study Materials Queue</h2>
+            <p class="text-slate-500 text-sm">Review uploaded PDFs, Docs, and other resources before they go live.</p>
+        </div>
+        <span class="bg-indigo-100 text-indigo-700 px-4 py-1 rounded-full text-sm font-bold">
+            {{ resources|length }} Pending
+        </span>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Thumbnail</th>
+                    <th>Resource Title</th>
+                    <th>Course</th>
+                    <th>Teacher</th>
+                    <th>Type</th>
+                    <th>Size</th>
+                    <th>Uploaded</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for resource in resources %}
+                <tr>
+                    <td>
+                        {% if resource.thumbnail_path %}
+                            <img src="{{ resource.thumbnail_path }}" class="w-12 h-16 object-cover rounded shadow-sm border border-slate-200">
+                        {% else %}
+                            <div class="w-12 h-16 bg-slate-100 rounded flex items-center justify-center text-xl">📄</div>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="font-bold text-slate-800">{{ resource.title }}</div>
+                        <div class="text-xs text-indigo-600 font-mono">{{ resource.uid|slice:":8" }}</div>
+                    </td>
+                    <td>{{ resource.course.title }}</td>
+                    <td>{{ resource.course.teacher.username }}</td>
+                    <td><span class="px-2 py-1 bg-slate-100 rounded text-xs font-bold">{{ resource.resource_type }}</span></td>
+                    <td>{{ resource.compressed_size|filesizeformat }}</td>
+                    <td class="text-xs text-slate-500">{{ resource.created_at|date:"M d, Y H:i" }}</td>
+                    <td>
+                        <div class="flex gap-2">
+                            <a href="{% url 'approve_resource' resource.uid %}" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Approve</a>
+                            <a href="{% url 'reject_resource' resource.uid %}" class="bg-rose-500 hover:bg-rose-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Reject</a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center py-12 text-slate-400">
+                        <div class="text-4xl mb-2">🎉</div>
+                        <p>No pending resources to review!</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

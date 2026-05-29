@@ -948,6 +948,12 @@ def reject_resource(request, resource_uid):
     return render(request, 'custom_admin/decline_reason.html', {'lesson': resource, 'is_content': True, 'content_type': 'Resource', 'is_resource': True})
 
 @user_passes_test(is_admin, login_url='admin_login')
+def pending_resources(request):
+    from accounts.models import CourseResource
+    resources = CourseResource.objects.filter(is_approved=False).order_by('-created_at')
+    return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
+
+@user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
     # Hide REJECTED content from admin view until it's resubmitted (PENDING)
