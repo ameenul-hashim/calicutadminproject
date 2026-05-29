@@ -35,7 +35,7 @@ _env_hosts = [h.strip() for h in _raw_hosts.split(',') if h.strip()]
 # Force-include specific authorized portals only (No wildcards for shared domains)
 _required_hosts = [
     'edustreamcalicut.onrender.com',
-    'Neo Learner.onrender.com',
+    'neolearner.onrender.com',
     'calicutadmin.onrender.com',
     'localhost',
     '127.0.0.1',
@@ -46,7 +46,7 @@ _raw_csrf = os.getenv('CSRF_TRUSTED_ORIGINS', '')
 _env_csrf = [o.strip() for o in _raw_csrf.split(',') if o.strip()]
 _required_csrf = [
     'https://edustreamcalicut.onrender.com',
-    'https://Neo Learner.onrender.com',
+    'https://neolearner.onrender.com',
     'https://calicutadmin.onrender.com',
 ]
 CSRF_TRUSTED_ORIGINS = list(set(_env_csrf + _required_csrf))
@@ -200,11 +200,11 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 1209600  # 2 weeks
 SESSION_SAVE_EVERY_REQUEST = True
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_NAME = 'Neo Learner_sessionid'
+SESSION_COOKIE_NAME = 'neolearner_sessionid'
 
 # Enterprise CSRF Hardening: Store token in session to prevent subdomain clashes
 CSRF_USE_SESSIONS = True
-CSRF_COOKIE_NAME = 'Neo Learner_csrftoken'
+CSRF_COOKIE_NAME = 'neolearner_csrftoken'
 CSRF_COOKIE_HTTPONLY = False  # Must be false for AJAX if needed later
 
 # Password validation
@@ -260,7 +260,7 @@ else:
     EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
     EMAIL_TIMEOUT = 10  # 10 second timeout to avoid hanging
 
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'noreply@Neo Learner.com'))
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'noreply@neolearner.com'))
 
 # Production & Security Logging
 LOGGING = {
