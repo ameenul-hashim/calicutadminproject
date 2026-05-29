@@ -204,7 +204,7 @@
 <script>
 function openDeleteModal(uid, name) {
     document.getElementById('deleteResourceName').textContent = name;
-    document.getElementById('deleteForm').action = '/resource/' + uid + '/delete/';
+    document.getElementById('deleteForm').action = '/teacher/resources/' + uid + '/delete/';
     document.getElementById('deleteModal').style.display = 'flex';
 }
 function closeDeleteModal() {
