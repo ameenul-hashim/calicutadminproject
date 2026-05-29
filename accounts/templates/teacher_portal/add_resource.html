@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Course Resource</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        corePlugins: { preflight: false }
+      }
+    </script>
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #e0f7fa; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .form-card { background: white; border-radius: 1.5rem; padding: 2.5rem; border: 1px solid #e2e8f0; max-width: 700px; }
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem; }
+        .input-group input, .input-group select { width: 100%; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        .input-group input:focus, .input-group select:focus { border-color: #6366f1; }
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; padding: 1rem !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">EduAimsThinker</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
+                <a href="{% url 'course_lessons' course.uid %}" style="display: block; padding: 0.8rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600;">📚 Manage Content</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem;">
+                <h1>Add Resource to {{ course.title }}</h1>
+                <p style="color: #64748b;">Upload PDFs, DOCX, PPTX, or other notes for your students.</p>
+            </header>
+
+            <div class="form-card">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <label for="title">Resource Title</label>
+                        <input type="text" name="title" id="title" required placeholder="e.g. Chapter 1 Notes">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="category">Category</label>
+                        <select name="category" id="category" required>
+                            <option value="ENGLISH">English Notes</option>
+                            <option value="MALAYALAM">Malayalam Notes</option>
+                            <option value="ONLINE">Online Class Notes</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="resource_type">File Type</label>
+                        <select name="resource_type" id="resource_type" required>
+                            <option value="PDF">PDF Document</option>
+                            <option value="DOCX">Word Document (.docx)</option>
+                            <option value="PPTX">PowerPoint (.pptx)</option>
+                            <option value="XLSX">Excel Spreadsheet (.xlsx)</option>
+                            <option value="TXT">Text File (.txt)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="upload_file">Upload File</label>
+                        <input type="file" name="upload_file" id="upload_file" required>
+                        <small style="color: #64748b; margin-top: 0.5rem; display: block;">Maximum PDF size: 10MB. File will be compressed securely.</small>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Upload Resource</button>
+                        <a href="{% url 'course_lessons' course.uid %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
