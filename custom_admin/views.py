@@ -913,7 +913,18 @@ def approve_resource(request, resource_uid):
         if enrollment.user.status == 'ACTIVE':
             create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
 
-    messages.success(request, f"Resource '{resource.title}' approved.")
+    # Trigger Background Backup to Google Drive (Phase 2)
+    try:
+        import threading
+        from accounts.utils.storage_manager import StorageManager
+        thread = threading.Thread(target=StorageManager.backup_to_google_drive, args=(resource.id,))
+        thread.daemon = True
+        thread.start()
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to spawn backup thread: {e}")
+
+    messages.success(request, f"Resource '{resource.title}' approved. Backup process started in background.")
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
 @user_passes_test(is_admin, login_url='admin_login')
