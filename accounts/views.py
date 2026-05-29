@@ -1036,8 +1036,6 @@ def add_resource(request, course_uid):
             file_bytes = upload_file.read()
             original_size = len(file_bytes)
             
-            backup_path = StorageManager.upload_to_drive(file_bytes, upload_file.name)
-            
             compressed_bytes = file_bytes
             thumbnail_bytes = None
             if resource_type == 'PDF':
@@ -1047,12 +1045,16 @@ def add_resource(request, course_uid):
             
             import uuid
             dest_path = f"resources/{course.uid}/{uuid.uuid4()}_{ext}"
-            fb_path = StorageManager.upload_to_firebase(compressed_bytes, dest_path, mime_type)
+            fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
             
             thumb_path = None
+            thumb_public_id = None
             if thumbnail_bytes:
-                t_dest = f"thumbnails/{course.uid}/{uuid.uuid4()}.webp"
-                thumb_path = StorageManager.upload_to_firebase(thumbnail_bytes, t_dest, "image/webp")
+                from accounts.utils.cloudinary_helpers import upload_image_only
+                t_url, t_pid = upload_image_only(thumbnail_bytes, folder="eduaimsthinker/course_thumbnails")
+                if t_url and t_pid:
+                    thumb_path = t_url
+                    thumb_public_id = t_pid
             
             CourseResource.objects.create(
                 course=course,
@@ -1060,8 +1062,9 @@ def add_resource(request, course_uid):
                 category=category,
                 resource_type=resource_type,
                 firebase_file_path=fb_path,
-                backup_file_path=backup_path,
+                backup_file_path=None,
                 thumbnail_path=thumb_path,
+                thumbnail_public_id=thumb_public_id,
                 mime_type=mime_type,
                 file_extension=ext,
                 original_size=original_size,
@@ -1087,13 +1090,14 @@ def delete_resource(request, resource_uid):
     from django.utils import timezone
     resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
     
-    # Clean up Firebase storage on delete
+    # Clean up Storage on delete
     try:
-        StorageManager.delete_from_firebase(resource.firebase_file_path)
-        if resource.thumbnail_path:
-            StorageManager.delete_from_firebase(resource.thumbnail_path)
+        StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+        if hasattr(resource, 'thumbnail_public_id') and resource.thumbnail_public_id:
+            from accounts.utils.cloudinary_helpers import delete_temp_image
+            delete_temp_image(resource.thumbnail_public_id)
     except Exception:
-        pass  # Don't block soft-delete if Firebase cleanup fails
+        pass  # Don't block soft-delete if cleanup fails
     
     resource.is_deleted = True
     resource.deleted_at = timezone.now()

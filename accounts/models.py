@@ -153,7 +153,9 @@ class CourseResource(models.Model):
     # Storage Paths
     firebase_file_path = models.CharField(max_length=1000)
     backup_file_path = models.CharField(max_length=1000, null=True, blank=True)
+    backup_status = models.CharField(max_length=10, choices=[('PENDING', 'Pending'), ('SUCCESS', 'Success'), ('FAILED', 'Failed')], default='PENDING', db_index=True)
     thumbnail_path = models.CharField(max_length=1000, null=True, blank=True)
+    thumbnail_public_id = models.CharField(max_length=500, null=True, blank=True)
     
     # Validation & Analytics
     mime_type = models.CharField(max_length=100, blank=True, null=True)
@@ -191,7 +193,7 @@ class CourseResource(models.Model):
         try:
             manager = StorageManager()
             expiration = datetime.timedelta(hours=2)
-            return manager.generate_signed_url(self.firebase_file_path, expiration)
+            return manager.generate_supabase_signed_url(self.firebase_file_path, expiration)
         except Exception:
             return None
 
