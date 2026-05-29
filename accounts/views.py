@@ -80,7 +80,7 @@ def create_notification(user, message):
     from .models import Notification
     # Objective 1: No DB storage for Students
     if user.user_type == 'STUDENT':
-        return # Skip DB crNLion for students
+        return # Skip DB creation for students
         
     # Objective 3: Keep notifications only for important Admin/Teacher events
     important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
@@ -1666,6 +1666,7 @@ def reset_password(request):
         return redirect('login' if user.user_type == 'STUDENT' else 'teacher_login')
         
     return render(request, 'accounts/reset_password.html', {'user': user})
+
 
 
 

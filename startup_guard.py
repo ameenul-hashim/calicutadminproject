@@ -77,9 +77,9 @@ def startup_check():
         print("✅ Config Validation Passed.")
 
     # 2. Backup Freshness Check
-    heartbNL_file = get_path("last_success.txt")
-    if os.path.exists(heartbNL_file):
-        with open(heartbNL_file, 'r') as f:
+    heartbeat_file = get_path("last_success.txt")
+    if os.path.exists(heartbeat_file):
+        with open(heartbeat_file, 'r') as f:
             try:
                 last_ts = f.read().strip()
                 last_dt = datetime.datetime.fromisoformat(last_ts)
@@ -98,5 +98,6 @@ def startup_check():
 
 if __name__ == "__main__":
     startup_check()
+
 
 
