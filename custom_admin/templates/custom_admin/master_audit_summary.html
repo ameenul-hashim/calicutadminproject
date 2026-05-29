@@ -39,8 +39,8 @@
                             </div>
                             <div class="vr bg-slate-700"></div>
                             <div class="text-center">
-                                <div class="text-muted x-small text-uppercase tracking-widest mb-1">ThrNL Level</div>
-                                <div class="h3 fw-bold {{ siem.active_thrNL_level|yesno:'text-danger,text-success' }} mb-0">{{ siem.active_thrNL_level }}</div>
+                                <div class="text-muted x-small text-uppercase tracking-widest mb-1">threat Level</div>
+                                <div class="h3 fw-bold {{ siem.active_threat_level|yesno:'text-danger,text-success' }} mb-0">{{ siem.active_threat_level }}</div>
                             </div>
                         </div>
                     </div>
@@ -189,4 +189,5 @@
     document.body.classList.add('bg-slate-950');
 </script>
 {% endblock %}
+
 

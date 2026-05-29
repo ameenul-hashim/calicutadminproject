@@ -56,7 +56,7 @@ class PortalSecurityMiddleware:
                     return redirect(f"{reverse('login')}?next={path}")
             
             # --- IDLE TIMEOUT ENFORCEMENT (15 MINUTES) ---
-            # DefNLs Chrome's "Continue where you left off" session resurrection
+            # Defeats Chrome's "Continue where you left off" session resurrection
             if getattr(request.user, 'is_staff', False) or getattr(request.user, 'user_type', '') == 'TEACHER':
                 import time
                 last_activity = request.session.get('last_activity', 0)
@@ -173,7 +173,7 @@ class PortalSecurityMiddleware:
 from .utils.malware_scanner import scanner
 
 class EnterpriseHardeningMiddleware:
-    """Enterprise-grade security header injection and thrNL mitigation."""
+    """Enterprise-grade security header injection and threat mitigation."""
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -241,5 +241,6 @@ class EnterpriseHardeningMiddleware:
                     action="SUSPICIOUS_TRAVEL",
                     details=f"Login from {current_ip} detected 1h after {last_login.ip_address}."
                 )
+
 
 

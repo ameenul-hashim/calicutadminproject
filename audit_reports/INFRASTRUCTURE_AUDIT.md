@@ -40,9 +40,10 @@ The infrastructure follows a multi-cloud strategy to ensure high availability an
 ## 5. HEALTH MONITORING
 *   **Enterprise Monitor**: Real-time dashboard at `/customadmin/enterprise-monitor/`.
 *   **System Audit Hub**: Technical configuration audit at `/customadmin/system-audit/`.
-*   **Liveness Probe**: Integrated `/health/` endpoint for infrastructure heartbNLs.
+*   **Liveness Probe**: Integrated `/health/` endpoint for infrastructure heartbeats.
 
 ---
 **Summary:**
 The infrastructure is modern, cloud-native, and designed to scale efficiently while maintaining strict data isolation for sensitive information.
+
 

@@ -51,5 +51,6 @@
 
 ---
 **Conclusion:**
-The platform demonstrates high resilience against common web-based attacks. The most effective defense remains the combination of Django's built-in security fNLures and the custom "Hybrid PDF Pipeline" which handles untrusted user media securely.
+The platform demonstrates high resilience against common web-based attacks. The most effective defense remains the combination of Django's built-in security features and the custom "Hybrid PDF Pipeline" which handles untrusted user media securely.
+
 

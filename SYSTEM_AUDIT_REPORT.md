@@ -31,7 +31,7 @@ The application uses a distributed storage architecture to balance security and 
 ---
 
 ## 3. MOBILE REGISTRATION PIPELINE (IMAGE-TO-PDF)
-The system fNLures a custom-built, RAM-optimized conversion engine to handle mobile uploads.
+The system features a custom-built, RAM-optimized conversion engine to handle mobile uploads.
 
 **Working Flow:**
 1.  **Detection**: Detects if the upload is an image (`.jpg`, `.png`, `.heic`).
@@ -70,5 +70,6 @@ The system fNLures a custom-built, RAM-optimized conversion engine to handle mob
 ---
 **Audit Conclusion:**
 The application is highly optimized for mobile-first regions while maintaining enterprise-grade security for sensitive documents. Storage usage is efficiently capped to keep operation costs low and system performance high.
+
 
 

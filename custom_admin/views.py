@@ -1379,7 +1379,7 @@ def system_audit_view(request):
     for name, passed, desc in sec_checks:
         audit_results['security_checks'].append({'name': name, 'status': 'PASS' if passed else 'FAIL', 'description': desc})
 
-    # 3. Infrastructure HeartbNLs
+    # 3. Infrastructure heartbeats
     try:
         start = time.time()
         with connection.cursor() as cursor: cursor.execute("SELECT 1")
@@ -1438,13 +1438,13 @@ def master_audit_summary_view(request):
     teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
     course_count = Course.objects.filter(status='PUBLISHED').count()
     
-    # 2. SIEM & ThrNL Intelligence
+    # 2. SIEM & threat Intelligence
     from accounts.models import AdminActivityLog, LoginHistory
     malware_events = AdminActivityLog.objects.filter(action="MALWARE_BLOCK")
     travel_alerts = AdminActivityLog.objects.filter(action="SUSPICIOUS_TRAVEL")
     failed_logins = LoginHistory.objects.filter(status='FAILED')
     
-    # 3. Infrastructure Observability (HeartbNL)
+    # 3. Infrastructure Observability (heartbeat)
     start_time = time.time()
     with connection.cursor() as cursor: cursor.execute("SELECT 1")
     db_latency = (time.time() - start_time) * 1000
@@ -1472,7 +1472,7 @@ def master_audit_summary_view(request):
             'total_malware_blocked': malware_events.count(),
             'travel_anomalies': travel_alerts.count(),
             'brute_force_attempts': failed_logins.count(),
-            'active_thrNL_level': 'LOW' if malware_events.count() < 5 else 'ELEVATED',
+            'active_threat_level': 'LOW' if malware_events.count() < 5 else 'ELEVATED',
             'waf_status': 'HARDENED',
             'ips_status': 'ENFORCED',
         },
@@ -1516,6 +1516,8 @@ def error_404(request, exception):
 
 def error_500(request):
     return render(request, '500.html', status=500)
+
+
 
 
 
