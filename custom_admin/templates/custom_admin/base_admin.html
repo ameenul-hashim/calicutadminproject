@@ -433,6 +433,9 @@
                             <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_courses_total }}</span>
                             {% endif %}
                         </a>
+                        <a href="{% url 'pending_resources' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_resources' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                            Resource Requests
+                        </a>
                     </div>
                 </div>
 
@@ -465,6 +468,11 @@
                 <!-- 5. Analytics Page -->
                 <div class="nav-group">
                     <a href="{% url 'admin_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_analytics' %}active{% endif %}">📈 Analytics</a>
+                </div>
+
+                <!-- NEW: Storage Dashboard -->
+                <div class="nav-group">
+                    <a href="{% url 'storage_dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'storage_dashboard' %}active{% endif %}" style="background: rgba(99, 102, 241, 0.1); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2);">📦 Storage Dashboard</a>
                 </div>
 
                 <!-- 6. Enterprise Monitor -->

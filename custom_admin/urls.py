@@ -10,6 +10,7 @@ urlpatterns = [
     path('teachers/', views.manage_teachers, name='manage_teachers'),
     path('pending/', views.pending_users_view, name='pending_users'),
     path('pending/teachers/', views.pending_teachers_view, name='pending_teachers'),
+    path('pending/resources/', views.pending_resources, name='pending_resources'),
     path('pending/courses/', views.pending_courses_view, name='pending_courses'),
     path('course/approve/<uuid:course_uid>/', views.approve_course, name='approve_course'),
     path('course/reject/<uuid:course_uid>/', views.reject_course, name='reject_course'),
