@@ -1487,7 +1487,7 @@ def send_chat_message(request):
             'status': 'success',
             'message': msg.message,
             'timestamp': msg.timestamp.strftime('%I:%M %p'),
-            'sender': msg.sender.username
+            'sender': 'Administrator' if getattr(msg.sender, 'is_staff', False) else msg.sender.username
         })
     return JsonResponse({'status': 'error'}, status=400)
 

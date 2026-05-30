@@ -46,7 +46,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'message_uid': str(msg.uid),
                     'message': message,
                     'sender_uid': str(sender.uid),
-                    'sender_name': sender.username,
+                    'sender_name': 'Administrator' if getattr(sender, 'is_staff', False) else sender.username,
                     'timestamp': msg.timestamp.strftime('%I:%M %p')
                 }
             )
