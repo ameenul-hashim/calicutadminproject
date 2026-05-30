@@ -8,6 +8,7 @@ from django.views.decorators.cache import cache_control
 import re
 import logging
 from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 logger = logging.getLogger(__name__)
 import os
@@ -1044,7 +1045,14 @@ def add_resource(request, course_uid):
             compressed_size = len(compressed_bytes)
             
             import uuid
-            dest_path = f"resources/{course.uid}/{uuid.uuid4()}_{ext}"
+            # Ensure safe alphanumeric strings, replacing spaces with underscores
+            safe_course = re.sub(r'[^a-zA-Z0-9]', '_', course.title).strip('_')
+            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
+            # Collapse multiple underscores
+            safe_course = re.sub(r'_+', '_', safe_course)
+            safe_title = re.sub(r'_+', '_', safe_title)
+            
+            dest_path = f"resources/{safe_course}/{safe_title}_v{uuid.uuid4().hex[:6]}.{ext}"
             fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
             
             thumb_path = None
@@ -1127,7 +1135,11 @@ def edit_resource(request, resource_uid):
                 new_comp_size = len(compressed_bytes)
                 
                 import uuid
-                dest_path = f"resources/{course.uid}/{uuid.uuid4()}_{new_ext}"
+                safe_course = re.sub(r'[^a-zA-Z0-9]', '_', course.title).strip('_')
+                safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
+                safe_course = re.sub(r'_+', '_', safe_course)
+                safe_title = re.sub(r'_+', '_', safe_title)
+                dest_path = f"resources/{safe_course}/{safe_title}_v{uuid.uuid4().hex[:6]}.{new_ext}"
                 new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
                 
                 if thumbnail_bytes:
@@ -1340,6 +1352,36 @@ def edit_profile(request):
             messages.info(request, "👋 Welcome! Please select an avatar to complete your account setup.")
 
     if request.method == 'POST':
+        from django.contrib.auth import update_session_auth_hash
+        import re
+
+        new_username = request.POST.get('new_username')
+        if new_username:
+            new_username = new_username.strip()
+            if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+                return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
+            request.user.username = new_username
+
+        new_password = request.POST.get('new_password')
+        if new_password:
+            curr_pass = request.POST.get('current_password')
+            if not request.user.check_password(curr_pass):
+                return JsonResponse({'status': 'error', 'message': 'Current password is incorrect.'}, status=400)
+            
+            if len(new_password) < 8 or not any(c.isupper() for c in new_password) or not any(c.islower() for c in new_password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
+                return JsonResponse({'status': 'error', 'message': 'Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.'}, status=400)
+            
+            if new_password != request.POST.get('confirm_password'):
+                return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
+                
+            request.user.set_password(new_password)
+            
+        if new_username or new_password:
+            request.user.save()
+            if new_password:
+                update_session_auth_hash(request, request.user)
+            return JsonResponse({'status': 'success', 'message': '✅ Credentials updated successfully!'})
+
         avatar_url = request.POST.get('avatar_url')
         if avatar_url:
             request.user.image = avatar_url
@@ -1468,7 +1510,7 @@ def get_chat_messages(request, other_user_uid):
         data.append({
             'message_uid': str(m.uid),
             'sender_uid': m.sender.uid,
-            'sender_name': m.sender.username,
+            'sender_name': 'Administrator' if getattr(m.sender, 'is_staff', False) else m.sender.username,
             'message': m.message,
             'timestamp': m.timestamp.strftime('%I:%M %p'),
             'is_me': m.sender == request.user,
@@ -1502,7 +1544,7 @@ def get_chat_list(request):
         
         data.append({
             'uid': u.uid,
-            'name': u.full_name or u.username,
+            'name': 'Administrator' if getattr(u, 'is_staff', False) and u.user_type != 'TEACHER' else (u.full_name or u.username),
             'last_message': last_msg.message if last_msg else "No messages yet",
             'unread_count': unread_count,
             'profile_photo': u.avatar_url
@@ -1585,6 +1627,7 @@ def mark_all_notifications_read(request):
     Notification.objects.filter(user=request.user).delete()
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
+@xframe_options_exempt
 @login_required(login_url='login')
 def access_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment

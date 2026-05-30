@@ -127,7 +127,35 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <button type="submit" class="btn-save" id="submitBtn">Update Avatar</button>
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 1.5rem;">Update Credentials</h3>
+                
+                <div class="form-group">
+                    <label for="new_username">New Username (Optional)</label>
+                    <input type="text" id="new_username" name="new_username" placeholder="Leave blank to keep current"
+                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
+                </div>
+
+                <div class="form-group">
+                    <label for="current_password">Current Password <span style="color:#64748b; font-weight:normal; font-size: 0.8rem;">(Required only if changing password)</span></label>
+                    <input type="password" id="current_password" name="current_password" 
+                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
+                </div>
+
+                <div class="form-group">
+                    <label for="new_password">New Password</label>
+                    <input type="password" id="new_password" name="new_password" placeholder="At least 8 chars, 1 Uppercase, 1 Special"
+                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" 
+                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
             {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
             {% endif %}
@@ -160,9 +188,20 @@
         profileForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            if (!avatarUrlInput.value && !document.getElementById('previewImg')) {
-                showToast('Please select an avatar', 'error');
+            if (!avatarUrlInput.value && !document.getElementById('previewImg') && !document.getElementById('new_username').value && !document.getElementById('new_password').value) {
+                showToast('Please make a change before updating', 'error');
                 return;
+            }
+            
+            if (document.getElementById('new_password').value) {
+                if (!document.getElementById('current_password').value) {
+                    showToast('Current password is required to set a new password.', 'error');
+                    return;
+                }
+                if (document.getElementById('new_password').value !== document.getElementById('confirm_password').value) {
+                    showToast('New passwords do not match.', 'error');
+                    return;
+                }
             }
             
             submitBtn.disabled = true;
