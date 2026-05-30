@@ -903,33 +903,47 @@ def approve_resource(request, resource_uid):
     resource = get_object_or_404(CourseResource, uid=resource_uid)
     is_edit_approval = resource.has_pending_edits
     
+    # Track the "Original" path supplied by the teacher
+    teacher_original_path = resource.pending_firebase_file_path if is_edit_approval else resource.firebase_file_path
+    final_supabase_path = teacher_original_path # Default
+    
+    # 1. OPTIONAL: Compression Step on Approval
+    if resource.resource_type == 'PDF' and teacher_original_path:
+        try:
+            from accounts.utils.storage_manager import supabase as res_supabase
+            from accounts.utils.pdf_processor import process_pdf
+            
+            # Download original
+            parts = teacher_original_path.split('/', 1)
+            bucket_name = parts[0]
+            p_in_b = parts[1] if len(parts) > 1 else teacher_original_path
+            original_bytes = res_supabase.storage.from_(bucket_name).download(p_in_b)
+            
+            if original_bytes:
+                comp_bytes, _ = process_pdf(original_bytes)
+                if comp_bytes and len(comp_bytes) < len(original_bytes):
+                    # Upload compressed
+                    import uuid
+                    new_dest = f"resources/{resource.course.uid}/compressed_{uuid.uuid4()}.pdf"
+                    StorageManager.upload_to_supabase_storage(comp_bytes, new_dest, 'application/pdf')
+                    final_supabase_path = new_dest
+                    resource.compressed_size = len(comp_bytes)
+                    resource.original_size = len(original_bytes)
+        except Exception as e:
+            messages.warning(request, f"Compression skipped: {str(e)}")
+
     if is_edit_approval:
-        # Delete old file manually if replacing
-        if resource.pending_firebase_file_path and resource.pending_firebase_file_path != resource.firebase_file_path:
-            try:
-                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                if resource.thumbnail_public_id and resource.pending_thumbnail_public_id != resource.thumbnail_public_id:
-                    from accounts.utils.cloudinary_helpers import delete_temp_image
-                    delete_temp_image(resource.thumbnail_public_id)
-            except Exception:
-                pass
-            
-            # Apply all file properties
-            resource.firebase_file_path = resource.pending_firebase_file_path
-            resource.thumbnail_path = resource.pending_thumbnail_path
-            resource.thumbnail_public_id = resource.pending_thumbnail_public_id
-            resource.mime_type = resource.pending_mime_type
-            resource.file_extension = resource.pending_file_extension
-            resource.original_size = resource.pending_original_size
-            resource.compressed_size = resource.pending_compressed_size
-            
+        # Apply all file properties from pending fields
+        resource.firebase_file_path = final_supabase_path
+        resource.thumbnail_path = resource.pending_thumbnail_path or resource.thumbnail_path
+        resource.thumbnail_public_id = resource.pending_thumbnail_public_id or resource.thumbnail_public_id
+        resource.mime_type = resource.pending_mime_type or resource.mime_type
+        resource.file_extension = resource.pending_file_extension or resource.file_extension
+        
         # Apply metadata
-        if resource.pending_title:
-            resource.title = resource.pending_title
-        if resource.pending_category:
-            resource.category = resource.pending_category
-        if resource.pending_resource_type:
-            resource.resource_type = resource.pending_resource_type
+        if resource.pending_title: resource.title = resource.pending_title
+        if resource.pending_category: resource.category = resource.pending_category
+        if resource.pending_resource_type: resource.resource_type = resource.pending_resource_type
             
         # Clear pending fields
         resource.pending_title = None
@@ -939,37 +953,39 @@ def approve_resource(request, resource_uid):
         resource.pending_thumbnail_path = None
         resource.pending_thumbnail_public_id = None
         resource.has_pending_edits = False
-        
-        resource.approved_by = request.user
-        resource.approved_at = timezone.now()
-        resource.save()
+    else:
+        resource.firebase_file_path = final_supabase_path
+        resource.status = 'APPROVED'
+        resource.is_approved = True
+
+    resource.approved_by = request.user
+    resource.approved_at = timezone.now()
+    resource.save()
+
+    # 2. Trigger Background Backup & Cleanup of the ORIGINAL
+    # This will: Upload teacher_original_path to Drive -> If success, Delete teacher_original_path from Supabase
+    try:
+        import threading
+        thread = threading.Thread(target=StorageManager.backup_and_cleanup, args=(resource.id, teacher_original_path))
+        thread.daemon = True
+        thread.start()
+        messages.success(request, f"Resource approved. Original file is being backed up to Drive and will be purged from Supabase automatically.")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to spawn backup thread: {e}")
+
+    # Notify users
+    if is_edit_approval:
         create_notification(resource.course.teacher, f"Your edits to resource '{resource.title}' in course '{resource.course.title}' have been approved.")
         messages.success(request, f"Changes to resource '{resource.title}' approved successfully.")
     else:
-        resource.status = 'APPROVED'
-        resource.is_approved = True
-        resource.approved_by = request.user
-        resource.approved_at = timezone.now()
-        resource.save()
-        
         create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
-        
         enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
         for enrollment in enrollments:
             if enrollment.user.status == 'ACTIVE':
                 create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
         messages.success(request, f"Resource '{resource.title}' approved successfully.")
 
-    # Trigger Background Backup to Google Drive
-    try:
-        import threading
-        thread = threading.Thread(target=StorageManager.backup_to_google_drive, args=(resource.id,))
-        thread.daemon = True
-        thread.start()
-        messages.success(request, f"Backup process started in background.")
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Failed to spawn backup thread: {e}")
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
 @user_passes_test(is_admin, login_url='admin_login')
