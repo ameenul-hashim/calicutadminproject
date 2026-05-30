@@ -196,10 +196,12 @@ SESSION_COOKIE_DOMAIN = None
 SECURE_REFERRER_POLICY = 'same-origin'
 
 # Stable Session & CSRF Management
+# NOTE: SESSION_EXPIRE_AT_BROWSER_CLOSE is False so mobile students stay logged in for 3 hours.
+# Admin and Teacher logins override this by calling session.set_expiry(0) manually.
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_COOKIE_AGE = 10800  # 3 hours (prevents mobile login loops for students)
 SESSION_SAVE_EVERY_REQUEST = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keeps students logged in when switching apps on mobile
 SESSION_COOKIE_NAME = 'neolearner_sessionid'
 
 # Enterprise CSRF Hardening: Store token in session to prevent subdomain clashes
