@@ -953,6 +953,9 @@ def approve_resource(request, resource_uid):
         resource.pending_thumbnail_path = None
         resource.pending_thumbnail_public_id = None
         resource.has_pending_edits = False
+        # CRITICAL: Ensure APPROVED status is maintained after an edit is approved
+        resource.status = 'APPROVED'
+        resource.is_approved = True
     else:
         resource.firebase_file_path = final_supabase_path
         resource.status = 'APPROVED'
