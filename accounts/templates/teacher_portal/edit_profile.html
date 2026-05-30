@@ -1,0 +1,414 @@
+{% extends 'teacher_portal/base_teacher.html' %}
+{% load static %}
+
+{% block title %}Edit Profile | Neo Learner{% endblock %}
+
+{% block page_header %}
+    <div>
+        <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b; margin: 0;">Edit Profile</h1>
+        <p style="color: #64748b;">Update your username and password</p>
+    </div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .profile-edit-card {
+        background: white;
+        border-radius: 1.5rem;
+        padding: 2.5rem;
+        border: 1px solid #e2e8f0;
+        max-width: 640px;
+        margin: 0 auto;
+    }
+    .profile-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+    .profile-avatar {
+        width: 100px;
+        height: 130px;
+        border-radius: 0.75rem;
+        margin: 0 auto 1rem;
+        border: 4px solid #eef2ff;
+        overflow: hidden;
+        background: #f8fafc;
+        box-shadow: 0 8px 16px -4px rgba(99,102,241,0.15);
+    }
+    .profile-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+    }
+    .profile-name {
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    .profile-role {
+        font-size: 0.8rem;
+        color: #6366f1;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .field-group {
+        margin-bottom: 1.5rem;
+    }
+    .field-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.5rem;
+    }
+    .field-group input {
+        width: 100%;
+        padding: 0.85rem 1.2rem;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 0.75rem;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.95rem;
+        outline: none;
+        transition: all 0.2s;
+        box-sizing: border-box;
+        background: #fafafa;
+    }
+    .field-group input:focus {
+        border-color: #6366f1;
+        background: white;
+        box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
+    }
+    .field-group input:disabled {
+        background: #f1f5f9;
+        color: #64748b;
+        cursor: not-allowed;
+    }
+    .field-group .hint {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-top: 0.35rem;
+    }
+    .section-divider {
+        margin: 2rem 0;
+        border: 0;
+        border-top: 1.5px dashed #e2e8f0;
+    }
+    .section-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .section-desc {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-bottom: 1.5rem;
+    }
+    .requirements {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        margin-top: 0.75rem;
+    }
+    .requirements p {
+        margin: 0 0 0.5rem 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #92400e;
+    }
+    .requirements ul {
+        margin: 0;
+        padding-left: 1.25rem;
+    }
+    .requirements li {
+        font-size: 0.72rem;
+        color: #78350f;
+        margin-bottom: 0.2rem;
+        line-height: 1.5;
+    }
+    .requirements li.passed {
+        color: #059669;
+    }
+    .requirements li.failed {
+        color: #dc2626;
+    }
+    .btn-save {
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: white;
+        border: none;
+        border-radius: 0.75rem;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        font-family: 'Inter', sans-serif;
+        margin-top: 1rem;
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px -5px rgba(99,102,241,0.4);
+    }
+    .btn-save:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    .strength-bar {
+        height: 4px;
+        border-radius: 2px;
+        margin-top: 0.5rem;
+        background: #e2e8f0;
+        overflow: hidden;
+        transition: all 0.3s;
+    }
+    .strength-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: all 0.3s;
+        width: 0%;
+    }
+    .input-with-icon {
+        position: relative;
+    }
+    .input-with-icon input {
+        padding-right: 2.5rem;
+    }
+    .toggle-pw {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.1rem;
+        color: #94a3b8;
+        padding: 0.25rem;
+    }
+    .toggle-pw:hover {
+        color: #6366f1;
+    }
+
+    @media (max-width: 640px) {
+        .profile-edit-card {
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+    }
+</style>
+
+<div class="profile-edit-card">
+    <div class="profile-header">
+        <div class="profile-avatar">
+            {% if user.avatar_url %}
+                <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}">
+            {% else %}
+                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:#6366f1;font-size:2.5rem;font-weight:800;">
+                    {{ user.username|first|upper }}
+                </div>
+            {% endif %}
+        </div>
+        <h2 class="profile-name">{{ user.full_name|default:user.username }}</h2>
+        <span class="profile-role">Instructor</span>
+    </div>
+
+    <form method="POST" id="profileForm">
+        {% csrf_token %}
+
+        <!-- Current Info (Read-only) -->
+        <div class="field-group">
+            <label>Email Address</label>
+            <input type="text" value="{{ user.email }}" disabled>
+            <div class="hint">Email cannot be changed here.</div>
+        </div>
+
+        <!-- Username Section -->
+        <hr class="section-divider">
+        <div class="section-title">👤 Change Username</div>
+        <div class="section-desc">Your current username is <strong>@{{ user.username }}</strong></div>
+
+        <div class="field-group">
+            <label for="new_username">New Username</label>
+            <div class="input-with-icon">
+                <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value="">
+            </div>
+            <div class="hint">Leave blank to keep your current username.</div>
+        </div>
+
+        <!-- Password Section -->
+        <hr class="section-divider">
+        <div class="section-title">🔒 Change Password</div>
+        <div class="section-desc">Update your login password below.</div>
+
+        <div class="field-group">
+            <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
+            <div class="input-with-icon">
+                <input type="password" id="current_password" name="current_password" placeholder="Enter current password" autocomplete="current-password">
+                <button type="button" class="toggle-pw" onclick="togglePassword('current_password', this)" tabindex="-1">👁️</button>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="new_password">New Password</label>
+            <div class="input-with-icon">
+                <input type="password" id="new_password" name="new_password" placeholder="Create a strong password" autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="togglePassword('new_password', this)" tabindex="-1">👁️</button>
+            </div>
+            <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
+            <div class="hint" id="strengthText">Enter a password to see strength.</div>
+            <div class="requirements">
+                <p>🔒 Password Requirements:</p>
+                <ul id="reqList">
+                    <li id="reqLen" class="failed">✗ At least 8 characters</li>
+                    <li id="reqUpper" class="failed">✗ At least one uppercase letter (A-Z)</li>
+                    <li id="reqLower" class="failed">✗ At least one lowercase letter (a-z)</li>
+                    <li id="reqSpecial" class="failed">✗ At least one special character (@$!%*?&#)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="confirm_password">Confirm New Password</label>
+            <div class="input-with-icon">
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password" autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="togglePassword('confirm_password', this)" tabindex="-1">👁️</button>
+            </div>
+            <div class="hint" id="matchText"></div>
+        </div>
+
+        <button type="submit" class="btn-save" id="submitBtn">Update Credentials</button>
+    </form>
+</div>
+
+<script>
+    // Password visibility toggle
+    function togglePassword(fieldId, btn) {
+        const input = document.getElementById(fieldId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            btn.textContent = '👁️';
+        }
+    }
+
+    // Live password validation
+    const newPw = document.getElementById('new_password');
+    const confirmPw = document.getElementById('confirm_password');
+    const matchText = document.getElementById('matchText');
+    const strengthFill = document.getElementById('strengthFill');
+    const strengthText = document.getElementById('strengthText');
+    const submitBtn = document.getElementById('submitBtn');
+
+    function validatePassword() {
+        const val = newPw.value;
+        const confirm = confirmPw.value;
+
+        const lenOk = val.length >= 8;
+        const upperOk = /[A-Z]/.test(val);
+        const lowerOk = /[a-z]/.test(val);
+        const specialOk = /[@$!%*?&#]/.test(val);
+
+        document.getElementById('reqLen').className = lenOk ? 'passed' : 'failed';
+        document.getElementById('reqLen').textContent = (lenOk ? '✓' : '✗') + ' At least 8 characters';
+        document.getElementById('reqUpper').className = upperOk ? 'passed' : 'failed';
+        document.getElementById('reqUpper').textContent = (upperOk ? '✓' : '✗') + ' At least one uppercase letter (A-Z)';
+        document.getElementById('reqLower').className = lowerOk ? 'passed' : 'failed';
+        document.getElementById('reqLower').textContent = (lowerOk ? '✓' : '✗') + ' At least one lowercase letter (a-z)';
+        document.getElementById('reqSpecial').className = specialOk ? 'passed' : 'failed';
+        document.getElementById('reqSpecial').textContent = (specialOk ? '✓' : '✗') + ' At least one special character (@$!%*?&#)';
+
+        // Strength bar
+        let score = 0;
+        if (lenOk) score += 25;
+        if (upperOk) score += 25;
+        if (lowerOk) score += 25;
+        if (specialOk) score += 25;
+        if (val.length >= 12) score += 10;
+
+        const pct = Math.min(score, 100);
+        strengthFill.style.width = pct + '%';
+        if (pct < 50) {
+            strengthFill.style.background = '#ef4444';
+            strengthText.textContent = 'Weak password';
+            strengthText.style.color = '#ef4444';
+        } else if (pct < 75) {
+            strengthFill.style.background = '#f59e0b';
+            strengthText.textContent = 'Moderate password';
+            strengthText.style.color = '#d97706';
+        } else {
+            strengthFill.style.background = '#10b981';
+            strengthText.textContent = 'Strong password';
+            strengthText.style.color = '#059669';
+        }
+
+        if (val === '') {
+            strengthFill.style.width = '0%';
+            strengthText.textContent = 'Enter a password to see strength.';
+            strengthText.style.color = '#94a3b8';
+        }
+
+        // Match check
+        if (confirm && val !== confirm) {
+            matchText.textContent = '✗ Passwords do not match';
+            matchText.style.color = '#ef4444';
+        } else if (confirm && val === confirm) {
+            matchText.textContent = '✓ Passwords match';
+            matchText.style.color = '#10b981';
+        } else {
+            matchText.textContent = '';
+        }
+    }
+
+    newPw.addEventListener('input', validatePassword);
+    confirmPw.addEventListener('input', validatePassword);
+
+    // Form validation on submit
+    document.getElementById('profileForm').addEventListener('submit', function(e) {
+        const newUsername = document.getElementById('new_username').value.trim();
+        const currPw = document.getElementById('current_password').value;
+        const newPwVal = newPw.value;
+        const confirmVal = confirmPw.value;
+
+        if (!newUsername && !newPwVal) {
+            e.preventDefault();
+            showToast('No changes to save.', 'error');
+            return;
+        }
+
+        if (newPwVal) {
+            if (!currPw) {
+                e.preventDefault();
+                showToast('Current password is required to set a new password.', 'error');
+                return;
+            }
+            if (newPwVal !== confirmVal) {
+                e.preventDefault();
+                showToast('New passwords do not match.', 'error');
+                return;
+            }
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Updating...';
+    });
+
+    function showToast(msg, type) {
+        if (window.Toast) {
+            window.Toast.show(msg, type);
+        } else {
+            alert(msg);
+        }
+    }
+</script>
+{% endblock %}

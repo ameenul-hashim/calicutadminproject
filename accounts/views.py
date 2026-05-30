@@ -1428,6 +1428,67 @@ def edit_profile(request):
 
     return render(request, 'accounts/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def teacher_edit_profile(request):
+    if request.method == 'POST':
+        from django.contrib.auth import update_session_auth_hash
+        import re
+
+        new_username = request.POST.get('new_username', '').strip()
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+        current_password = request.POST.get('current_password', '')
+
+        changes_made = False
+
+        # --- Username Change ---
+        if new_username and new_username != request.user.username:
+            if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+                messages.error(request, "This username is already taken.")
+                return redirect('teacher_edit_profile')
+            request.user.username = new_username
+            changes_made = True
+
+        # --- Password Change ---
+        if new_password:
+            if not current_password:
+                messages.error(request, "Current password is required to set a new password.")
+                return redirect('teacher_edit_profile')
+            if not request.user.check_password(current_password):
+                messages.error(request, "Current password is incorrect.")
+                return redirect('teacher_edit_profile')
+            if new_password != confirm_password:
+                messages.error(request, "New passwords do not match.")
+                return redirect('teacher_edit_profile')
+            if len(new_password) < 8:
+                messages.error(request, "Password must be at least 8 characters long.")
+                return redirect('teacher_edit_profile')
+            if not re.search(r'[A-Z]', new_password):
+                messages.error(request, "Password must contain at least one uppercase letter.")
+                return redirect('teacher_edit_profile')
+            if not re.search(r'[a-z]', new_password):
+                messages.error(request, "Password must contain at least one lowercase letter.")
+                return redirect('teacher_edit_profile')
+            if not re.search(r'[@$!%*?&#]', new_password):
+                messages.error(request, "Password must contain at least one special character (@$!%*?&#).")
+                return redirect('teacher_edit_profile')
+            request.user.set_password(new_password)
+            changes_made = True
+
+        if changes_made:
+            request.user.save()
+            if new_password:
+                update_session_auth_hash(request, request.user)
+            messages.success(request, "✅ Profile credentials updated successfully! You can now login with your new credentials.")
+        else:
+            messages.info(request, "No changes were made.")
+
+        return redirect('teacher_edit_profile')
+
+    return render(request, 'teacher_portal/edit_profile.html', {'user': request.user})
+
+
 @login_required
 def course_player(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
