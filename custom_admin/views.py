@@ -819,10 +819,10 @@ def reject_course(request, course_uid):
             comments=f"Course '{course_title}' rejected. Reason: {reason}"
         )
 
-        # Notify teacher: course was purged
-        create_notification(teacher, f"❌ Your course '{course_title}' was rejected and PERMANENTLY PURGED. Reason: {reason}. You must recreate it if you wish to resubmit.")
+        # Notify teacher: course was rejected for resubmission
+        create_notification(teacher, f"❌ Your course '{course_title}' was rejected. Reason: {reason}. Please fix the issues and resubmit for approval.")
 
-        messages.warning(request, f"Course '{course_title}' has been rejected and permanently purged from the system.")
+        messages.warning(request, f"Course '{course_title}' has been rejected. The teacher has been notified to resubmit.")
         return redirect('admin_content')
 
     return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
@@ -924,7 +924,7 @@ def reject_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason')
-        # Objective: Replace soft rejection with permanent purging for lessons
+        # Objective: Implement resubmission loop for lessons (rejected status)
         lesson_title = lesson.title
         course_uid = lesson.course.uid
         teacher = lesson.course.teacher
