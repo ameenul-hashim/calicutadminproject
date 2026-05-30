@@ -189,6 +189,15 @@
         @media (max-width: 640px) {
             .messages { max-width: 90vw; }
         }
+        /* PDF Overlay */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        #pdf-overlay { position: fixed; inset: 0; z-index: 9999; background: #0f172a; flex-direction: column; display: none; }
+        #pdf-overlay.pdf-active { display: flex; }
+        #pdf-overlay-header { height: 56px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; align-items: center; padding: 0 1rem; gap: 0.75rem; flex-shrink: 0; }
+        #pdf-loading { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; }
+        #pdf-error { display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; padding: 2rem; text-align: center; }
+        #pdf-frame { display: none; flex: 1; border: none; width: 100%; background: white; }
+        .pdf-spinner { width: 44px; height: 44px; border: 3px solid #334155; border-top-color: #10b981; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem; }
     </style>
 </head>
 <body>
@@ -356,12 +365,12 @@
 
             </aside>
             <script>
-                function switchTab(tab) {
+                // ---------- TAB NAVIGATION ----------
+                function switchTab(tab, pushHistory) {
                     const videoTab = document.getElementById('tab-videos');
                     const resourceTab = document.getElementById('tab-resources');
                     const videoContent = document.getElementById('content-videos');
                     const resourceContent = document.getElementById('content-resources');
-                    
                     if (tab === 'videos') {
                         videoTab.style.color = 'white';
                         videoTab.style.borderBottom = '2px solid #6366f1';
@@ -376,12 +385,17 @@
                         videoTab.style.borderBottom = '2px solid transparent';
                         resourceContent.style.display = 'flex';
                         videoContent.style.display = 'none';
+                        if (pushHistory !== false) {
+                            history.pushState({view:'resources-categories'}, '', window.location.pathname + '#resources');
+                        }
                     }
                 }
 
-                function showResourceCategory(category) {
+                // ---------- RESOURCE NAVIGATION ----------
+                function showResourceCategory(category, pushHistory) {
                     const titles = { 'ENGLISH': 'English', 'MALAYALAM': 'Malayalam', 'ONLINE': 'Online' };
                     document.getElementById('active-category-name').textContent = titles[category] || category;
+                    activeCategory = category;
 
                     const rawData = document.getElementById('resources-data').textContent;
                     let allResources = [];
@@ -390,58 +404,42 @@
                     const filtered = allResources.filter(r => r.category === category);
                     const container = document.getElementById('category-items-container');
                     container.innerHTML = '';
-                    
-                    if(filtered.length === 0) {
-                        container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 3rem 1rem; color: #64748b;">No resources yet.</div>`;
+
+                    if (filtered.length === 0) {
+                        container.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#64748b;">No resources yet.</div>`;
                     } else {
                         filtered.forEach(r => {
                             container.innerHTML += `
-                                <div onclick="openResourceModal('${r.uid}', '${r.title}')" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 1rem; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 1rem; cursor: pointer; transition: all 0.25s;" onmouseover="this.style.background='rgba(16,185,129,0.1)'; this.style.borderColor='rgba(16,185,129,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.04)'; this.style.borderColor='rgba(255,255,255,0.08)'">
-                                    <div style="width: 44px; height: 44px; background: rgba(16,185,129,0.15); border-radius: 0.6rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.3rem;">📄</div>
-                                    <div style="flex: 1; min-width: 0;">
-                                        <div style="font-size: 0.9rem; font-weight: 600; color: #f1f5f9; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${r.title}</div>
-                                        <div style="font-size: 0.72rem; color: #10b981; margin-top: 0.2rem;">${r.type} • ${r.size}</div>
+                                <div onclick="openResourcePDF('${r.uid}','${r.title}')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:1rem;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='rgba(16,185,129,0.1)';this.style.borderColor='rgba(16,185,129,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='rgba(255,255,255,0.08)'">
+                                    <div style="width:44px;height:44px;background:rgba(16,185,129,0.15);border-radius:0.6rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;">📄</div>
+                                    <div style="flex:1;min-width:0;">
+                                        <div style="font-size:0.9rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</div>
+                                        <div style="font-size:0.72rem;color:#10b981;margin-top:0.2rem;">${r.type} • ${r.size}</div>
                                     </div>
-                                    <span style="color: #10b981; font-size: 1.2rem; flex-shrink: 0;">›</span>
-                                </div>
-                            `;
+                                    <span style="color:#10b981;font-size:0.85rem;font-weight:600;flex-shrink:0;">Open ›</span>
+                                </div>`;
                         });
                     }
 
                     document.getElementById('resources-categories-view').style.display = 'none';
                     document.getElementById('resources-list-view').style.display = 'flex';
+                    if (pushHistory !== false) {
+                        history.pushState({view:'resources-folder', category:category}, '', window.location.pathname + '#folder-' + category.toLowerCase());
+                    }
                 }
 
                 function backToCategories() {
-                    document.getElementById('resources-list-view').style.display = 'none';
-                    document.getElementById('resources-categories-view').style.display = 'block';
+                    // Delegate to history.back() — popstate handler updates UI
+                    history.back();
                 }
 
-                function openResourceModal(uid, title) {
-                    // Create a beautiful Glassmorphism Modal Overlay
-                    const modal = document.createElement('div');
-                    modal.id = 'resource-action-modal';
-                    modal.style = `
-                        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); 
-                        backdrop-filter: blur(8px); z-index: 2000; 
-                        display: flex; align-items: center; justify-content: center; padding: 2rem;
-                    `;
-                    modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
-
-                    modal.innerHTML = `
-                        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 1.5rem; width: 100%; max-width: 320px; padding: 2rem; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center;">
-                            <div style="width: 60px; height: 60px; background: rgba(16, 185, 129, 0.1); border-radius: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">📄</div>
-                            <h3 style="color: white; margin: 0 0 0.5rem 0; font-size: 1.1rem;">${title}</h3>
-                            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 2rem;">Study notes are ready for viewing or offline use.</p>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                                <a href="/resource/${uid}/access/" target="_blank" style="background: #10b981; color: white; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; text-decoration: none; transition: background 0.2s;">👁️ View Notes</a>
-                                <a href="/resource/${uid}/download/" download style="background: rgba(255,255,255,0.05); color: white; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.1);">⬇️ Download PDF</a>
-                                <button onclick="document.getElementById('resource-action-modal').remove()" style="background: none; border: none; color: #64748b; font-size: 0.8rem; margin-top: 0.5rem; cursor: pointer;">Close</button>
-                            </div>
-                        </div>
-                    `;
-                    document.body.appendChild(modal);
+                function openResourcePDF(uid, title) {
+                    currentPDFUid = uid;
+                    currentPDFTitle = title;
+                    const container = document.getElementById('category-items-container');
+                    savedScrollPos = container ? container.scrollTop : 0;
+                    history.pushState({view:'pdf', uid:uid, title:title, category:activeCategory, scrollPos:savedScrollPos}, '', window.location.pathname + '#pdf');
+                    _showPDFOverlay(uid, title);
                 }
             </script>
 
@@ -482,6 +480,12 @@
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     <script>
     let player = null;
+    // ---------- NAVIGATION STATE ----------
+    let activeCategory = null;
+    let savedScrollPos = 0;
+    let currentPDFUid = null;
+    let currentPDFTitle = null;
+    let _pdfLoadTimer = null;
 
     function togglePlayerSidebar() {
         const sidebar = document.querySelector('.content-sidebar');
@@ -662,19 +666,134 @@
     }
 
     window.onload = function() {
+        // Seed base history state so back-button doesn't exit the app
+        history.replaceState({view:'player'}, '');
         const firstHeader = document.querySelector('.accordion-header');
         if (firstHeader) {
             firstHeader.click();
-            // Small delay to let accordion open before clicking sub-item
             setTimeout(() => {
                 const firstSubItem = firstHeader.parentElement.querySelector('.sub-item');
                 if (firstSubItem) firstSubItem.click();
             }, 150);
         }
     };
-    </script>
-</body>
 
+    // ---------- POPSTATE HANDLER (Android back button) ----------
+    window.addEventListener('popstate', function(e) {
+        const state = e.state;
+        const overlay = document.getElementById('pdf-overlay');
+
+        // 1. If PDF overlay is visible — close it and restore list
+        if (overlay && overlay.classList.contains('pdf-active')) {
+            overlay.classList.remove('pdf-active');
+            document.body.style.overflow = '';
+            const frame = document.getElementById('pdf-frame');
+            if (frame) { frame.src = ''; frame.style.display = 'none'; }
+            if (_pdfLoadTimer) { clearTimeout(_pdfLoadTimer); _pdfLoadTimer = null; }
+            document.getElementById('pdf-loading').style.display = 'flex';
+            document.getElementById('pdf-error').style.display = 'none';
+            currentPDFUid = null; currentPDFTitle = null;
+            // Restore scroll position in resource list
+            setTimeout(() => {
+                const c = document.getElementById('category-items-container');
+                if (c && savedScrollPos) c.scrollTop = savedScrollPos;
+            }, 60);
+            return;
+        }
+
+        if (!state) return;
+
+        // 2. Returning from folder to categories
+        if (state.view === 'resources-categories') {
+            document.getElementById('resources-list-view').style.display = 'none';
+            document.getElementById('resources-categories-view').style.display = 'block';
+            savedScrollPos = 0;
+            return;
+        }
+
+        // 3. Returning from resources tab to player
+        if (state.view === 'player') {
+            document.getElementById('resources-list-view').style.display = 'none';
+            document.getElementById('resources-categories-view').style.display = 'block';
+            switchTab('videos', false);
+            return;
+        }
+    });
+
+    // ---------- PDF OVERLAY FUNCTIONS ----------
+    function _showPDFOverlay(uid, title) {
+        const overlay = document.getElementById('pdf-overlay');
+        const frame = document.getElementById('pdf-frame');
+        const loading = document.getElementById('pdf-loading');
+        const errDiv = document.getElementById('pdf-error');
+
+        document.getElementById('pdf-overlay-title').textContent = title;
+        document.getElementById('pdf-download-btn').href = '/resource/' + uid + '/download/';
+
+        // Reset state
+        loading.style.display = 'flex';
+        errDiv.style.display = 'none';
+        frame.style.display = 'none';
+        frame.src = '';
+
+        overlay.classList.add('pdf-active');
+        document.body.style.overflow = 'hidden';
+
+        if (_pdfLoadTimer) clearTimeout(_pdfLoadTimer);
+
+        frame.onload = function() {
+            if (_pdfLoadTimer) { clearTimeout(_pdfLoadTimer); _pdfLoadTimer = null; }
+            loading.style.display = 'none';
+            frame.style.display = 'block';
+        };
+        frame.onerror = function() {
+            if (_pdfLoadTimer) { clearTimeout(_pdfLoadTimer); _pdfLoadTimer = null; }
+            loading.style.display = 'none';
+            frame.style.display = 'none';
+            errDiv.style.display = 'flex';
+        };
+        // Safety timeout: show error if nothing loads in 20s
+        _pdfLoadTimer = setTimeout(() => {
+            if (loading.style.display !== 'none') {
+                loading.style.display = 'none';
+                errDiv.style.display = 'flex';
+            }
+        }, 20000);
+
+        frame.src = '/resource/' + uid + '/access/';
+    }
+
+    function retryPDF() {
+        if (!currentPDFUid) return;
+        _showPDFOverlay(currentPDFUid, currentPDFTitle);
+    }
+    </script>
+
+
+<!-- ===== FULLSCREEN PDF OVERLAY ===== -->
+<div id="pdf-overlay">
+    <div id="pdf-overlay-header">
+        <button onclick="history.back()" style="background:#334155;border:none;color:white;padding:0.5rem 1rem;border-radius:0.5rem;cursor:pointer;font-size:0.9rem;font-weight:600;display:flex;align-items:center;gap:0.4rem;flex-shrink:0;">← Back</button>
+        <span id="pdf-overlay-title" style="flex:1;font-weight:600;color:#f1f5f9;font-size:0.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <a id="pdf-download-btn" href="#" download style="background:#0ea5e9;color:white;padding:0.45rem 0.85rem;border-radius:0.5rem;text-decoration:none;font-size:0.8rem;font-weight:600;flex-shrink:0;">⬇ Download</a>
+    </div>
+    <!-- Loading -->
+    <div id="pdf-loading">
+        <div class="pdf-spinner"></div>
+        <p style="margin:0;font-size:0.9rem;">Loading PDF, please wait…</p>
+    </div>
+    <!-- Error -->
+    <div id="pdf-error">
+        <span style="font-size:3rem;margin-bottom:1rem;">⚠️</span>
+        <h3 style="color:#f87171;margin:0 0 0.5rem;">Failed to Load PDF</h3>
+        <p style="margin:0 0 1.5rem;font-size:0.88rem;color:#94a3b8;">The file could not be loaded. Check your connection and try again.</p>
+        <button onclick="retryPDF()" style="background:#10b981;color:white;border:none;padding:0.7rem 1.5rem;border-radius:0.75rem;font-size:0.95rem;font-weight:700;cursor:pointer;">↺ Retry</button>
+    </div>
+    <!-- PDF iframe -->
+    <iframe id="pdf-frame" title="PDF Viewer" allowfullscreen></iframe>
+</div>
+
+</body>
 </html>
 
 
