@@ -1082,6 +1082,120 @@ def add_resource(request, course_uid):
     return render(request, 'teacher_portal/add_resource.html', {'course': course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def edit_resource(request, resource_uid):
+    from .utils.pdf_processor import validate_file, process_pdf
+    from .utils.storage_manager import StorageManager
+    from .models import CourseResource
+
+    resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
+    course = resource.course
+
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        category = request.POST.get('category')
+        resource_type = request.POST.get('resource_type')
+        upload_file = request.FILES.get('upload_file')
+
+        is_approved = resource.status == 'APPROVED'
+
+        # If a new file is uploaded
+        new_fb_path = None
+        new_thumb_path = None
+        new_thumb_pid = None
+        new_mime = None
+        new_ext = None
+        new_orig_size = 0
+        new_comp_size = 0
+
+        if upload_file:
+            # Pre-read size gate
+            MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+            if upload_file.size > MAX_UPLOAD_BYTES:
+                messages.error(request, "File too large. Maximum upload size is 50MB.")
+                return redirect('edit_resource', resource_uid=resource.uid)
+                
+            try:
+                new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
+                file_bytes = upload_file.read()
+                new_orig_size = len(file_bytes)
+                
+                compressed_bytes = file_bytes
+                thumbnail_bytes = None
+                if resource_type == 'PDF':
+                    compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
+                
+                new_comp_size = len(compressed_bytes)
+                
+                import uuid
+                dest_path = f"resources/{course.uid}/{uuid.uuid4()}_{new_ext}"
+                new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
+                
+                if thumbnail_bytes:
+                    from accounts.utils.cloudinary_helpers import upload_image_only
+                    t_url, t_pid = upload_image_only(thumbnail_bytes, folder="Neo Learner/course_thumbnails")
+                    if t_url and t_pid:
+                        new_thumb_path = t_url
+                        new_thumb_pid = t_pid
+            except Exception as e:
+                messages.error(request, f"File processing failed: {str(e)}")
+                return redirect('edit_resource', resource_uid=resource.uid)
+
+        if is_approved:
+            # For approved resources, use pending fields
+            resource.pending_title = title
+            resource.pending_category = category
+            resource.pending_resource_type = resource_type
+            
+            if new_fb_path:
+                resource.pending_firebase_file_path = new_fb_path
+                resource.pending_thumbnail_path = new_thumb_path
+                resource.pending_thumbnail_public_id = new_thumb_pid
+                resource.pending_mime_type = new_mime
+                resource.pending_file_extension = new_ext
+                resource.pending_original_size = new_orig_size
+                resource.pending_compressed_size = new_comp_size
+                
+            resource.has_pending_edits = True
+            resource.save()
+            messages.success(request, f"Changes to resource '{title}' submitted for admin review.")
+            notify_admins(f"🔄 RESOURCE EDIT: Teacher {request.user.username} edited approved resource '{resource.title}'.")
+        else:
+            # For PENDING or REJECTED resources, overwrite directly and set to PENDING
+            # Delete old file if a new one is uploaded
+            if new_fb_path and resource.firebase_file_path:
+                try:
+                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                    if resource.thumbnail_public_id:
+                        from accounts.utils.cloudinary_helpers import delete_temp_image
+                        delete_temp_image(resource.thumbnail_public_id)
+                except:
+                    pass
+                
+            resource.title = title
+            resource.category = category
+            resource.resource_type = resource_type
+            
+            if new_fb_path:
+                resource.firebase_file_path = new_fb_path
+                resource.thumbnail_path = new_thumb_path
+                resource.thumbnail_public_id = new_thumb_pid
+                resource.mime_type = new_mime
+                resource.file_extension = new_ext
+                resource.original_size = new_orig_size
+                resource.compressed_size = new_comp_size
+            
+            resource.status = 'PENDING'
+            resource.is_approved = False
+            resource.rejection_reason = None # Clear reason on resubmission
+            resource.save()
+            messages.success(request, f"Resource '{title}' updated and resubmitted for approval.")
+            notify_admins(f"🆕 RESOURCE RESUBMISSION: Teacher {request.user.username} updated resource '{title}'.")
+
+        return redirect('course_lessons', course_uid=course.uid)
+
+    return render(request, 'teacher_portal/edit_resource.html', {'resource': resource})
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def delete_resource(request, resource_uid):
     if request.method != 'POST':
         return redirect('teacher_dashboard')

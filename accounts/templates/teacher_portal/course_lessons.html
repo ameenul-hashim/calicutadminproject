@@ -140,21 +140,23 @@
                 <div style="display: flex; gap: 0.75rem;">
                     {% if resource.status == 'DELETION_PENDING' %}
                         <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Awaiting admin approval</span>
-                    {% elif resource.status == 'APPROVED' %}
-                        <!-- For approved resources — show modal to request deletion with reason -->
-                        <button onclick="openDeleteModal('{{ resource.uid }}', '{{ resource.title|escapejs }}')"
-                            style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
-                            Request Deletion
-                        </button>
                     {% else %}
-                        <!-- For PENDING / REJECTED — allow immediate deletion -->
-                        <form method="POST" action="{% url 'delete_resource' resource.uid %}" style="margin: 0;"
-                              onsubmit="return confirm('Delete this resource permanently?')">
-                            {% csrf_token %}
-                            <button type="submit" style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
-                                Delete
+                        <a href="{% url 'edit_resource' resource.uid %}" style="color: #6366f1; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Edit</a>
+                        
+                        {% if resource.status == 'APPROVED' %}
+                            <button onclick="openDeleteModal('{{ resource.uid }}', '{{ resource.title|escapejs }}')"
+                                style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0;">
+                                Request Deletion
                             </button>
-                        </form>
+                        {% else %}
+                            <form method="POST" action="{% url 'delete_resource' resource.uid %}" style="margin: 0;"
+                                onsubmit="return confirm('Delete this resource permanently?')">
+                                {% csrf_token %}
+                                <button type="submit" style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
+                                    Delete
+                                </button>
+                            </form>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>

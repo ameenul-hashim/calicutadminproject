@@ -1074,11 +1074,26 @@ def admin_delete_course_secure(request, course_uid):
         if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
-            course.status = 'DELETED'
-            course.is_approved = False
-            course.save()
-            messages.success(request, f"✅ '{course_title}' has been moved to the Deleted Courses area.")
-            return redirect('admin_content')
+            
+            # 1. Cleanup all Course Resources from Supabase
+            from accounts.models import CourseResource
+            from accounts.utils.storage_manager import StorageManager
+            resources = CourseResource.objects.filter(course=course)
+            for res in resources:
+                if res.firebase_file_path:
+                    try:
+                        StorageManager.delete_from_supabase_storage(res.firebase_file_path)
+                        if res.thumbnail_public_id:
+                            from accounts.utils.cloudinary_helpers import delete_temp_image
+                            delete_temp_image(res.thumbnail_public_id)
+                    except Exception as e:
+                        print(f"Error deleting resource {res.uid}: {e}")
+
+            # 2. Delete the course (cascades to internal models)
+            course.delete()
+            
+            messages.success(request, f"✅ '{course_title}' and all associated storage files have been permanently purged.")
+            return redirect('admin_deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
@@ -1101,6 +1116,16 @@ def admin_delete_lesson_secure(request, lesson_uid):
             lesson = get_object_or_404(Lesson, uid=lesson_uid)
             lesson_title = lesson.title
             course_uid = lesson.course.uid
+            
+            # Explicit file cleanup for Lesson videos
+            if lesson.video_file:
+                try:
+                    import os
+                    if os.path.isfile(lesson.video_file.path):
+                        os.remove(lesson.video_file.path)
+                except Exception as e:
+                    print(f"Error deleting lesson video file: {e}")
+
             lesson.delete()
             messages.success(request, f"✅ {lesson_title} removed successfully.")
             return redirect('admin_view_course_content', course_uid=course_uid)

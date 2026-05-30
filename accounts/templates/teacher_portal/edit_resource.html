@@ -1,0 +1,120 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Resource | Neo Learner</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        corePlugins: { preflight: false }
+      }
+    </script>
+    <style>
+        :root { --sidebar-width: 280px; }
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; margin: 0; }
+        .dashboard-container { display: flex; min-height: 100vh; }
+        .sidebar { width: var(--sidebar-width); background: white; border-right: 1px solid #e2e8f0; padding: 2rem 1.5rem; position: fixed; height: 100vh; display: flex; flex-direction: column; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); padding: 2rem 3rem; }
+        .form-card { background: white; border-radius: 1.5rem; padding: 2.5rem; border: 1px solid #e2e8f0; max-width: 700px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group label { display: block; margin-bottom: 0.5rem; font-weight: 600; color: #1e293b; font-size: 0.9rem; }
+        .input-group input, .input-group select { width: 100%; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
+        .input-group input:focus, .input-group select:focus { border-color: #6366f1; }
+        @media (max-width: 1024px) {
+            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
+            .sidebar.active { transform: translateX(0); }
+            .main-content { margin-left: 0 !important; padding: 1rem !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div style="font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem;">Neo Learner</div>
+            <nav>
+                <a href="{% url 'teacher_dashboard' %}" style="display: block; padding: 0.8rem 1rem; color: #64748b; text-decoration: none; border-radius: 0.75rem; margin-bottom: 0.5rem;">🏠 Dashboard</a>
+                <a href="{% url 'course_lessons' resource.course.uid %}" style="display: block; padding: 0.8rem 1rem; color: #6366f1; background: #eef2ff; text-decoration: none; border-radius: 0.75rem; font-weight: 600;">📚 Manage Content</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header style="margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <a href="{% url 'course_lessons' resource.course.uid %}" style="text-decoration: none; color: #64748b; font-weight: 600;">← Back</a>
+                    <span style="padding: 0.25rem 0.75rem; background: #fef3c7; color: #d97706; border-radius: 1rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">Editing Resource</span>
+                </div>
+                <h1>Edit Resource: {{ resource.title }}</h1>
+                <p style="color: #64748b;">Update your resource details or upload a new file.</p>
+            </header>
+
+            {% if resource.status == 'REJECTED' %}
+            <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 1rem; padding: 1.25rem; margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #e11d48; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>⚠️</span> Rejected by Admin
+                </h4>
+                <p style="margin: 0; color: #9f1239; font-size: 0.95rem;"><strong>Reason:</strong> {{ resource.rejection_reason }}</p>
+            </div>
+            {% endif %}
+
+            {% if resource.has_pending_edits %}
+            <div style="background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 1rem; padding: 1.25rem; margin-bottom: 2rem;">
+                <h4 style="margin: 0 0 0.5rem 0; color: #0ea5e9; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>ℹ️</span> Pending Approval
+                </h4>
+                <p style="margin: 0; color: #0369a1; font-size: 0.95rem;">This resource has pending edits awaiting admin review. Submitting again will update the pending changes.</p>
+            </div>
+            {% endif %}
+
+            <div class="form-card">
+                <form method="POST" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="input-group">
+                        <label for="title">Resource Title</label>
+                        <input type="text" name="title" id="title" required value="{{ resource.title }}" placeholder="e.g. Chapter 1 Notes">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="category">Category</label>
+                        <select name="category" id="category" required style="cursor: pointer;">
+                            <option value="ENGLISH" {% if resource.category == 'ENGLISH' %}selected{% endif %}>🇬🇧 English Notes</option>
+                            <option value="MALAYALAM" {% if resource.category == 'MALAYALAM' %}selected{% endif %}>🇮🇳 Malayalam Notes</option>
+                            <option value="ONLINE" {% if resource.category == 'ONLINE' %}selected{% endif %}>💻 Online Class Notes</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="resource_type">File Type</label>
+                        <select name="resource_type" id="resource_type" required style="cursor: pointer;">
+                            <option value="PDF" {% if resource.resource_type == 'PDF' %}selected{% endif %}>📄 PDF Document</option>
+                            <option value="DOCX" {% if resource.resource_type == 'DOCX' %}selected{% endif %}>📝 Word Document (.docx)</option>
+                            <option value="PPTX" {% if resource.resource_type == 'PPTX' %}selected{% endif %}>📊 PowerPoint (.pptx)</option>
+                            <option value="XLSX" {% if resource.resource_type == 'XLSX' %}selected{% endif %}>📈 Excel Spreadsheet (.xlsx)</option>
+                            <option value="TXT" {% if resource.resource_type == 'TXT' %}selected{% endif %}>🔤 Text File (.txt)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="upload_file">Change File (Optional)</label>
+                        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">Current file: <span style="font-weight: 600; color: #1e293b;">{{ resource.title }} ({{ resource.file_extension|upper }})</span></p>
+                        <div style="border: 2px dashed #e2e8f0; padding: 2rem; border-radius: 1rem; text-align: center; background: #f8fafc; transition: all 0.2s;" onmouseover="this.style.borderColor='#4f46e5'; this.style.background='#f5f3ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
+                            <input type="file" name="upload_file" id="upload_file" style="width: 100%; cursor: pointer;">
+                            <p style="margin-top: 1rem; font-size: 0.8rem; color: #64748b;">Upload a new file only if you want to replace the existing one.</p>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                        <button type="submit" style="background: #4f46e5; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); flex: 1; transition: all 0.2s;">
+                            {% if resource.status == 'REJECTED' %}Resubmit for Approval{% else %}Save Changes{% endif %}
+                        </button>
+                        <a href="{% url 'course_lessons' resource.course.uid %}" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; flex: 1; text-align: center; border: 1px solid #e2e8f0;">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
