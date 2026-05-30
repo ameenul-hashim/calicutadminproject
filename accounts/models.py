@@ -181,6 +181,19 @@ class CourseResource(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
+    # Pending Edits (Teacher resubmission workflow)
+    has_pending_edits = models.BooleanField(default=False)
+    pending_title = models.CharField(max_length=255, null=True, blank=True)
+    pending_category = models.CharField(max_length=20, null=True, blank=True)
+    pending_resource_type = models.CharField(max_length=10, null=True, blank=True)
+    pending_firebase_file_path = models.CharField(max_length=1000, null=True, blank=True)
+    pending_thumbnail_path = models.CharField(max_length=1000, null=True, blank=True)
+    pending_thumbnail_public_id = models.CharField(max_length=500, null=True, blank=True)
+    pending_mime_type = models.CharField(max_length=100, null=True, blank=True)
+    pending_file_extension = models.CharField(max_length=10, null=True, blank=True)
+    pending_original_size = models.PositiveIntegerField(default=0)
+    pending_compressed_size = models.PositiveIntegerField(default=0)
+
     class Meta:
         ordering = ['-created_at']
 
