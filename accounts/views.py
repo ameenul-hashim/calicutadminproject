@@ -1475,27 +1475,91 @@ def mark_all_notifications_read(request):
 def access_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from django.shortcuts import get_object_or_404, redirect
-    from django.http import HttpResponseForbidden
+    from django.http import HttpResponseForbidden, Http404, HttpResponse
     
-    resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False, status='APPROVED')
+    # We query without status='APPROVED' restriction first, then verify access based on user role
+    resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
     
     # Verify access
     is_teacher = (request.user.user_type == 'TEACHER' and resource.course.teacher == request.user)
-    is_admin = request.user.is_superuser or request.user.user_type == 'ADMIN'
+    is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
     
     if not (is_teacher or is_admin):
+        # Strict enforcement for students
+        if resource.status != 'APPROVED':
+            raise Http404("Resource not found or not approved.")
+            
         has_enrollment = Enrollment.objects.filter(user=request.user, course=resource.course).exists()
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
             
-        # Increment view analytics only (download_count tracked separately via explicit download action)
+        # Increment view analytics
         resource.view_count += 1
         resource.save(update_fields=['view_count'])
         
     url = resource.get_signed_url()
     if url:
         return redirect(url)
+    
+    # Fallback: stream file bytes directly from Supabase
+    try:
+        from accounts.utils.storage_manager import StorageManager, supabase as res_supabase
+        if res_supabase and resource.firebase_file_path:
+            parts = resource.firebase_file_path.split('/', 1)
+            bucket = parts[0]
+            path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
+            file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
+            if file_bytes:
+                content_type = resource.mime_type or 'application/octet-stream'
+                response = HttpResponse(file_bytes, content_type=content_type)
+                filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
+                response['Content-Disposition'] = f'inline; filename="{filename}"'
+                return response
+    except Exception as e:
+        logger.error(f"Resource fallback stream failed for {resource_uid}: {e}")
+        
     return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
+
+@login_required(login_url='login')
+def download_resource(request, resource_uid):
+    """Downloads a resource file with Content-Disposition: attachment for actual file download."""
+    from accounts.models import CourseResource, Enrollment
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponseForbidden, Http404, HttpResponse
+    
+    resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
+    
+    is_teacher = (request.user.user_type == 'TEACHER' and resource.course.teacher == request.user)
+    is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
+    
+    if not (is_teacher or is_admin):
+        if resource.status != 'APPROVED':
+            raise Http404("Resource not found or not approved.")
+        has_enrollment = Enrollment.objects.filter(user=request.user, course=resource.course).exists()
+        if not has_enrollment:
+            return HttpResponseForbidden("You are not enrolled in this course.")
+        resource.download_count += 1
+        resource.save(update_fields=['download_count'])
+    
+    # Stream file bytes from Supabase with attachment header
+    try:
+        from accounts.utils.storage_manager import supabase as res_supabase
+        if res_supabase and resource.firebase_file_path:
+            parts = resource.firebase_file_path.split('/', 1)
+            bucket = parts[0]
+            path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
+            file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
+            if file_bytes:
+                content_type = resource.mime_type or 'application/octet-stream'
+                response = HttpResponse(file_bytes, content_type=content_type)
+                filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                response['Content-Length'] = len(file_bytes)
+                return response
+    except Exception as e:
+        logger.error(f"Resource download failed for {resource_uid}: {e}")
+    
+    return HttpResponseForbidden("Failed to download resource. Please contact administrator.")
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required

@@ -898,33 +898,78 @@ def approve_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from accounts.views import create_notification
     from django.utils import timezone
+    from accounts.utils.storage_manager import StorageManager
     
     resource = get_object_or_404(CourseResource, uid=resource_uid)
-    resource.status = 'APPROVED'
-    resource.is_approved = True
-    resource.approved_by = request.user
-    resource.approved_at = timezone.now()
-    resource.save()
+    is_edit_approval = resource.has_pending_edits
     
-    create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
-    
-    enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
-    for enrollment in enrollments:
-        if enrollment.user.status == 'ACTIVE':
-            create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
+    if is_edit_approval:
+        # Delete old file manually if replacing
+        if resource.pending_firebase_file_path and resource.pending_firebase_file_path != resource.firebase_file_path:
+            try:
+                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                if resource.thumbnail_public_id and resource.pending_thumbnail_public_id != resource.thumbnail_public_id:
+                    from accounts.utils.cloudinary_helpers import delete_temp_image
+                    delete_temp_image(resource.thumbnail_public_id)
+            except Exception:
+                pass
+            
+            # Apply all file properties
+            resource.firebase_file_path = resource.pending_firebase_file_path
+            resource.thumbnail_path = resource.pending_thumbnail_path
+            resource.thumbnail_public_id = resource.pending_thumbnail_public_id
+            resource.mime_type = resource.pending_mime_type
+            resource.file_extension = resource.pending_file_extension
+            resource.original_size = resource.pending_original_size
+            resource.compressed_size = resource.pending_compressed_size
+            
+        # Apply metadata
+        if resource.pending_title:
+            resource.title = resource.pending_title
+        if resource.pending_category:
+            resource.category = resource.pending_category
+        if resource.pending_resource_type:
+            resource.resource_type = resource.pending_resource_type
+            
+        # Clear pending fields
+        resource.pending_title = None
+        resource.pending_category = None
+        resource.pending_resource_type = None
+        resource.pending_firebase_file_path = None
+        resource.pending_thumbnail_path = None
+        resource.pending_thumbnail_public_id = None
+        resource.has_pending_edits = False
+        
+        resource.approved_by = request.user
+        resource.approved_at = timezone.now()
+        resource.save()
+        create_notification(resource.course.teacher, f"Your edits to resource '{resource.title}' in course '{resource.course.title}' have been approved.")
+        messages.success(request, f"Changes to resource '{resource.title}' approved successfully.")
+    else:
+        resource.status = 'APPROVED'
+        resource.is_approved = True
+        resource.approved_by = request.user
+        resource.approved_at = timezone.now()
+        resource.save()
+        
+        create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
+        
+        enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
+        for enrollment in enrollments:
+            if enrollment.user.status == 'ACTIVE':
+                create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
+        messages.success(request, f"Resource '{resource.title}' approved successfully.")
 
-    # Trigger Background Backup to Google Drive (Phase 2)
+    # Trigger Background Backup to Google Drive
     try:
         import threading
-        from accounts.utils.storage_manager import StorageManager
         thread = threading.Thread(target=StorageManager.backup_to_google_drive, args=(resource.id,))
         thread.daemon = True
         thread.start()
+        messages.success(request, f"Backup process started in background.")
     except Exception as e:
         import logging
         logging.getLogger(__name__).error(f"Failed to spawn backup thread: {e}")
-
-    messages.success(request, f"Resource '{resource.title}' approved. Backup process started in background.")
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
 @user_passes_test(is_admin, login_url='admin_login')
