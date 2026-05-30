@@ -127,30 +127,42 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <div style="margin-top: 2rem; padding: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 1rem;">
-                <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e293b; margin-bottom: 1.5rem;">Update Credentials</h3>
+            <div style="margin-top: 2rem; padding: 1.5rem; background: #fdf2f2; border: 1px solid #fee2e2; border-radius: 1rem;" id="credentialSection">
+                <h3 style="font-size: 1.1rem; font-weight: 700; color: #991b1b; margin-bottom: 0.5rem;">🔒 Credential Management</h3>
+                <p style="font-size: 0.85rem; color: #b91c1c; margin-bottom: 1.5rem;">Update your login details here. Leave fields blank to keep current values.</p>
                 
                 <div class="form-group">
-                    <label for="new_username">New Username (Optional)</label>
-                    <input type="text" id="new_username" name="new_username" placeholder="Leave blank to keep current"
+                    <label for="new_username">Change Username</label>
+                    <input type="text" id="new_username" name="new_username" placeholder="@{{ user.username }}"
                            style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
                 </div>
 
+                <div style="margin: 2rem 0; border-top: 1px dashed #fee2e2;"></div>
+
                 <div class="form-group">
-                    <label for="current_password">Current Password <span style="color:#64748b; font-weight:normal; font-size: 0.8rem;">(Required only if changing password)</span></label>
-                    <input type="password" id="current_password" name="current_password" 
+                    <label for="current_password">Current Password <span style="color:#ef4444;">* (Required for password changes)</span></label>
+                    <input type="password" id="current_password" name="current_password" placeholder="Verify your identity"
                            style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
                 </div>
 
                 <div class="form-group">
                     <label for="new_password">New Password</label>
-                    <input type="password" id="new_password" name="new_password" placeholder="At least 8 chars, 1 Uppercase, 1 Special"
+                    <input type="password" id="new_password" name="new_password" placeholder="Create a strong password"
                            style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
+                    <div style="margin-top: 0.75rem; background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #fee2e2;">
+                        <p style="margin: 0; font-size: 0.75rem; color: #b91c1c; font-weight: 600;">Security Requirements:</p>
+                        <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.7rem; color: #b91c1c;">
+                            <li>Minimum 8 characters long</li>
+                            <li>At least one UPPERCASE letter</li>
+                            <li>At least one lowercase letter</li>
+                            <li>At least one SPECIAL character (!@#$%^ etc.)</li>
+                        </ul>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="confirm_password">Confirm New Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" 
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password"
                            style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #cbd5e1; font-size: 0.95rem;">
                 </div>
             </div>
@@ -194,11 +206,20 @@
             }
             
             if (document.getElementById('new_password').value) {
+                const newPass = document.getElementById('new_password').value;
                 if (!document.getElementById('current_password').value) {
                     showToast('Current password is required to set a new password.', 'error');
                     return;
                 }
-                if (document.getElementById('new_password').value !== document.getElementById('confirm_password').value) {
+                if (newPass.length < 8) {
+                    showToast('Password must be at least 8 characters long.', 'error');
+                    return;
+                }
+                if (!/[A-Z]/.test(newPass) || !/[a-z]/.test(newPass) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
+                    showToast('Password must contain Uppercase, Lowercase, and a Special character.', 'error');
+                    return;
+                }
+                if (newPass !== document.getElementById('confirm_password').value) {
                     showToast('New passwords do not match.', 'error');
                     return;
                 }
