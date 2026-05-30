@@ -415,6 +415,7 @@
 
                 <div class="action-bar">
                     <a href="{% url 'edit_profile' %}" class="btn-profile btn-primary">Edit Photo</a>
+                    <a href="{% url 'edit_profile' %}" class="btn-profile btn-outline" style="border-color: var(--primary); color: var(--primary);">Manage Credentials</a>
                     {% if user.user_type == 'TEACHER' %}
                     <a href="{% url 'teacher_dashboard' %}" class="btn-profile btn-outline"
                         style="color: #6366f1; border-color: #c7d2fe;">Back to Teacher Panel</a>
