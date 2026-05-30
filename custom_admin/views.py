@@ -610,8 +610,43 @@ def analytics_view(request):
             'pending_students_count': pending_students_count,
             'pending_teachers_count': pending_teachers_count,
         }
-        # Cache for 1 minute (reduced from 5 to prevent mismatch)
-        cache.set(cache_key, context, 60)
+
+        # Database Usage
+        try:
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_database_size(current_database())")
+                db_size_bytes = cursor.fetchone()[0]
+            db_usage_mb = db_size_bytes / (1024 * 1024)
+        except Exception:
+            db_usage_mb = 0
+            
+        db_limit_mb = 512
+        db_usage_percent = min((db_usage_mb / db_limit_mb) * 100, 100)
+        
+        # Supabase Storage Size (Cached separate or together)
+        from accounts.models import CourseResource
+        total_storage_bytes = CourseResource.objects.aggregate(total=Sum('compressed_size'))['total'] or 0
+        storage_usage_mb = total_storage_bytes / (1024 * 1024)
+        storage_limit_mb = 1024
+        storage_usage_percent = min((storage_usage_mb / storage_limit_mb) * 100, 100)
+        
+        context['db_usage'] = {
+            'usage_mb': round(db_usage_mb, 2),
+            'limit_mb': db_limit_mb,
+            'percent': round(db_usage_percent, 2),
+            'remaining_mb': round(db_limit_mb - db_usage_mb, 2)
+        }
+        
+        context['storage_usage'] = {
+            'usage_mb': round(storage_usage_mb, 2),
+            'limit_mb': storage_limit_mb,
+            'percent': round(storage_usage_percent, 2),
+            'remaining_mb': round(storage_limit_mb - storage_usage_mb, 2)
+        }
+        
+        # Cache for 15 minutes (900 seconds)
+        cache.set(cache_key, context, 900)
 
     # These shouldn't be cached as they are user-specific/time-sensitive
     context['notifications'] = Notification.objects.filter(user=request.user, is_read=False)[:10]

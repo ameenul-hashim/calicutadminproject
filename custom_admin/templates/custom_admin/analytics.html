@@ -166,6 +166,41 @@
             </div>
         </div>
 
+        <!-- Realtime Infrastructure Usage -->
+        <div class="premium-charts-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
+            <div class="premium-panel">
+                <div class="premium-panel-header">
+                    <h2 class="premium-panel-title">🗄️ PostgreSQL Database Usage (Render)</h2>
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #64748b; font-weight: 600;">
+                        <span>{{ db_usage.usage_mb }} MB Used</span>
+                        <span>{{ db_usage.remaining_mb }} MB Free ({{ db_usage.limit_mb }}MB Total)</span>
+                    </div>
+                    <div style="width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
+                        <div style="width: {{ db_usage.percent }}%; height: 100%; background: #3b82f6; transition: width 1s;"></div>
+                    </div>
+                    <p style="margin-top: 0.5rem; text-align: right; font-size: 0.8rem; color: #1e293b; font-weight: 700;">{{ db_usage.percent }}% Used</p>
+                </div>
+            </div>
+
+            <div class="premium-panel">
+                <div class="premium-panel-header">
+                    <h2 class="premium-panel-title">☁️ Supabase Storage Usage (Free Tier)</h2>
+                </div>
+                <div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #64748b; font-weight: 600;">
+                        <span>{{ storage_usage.usage_mb }} MB Used</span>
+                        <span>{{ storage_usage.remaining_mb }} MB Free ({{ storage_usage.limit_mb }}MB Total)</span>
+                    </div>
+                    <div style="width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
+                        <div style="width: {{ storage_usage.percent }}%; height: 100%; background: #10b981; transition: width 1s;"></div>
+                    </div>
+                    <p style="margin-top: 0.5rem; text-align: right; font-size: 0.8rem; color: #1e293b; font-weight: 700;">{{ storage_usage.percent }}% Used</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Charts -->
         <div class="premium-charts-grid">
             <div class="premium-panel">
