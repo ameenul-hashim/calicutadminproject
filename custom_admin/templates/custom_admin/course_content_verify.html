@@ -275,6 +275,10 @@
                 <div style="background: #f8fafc; border-radius: 1rem; border: 1px solid #f1f5f9; padding: 1rem; margin-bottom: 1.5rem;">
                     <p style="font-size: 0.9rem; color: #475569; margin: 0 0 0.5rem 0;">Type: <strong>{{ resource.get_resource_type_display }}</strong></p>
                     <p style="font-size: 0.9rem; color: #475569; margin: 0;">Size: <strong>{% widthratio resource.compressed_size 1024 1 %} KB</strong></p>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="flex: 1; text-align: center; background: #4f46e5; color: white; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">👁️ Preview</a>
+                        <a href="{% url 'download_resource' resource.uid %}" style="flex: 1; text-align: center; background: #10b981; color: white; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">⬇️ Download</a>
+                    </div>
                 </div>
             </div>
             
@@ -330,6 +334,10 @@
                 <div style="background: #f8fafc; border-radius: 1rem; border: 1px solid #f1f5f9; padding: 1rem; margin-bottom: 1.5rem;">
                     <p style="font-size: 0.9rem; color: #475569; margin: 0 0 0.5rem 0;">Type: <strong>{{ resource.get_resource_type_display }}</strong></p>
                     <p style="font-size: 0.9rem; color: #475569; margin: 0;">Size: <strong>{% widthratio resource.compressed_size 1024 1 %} KB</strong></p>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="flex: 1; text-align: center; background: #4f46e5; color: white; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">👁️ Preview</a>
+                        <a href="{% url 'download_resource' resource.uid %}" style="flex: 1; text-align: center; background: #10b981; color: white; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">⬇️ Download</a>
+                    </div>
                 </div>
             </div>
             
@@ -373,6 +381,10 @@
                 <div style="background: #f8fafc; border-radius: 1rem; border: 1px solid #f1f5f9; padding: 1rem; margin-bottom: 1.5rem;">
                     <p style="font-size: 0.9rem; color: #475569; margin: 0 0 0.5rem 0;">Type: <strong>{{ resource.get_resource_type_display }}</strong></p>
                     <p style="font-size: 0.9rem; color: #475569; margin: 0;">Size: <strong>{% widthratio resource.compressed_size 1024 1 %} KB</strong></p>
+                    <div style="margin-top: 1rem; display: flex; gap: 0.5rem;">
+                        <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="flex: 1; text-align: center; background: #4f46e5; color: white; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">👁️ Preview</a>
+                        <a href="{% url 'download_resource' resource.uid %}" style="flex: 1; text-align: center; background: #10b981; color: white; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.8rem; font-weight: 700; text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">⬇️ Download</a>
+                    </div>
                 </div>
 
                 <div style="background: #fff1f2; border: 1px solid #fecdd3; border-radius: 0.75rem; padding: 1rem; margin-top: 0.5rem;">
