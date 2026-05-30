@@ -260,7 +260,7 @@
                 <a href="{% url 'teacher_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_analytics' %}active{% endif %}">📈 Analytics</a>
                 <a href="{% url 'teacher_explore' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_explore' %}active{% endif %}">🌐 Explore Peer Courses</a>
                 <a href="{% url 'student_view_auth' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
-                <a href="{% url 'profile' %}" class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}">👤 My Profile</a>
+                <a href="{% url 'teacher_edit_profile' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_edit_profile' %}active{% endif %}">👤 Edit Profile</a>
             </nav>
             <div class="logout-section" style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                 <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
