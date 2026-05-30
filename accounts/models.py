@@ -192,7 +192,7 @@ class CourseResource(models.Model):
         import datetime
         try:
             manager = StorageManager()
-            expiration = datetime.timedelta(hours=2)
+            expiration = datetime.timedelta(days=7)
             url = manager.generate_supabase_signed_url(self.firebase_file_path, expiration)
             if isinstance(url, dict):
                 return url.get('signedURL') or url.get('signedUrl') or url.get('signed_url')

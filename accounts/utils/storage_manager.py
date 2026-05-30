@@ -167,7 +167,7 @@ class StorageManager:
             path_in_bucket = parts[1] if len(parts) > 1 else file_path
             
             if expiration is None:
-                expires_in = 30 * 60
+                expires_in = 7 * 24 * 60 * 60 # 1 week
             elif isinstance(expiration, timedelta):
                 expires_in = int(expiration.total_seconds())
             else:
