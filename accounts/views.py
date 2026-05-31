@@ -116,12 +116,12 @@ def signup_view(request):
         is_mobile = request.POST.get('is_mobile') == 'true'
 
         # 1. Extensive Debug Logging
-        print("\n--- 📝 STUDENT SIGNUP (HYBRID FLOW) ---")
-        print(f"👤 User: {username} | Mobile Device: {is_mobile}")
+        print("\n--- [STUDENT SIGNUP] ---")
+        print(f"User: {username} | Mobile Device: {is_mobile}")
         if proof_file:
-            print(f"📄 FILE: {proof_file.name} | SIZE: {proof_file.size} bytes | TYPE: {proof_file.content_type}")
+            print(f"FILE: {proof_file.name} | SIZE: {proof_file.size} bytes | TYPE: {proof_file.content_type}")
         else:
-            print("❌ NO FILE")
+            print("[WARN] NO FILE")
 
         # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
@@ -190,12 +190,12 @@ def signup_view(request):
                     messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
                     return redirect('login')
 
-                print("📄 Uploading PDF directly to Supabase...")
+                print("[PDF] Uploading directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"⚡ Processing image ({file_ext}) directly from memory...")
+                print(f"[IMG] Processing image ({file_ext}) directly from memory...")
                 # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
                 
@@ -207,15 +207,15 @@ def signup_view(request):
                     user.delete()
                     raise Exception("Supabase upload failed.")
                 
-                print(f"✅ Fast-track registration complete for {username}")
+                print(f"[OK] Fast-track student registration complete for {username}")
 
-            messages.success(request, "✅ Registration successful! Admin approval pending.")
+            messages.success(request, "Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
             return redirect('login')
 
         except Exception as e:
             import traceback
-            print(f"❌ SIGNUP ERROR: {str(e)}")
+            print(f"[ERROR] SIGNUP: {str(e)}")
             print(traceback.format_exc())
             if 'user' in locals() and user: user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
@@ -239,12 +239,12 @@ def teacher_signup_view(request):
         is_mobile = request.POST.get('is_mobile') == 'true'
 
         # 1. Extensive Debug Logging
-        print("\n--- 📝 TEACHER SIGNUP (HYBRID FLOW) ---")
-        print(f"👨‍🏫 Teacher: {username} | Mobile: {is_mobile}")
+        print("\n--- [TEACHER SIGNUP] ---")
+        print(f"Teacher: {username} | Mobile: {is_mobile}")
         if proof_file:
-            print(f"📄 FILE: {proof_file.name} | SIZE: {proof_file.size} bytes")
+            print(f"FILE: {proof_file.name} | SIZE: {proof_file.size} bytes")
         else:
-            print("❌ NO FILE")
+            print("[WARN] NO FILE")
 
         # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
@@ -313,12 +313,12 @@ def teacher_signup_view(request):
                     messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
                     return redirect('teacher_login')
 
-                print("📄 Uploading PDF directly to Supabase...")
+                print("[PDF] Uploading directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"⚡ Processing teacher image ({file_ext}) directly from memory...")
+                print(f"[IMG] Processing teacher image ({file_ext}) directly from memory...")
                 # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
                 
@@ -330,15 +330,15 @@ def teacher_signup_view(request):
                     user.delete()
                     raise Exception("Supabase upload failed.")
                 
-                print(f"✅ Fast-track teacher registration complete for {username}")
+                print(f"[OK] Fast-track teacher registration complete for {username}")
 
-            messages.success(request, "✅ Teacher registration successful! Admin review pending.")
+            messages.success(request, "Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
             return redirect('teacher_login')
 
         except Exception as e:
             import traceback
-            print(f"❌ TEACHER SIGNUP ERROR: {str(e)}")
+            print(f"[ERROR] TEACHER SIGNUP: {str(e)}")
             print(traceback.format_exc())
             if 'user' in locals() and user: user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
