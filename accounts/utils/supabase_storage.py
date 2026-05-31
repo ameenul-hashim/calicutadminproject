@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
-bucket_name: str = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
+bucket_name: str = os.getenv("SUPABASE_BUCKET", "resources")
 
 # Initialize client
 supabase: Client = None

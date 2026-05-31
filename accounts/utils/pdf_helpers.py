@@ -57,7 +57,7 @@ def convert_image_to_pdf(image_source):
             img = Image.open(image_source)
             filename = getattr(image_source, 'name', 'verification_upload.jpg')
 
-        print(f"🚀 PDF Pipeline: Processing {filename} ({img.width}x{img.height})")
+        print(f"[PDF] Pipeline: Processing {filename} ({img.width}x{img.height})")
 
         # 2. Adaptive Optimization Loop
         # Goal: < 200KB (Target 180KB)
@@ -99,7 +99,7 @@ def convert_image_to_pdf(image_source):
             c.save()
             
             pdf_size = pdf_buffer.tell()
-            print(f"📊 Attempt {attempt+1}: Quality={current_quality}, Width={current_max_width}, Size={pdf_size/1024:.2f}KB")
+            print(f"[STATS] Attempt {attempt+1}: Quality={current_quality}, Width={current_max_width}, Size={pdf_size/1024:.2f}KB")
             
             if pdf_size <= MAX_SIZE_BYTES:
                 final_pdf_buffer = pdf_buffer
@@ -120,6 +120,6 @@ def convert_image_to_pdf(image_source):
 
     except Exception as e:
         import traceback
-        print(f"❌ PDF PIPELINE ERROR: {str(e)}")
+        print(f"[ERROR] PDF PIPELINE ERROR: {str(e)}")
         print(traceback.format_exc())
         return None
