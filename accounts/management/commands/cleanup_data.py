@@ -1,29 +1,18 @@
 from django.core.management.base import BaseCommand
-from accounts.models import ChatMessage, Notification
-from django.utils import timezone
-from datetime import timedelta
+from accounts.utils.firebase_notifications import cleanup_old_notifications
+from accounts.utils.firebase_chat import cleanup_old_messages
+
 
 class Command(BaseCommand):
-    help = 'Validates data integrity (Deletions DISABLED for Zero-Delete Policy)'
+    help = 'Cleans up old data from Firebase: notifications (7 days), chat messages (30 days)'
 
     def handle(self, *args, **options):
-        self.stdout.write('Starting database integrity scan (Zero-Delete Mode)...')
+        self.stdout.write('Starting Firebase cleanup...')
 
-        # 1. Check old Chat Messages
-        cleanup_date = timezone.now() - timedelta(days=60)
-        old_messages = ChatMessage.objects.filter(timestamp__lt=cleanup_date)
-        msg_count = old_messages.count()
-        
-        # old_messages.delete() # DISABLED
-        self.stdout.write(self.style.WARNING(f'Found {msg_count} old chat messages. PRESERVED per Zero-Delete Policy.'))
+        notif_count = cleanup_old_notifications(days=7)
+        self.stdout.write(self.style.SUCCESS(f'Cleaned up notifications older than 7 days.'))
 
-        # 2. Check old Notifications
-        old_notifs = Notification.objects.filter(created_at__lt=cleanup_date)
-        notif_count = old_notifs.count()
-        
-        # old_notifs.delete() # DISABLED
-        self.stdout.write(self.style.WARNING(f'Found {notif_count} old notifications. PRESERVED per Zero-Delete Policy.'))
+        chat_count = cleanup_old_messages(days=30)
+        self.stdout.write(self.style.SUCCESS(f'Cleaned up chat messages older than 30 days.'))
 
-        self.stdout.write(self.style.SUCCESS('Data integrity scan complete. No data was removed.'))
-
-
+        self.stdout.write(self.style.SUCCESS('Firebase cleanup complete.'))

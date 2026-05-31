@@ -1,15 +1,17 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
-from channels.db import database_sync_to_async
-from .models import ChatMessage, CustomUser
-from django.utils import timezone
+from .utils.firebase_chat import (
+    send_message as fb_send,
+    edit_message as fb_edit,
+    delete_message as fb_delete,
+)
+
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
 
-        # Join room group
         await self.channel_layer.group_add(
             self.room_group_name,
             self.channel_name
@@ -18,13 +20,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.accept()
 
     async def disconnect(self, close_code):
-        # Leave room group
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name
         )
 
-    # Receive message from WebSocket
     async def receive(self, text_data):
         data = json.loads(text_data)
         action = data.get('action', 'send')
@@ -33,28 +33,30 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if action == 'send':
             message = data['message']
             receiver_uid = data['receiver_uid']
-            
-            # Save message to database
-            msg = await self.save_message(sender, receiver_uid, message)
+            sender_name = 'Administrator' if getattr(sender, 'is_staff', False) else sender.username
 
-            # Send message to room group
+            msg_uid, now_ms = await self.save_message(sender, receiver_uid, message, sender_name)
+
+            from datetime import datetime
+            ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p') if now_ms else ''
+
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'chat_message',
                     'action': 'send',
-                    'message_uid': str(msg.uid),
+                    'message_uid': str(msg_uid) if msg_uid else '',
                     'message': message,
                     'sender_uid': str(sender.uid),
-                    'sender_name': 'Administrator' if getattr(sender, 'is_staff', False) else sender.username,
-                    'timestamp': msg.timestamp.strftime('%I:%M %p')
+                    'sender_name': sender_name,
+                    'timestamp': ts_str,
                 }
             )
         elif action == 'edit':
             message_uid = data['message_uid']
             new_message = data['message']
-            msg = await self.edit_message(sender, message_uid, new_message)
-            if msg:
+            success = await self.edit_message_async(sender, message_uid, new_message)
+            if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -66,8 +68,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
         elif action == 'delete':
             message_uid = data['message_uid']
-            deleted = await self.delete_message(sender, message_uid)
-            if deleted:
+            success = await self.delete_message_async(sender, message_uid)
+            if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -77,7 +79,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     }
                 )
 
-    # Receive message from room group
     async def chat_message(self, event):
         action = event.get('action', 'send')
 
@@ -102,30 +103,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message_uid': event['message_uid'],
             }))
 
-    @database_sync_to_async
-    def save_message(self, sender, receiver_uid, message):
-        receiver = CustomUser.objects.get(uid=receiver_uid)
-        return ChatMessage.objects.create(sender=sender, receiver=receiver, message=message)
+    async def save_message(self, sender, receiver_uid, message_text, sender_name):
+        return fb_send(sender, receiver_uid, message_text, sender_name) or (None, 0)
 
-    @database_sync_to_async
-    def edit_message(self, sender, message_uid, new_message):
-        try:
-            msg = ChatMessage.objects.get(uid=message_uid, sender=sender)
-            msg.message = new_message
-            msg.is_edited = True
-            msg.save()
-            return msg
-        except ChatMessage.DoesNotExist:
-            return None
+    async def edit_message_async(self, sender, message_uid, new_message):
+        return fb_edit(str(sender.uid), message_uid, new_message)
 
-    @database_sync_to_async
-    def delete_message(self, sender, message_uid):
-        try:
-            msg = ChatMessage.objects.get(uid=message_uid, sender=sender)
-            msg.is_deleted = True
-            msg.save()
-            return True
-        except ChatMessage.DoesNotExist:
-            return False
-
-
+    async def delete_message_async(self, sender, message_uid):
+        return fb_delete(str(sender.uid), message_uid)

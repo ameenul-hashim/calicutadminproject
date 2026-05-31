@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, EmailOTP, DeletionRequest
+from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
@@ -13,6 +13,7 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 logger = logging.getLogger(__name__)
 import os
 from accounts.utils.supabase_storage import upload_pdf
+from accounts.utils.firebase_notifications import get_notifications_firebase, get_unread_count_firebase
 import random
 from django.conf import settings
 import cloudinary
@@ -72,28 +73,14 @@ def log_login_attempt(request, user, status='SUCCESS'):
     except Exception:
         pass # Never block login due to logging failure
 
-def limit_notifications(user):
-    """Limit notifications: 10 for Teachers, 50 for Admins."""
-    from .models import Notification
-    limit = 10 if user.user_type == 'TEACHER' else 50
-    qs = Notification.objects.filter(user=user).order_by('-created_at')
-    if qs.count() > limit:
-        ids_to_keep = qs.values_list('id', flat=True)[:limit]
-        Notification.objects.filter(user=user).exclude(id__in=ids_to_keep).delete()
-
 def create_notification(user, message):
-    from .models import Notification
-    # Objective 1: No DB storage for Students
+    from .utils.firebase_notifications import create_notification_firebase
     if user.user_type == 'STUDENT':
-        return # Skip DB creation for students
-        
-    # Objective 3: Keep notifications only for important Admin/Teacher events
+        return
     important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
     is_important = any(word in message.lower() for word in important_keywords)
-    
     if is_important:
-        Notification.objects.create(user=user, message=message)
-        limit_notifications(user) # Objective 5: Limit DB size
+        create_notification_firebase(str(user.uid), message)
 
 def notify_admins(message):
     from .models import CustomUser
@@ -688,8 +675,8 @@ def teacher_dashboard(request):
         'recent_courses': recent_courses,
         'courses': page_obj,
         'page_obj': page_obj,
-        'notifications': Notification.objects.filter(user=request.user).order_by('-created_at')[:10],
-        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+        'notifications': get_notifications_firebase(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count_firebase(str(request.user.uid)),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 
@@ -1538,46 +1525,51 @@ def course_player(request, course_uid):
 
 @login_required
 def send_chat_message(request):
+    from .utils.firebase_chat import send_message as fb_send
     if request.method == 'POST':
         receiver_uid = request.POST.get('receiver_uid')
         message_text = request.POST.get('message')
-        receiver = get_object_or_404(CustomUser, uid=receiver_uid)
+        sender_name = 'Administrator' if getattr(request.user, 'is_staff', False) else request.user.username
         
-        msg = ChatMessage.objects.create(sender=request.user, receiver=receiver, message=message_text)
+        result = fb_send(request.user, receiver_uid, message_text, sender_name)
+        if result:
+            msg_uid, now_ms = result
+            from datetime import datetime
+            ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
+        else:
+            msg_uid, ts_str = None, ''
         
         from django.http import JsonResponse
         return JsonResponse({
             'status': 'success',
-            'message': msg.message,
-            'timestamp': msg.timestamp.strftime('%I:%M %p'),
-            'sender': 'Administrator' if getattr(msg.sender, 'is_staff', False) else msg.sender.username
+            'message': message_text,
+            'timestamp': ts_str,
+            'sender': sender_name
         })
     return JsonResponse({'status': 'error'}, status=400)
 
 @login_required
 def get_chat_messages(request, other_user_uid):
-    other_user = get_object_or_404(CustomUser, uid=other_user_uid)
-    from django.db.models import Q
-    messages = ChatMessage.objects.filter(
-        (Q(sender=request.user) & Q(receiver=other_user)) |
-        (Q(sender=other_user) & Q(receiver=request.user))
-    ).select_related('sender').only('uid', 'sender__uid', 'sender__username', 'message', 'timestamp', 'is_edited', 'is_deleted').order_by('timestamp')
+    from .utils.firebase_chat import get_messages as fb_get_messages, mark_read as fb_mark_read
+    from datetime import datetime
     
-    # Mark as read
-    messages.filter(receiver=request.user, is_read=False).update(is_read=True)
+    msgs = fb_get_messages(str(request.user.uid), other_user_uid)
+    fb_mark_read(str(request.user.uid), other_user_uid)
     
     data = []
-    for m in messages:
-        if m.is_deleted:
-            continue # Skip deleted messages or send a placeholder if desired
+    for m in msgs:
+        ts = m.get('timestamp', 0)
+        ts_str = datetime.fromtimestamp(ts / 1000).strftime('%I:%M %p') if ts else ''
+        is_me = m.get('sender_uid') == str(request.user.uid)
         data.append({
-            'message_uid': str(m.uid),
-            'sender_uid': m.sender.uid,
-            'sender_name': 'Administrator' if getattr(m.sender, 'is_staff', False) else m.sender.username,
-            'message': m.message,
-            'timestamp': m.timestamp.strftime('%I:%M %p'),
-            'is_me': m.sender == request.user,
-            'is_edited': m.is_edited
+            'message_uid': m.get('uid'),
+            'sender_uid': m.get('sender_uid'),
+            'sender_name': m.get('sender_name', ''),
+            'message': m.get('message', ''),
+            'timestamp': ts_str,
+            'raw_ts': m.get('timestamp', 0),
+            'is_me': is_me,
+            'is_edited': m.get('is_edited', False)
         })
     
     from django.http import JsonResponse
@@ -1585,43 +1577,75 @@ def get_chat_messages(request, other_user_uid):
 
 @login_required
 def get_chat_list(request):
-    from django.db.models import Q
-    # For Admin: list all teachers with messages
-    # For Teacher: list all admins
-    if request.user.is_superuser or (request.user.is_staff and request.user.user_type != 'TEACHER'):
-        users = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'image', 'profile_photo')
-    else:
-        users = CustomUser.objects.filter(
-            Q(is_superuser=True) | 
-            (Q(is_staff=True) & ~Q(user_type='TEACHER') & ~Q(user_type='STUDENT'))
-        ).distinct().only('uid', 'full_name', 'username', 'image', 'profile_photo')
-        
+    from .utils.firebase_chat import get_chat_list as fb_chat_list
+    from accounts.models import CustomUser
+    
+    chat_data = fb_chat_list(str(request.user.uid))
+    
+    # Get all involved user UIDs
+    uids = [c['other_uid'] for c in chat_data]
+    users_map = {}
+    if uids:
+        users_qs = CustomUser.objects.filter(uid__in=uids).only('uid', 'full_name', 'username', 'image')
+        for u in users_qs:
+            users_map[str(u.uid)] = u
+    
     data = []
-    for u in users:
-        last_msg = ChatMessage.objects.filter(
-            (Q(sender=request.user) & Q(receiver=u)) |
-            (Q(sender=u) & Q(receiver=request.user))
-        ).last()
-        
-        unread_count = ChatMessage.objects.filter(sender=u, receiver=request.user, is_read=False).count()
+    for c in chat_data:
+        other_uid = c['other_uid']
+        u = users_map.get(other_uid)
+        if u:
+            name = 'Administrator' if getattr(u, 'is_staff', False) and u.user_type != 'TEACHER' else (u.full_name or u.username)
+            photo = u.avatar_url
+        else:
+            name = other_uid
+            photo = ''
         
         data.append({
-            'uid': u.uid,
-            'name': 'Administrator' if getattr(u, 'is_staff', False) and u.user_type != 'TEACHER' else (u.full_name or u.username),
-            'last_message': last_msg.message if last_msg else "No messages yet",
-            'unread_count': unread_count,
-            'profile_photo': u.avatar_url
+            'uid': other_uid,
+            'name': name,
+            'last_message': c.get('last_message', ''),
+            'unread_count': c.get('unread_count', 0),
+            'profile_photo': photo
         })
+    
+    # Also include users who have no chat history yet (for new conversations)
+    if request.user.is_superuser or (request.user.is_staff and request.user.user_type != 'TEACHER'):
+        existing = {d['uid'] for d in data}
+        teachers = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'image')
+        for t in teachers:
+            if str(t.uid) not in existing:
+                data.append({
+                    'uid': str(t.uid),
+                    'name': t.full_name or t.username,
+                    'last_message': 'No messages yet',
+                    'unread_count': 0,
+                    'profile_photo': t.avatar_url
+                })
+    else:
+        existing = {d['uid'] for d in data}
+        from django.db.models import Q
+        admins = CustomUser.objects.filter(
+            Q(is_superuser=True) | 
+            (Q(is_staff=True) & ~Q(user_type='TEACHER') & ~Q(user_type='STUDENT'))
+        ).distinct().only('uid', 'full_name', 'username', 'image')
+        for a in admins:
+            if str(a.uid) not in existing:
+                data.append({
+                    'uid': str(a.uid),
+                    'name': 'Support Team' if a.user_type == 'ADMIN' else (a.full_name or a.username),
+                    'last_message': 'No messages yet',
+                    'unread_count': 0,
+                    'profile_photo': a.avatar_url
+                })
     
     from django.http import JsonResponse
     return JsonResponse({'users': data})
 
 @login_required
 def mark_notification_read(request, notif_uid):
-    from .models import Notification
-    notif = get_object_or_404(Notification, uid=notif_uid, user=request.user)
-    notif.is_read = True
-    notif.save()
+    from .utils.firebase_notifications import mark_read_firebase
+    mark_read_firebase(str(request.user.uid), notif_uid)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         from django.http import JsonResponse
         return JsonResponse({"status": "read"})
@@ -1629,12 +1653,13 @@ def mark_notification_read(request, notif_uid):
 
 @login_required
 def delete_notification(request, notif_uid):
-    from .models import Notification
-    notif = get_object_or_404(Notification, uid=notif_uid, user=request.user)
-    if not notif.is_read:
+    from .utils.firebase_notifications import get_notifications_firebase, delete_notification_firebase
+    notifs = get_notifications_firebase(str(request.user.uid))
+    notif = next((n for n in notifs if n.get('uid') == notif_uid), None)
+    if notif and not notif.get('is_read', False):
         messages.error(request, "Please mark as read before deleting.")
         return redirect(request.META.get('HTTP_REFERER', '/'))
-    notif.delete()
+    delete_notification_firebase(str(request.user.uid), notif_uid)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         from django.http import JsonResponse
         return JsonResponse({"status": "deleted"})
@@ -1677,17 +1702,15 @@ def teacher_analytics_view(request):
         'course_data': course_data,
         'trend_labels': enrollment_trend_labels,
         'trend_data': enrollment_trend_data,
-        'notifications': Notification.objects.filter(user=request.user, is_read=False)[:10],
-        'unread_notifications_count': Notification.objects.filter(user=request.user, is_read=False).count(),
+        'notifications': get_notifications_firebase(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count_firebase(str(request.user.uid)),
     }
     return render(request, 'teacher_portal/analytics.html', context)
 
 @login_required
 def mark_all_notifications_read(request):
-    from django.shortcuts import redirect
-    from .models import Notification
-    from django.utils import timezone
-    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+    from .utils.firebase_notifications import mark_all_read_firebase
+    mark_all_read_firebase(str(request.user.uid))
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @xframe_options_exempt
@@ -1810,28 +1833,25 @@ def download_resource(request, resource_uid):
 @login_required
 def all_notifications(request):
     from django.shortcuts import render
-    from django.db.models import Q
+    from datetime import datetime
+    from .utils.firebase_notifications import get_notifications_firebase, mark_all_read_firebase
     
-    notifications_qs = request.user.notifications.all().order_by('-created_at')
-    
-    # Filter for Students
+    filter_keywords = None
     if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
-        notifications_qs = notifications_qs.filter(
-            Q(message__icontains="added course") | 
-            Q(message__icontains="New content added to your course")
-        )
+        filter_keywords = ['added course', 'new content added to your course']
     
-    notifications = notifications_qs
+    notifications = get_notifications_firebase(str(request.user.uid), filter_keywords=filter_keywords)
     
-    # Mark as read = Delete permanently (No DB save needed)
-    # Only delete for Admin/Teacher to keep their history clean
-    if request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser:
-        notifications_qs.delete()
-    else:
-        # Students keep history (is_read only)
-        notifications_qs.filter(is_read=False).update(is_read=True)
+    for n in notifications:
+        ts = n.get('created_at', 0)
+        if ts:
+            n['created_at_display'] = datetime.fromtimestamp(ts / 1000).strftime('%b %d, %Y %I:%M %p')
+        else:
+            n['created_at_display'] = ''
+        n['is_read'] = n.get('is_read', False)
     
-    # Determine base template based on user type
+    mark_all_read_firebase(str(request.user.uid))
+    
     base_template = 'custom_admin/base_admin.html' if (request.user.user_type == 'ADMIN' or request.user.is_superuser) else 'accounts/base.html'
     if request.user.user_type == 'TEACHER' and not request.user.is_superuser:
         base_template = 'teacher_portal/base_teacher.html'
@@ -1843,20 +1863,15 @@ def all_notifications(request):
 @login_required
 def get_unread_counts(request):
     from django.http import JsonResponse
-    from .models import Notification, ChatMessage
-    from django.db.models import Q
+    from .utils.firebase_notifications import get_unread_count_firebase
+    from .utils.firebase_chat import get_unread_count as get_chat_unread
     
-    notif_qs = Notification.objects.filter(user=request.user, is_read=False)
-    
-    # Filter for Students
+    filter_keywords = None
     if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
-        notif_qs = notif_qs.filter(
-            Q(message__icontains="added course") | 
-            Q(message__icontains="New content added to your course")
-        )
-        
-    notif_count = notif_qs.count()
-    chat_count = ChatMessage.objects.filter(receiver=request.user, is_read=False).count()
+        filter_keywords = ['added course', 'new content added to your course']
+    
+    notif_count = get_unread_count_firebase(str(request.user.uid), filter_keywords=filter_keywords)
+    chat_count = get_chat_unread(str(request.user.uid))
     
     return JsonResponse({
         'notifications': notif_count,
