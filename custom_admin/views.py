@@ -433,7 +433,7 @@ def create_student_admin(request):
                 is_active=True,
                 status='ACTIVE',
                 user_type='STUDENT',
-                proof_pdf=pdf_url
+                pdf_path=pdf_url
             )
             messages.success(request, f"✅ Account for {username} created successfully!")
             return redirect('manage_students')
@@ -531,7 +531,7 @@ def create_teacher_admin(request):
                 is_staff=True,
                 status='ACTIVE',
                 user_type='TEACHER',
-                proof_pdf=pdf_url
+                pdf_path=pdf_url
             )
             messages.success(request, f"✅ Account for {username} created successfully!")
             return redirect('manage_teachers')
@@ -633,8 +633,7 @@ def analytics_view(request):
             'remaining_mb': round(db_limit_mb - db_usage_mb, 2)
         }
         
-        # Supabase Storage Size (Cached separate or together)
-        from accounts.models import CourseResource, Course, CustomUser
+        # Supabase Storage Size (already imported at module level)
         total_storage_bytes = CourseResource.objects.aggregate(total=Sum('compressed_size'))['total'] or 0
         storage_usage_mb = total_storage_bytes / (1024 * 1024)
         storage_limit_mb = 1024
@@ -653,7 +652,7 @@ def analytics_view(request):
         
         context['cloudinary_usage'] = {
             'total_files': cloudinary_total,
-            'limit_files': 25000, # Approx free tier media optimization limits
+            'limit_files': 25000,
             'percent': round(min((cloudinary_total / 25000) * 100, 100), 2)
         }
     except Exception as e:
@@ -1243,15 +1242,11 @@ def delete_user_admin(request, user_uid):
 def admin_all_notifications(request):
     notifications_qs = Notification.objects.filter(user=request.user)
     
-    # Only delete for Admin/Teacher to keep their history clean
-    if request.user.user_type in ['ADMIN', 'TEACHER'] or request.user.is_superuser:
-        notifications_qs.delete()
-    else:
-        # Students keep history (is_read only)
-        notifications_qs.filter(is_read=False).update(is_read=True)
+    # Mark all unread as read (never delete)
+    notifications_qs.filter(is_read=False).update(is_read=True)
     
     return render(request, 'custom_admin/all_notifications.html', {
-        'all_notifications': [],
+        'all_notifications': notifications_qs.order_by('-created_at')[:50],
         'unread_notifications_count': 0,
     })
 
@@ -1435,24 +1430,6 @@ def admin_restore_course(request, course_uid):
         messages.success(request, f"✅ Course '{course_title}' has been successfully restored from the Recycle Bin.")
         
     return redirect('deleted_courses')
-
-@user_passes_test(is_admin, login_url='admin_login')
-def reject_deletion_request(request, request_uid):
-    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    
-    # If the item is a resource, restore its status back to APPROVED so it's visible again
-    if del_request.item_type == 'Resource':
-        from accounts.models import CourseResource
-        resource = CourseResource.objects.filter(id=del_request.item_id).first()
-        if resource:
-            resource.status = 'APPROVED'
-            resource.save()
-
-    del_request.delete() # Objective: Free up space
-    messages.success(request, f"Deletion request for '{del_request.item_name}' rejected.")
-    create_notification(del_request.teacher, f"Your request to delete '{del_request.item_name}' has been REJECTED by admin.")
-    
-    return redirect('manage_deletion_requests')
 
 from accounts.models import CustomUser, Notification, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
 from axes.models import AccessAttempt

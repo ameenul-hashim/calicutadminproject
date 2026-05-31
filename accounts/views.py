@@ -1684,8 +1684,8 @@ def teacher_analytics_view(request):
 def mark_all_notifications_read(request):
     from django.shortcuts import redirect
     from .models import Notification
-    # Objective 4: Mass cleanup
-    Notification.objects.filter(user=request.user).delete()
+    from django.utils import timezone
+    Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @xframe_options_exempt
