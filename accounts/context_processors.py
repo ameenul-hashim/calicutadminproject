@@ -1,28 +1,31 @@
 from django.core.cache import cache
-from accounts.models import CustomUser, Course, DeletionRequest, Notification
+from accounts.models import CustomUser, Course, DeletionRequest
+from accounts.utils.firebase_notifications import get_notifications_firebase, get_unread_count_firebase
+from datetime import datetime
 
 def pending_counts(request):
     try:
         if not request.user.is_authenticated:
             return {}
         
-        # Use cache to avoid heavy DB queries on every page load
         cache_key = f"pending_counts_{request.user.id}_{request.user.user_type}"
         try:
             cached_context = cache.get(cache_key)
             if cached_context:
                 return cached_context
         except Exception:
-            # If cache fails (e.g. Redis down), continue without cache
             pass
         
         context = {
             'is_admin_preview': request.session.get('student_view_unlocked', False)
         }
         
-        # Fetch notifications for all authenticated users
-        context['unread_notifications_count'] = Notification.objects.filter(user=request.user, is_read=False).count()
-        context['notifications'] = Notification.objects.filter(user=request.user).order_by('-is_read', '-created_at')[:10]
+        notifs = get_notifications_firebase(str(request.user.uid))[:10]
+        for n in notifs:
+            ts = n.get('created_at', 0)
+            n['created_at'] = datetime.fromtimestamp(ts / 1000) if ts else None
+        context['notifications'] = notifs
+        context['unread_notifications_count'] = get_unread_count_firebase(str(request.user.uid))
 
         if request.user.user_type == 'ADMIN':
             context['pending_students_count'] = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()

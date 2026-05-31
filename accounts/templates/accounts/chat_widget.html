@@ -298,6 +298,24 @@
         }
     }
 
+    function getDateLabel(rawTs) {
+        if (!rawTs) return '';
+        const d = new Date(rawTs);
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const yesterday = new Date(today.getTime() - 86400000);
+        const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        const diffDays = Math.floor((today - msgDate) / 86400000);
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) {
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            return days[d.getDay()];
+        }
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${d.getDate()} ${months[d.getMonth()]}`;
+    }
+
     function loadMessages() {
         if (!currentReceiverUid) return;
         fetch(`/chat/messages/${currentReceiverUid}/`)
@@ -308,7 +326,16 @@
                 if (data.messages.length === 0) {
                     checkEmptyChat();
                 } else {
+                    let lastDateLabel = null;
                     data.messages.forEach(m => {
+                        const dateLabel = getDateLabel(m.raw_ts);
+                        if (dateLabel && dateLabel !== lastDateLabel) {
+                            const sep = document.createElement('div');
+                            sep.style = 'text-align: center; font-size: 0.75rem; color: #94a3b8; font-weight: 600; padding: 0.5rem 0;';
+                            sep.innerText = dateLabel;
+                            box.appendChild(sep);
+                            lastDateLabel = dateLabel;
+                        }
                         appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited);
                     });
                 }
