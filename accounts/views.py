@@ -65,6 +65,10 @@ def log_login_attempt(request, user, status='SUCCESS'):
             device_type=device,
             status=status
         )
+
+        if status == 'FAILED':
+            from .utils.firebase_audit import log_security_event
+            log_security_event('FAILED_LOGIN', f'Failed login for {user.username}', username=user.username, ip=ip)
     except Exception:
         pass # Never block login due to logging failure
 
@@ -431,6 +435,7 @@ def login_view(request):
 
         # 2. Check if password is correct
         if not user_candidate.check_password(password):
+            log_login_attempt(request, user_candidate, status='FAILED')
             messages.error(request, "Incorrect password. Please try again.")
             return render(request, 'accounts/login.html')
 
@@ -585,6 +590,7 @@ def teacher_login_view(request):
         else:
             # Check existence vs wrong password
             if user_candidate:
+                log_login_attempt(request, user_candidate, status='FAILED')
                 messages.error(request, "Incorrect password. Please try again.")
             else:
                 messages.error(request, "Teacher account not found. Please check your username or apply.")

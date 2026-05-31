@@ -35,12 +35,12 @@
                         <div class="d-inline-flex gap-4">
                             <div class="text-center">
                                 <div class="text-muted x-small text-uppercase tracking-widest mb-1">Health Score</div>
-                                <div class="h3 fw-bold text-success mb-0">{{ scores.overall }}%</div>
+                                <div class="h3 fw-bold {% if scores.overall >= 90 %}text-success{% elif scores.overall >= 70 %}text-warning{% else %}text-danger{% endif %} mb-0">{{ scores.overall }}%</div>
                             </div>
                             <div class="vr bg-slate-700"></div>
                             <div class="text-center">
                                 <div class="text-muted x-small text-uppercase tracking-widest mb-1">threat Level</div>
-                                <div class="h3 fw-bold {{ siem.active_threat_level|yesno:'text-danger,text-success' }} mb-0">{{ siem.active_threat_level }}</div>
+                                <div class="h3 fw-bold {% if siem.active_threat_level == 'LOW' %}text-success{% elif siem.active_threat_level == 'MODERATE' %}text-warning{% else %}text-danger{% endif %} mb-0">{{ siem.active_threat_level }}</div>
                             </div>
                         </div>
                     </div>
@@ -135,12 +135,33 @@
     <!-- Tier 3: Forensic Timeline & Recovery -->
     <div class="row g-4">
         <div class="col-lg-8">
+            <div class="siem-card p-4 mb-4">
+                <h5 class="fw-bold mb-4 d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-bolt me-2 text-warning"></i>Firebase RTDB Security Events (24h)</span>
+                    <span class="badge bg-warning bg-opacity-20 text-warning border border-warning border-opacity-30">{{ siem.firebase_events_24h }} Events</span>
+                </h5>
+                <div class="pe-2" style="max-height: 250px; overflow-y: auto;">
+                    {% for event in firebase_events_24h %}
+                    <div class="timeline-item">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="fw-bold {% if event.type == 'MALWARE_BLOCK' %}text-danger{% elif event.type == 'FAILED_LOGIN' %}text-warning{% else %}text-white{% endif %}">{{ event.type }}</span>
+                            <span class="text-muted x-small">{{ event.timestamp|timesince }} ago</span>
+                        </div>
+                        <div class="small text-slate-400 font-monospace">{{ event.detail }}</div>
+                        <div class="x-small text-slate-500 mt-1">Actor: {{ event.username|default:"SYSTEM" }} | IP: {{ event.ip|default:"N/A" }}</div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5 text-muted">No security events in last 24h.</div>
+                    {% endfor %}
+                </div>
+            </div>
+
             <div class="siem-card p-4">
                 <h5 class="fw-bold mb-4 d-flex justify-content-between align-items-center">
-                    <span><i class="fas fa-fingerprint me-2 text-secondary"></i>Live Forensic Audit Trail</span>
-                    <span class="x-small text-muted fw-normal">SIEM Real-time Sync</span>
+                    <span><i class="fas fa-fingerprint me-2 text-secondary"></i>DB Forensic Audit Trail</span>
+                    <span class="x-small text-muted fw-normal">SIEM Persistent Store</span>
                 </h5>
-                <div class="pe-2" style="max-height: 400px; overflow-y: auto;">
+                <div class="pe-2" style="max-height: 300px; overflow-y: auto;">
                     {% for log in audit_logs %}
                     <div class="timeline-item">
                         <div class="d-flex justify-content-between align-items-center mb-1">
