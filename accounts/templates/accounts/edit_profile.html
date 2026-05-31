@@ -133,64 +133,71 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <!-- ════ Username Section ════ -->
-            <div style="margin-top: 2rem; padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem;">
-                <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Username</h3>
-                <p style="font-size: 0.85rem; color: #3b82f6; margin: 0 0 1rem;">Current username is <strong>@{{ user.username }}</strong> — type below to change it.</p>
-                <div class="form-group" style="margin-bottom:0;">
-                    <label for="new_username">New Username</label>
-                    <input type="text" id="new_username" name="new_username" value="{{ user.username }}"
-                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem;">
-                    <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Only letters, numbers, and @/./+/-/_ allowed.</p>
-                </div>
-            </div>
+            <!-- ════ Manage Credentials Toggle ════ -->
+            <button type="button" onclick="toggleCredSection()" id="credToggleBtn" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 1rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; margin-bottom: 1.5rem;">
+                🔐 Manage Credentials
+            </button>
 
-            <!-- ════ Password Section ════ -->
-            <div style="margin-top: 2rem; padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem;">
-                <h3 style="font-size: 1.1rem; font-weight: 700; color: #991b1b; margin: 0 0 0.25rem;">🔒 Password</h3>
-                <p style="font-size: 0.85rem; color: #dc2626; margin: 0 0 1rem;">Leave all fields blank to keep your current password.</p>
-
-                <div class="form-group">
-                    <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
-                    <div style="position: relative;">
-                        <input type="password" id="current_password" name="current_password" placeholder="Verify your identity"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                        <span onclick="togglePassword('current_password', 'eye-current')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                            <svg id="eye-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </span>
+            <div id="credSection" style="display: none;">
+                <!-- ════ Username Section ════ -->
+                <div style="margin-top: 1.5rem; padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Username</h3>
+                    <p style="font-size: 0.85rem; color: #3b82f6; margin: 0 0 1rem;">Current username is <strong>@{{ user.username }}</strong> — type below to change it.</p>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="new_username">New Username</label>
+                        <input type="text" id="new_username" name="new_username" value="{{ user.username }}"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem;">
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Only letters, numbers, and @/./+/-/_ allowed.</p>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="new_password">New Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="new_password" name="new_password" placeholder="Create a strong password"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                        <span onclick="togglePassword('new_password', 'eye-new')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                            <svg id="eye-new" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </span>
-                    </div>
-                </div>
+                <!-- ════ Password Section ════ -->
+                <div style="margin-top: 1.5rem; padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #991b1b; margin: 0 0 0.25rem;">🔒 Password</h3>
+                    <p style="font-size: 0.85rem; color: #dc2626; margin: 0 0 1rem;">Leave all fields blank to keep your current password.</p>
 
-                <div class="form-group">
-                    <label for="confirm_password">Confirm New Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                        <span onclick="togglePassword('confirm_password', 'eye-confirm')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                            <svg id="eye-confirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </span>
+                    <div class="form-group">
+                        <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
+                        <div style="position: relative;">
+                            <input type="password" id="current_password" name="current_password" placeholder="Verify your identity"
+                                   style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
+                            <span onclick="togglePassword('current_password', 'eye-current')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
+                                <svg id="eye-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </span>
+                        </div>
                     </div>
-                </div>
 
-                <div style="margin-top: 0.75rem; background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #fecaca;">
-                    <p style="margin: 0; font-size: 0.75rem; color: #b91c1c; font-weight: 600;">Security Requirements:</p>
-                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.7rem; color: #b91c1c;">
-                        <li>Minimum 8 characters long</li>
-                        <li>At least one UPPERCASE letter</li>
-                        <li>At least one lowercase letter</li>
-                        <li>At least one SPECIAL character (!@#$%^ etc.)</li>
-                    </ul>
+                    <div class="form-group">
+                        <label for="new_password">New Password</label>
+                        <div style="position: relative;">
+                            <input type="password" id="new_password" name="new_password" placeholder="Create a strong password"
+                                   style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
+                            <span onclick="togglePassword('new_password', 'eye-new')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
+                                <svg id="eye-new" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm New Password</label>
+                        <div style="position: relative;">
+                            <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password"
+                                   style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
+                            <span onclick="togglePassword('confirm_password', 'eye-confirm')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
+                                <svg id="eye-confirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 0.75rem; background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #fecaca;">
+                        <p style="margin: 0; font-size: 0.75rem; color: #b91c1c; font-weight: 600;">Security Requirements:</p>
+                        <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.7rem; color: #b91c1c;">
+                            <li>Minimum 8 characters long</li>
+                            <li>At least one UPPERCASE letter</li>
+                            <li>At least one lowercase letter</li>
+                            <li>At least one SPECIAL character (!@#$%^ etc.)</li>
+                        </ul>
+                    </div>
                 </div>
             </div>
 
@@ -203,6 +210,31 @@
 
     <script>
         function togglePassword(fieldId, iconId) {
+            const input = document.getElementById(fieldId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                input.type = 'password';
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        }
+
+        function toggleCredSection() {
+            const section = document.getElementById('credSection');
+            const btn = document.getElementById('credToggleBtn');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                section.style.animation = 'slideDown 0.3s ease';
+                btn.textContent = '✕ Close Credentials';
+                btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+            } else {
+                section.style.display = 'none';
+                btn.textContent = '🔐 Manage Credentials';
+                btn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
+            }
+        }
             const input = document.getElementById(fieldId);
             const icon = document.getElementById(iconId);
             if (input.type === 'password') {
