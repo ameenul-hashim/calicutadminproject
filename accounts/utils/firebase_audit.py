@@ -36,7 +36,7 @@ def _get_app():
     return _firebase_app
 
 
-def _cleanup_old_events(days=30):
+def _cleanup_old_events(days=7):
     global _last_cleanup
     now = time_module.time()
     if now - _last_cleanup < 3600:
