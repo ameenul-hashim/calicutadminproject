@@ -231,61 +231,68 @@
             <div class="hint">Email cannot be changed here.</div>
         </div>
 
-        <!-- Username Section -->
-        <hr class="section-divider">
-        <div class="section-title">👤 Change Username</div>
-        <div class="section-desc">Your current username is <strong>@{{ user.username }}</strong></div>
+        <!-- ════ Manage Credentials Toggle ════ -->
+        <button type="button" onclick="toggleCredSection()" id="credToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-bottom: 0;">
+            🔐 Manage Credentials
+        </button>
 
-        <div class="field-group">
-            <label for="new_username">New Username</label>
-            <div class="input-with-icon">
-                <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value="">
+        <div id="credSection" style="display: none; margin-top: 1.5rem;">
+            <!-- Username Section -->
+            <hr class="section-divider">
+            <div class="section-title">👤 Change Username</div>
+            <div class="section-desc">Your current username is <strong>@{{ user.username }}</strong></div>
+
+            <div class="field-group">
+                <label for="new_username">New Username</label>
+                <div class="input-with-icon">
+                    <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value="">
+                </div>
+                <div class="hint">Leave blank to keep your current username.</div>
             </div>
-            <div class="hint">Leave blank to keep your current username.</div>
+
+            <!-- Password Section -->
+            <hr class="section-divider">
+            <div class="section-title">🔒 Change Password</div>
+            <div class="section-desc">Update your login password below.</div>
+
+            <div class="field-group">
+                <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
+                <div class="input-with-icon">
+                    <input type="password" id="current_password" name="current_password" placeholder="Enter current password" autocomplete="current-password">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('current_password', this)" tabindex="-1">👁️</button>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label for="new_password">New Password</label>
+                <div class="input-with-icon">
+                    <input type="password" id="new_password" name="new_password" placeholder="Create a strong password" autocomplete="new-password">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('new_password', this)" tabindex="-1">👁️</button>
+                </div>
+                <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
+                <div class="hint" id="strengthText">Enter a password to see strength.</div>
+                <div class="requirements">
+                    <p>🔒 Password Requirements:</p>
+                    <ul id="reqList">
+                        <li id="reqLen" class="failed">✗ At least 8 characters</li>
+                        <li id="reqUpper" class="failed">✗ At least one uppercase letter (A-Z)</li>
+                        <li id="reqLower" class="failed">✗ At least one lowercase letter (a-z)</li>
+                        <li id="reqSpecial" class="failed">✗ At least one special character (@$!%*?&#)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="field-group">
+                <label for="confirm_password">Confirm New Password</label>
+                <div class="input-with-icon">
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password" autocomplete="new-password">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('confirm_password', this)" tabindex="-1">👁️</button>
+                </div>
+                <div class="hint" id="matchText"></div>
+            </div>
+
+            <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 1.5rem;">Update Credentials</button>
         </div>
-
-        <!-- Password Section -->
-        <hr class="section-divider">
-        <div class="section-title">🔒 Change Password</div>
-        <div class="section-desc">Update your login password below.</div>
-
-        <div class="field-group">
-            <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
-            <div class="input-with-icon">
-                <input type="password" id="current_password" name="current_password" placeholder="Enter current password" autocomplete="current-password">
-                <button type="button" class="toggle-pw" onclick="togglePassword('current_password', this)" tabindex="-1">👁️</button>
-            </div>
-        </div>
-
-        <div class="field-group">
-            <label for="new_password">New Password</label>
-            <div class="input-with-icon">
-                <input type="password" id="new_password" name="new_password" placeholder="Create a strong password" autocomplete="new-password">
-                <button type="button" class="toggle-pw" onclick="togglePassword('new_password', this)" tabindex="-1">👁️</button>
-            </div>
-            <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
-            <div class="hint" id="strengthText">Enter a password to see strength.</div>
-            <div class="requirements">
-                <p>🔒 Password Requirements:</p>
-                <ul id="reqList">
-                    <li id="reqLen" class="failed">✗ At least 8 characters</li>
-                    <li id="reqUpper" class="failed">✗ At least one uppercase letter (A-Z)</li>
-                    <li id="reqLower" class="failed">✗ At least one lowercase letter (a-z)</li>
-                    <li id="reqSpecial" class="failed">✗ At least one special character (@$!%*?&#)</li>
-                </ul>
-            </div>
-        </div>
-
-        <div class="field-group">
-            <label for="confirm_password">Confirm New Password</label>
-            <div class="input-with-icon">
-                <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password" autocomplete="new-password">
-                <button type="button" class="toggle-pw" onclick="togglePassword('confirm_password', this)" tabindex="-1">👁️</button>
-            </div>
-            <div class="hint" id="matchText"></div>
-        </div>
-
-        <button type="submit" class="btn-save" id="submitBtn">Update Credentials</button>
     </form>
 </div>
 
@@ -299,6 +306,21 @@
         } else {
             input.type = 'password';
             btn.textContent = '👁️';
+        }
+    }
+
+    function toggleCredSection() {
+        const section = document.getElementById('credSection');
+        const btn = document.getElementById('credToggleBtn');
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            section.style.animation = 'slideDown 0.3s ease';
+            btn.textContent = '✕ Close Credentials';
+            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+        } else {
+            section.style.display = 'none';
+            btn.textContent = '🔐 Manage Credentials';
+            btn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
         }
     }
 

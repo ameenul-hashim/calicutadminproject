@@ -362,6 +362,14 @@
             .detail-item p {
                 font-size: 0.95rem;
             }
+            #credentialsSection .credentials-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 
@@ -429,8 +437,9 @@
                 </div>
 
                 <div class="action-bar">
-                    <a href="{% url 'edit_profile' %}" class="btn-profile btn-primary">Edit Photo</a>
-                    <a href="{% url 'edit_profile' %}" class="btn-profile btn-outline" style="border-color: var(--primary); color: var(--primary);">Manage Credentials</a>
+                    <button onclick="toggleCredentials()" class="btn-profile btn-primary" id="toggleCredBtn" style="border: none; cursor: pointer;">
+                        🔐 Manage Credentials
+                    </button>
                     {% if user.user_type == 'TEACHER' %}
                     <a href="{% url 'teacher_dashboard' %}" class="btn-profile btn-outline"
                         style="color: #6366f1; border-color: #c7d2fe;">Back to Teacher Panel</a>
@@ -441,6 +450,93 @@
                     <a href="{% url 'logout' %}" class="btn-profile btn-outline" style="color: #ef4444;">Logout
                         Account</a>
                     {% endif %}
+                </div>
+
+                <!-- ════ Collapsible Credentials Section ════ -->
+                <div id="credentialsSection" style="display: none; margin-top: 2rem; padding: 2rem; background: #f8fafc; border-radius: 1.5rem; border: 1px solid #e2e8f0;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 700; color: #1e293b;">Manage Credentials</h3>
+                            <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: #64748b;">Update your username or password below.</p>
+                        </div>
+                        <button onclick="toggleCredentials()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #94a3b8; padding: 0.25rem;">✕</button>
+                    </div>
+
+                    <form id="credentialForm">
+                        {% csrf_token %}
+
+                        <!-- Username -->
+                        <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <span style="font-size: 1.1rem;">👤</span>
+                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #1e293b;">Change Username</h4>
+                            </div>
+                            <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 0.75rem;">Current: <strong>@{{ user.username }}</strong></p>
+                            <input type="text" id="new_username" name="new_username" placeholder="Enter new username"
+                                style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; outline: none; box-sizing: border-box; transition: border-color 0.2s;"
+                                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
+                            <p style="font-size: 0.7rem; color: #94a3b8; margin: 0.35rem 0 0;">Leave blank to keep current username.</p>
+                        </div>
+
+                        <!-- Password -->
+                        <div style="margin-bottom: 1.5rem; padding: 1.25rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <span style="font-size: 1.1rem;">🔒</span>
+                                <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #1e293b;">Change Password</h4>
+                            </div>
+                            <p style="font-size: 0.8rem; color: #64748b; margin: 0 0 1rem;">Leave all fields blank to keep current password.</p>
+
+                            <div style="margin-bottom: 1rem;">
+                                <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 0.4rem;">Current Password <span style="color:#ef4444;">*</span></label>
+                                <div style="position: relative;">
+                                    <input type="password" id="current_password" name="current_password" placeholder="Enter current password"
+                                        style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; outline: none; box-sizing: border-box; padding-right: 2.5rem; transition: border-color 0.2s;"
+                                        onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
+                                    <span onclick="toggleField('current_password', 'eye1')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;">
+                                        <svg id="eye1" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 0.4rem;">New Password</label>
+                                    <div style="position: relative;">
+                                        <input type="password" id="new_password" name="new_password" placeholder="New password"
+                                            style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; outline: none; box-sizing: border-box; padding-right: 2.5rem; transition: border-color 0.2s;"
+                                            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
+                                        <span onclick="toggleField('new_password', 'eye2')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;">
+                                            <svg id="eye2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style="display: block; font-size: 0.8rem; font-weight: 600; color: #334155; margin-bottom: 0.4rem;">Confirm Password</label>
+                                    <div style="position: relative;">
+                                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm password"
+                                            style="width: 100%; padding: 0.75rem 1rem; border: 1.5px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.95rem; outline: none; box-sizing: border-box; padding-right: 2.5rem; transition: border-color 0.2s;"
+                                            onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#e2e8f0'">
+                                        <span onclick="toggleField('confirm_password', 'eye3')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8;">
+                                            <svg id="eye3" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 0.75rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.75rem; padding: 0.75rem 1rem;">
+                                <p style="margin: 0 0 0.35rem; font-size: 0.7rem; font-weight: 600; color: #92400e;">Password Requirements:</p>
+                                <ul style="margin: 0; padding-left: 1.1rem; font-size: 0.68rem; color: #78350f;">
+                                    <li>Minimum 8 characters</li>
+                                    <li>At least one UPPERCASE letter</li>
+                                    <li>At least one lowercase letter</li>
+                                    <li>At least one special character (!@#$%^ etc.)</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="credSubmitBtn" style="width: 100%; padding: 0.9rem; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 0.75rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif;">Update Credentials</button>
+                    </form>
+                    <div id="credMsg" style="margin-top: 1rem; display: none;"></div>
                 </div>
             </div>
         </div>
@@ -488,6 +584,124 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+    </script>
+
+    <script>
+        function toggleCredentials() {
+            const section = document.getElementById('credentialsSection');
+            const btn = document.getElementById('toggleCredBtn');
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                section.style.animation = 'slideDown 0.3s ease';
+                btn.textContent = '✕ Close Credentials';
+                btn.className = 'btn-profile btn-outline';
+                btn.style.cssText = 'border-color: #ef4444; color: #ef4444; border: none; cursor: pointer; padding: 0.8rem 2rem; border-radius: 1rem; font-weight: 600; transition: all 0.2s; font-size: 0.95rem; background: #fef2f2;';
+            } else {
+                section.style.display = 'none';
+                btn.textContent = '🔐 Manage Credentials';
+                btn.className = 'btn-profile btn-primary';
+                btn.style.cssText = 'border: none; cursor: pointer; padding: 0.8rem 2rem; border-radius: 1rem; font-weight: 600; transition: all 0.2s; font-size: 0.95rem; background: var(--primary); color: white;';
+            }
+        }
+
+        function toggleField(fieldId, iconId) {
+            const input = document.getElementById(fieldId);
+            const icon = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
+            } else {
+                input.type = 'password';
+                icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
+            }
+        }
+
+        document.getElementById('credentialForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('credSubmitBtn');
+            const msg = document.getElementById('credMsg');
+
+            const newPass = document.getElementById('new_password').value;
+            const currPass = document.getElementById('current_password').value;
+            const confirmPass = document.getElementById('confirm_password').value;
+            const newUsername = document.getElementById('new_username').value.trim();
+
+            if (!newUsername && !newPass) {
+                msg.innerHTML = '<div style="padding: 0.75rem; background: #fef2f2; color: #ef4444; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">No changes to save.</div>';
+                msg.style.display = 'block';
+                return;
+            }
+
+            if (newPass) {
+                if (!currPass) {
+                    msg.innerHTML = '<div style="padding: 0.75rem; background: #fef2f2; color: #ef4444; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">Current password is required to set a new password.</div>';
+                    msg.style.display = 'block';
+                    return;
+                }
+                if (newPass.length < 8 || !/[A-Z]/.test(newPass) || !/[a-z]/.test(newPass) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
+                    msg.innerHTML = '<div style="padding: 0.75rem; background: #fef2f2; color: #ef4444; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">Password must be 8+ chars with Uppercase, Lowercase, and Special character.</div>';
+                    msg.style.display = 'block';
+                    return;
+                }
+                if (newPass !== confirmPass) {
+                    msg.innerHTML = '<div style="padding: 0.75rem; background: #fef2f2; color: #ef4444; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">Passwords do not match.</div>';
+                    msg.style.display = 'block';
+                    return;
+                }
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Updating...';
+            btn.style.opacity = '0.6';
+            msg.style.display = 'none';
+
+            const formData = new FormData(this);
+            {% if user.user_type == 'TEACHER' %}
+            const url = "{% url 'teacher_edit_profile' %}";
+            {% else %}
+            const url = "{% url 'edit_profile' %}";
+            {% endif %}
+
+            fetch(url, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json().then(data => ({ status: response.ok, data })))
+            .then(({ status, data }) => {
+                if (status && data.status === 'success') {
+                    msg.innerHTML = '<div style="padding: 0.75rem; background: #f0fdf4; color: #166534; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">✅ ' + data.message + '</div>';
+                    msg.style.display = 'block';
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    msg.innerHTML = '<div style="padding: 0.75rem; background: #fef2f2; color: #ef4444; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">' + (data.message || 'Update failed') + '</div>';
+                    msg.style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Update Credentials';
+                    btn.style.opacity = '1';
+                }
+            })
+            .catch(err => {
+                msg.innerHTML = '<div style="padding: 0.75rem; background: #fef2f2; color: #ef4444; border-radius: 0.75rem; font-size: 0.85rem; font-weight: 600; text-align: center;">Connection error. Please try again.</div>';
+                msg.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Update Credentials';
+                btn.style.opacity = '1';
+            });
+        });
+
+        // Override password grid for mobile via inline style
+        if (window.innerWidth < 640) {
+            const pwGrid = document.querySelector('#credentialsSection [style*="grid-template-columns: 1fr 1fr"]');
+            if (pwGrid) pwGrid.style.gridTemplateColumns = '1fr';
+        }
+        window.addEventListener('resize', function() {
+            const pwGrid = document.querySelector('#credentialsSection [style*="grid-template-columns: 1fr 1fr"]');
+            if (pwGrid) pwGrid.style.gridTemplateColumns = window.innerWidth < 640 ? '1fr' : '1fr 1fr';
+        });
     </script>
 </body>
 
