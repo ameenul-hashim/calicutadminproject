@@ -20,12 +20,15 @@ def _get_app():
         db_url = os.getenv('FIREBASE_RTDB_URL')
         if not db_url:
             return None
-        json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
         json_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
-        if json_path:
-            cred = credentials.Certificate(json_path)
-        elif json_str:
+        json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
+        if json_str:
             cred = credentials.Certificate(json.loads(json_str))
+        elif json_path:
+            try:
+                cred = credentials.Certificate(json_path)
+            except Exception:
+                return None
         else:
             return None
         _firebase_app = firebase_admin.initialize_app(
