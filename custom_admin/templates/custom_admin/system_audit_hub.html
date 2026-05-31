@@ -30,7 +30,7 @@
                         <div class="col-md-4 text-md-end mt-3 mt-md-0">
                             <div class="d-inline-block text-center p-3 rounded-4 bg-white bg-opacity-10 border border-white border-opacity-10">
                                 <div class="small opacity-75">Security Score</div>
-                                <div class="h2 mb-0 fw-bold text-success">98/100</div>
+                                <div class="h2 mb-0 fw-bold {% if audit.scores.security >= 90 %}text-success{% else %}text-warning{% endif %}">{{ audit.scores.security }}/100</div>
                             </div>
                         </div>
                     </div>
@@ -210,14 +210,37 @@
                 </div>
             </div>
 
-            <!-- Forensic Audit Trails -->
+            <!-- Firebase Real-time Security Events -->
+            <div class="card audit-card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-bolt me-2 text-warning"></i>Real-time Security Events (Firebase)</h5>
+                    <span class="badge bg-warning-subtle text-warning rounded-pill px-3">{{ audit.firebase_events_24h }} in 24h</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
+                        {% for event in audit.firebase_events %}
+                        <div class="list-group-item bg-transparent border-light py-2">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold small">{{ event.username }}</span>
+                                <span class="x-small text-muted" style="font-size: 0.65rem;">{{ event.time|timesince }} ago</span>
+                            </div>
+                            <div class="x-small text-truncate text-muted" style="font-size: 0.7rem;">{{ event.action }}: {{ event.detail }}</div>
+                        </div>
+                        {% empty %}
+                        <div class="p-4 text-center text-muted small">No security events in last 24h.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forensic Audit Trails (DB) -->
             <div class="card audit-card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-fingerprint me-2 text-secondary"></i>Live Forensic Audit</h5>
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-fingerprint me-2 text-secondary"></i>DB Forensic Audit</h5>
                 </div>
                 <div class="card-body p-0">
                     <div class="p-3 bg-light-subtle border-bottom fw-bold small">Recent Admin & Auth Events</div>
-                    <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
                         {% for log in audit_logs %}
                         <div class="list-group-item bg-transparent border-light py-2">
                             <div class="d-flex justify-content-between align-items-center">

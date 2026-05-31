@@ -65,9 +65,15 @@ class PortalSecurityMiddleware:
                 if last_activity and (time.time() - last_activity > 900):
                     # Capture role before logout wipes the user object
                     is_admin_path = getattr(request.user, 'is_staff', False) or path.startswith('/customadmin/')
+                    timeout_user = request.user
                     
                     request.session.flush()
                     logout(request)
+                    try:
+                        from .utils.firebase_audit import log_security_event
+                        log_security_event('SESSION_TIMEOUT', 'Inactivity > 15min', username=timeout_user.username)
+                    except Exception:
+                        pass
                     messages.error(request, "Your session has expired due to inactivity. Please log in again.")
                     return redirect('admin_login' if is_admin_path else 'teacher_login')
                 
@@ -200,6 +206,11 @@ class EnterpriseHardeningMiddleware:
                         action="MALWARE_BLOCK",
                         details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}"
                     )
+                    try:
+                        from .utils.firebase_audit import log_security_event
+                        log_security_event('MALWARE_BLOCK', f"Blocked: {uploaded_file.name} ({reason})", ip=request.META.get('REMOTE_ADDR'))
+                    except Exception:
+                        pass
                     return HttpResponseForbidden(f"Security Alert: {reason}. Upload blocked by Enterprise SOC.")
 
         # 2. PRE-PROCESS: Impossible Travel Detection (Simulated)
@@ -249,6 +260,11 @@ class EnterpriseHardeningMiddleware:
                     action="SUSPICIOUS_TRAVEL",
                     details=f"Login from {current_ip} detected 1h after {last_login.ip_address}."
                 )
+                try:
+                    from .utils.firebase_audit import log_security_event
+                    log_security_event('SUSPICIOUS_TRAVEL', f"IP change: {last_login.ip_address} -> {current_ip}", username=request.user.username, ip=current_ip)
+                except Exception:
+                    pass
 
 
 
