@@ -485,6 +485,11 @@
                     <a href="{% url 'system_audit' %}" class="nav-link {% if request.resolver_match.url_name == 'system_audit' %}active{% endif %}" style="background: rgba(239, 68, 68, 0.05); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 700;">🔍 System Audit Hub</a>
                 </div>
 
+                <!-- 8. My Profile -->
+                <div class="nav-group">
+                    <a href="{% url 'edit_profile' %}" class="nav-link" style="background: rgba(99, 102, 241, 0.08); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.2);">👤 My Profile</a>
+                </div>
+
                 <div class="logout-section" style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
                     <a href="{% url 'admin_logout' %}" class="nav-link" style="color: #ef4444;">🚪 Logout</a>
                 </div>
