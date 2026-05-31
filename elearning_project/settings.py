@@ -78,17 +78,23 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'axes.middleware.AxesMiddleware',
+]
+
+if AXES_ENABLED:
+    MIDDLEWARE.append('axes.middleware.AxesMiddleware')
+
+MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
 ]
 
-AUTHENTICATION_BACKENDS = [
-    'axes.backends.AxesBackend',
-    'django.contrib.auth.backends.ModelBackend',
-]
+AUTHENTICATION_BACKENDS = []
+if AXES_ENABLED:
+    AUTHENTICATION_BACKENDS.append('axes.backends.AxesBackend')
+AUTHENTICATION_BACKENDS.append('django.contrib.auth.backends.ModelBackend')
 
 # Axes Configuration
+AXES_ENABLED = os.getenv('DISABLE_AXES', 'False') != 'True'
 AXES_FAILURE_LIMIT = 5
 AXES_LOCK_OUT_AT_FAILURE = True
 AXES_COOLOFF_TIME = 1  # 1 hour
