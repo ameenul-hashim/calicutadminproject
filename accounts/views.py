@@ -224,8 +224,6 @@ def signup_view(request):
 
     return render(request, 'accounts/signup.html')
 
-    return render(request, 'accounts/signup.html')
-
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_signup_view(request):
     if request.user.is_authenticated:
@@ -345,8 +343,6 @@ def teacher_signup_view(request):
             if 'user' in locals() and user: user.delete()
             messages.error(request, f"Registration failed: {str(e)}")
             return redirect('teacher_login')
-
-    return render(request, 'accounts/teacher_signup.html')
 
     return render(request, 'accounts/teacher_signup.html')
 
