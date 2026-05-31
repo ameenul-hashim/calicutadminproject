@@ -34,3 +34,6 @@ Thumbs.db
 credentials.json
 token.json
 pdf_backup/
+
+# Firebase
+firebase-key.json

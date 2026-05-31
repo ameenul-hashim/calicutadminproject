@@ -623,28 +623,17 @@ def analytics_view(request):
         'pending': all_users.filter(status='PENDING').count(),
     }
 
-    # Daily registrations for the last 30 days (from database, not cached)
-    from django.db.models.functions import TruncDate
-    from django.utils import timezone
-    from datetime import timedelta
-    today = timezone.now().date()
-    daily_qs = (
-        CustomUser.objects
-        .filter(date_joined__date__gte=today - timedelta(days=29))
-        .annotate(day=TruncDate('date_joined'))
-        .values('day')
-        .annotate(count=Count('id'))
-        .order_by('day')
-    )
-    daily_map = {entry['day']: entry['count'] for entry in daily_qs}
-    daily_labels = []
-    daily_data = []
-    for i in range(29, -1, -1):
-        d = today - timedelta(days=i)
-        daily_labels.append(d.strftime('%d %b'))
-        daily_data.append(daily_map.get(d, 0))
-    context['daily_reg_labels'] = daily_labels
-    context['daily_reg_data'] = daily_data
+    # --- Firebase Realtime Analytics (zero database queries) ---
+    from accounts.utils.firebase_analytics import get_daily_visits, get_hourly_peaks
+    try:
+        daily_visits = get_daily_visits(30)
+        context['daily_visit_labels'] = [d['date'] for d in daily_visits]
+        context['daily_visit_data'] = [d['count'] for d in daily_visits]
+        context['peak_hours'] = get_hourly_peaks(30)
+    except Exception:
+        context['daily_visit_labels'] = []
+        context['daily_visit_data'] = []
+        context['peak_hours'] = [0] * 24
 
     # These shouldn't be cached as they are user-specific/time-sensitive
     context['notifications'] = Notification.objects.filter(user=request.user, is_read=False)[:10]
