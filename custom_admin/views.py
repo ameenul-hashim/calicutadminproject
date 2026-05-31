@@ -1095,9 +1095,12 @@ def admin_view_course_content(request, course_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def storage_dashboard(request):
+    from accounts.utils.storage_analytics import get_all_storage_stats
     from accounts.models import CourseResource
-    from django.db.models import Sum, Count, Avg
-    
+    from django.db.models import Count, Avg
+
+    stats = get_all_storage_stats()
+
     resources = CourseResource.objects.filter(is_deleted=False)
     metrics = resources.aggregate(
         total_count=Count('id'),
@@ -1107,14 +1110,14 @@ def storage_dashboard(request):
     )
     
     total_mb = (metrics['total_compressed'] or 0) / (1024 * 1024)
-    # Admin configured soft limit
-    max_mb = 1000 
+    max_mb = 1000
     usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
-    
+
     notifications = Notification.objects.filter(user=request.user, is_read=False)[:10]
     unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
     
     return render(request, 'custom_admin/storage_dashboard.html', {
+        'stats': stats,
         'resources': resources.order_by('-created_at')[:50],
         'metrics': metrics,
         'total_mb': round(total_mb, 2),

@@ -3,133 +3,573 @@
 
 {% block title %}Storage Dashboard{% endblock %}
 
+{% block header_title %}
+    <h1 style="font-size: 1.5rem; font-weight: 700; color: #1e293b; margin: 0;">📦 Storage Dashboard</h1>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sd-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 1024px) {
+        .sd-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 640px) {
+        .sd-grid { grid-template-columns: 1fr; }
+    }
+    .sd-card {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        border: 1px solid #f1f5f9;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .sd-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 20px -8px rgba(0,0,0,0.08);
+    }
+    .sd-card .accent-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+    }
+    .sd-card h3 {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+        margin: 0 0 0.25rem 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .sd-card .big-value {
+        font-size: 2rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin: 0.25rem 0;
+    }
+    .sd-card .sub-text {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin: 0;
+    }
+    .sd-card .bar-wrap {
+        width: 100%;
+        height: 8px;
+        background: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 0.75rem;
+    }
+    .sd-card .bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 1s ease;
+    }
+    .sd-detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) {
+        .sd-detail-grid { grid-template-columns: 1fr; }
+    }
+    .sd-panel {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        border: 1px solid #f1f5f9;
+    }
+    .sd-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.25rem;
+    }
+    .sd-panel-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .sd-panel-title .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .stat-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid #f8fafc;
+        font-size: 0.9rem;
+    }
+    .stat-row:last-child { border-bottom: none; }
+    .stat-label { color: #64748b; }
+    .stat-value { font-weight: 700; color: #1e293b; }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    .status-badge.ok { background: #d1fae5; color: #065f46; }
+    .status-badge.warn { background: #fef3c7; color: #92400e; }
+    .status-badge.critical { background: #fee2e2; color: #991b1b; }
+    .status-badge.off { background: #f1f5f9; color: #64748b; }
+    .sd-charts-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) {
+        .sd-charts-grid { grid-template-columns: 1fr; }
+    }
+    table.sd-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        min-width: 800px;
+    }
+    table.sd-table th {
+        background: #1e293b;
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        padding: 0.9rem 1rem;
+        text-align: left;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    table.sd-table td {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.85rem;
+        color: #334155;
+    }
+    table.sd-table tr:hover td { background: #f8fafc; }
+    .sd-file-name {
+        font-weight: 600;
+        color: #1e293b;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .sd-muted { color: #94a3b8; font-size: 0.75rem; }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="p-6 max-w-7xl mx-auto">
-    <div class="flex justify-between items-center mb-8">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">Storage Dashboard</h1>
-            <p class="text-gray-500 mt-1">Monitor Supabase and Cloud Storage capacities</p>
-        </div>
-    </div>
-    
-    <!-- Warning Threshold Banner -->
-    {% if usage_percent > 95 %}
-    <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-8 rounded-r-lg">
-        <div class="flex">
-            <div class="flex-shrink-0">⚠️</div>
-            <div class="ml-3">
-                <h3 class="text-red-800 font-medium">Critical Storage Warning</h3>
-                <p class="text-red-700 mt-1">Storage is near maximum capacity. You must upgrade your Supabase plan or delete old resources.</p>
-            </div>
-        </div>
-    </div>
-    {% elif usage_percent > 85 %}
-    <div class="bg-orange-50 border-l-4 border-orange-500 p-4 mb-8 rounded-r-lg">
-        <div class="flex">
-            <div class="flex-shrink-0">⚠️</div>
-            <div class="ml-3">
-                <h3 class="text-orange-800 font-medium">Storage Nearing Capacity</h3>
-                <p class="text-orange-700 mt-1">Storage usage has exceeded 85%. Monitor closely.</p>
-            </div>
-        </div>
-    </div>
-    {% elif usage_percent > 70 %}
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 rounded-r-lg">
-        <div class="flex">
-            <div class="flex-shrink-0">⚠️</div>
-            <div class="ml-3">
-                <h3 class="text-yellow-800 font-medium">Storage Warning</h3>
-                <p class="text-yellow-700 mt-1">Storage usage has exceeded 70%.</p>
-            </div>
-        </div>
-    </div>
-    {% endif %}
+{% with ss=stats.supabase_signup sr=stats.supabase_resources cl=stats.cloudinary db=stats.database %}
+<div class="p-1">
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-            <h3 class="text-gray-500 text-sm font-medium">Total Resources</h3>
-            <p class="text-3xl font-bold text-gray-900 mt-2">{{ metrics.total_count|default:0 }}</p>
-        </div>
-        
-        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-            <h3 class="text-gray-500 text-sm font-medium">Compressed Storage Used</h3>
-            <p class="text-3xl font-bold text-indigo-600 mt-2">{{ total_mb|floatformat:1 }} MB</p>
-        </div>
-        
-        <div class="bg-white rounded-2xl shadow-sm p-6 border border-gray-100 md:col-span-2">
-            <h3 class="text-gray-500 text-sm font-medium">Storage Capacity Usage (1 GB Limit)</h3>
-            <div class="mt-4 w-full bg-gray-200 rounded-full h-4">
-                <div class="h-4 rounded-full {% if usage_percent > 90 %}bg-red-500{% elif usage_percent > 75 %}bg-yellow-400{% else %}bg-green-500{% endif %}" 
-                     style="width: {{ usage_percent }}%"></div>
+    <!-- 4 Summary Cards -->
+    <div class="sd-grid">
+        <!-- Supabase Signup -->
+        <div class="sd-card">
+            <div class="accent-bar" style="background: {{ ss.color }};"></div>
+            <h3>{{ ss.emoji }} {{ ss.label }}</h3>
+            <p class="big-value">{{ ss.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
+            <p class="sub-text">{{ ss.total_files }} files · {{ ss.remaining_mb }} MB free</p>
+            <div class="bar-wrap">
+                <div class="bar-fill" style="width: {{ ss.percent }}%; background: {{ ss.color }};"></div>
             </div>
-            <p class="text-right text-sm text-gray-600 mt-2">{{ usage_percent|floatformat:1 }}% Full</p>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ ss.percent }}% of {{ ss.limit_mb }} MB</p>
+        </div>
+
+        <!-- Supabase Resources -->
+        <div class="sd-card">
+            <div class="accent-bar" style="background: {{ sr.color }};"></div>
+            <h3>{{ sr.emoji }} {{ sr.label }}</h3>
+            <p class="big-value">{{ sr.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
+            <p class="sub-text">{{ sr.total_files }} files · {{ sr.remaining_mb }} MB free</p>
+            <div class="bar-wrap">
+                <div class="bar-fill" style="width: {{ sr.percent }}%; background: {{ sr.color }};"></div>
+            </div>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ sr.percent }}% of {{ sr.limit_mb }} MB</p>
+        </div>
+
+        <!-- Cloudinary -->
+        <div class="sd-card">
+            <div class="accent-bar" style="background: {{ cl.color }};"></div>
+            <h3>{{ cl.emoji }} {{ cl.label }}</h3>
+            <p class="big-value">{{ cl.storage_used_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
+            <p class="sub-text">{{ cl.total_files }} files · {{ cl.storage_remaining_mb }} MB free</p>
+            <div class="bar-wrap">
+                <div class="bar-fill" style="width: {{ cl.storage_percent }}%; background: {{ cl.color }};"></div>
+            </div>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ cl.storage_percent }}% of {{ cl.storage_limit_mb }} MB</p>
+        </div>
+
+        <!-- Database -->
+        <div class="sd-card">
+            <div class="accent-bar" style="background: {{ db.color }};"></div>
+            <h3>{{ db.emoji }} {{ db.label }}</h3>
+            <p class="big-value">{{ db.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
+            <p class="sub-text">{{ db.remaining_mb }} MB free</p>
+            <div class="bar-wrap">
+                <div class="bar-fill" style="width: {{ db.percent }}%; background: {{ db.color }};"></div>
+            </div>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ db.percent }}% of {{ db.limit_mb }} MB</p>
         </div>
     </div>
 
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="p-6 border-b border-gray-100">
-            <h2 class="text-lg font-bold text-gray-900">Recent Resources</h2>
+    <!-- Detail Panels: Left (Supabase + Cloudinary stats) / Right (DB + summary) -->
+    <div class="sd-detail-grid">
+        <!-- Left: Supabase Signup Details -->
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title"><span class="dot" style="background:{{ ss.color }};"></span> {{ ss.emoji }} Signup Proof PDFs</h2>
+                {% if ss.status == 'connected' %}
+                <span class="status-badge ok">● Live</span>
+                {% else %}
+                <span class="status-badge off">● Offline</span>
+                {% endif %}
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total Files</span>
+                <span class="stat-value">{{ ss.total_files }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Storage Used</span>
+                <span class="stat-value">{{ ss.usage_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Free Space</span>
+                <span class="stat-value">{{ ss.remaining_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Plan Limit</span>
+                <span class="stat-value">{{ ss.limit_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Description</span>
+                <span class="stat-value sd-muted">{{ ss.description }}</span>
+            </div>
         </div>
-        <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead class="bg-gray-50">
+
+        <!-- Right: Supabase Resources Details -->
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title"><span class="dot" style="background:{{ sr.color }};"></span> {{ sr.emoji }} Course Resources</h2>
+                {% if sr.status == 'connected' %}
+                <span class="status-badge ok">● Live</span>
+                {% else %}
+                <span class="status-badge off">● Offline</span>
+                {% endif %}
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total Files</span>
+                <span class="stat-value">{{ sr.total_files }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Storage Used</span>
+                <span class="stat-value">{{ sr.usage_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Free Space</span>
+                <span class="stat-value">{{ sr.remaining_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Plan Limit</span>
+                <span class="stat-value">{{ sr.limit_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Description</span>
+                <span class="stat-value sd-muted">{{ sr.description }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="sd-charts-grid">
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title">📊 Storage Comparison (MB Used)</h2>
+            </div>
+            <div style="height: 250px;">
+                <canvas id="storageBarChart"></canvas>
+            </div>
+        </div>
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title">🔵 Storage Distribution</h2>
+            </div>
+            <div style="height: 250px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="storageDoughnut"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Third Row: Cloudinary Detail + Database Detail -->
+    <div class="sd-detail-grid">
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title"><span class="dot" style="background:{{ cl.color }};"></span> {{ cl.emoji }} Cloudinary Details</h2>
+                {% if cl.status == 'connected' %}
+                <span class="status-badge ok">● Live</span>
+                {% else %}
+                <span class="status-badge off">● Offline</span>
+                {% endif %}
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Storage Used</span>
+                <span class="stat-value">{{ cl.storage_used_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Storage Limit</span>
+                <span class="stat-value">{{ cl.storage_limit_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Storage Remaining</span>
+                <span class="stat-value">{{ cl.storage_remaining_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Credits Used</span>
+                <span class="stat-value">{{ cl.credits_used }} / {{ cl.credits_limit }} ({{ cl.credits_percent }}%)</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Transformations</span>
+                <span class="stat-value">{{ cl.transformations_used }} / {{ cl.transformations_limit }} ({{ cl.transformations_percent }}%)</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total Objects</span>
+                <span class="stat-value">{{ cl.total_files }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Description</span>
+                <span class="stat-value sd-muted">{{ cl.description }}</span>
+            </div>
+        </div>
+
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title"><span class="dot" style="background:{{ db.color }};"></span> {{ db.emoji }} Database Details</h2>
+                {% if db.status == 'connected' %}
+                <span class="status-badge ok">● Live</span>
+                {% else %}
+                <span class="status-badge off">● Offline</span>
+                {% endif %}
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Database Used</span>
+                <span class="stat-value">{{ db.usage_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Database Limit</span>
+                <span class="stat-value">{{ db.limit_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Free Space</span>
+                <span class="stat-value">{{ db.remaining_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Usage</span>
+                <span class="stat-value">{{ db.percent }}%</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Engine</span>
+                <span class="stat-value">PostgreSQL (Render)</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Description</span>
+                <span class="stat-value sd-muted">{{ db.description }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Compressed Resources Summary -->
+    <div class="sd-panel" style="margin-bottom:1.5rem;">
+        <div class="sd-panel-header">
+            <h2 class="sd-panel-title">📦 Compressed Course Resources</h2>
+            <span style="font-size:0.85rem;color:#64748b;">{{ metrics.total_count }} total items · {{ total_mb }} MB compressed</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Compressed Size</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;">{{ total_mb|floatformat:1 }} MB</p>
+            </div>
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Avg File Size</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;">
+                    {% if metrics.avg_compressed %}{{ metrics.avg_compressed|floatformat:0 }} KB{% else %}—{% endif %}
+                </p>
+            </div>
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Capacity Usage</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;">{{ usage_percent|floatformat:1 }}%</p>
+            </div>
+        </div>
+        <div class="bar-wrap" style="margin-top:1rem;height:10px;">
+            <div class="bar-fill" style="width:{{ usage_percent }}%;background:{% if usage_percent > 90 %}#ef4444{% elif usage_percent > 75 %}#f59e0b{% else %}#6366f1{% endif %};"></div>
+        </div>
+    </div>
+
+    <!-- Recent Resources Table -->
+    <div class="sd-panel">
+        <div class="sd-panel-header">
+            <h2 class="sd-panel-title">📋 Recent Resources ({{ resources|length }})</h2>
+        </div>
+        <div style="overflow-x:auto;border-radius:1rem;border:1px solid #e2e8f0;">
+            <table class="sd-table">
+                <thead>
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Size</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Views / DLs</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Backup</th>
+                        <th>Title</th>
+                        <th>Course</th>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th>Views / DLs</th>
+                        <th>Status</th>
+                        <th>Backup</th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
+                <tbody>
                     {% for r in resources %}
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ r.title }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ r.course.title|truncatechars:30 }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                        <td><span class="sd-file-name">{{ r.title }}</span></td>
+                        <td>{{ r.course.title|truncatechars:30 }}</td>
+                        <td>
+                            <span style="display:inline-flex;padding:0.15rem 0.5rem;border-radius:999px;font-size:0.7rem;font-weight:600;background:#dbeafe;color:#1e40af;">
                                 {{ r.resource_type }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {% widthratio r.compressed_size 1024 1 %} KB
+                        <td>
+                            {% if r.compressed_size %}{{ r.compressed_size|filesizeformat }}{% else %}—{% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {{ r.view_count }} / {{ r.download_count }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <td>{{ r.view_count }} / {{ r.download_count }}</td>
+                        <td>
                             {% if r.status == 'APPROVED' %}
-                            <span class="text-green-600 font-medium">Active</span>
+                            <span style="color:#059669;font-weight:600;">Active</span>
                             {% elif r.status == 'PENDING' %}
-                            <span class="text-yellow-600 font-medium">Pending</span>
+                            <span style="color:#d97706;font-weight:600;">Pending</span>
+                            {% elif r.status == 'DELETION_PENDING' %}
+                            <span style="color:#dc2626;font-weight:600;">Deleting</span>
                             {% else %}
-                            <span class="text-red-600 font-medium">{{ r.status }}</span>
+                            <span style="color:#6b7280;">{{ r.status }}</span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <td>
                             {% if r.status == 'APPROVED' %}
                                 {% if r.backup_status == 'SUCCESS' %}
-                                <span class="text-green-600 font-semibold">✅ Success</span>
+                                <span style="color:#059669;font-weight:600;">✅ Done</span>
                                 {% elif r.backup_status == 'FAILED' %}
-                                <span class="text-red-600 font-semibold">❌ Failed</span>
+                                <span style="color:#dc2626;font-weight:600;">❌ Failed</span>
                                 {% else %}
-                                <span class="text-yellow-600 font-semibold">⌛ Pending</span>
+                                <span style="color:#d97706;font-weight:600;">⏳ Pending</span>
                                 {% endif %}
                             {% else %}
-                                <span class="text-gray-400">—</span>
+                            <span style="color:#9ca3af;">—</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">No resources on the platform yet.</td>
+                        <td colspan="7" style="text-align:center;padding:2rem;color:#94a3b8;">No resources on the platform yet.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
 </div>
+{% endwith %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function() {
+    const ss_usage = {{ stats.supabase_signup.usage_mb }};
+    const sr_usage = {{ stats.supabase_resources.usage_mb }};
+    const cl_usage = {{ stats.cloudinary.storage_used_mb }};
+    const db_usage = {{ stats.database.usage_mb }};
+
+    new Chart(document.getElementById('storageBarChart'), {
+        type: 'bar',
+        data: {
+            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Database'],
+            datasets: [{
+                label: 'MB Used',
+                data: [ss_usage, sr_usage, cl_usage, db_usage],
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6'],
+                borderRadius: 6,
+                barPercentage: 0.5,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false } },
+                y: { 
+                    border: { display: false },
+                    beginAtZero: true,
+                    title: { display: true, text: 'Megabytes (MB)' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.parsed.y.toFixed(2) + ' MB';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('storageDoughnut'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Database'],
+            datasets: [{
+                data: [ss_usage, sr_usage, cl_usage, db_usage],
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6'],
+                borderWidth: 0,
+                cutout: '65%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { boxWidth: 12, padding: 12, font: { size: 11 } }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.label + ': ' + ctx.parsed.toFixed(2) + ' MB';
+                        }
+                    }
+                }
+            }
+        }
+    });
+})();
+</script>
 {% endblock %}
