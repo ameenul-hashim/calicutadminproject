@@ -166,62 +166,34 @@
             </div>
         </div>
 
-        <!-- Realtime Infrastructure Usage -->
-        <div class="premium-charts-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 1.5rem;">
+        <!-- User Status & Daily Registration Charts -->
+        <div class="premium-charts-grid">
             <div class="premium-panel">
                 <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">🗄️ PostgreSQL Database Usage (Render)</h2>
+                    <h2 class="premium-panel-title">👥 User Status Overview</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;">Live</span>
                 </div>
-                <div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #64748b; font-weight: 600;">
-                        <span>{{ db_usage.usage_mb }} MB Used</span>
-                        <span>{{ db_usage.remaining_mb }} MB Free ({{ db_usage.limit_mb }}MB Total)</span>
-                    </div>
-                    <div style="width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
-                        <div style="width: {{ db_usage.percent }}%; height: 100%; background: #3b82f6; transition: width 1s;"></div>
-                    </div>
-                    <p style="margin-top: 0.5rem; text-align: right; font-size: 0.8rem; color: #1e293b; font-weight: 700;">{{ db_usage.percent }}% Used</p>
+                <div style="height: 250px; display: flex; align-items: center; justify-content: center;">
+                    <canvas id="userStatusChart"></canvas>
                 </div>
             </div>
 
             <div class="premium-panel">
                 <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">☁️ Supabase Storage Usage (Free Tier)</h2>
+                    <h2 class="premium-panel-title">📈 Daily Registrations (Last 30 Days)</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;">Live</span>
                 </div>
-                <div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #64748b; font-weight: 600;">
-                        <span>{{ storage_usage.usage_mb }} MB Used</span>
-                        <span>{{ storage_usage.remaining_mb }} MB Free ({{ storage_usage.limit_mb }}MB Total)</span>
-                    </div>
-                    <div style="width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
-                        <div style="width: {{ storage_usage.percent }}%; height: 100%; background: #10b981; transition: width 1s;"></div>
-                    </div>
-                    <p style="margin-top: 0.5rem; text-align: right; font-size: 0.8rem; color: #1e293b; font-weight: 700;">{{ storage_usage.percent }}% Used</p>
-                </div>
-            </div>
-
-            <div class="premium-panel">
-                <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">🖼️ Cloudinary (Legacy Items Hosted)</h2>
-                </div>
-                <div>
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.9rem; color: #64748b; font-weight: 600;">
-                        <span>{{ cloudinary_usage.total_files }} Files</span>
-                        <span>Max 25k transformations</span>
-                    </div>
-                    <div style="width: 100%; height: 12px; background: #f1f5f9; border-radius: 6px; overflow: hidden;">
-                        <div style="width: {{ cloudinary_usage.percent }}%; height: 100%; background: #f59e0b; transition: width 1s;"></div>
-                    </div>
-                    <p style="margin-top: 0.5rem; text-align: right; font-size: 0.8rem; color: #1e293b; font-weight: 700;">Safe Limits</p>
+                <div style="height: 250px;">
+                    <canvas id="dailyRegChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Charts -->
+        <!-- Charts Row 2 -->
         <div class="premium-charts-grid">
             <div class="premium-panel">
                 <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">Registration Statistics</h2>
+                    <h2 class="premium-panel-title">📊 Monthly Registration Trend</h2>
                 </div>
                 <div style="height: 250px;">
                     <canvas id="userChart"></canvas>
@@ -230,7 +202,7 @@
             
             <div class="premium-panel">
                 <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">Course Approval</h2>
+                    <h2 class="premium-panel-title">📋 Course Approval</h2>
                 </div>
                 <div style="height: 250px; display: flex; align-items: center; justify-content: center;">
                     <canvas id="approvalChart"></canvas>
@@ -316,8 +288,57 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const months = {{ months|safe }};
-    
-    // User Chart (Bar chart mimicking the design)
+
+    // User Status Doughnut (Active / Blocked / Rejected / Pending)
+    new Chart(document.getElementById('userStatusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Active', 'Blocked', 'Rejected', 'Pending'],
+            datasets: [{
+                data: [{{ user_status.active }}, {{ user_status.blocked }}, {{ user_status.rejected }}, {{ user_status.pending }}],
+                backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#94a3b8'],
+                borderWidth: 0,
+                cutout: '65%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } }
+            }
+        }
+    });
+
+    // Daily Registrations Line Chart (last 30 days)
+    new Chart(document.getElementById('dailyRegChart'), {
+        type: 'line',
+        data: {
+            labels: {{ daily_reg_labels|safe }},
+            datasets: [{
+                label: 'Registrations',
+                data: {{ daily_reg_data|safe }},
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                borderColor: '#6366f1',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointRadius: 3,
+                pointBackgroundColor: '#6366f1'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false }, ticks: { maxTicksLimit: 7, font: { size: 10 } } },
+                y: { beginAtZero: true, border: { display: false }, ticks: { stepSize: 1, font: { size: 10 } } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Monthly Registration Trend (Bar chart)
     new Chart(document.getElementById('userChart'), {
         type: 'bar',
         data: {
@@ -350,7 +371,7 @@
         }
     });
 
-    // Approval Chart (Doughnut mimicking "Course Activities")
+    // Course Approval Doughnut
     new Chart(document.getElementById('approvalChart'), {
         type: 'doughnut',
         data: {

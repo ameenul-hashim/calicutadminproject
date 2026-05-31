@@ -614,51 +614,37 @@ def analytics_view(request):
         # Cache for 15 minutes (900 seconds)
         cache.set(cache_key, context, 900)
 
-    # Cloudinary & realtime infrastructure tracking (outside cache to avoid context drops, or handled safely)
-    try:
-        try:
-            from django.db import connection
-            with connection.cursor() as cursor:
-                cursor.execute("SELECT pg_database_size(current_database())")
-                db_size_bytes = cursor.fetchone()[0]
-            db_usage_mb = db_size_bytes / (1024 * 1024)
-        except Exception:
-            db_usage_mb = 0
-            
-        db_limit_mb = 512
-        context['db_usage'] = {
-            'usage_mb': round(db_usage_mb, 2),
-            'limit_mb': db_limit_mb,
-            'percent': round(min((db_usage_mb / db_limit_mb) * 100, 100), 2),
-            'remaining_mb': round(db_limit_mb - db_usage_mb, 2)
-        }
-        
-        # Supabase Storage Size (already imported at module level)
-        total_storage_bytes = CourseResource.objects.aggregate(total=Sum('compressed_size'))['total'] or 0
-        storage_usage_mb = total_storage_bytes / (1024 * 1024)
-        storage_limit_mb = 1024
-        
-        context['storage_usage'] = {
-            'usage_mb': round(storage_usage_mb, 2),
-            'limit_mb': storage_limit_mb,
-            'percent': round(min((storage_usage_mb / storage_limit_mb) * 100, 100), 2),
-            'remaining_mb': round(storage_limit_mb - storage_usage_mb, 2)
-        }
-        
-        # Cloudinary File Count (Images & legacy DB fields)
-        cloudinary_courses = Course.objects.exclude(image='').count() + Course.objects.exclude(thumbnail='').count()
-        cloudinary_users = CustomUser.objects.exclude(profile_photo='').count() 
-        cloudinary_total = cloudinary_courses + cloudinary_users
-        
-        context['cloudinary_usage'] = {
-            'total_files': cloudinary_total,
-            'limit_files': 25000,
-            'percent': round(min((cloudinary_total / 25000) * 100, 100), 2)
-        }
-    except Exception as e:
-        print("ERROR IN ANALYTICS VIEW:", str(e))
-        import traceback
-        traceback.print_exc()
+    # Real-time user status counts (from database, not cached)
+    all_users = CustomUser.objects.all()
+    context['user_status'] = {
+        'active': all_users.filter(status='ACTIVE').count(),
+        'blocked': all_users.filter(status='BLOCKED').count(),
+        'rejected': all_users.filter(status='REJECTED').count(),
+        'pending': all_users.filter(status='PENDING').count(),
+    }
+
+    # Daily registrations for the last 30 days (from database, not cached)
+    from django.db.models.functions import TruncDate
+    from django.utils import timezone
+    from datetime import timedelta
+    today = timezone.now().date()
+    daily_qs = (
+        CustomUser.objects
+        .filter(date_joined__date__gte=today - timedelta(days=29))
+        .annotate(day=TruncDate('date_joined'))
+        .values('day')
+        .annotate(count=Count('id'))
+        .order_by('day')
+    )
+    daily_map = {entry['day']: entry['count'] for entry in daily_qs}
+    daily_labels = []
+    daily_data = []
+    for i in range(29, -1, -1):
+        d = today - timedelta(days=i)
+        daily_labels.append(d.strftime('%d %b'))
+        daily_data.append(daily_map.get(d, 0))
+    context['daily_reg_labels'] = daily_labels
+    context['daily_reg_data'] = daily_data
 
     # These shouldn't be cached as they are user-specific/time-sensitive
     context['notifications'] = Notification.objects.filter(user=request.user, is_read=False)[:10]
