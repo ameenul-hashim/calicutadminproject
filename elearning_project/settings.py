@@ -80,6 +80,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+AXES_ENABLED = os.getenv('DISABLE_AXES', 'False') != 'True'
+
 if AXES_ENABLED:
     MIDDLEWARE.append('axes.middleware.AxesMiddleware')
 
@@ -94,7 +96,6 @@ if AXES_ENABLED:
 AUTHENTICATION_BACKENDS.append('django.contrib.auth.backends.ModelBackend')
 
 # Axes Configuration
-AXES_ENABLED = os.getenv('DISABLE_AXES', 'False') != 'True'
 AXES_FAILURE_LIMIT = 5
 AXES_LOCK_OUT_AT_FAILURE = True
 AXES_COOLOFF_TIME = 1  # 1 hour
