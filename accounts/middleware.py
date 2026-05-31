@@ -150,6 +150,14 @@ class PortalSecurityMiddleware:
                         request.session['next_teacher_url'] = path
                         return redirect('teacher_view_auth')
 
+        # --- Firebase Analytics: log authenticated page views ---
+        if request.user.is_authenticated and request.method == 'GET' and not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            try:
+                from .utils.firebase_analytics import log_visit_async
+                log_visit_async(request.user)
+            except Exception:
+                pass
+
         try:
             response = self.get_response(request)
             

@@ -166,7 +166,7 @@
             </div>
         </div>
 
-        <!-- User Status & Daily Registration Charts -->
+        <!-- User Status & Daily Active Users (Firebase RTDB) -->
         <div class="premium-charts-grid">
             <div class="premium-panel">
                 <div class="premium-panel-header">
@@ -180,23 +180,24 @@
 
             <div class="premium-panel">
                 <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">📈 Daily Registrations (Last 30 Days)</h2>
-                    <span class="status-badge ok" style="font-size:0.7rem;">Live</span>
+                    <h2 class="premium-panel-title">📈 Daily Active Users (Last 30 Days)</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;">Firebase RTDB</span>
                 </div>
                 <div style="height: 250px;">
-                    <canvas id="dailyRegChart"></canvas>
+                    <canvas id="dailyActiveChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Charts Row 2 -->
+        <!-- Peak Hours & Course Approval -->
         <div class="premium-charts-grid">
             <div class="premium-panel">
                 <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">📊 Monthly Registration Trend</h2>
+                    <h2 class="premium-panel-title">⏰ Peak Hours (Last 30 Days)</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;">Firebase RTDB</span>
                 </div>
                 <div style="height: 250px;">
-                    <canvas id="userChart"></canvas>
+                    <canvas id="peakHoursChart"></canvas>
                 </div>
             </div>
             
@@ -310,21 +311,21 @@
         }
     });
 
-    // Daily Registrations Line Chart (last 30 days)
-    new Chart(document.getElementById('dailyRegChart'), {
+    // Daily Active Users Line Chart (Firebase RTDB, last 30 days)
+    new Chart(document.getElementById('dailyActiveChart'), {
         type: 'line',
         data: {
-            labels: {{ daily_reg_labels|safe }},
+            labels: {{ daily_visit_labels|safe }},
             datasets: [{
-                label: 'Registrations',
-                data: {{ daily_reg_data|safe }},
-                backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                borderColor: '#6366f1',
+                label: 'Visits',
+                data: {{ daily_visit_data|safe }},
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderColor: '#10b981',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.3,
                 pointRadius: 3,
-                pointBackgroundColor: '#6366f1'
+                pointBackgroundColor: '#10b981'
             }]
         },
         options: {
@@ -338,34 +339,33 @@
         }
     });
 
-    // Monthly Registration Trend (Bar chart)
-    new Chart(document.getElementById('userChart'), {
+    // Peak Hours Bar Chart (Firebase RTDB, last 30 days)
+    new Chart(document.getElementById('peakHoursChart'), {
         type: 'bar',
         data: {
-            labels: months,
-            datasets: [
-                {
-                    label: 'Students',
-                    data: {{ student_data|safe }},
-                    backgroundColor: '#e0f2fe',
-                    borderRadius: 4,
-                    barPercentage: 0.6
-                },
-                {
-                    label: 'Teachers',
-                    data: {{ teacher_data|safe }},
-                    backgroundColor: '#d8b4fe',
-                    borderRadius: 4,
-                    barPercentage: 0.6
-                }
-            ]
+            labels: ['00','01','02','03','04','05','06','07','08','09','10','11','12','13','14','15','16','17','18','19','20','21','22','23'],
+            datasets: [{
+                label: 'Visits',
+                data: {{ peak_hours|safe }},
+                backgroundColor: [
+                    '#1e293b','#1e293b','#1e293b','#1e293b','#1e293b','#1e293b',
+                    '#f59e0b','#f59e0b',
+                    '#3b82f6','#3b82f6','#3b82f6','#3b82f6',
+                    '#f59e0b',
+                    '#3b82f6','#3b82f6','#3b82f6','#3b82f6',
+                    '#10b981','#10b981','#10b981','#10b981',
+                    '#1e293b','#1e293b','#1e293b'
+                ],
+                borderRadius: 3,
+                barPercentage: 0.8
+            }]
         },
-        options: { 
+        options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { display: false } },
-                y: { border: { display: false } }
+                x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                y: { beginAtZero: true, border: { display: false } }
             },
             plugins: { legend: { display: false } }
         }
