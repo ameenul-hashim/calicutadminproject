@@ -922,8 +922,8 @@ def add_lesson(request, course_uid):
                 video_url = f"https://www.youtube.com/watch?v={youtube_video_id}"
             except Exception as e:
                 logger.error(f"YouTube upload failed for lesson '{title}': {e}")
-                messages.error(request, f"Video upload to YouTube failed: {str(e)}. Please try again.")
-                return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+                messages.warning(request, f"Video upload to YouTube failed: {str(e)}. Lesson saved without video. You can add a YouTube link below or re-upload MP4 later.")
+                video_url = ''
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
         else:
@@ -987,8 +987,7 @@ def edit_lesson(request, lesson_uid):
                 video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
             except Exception as e:
                 logger.error(f"YouTube re-upload failed for lesson '{title}': {e}")
-                messages.error(request, f"Video upload to YouTube failed: {str(e)}. Please try again.")
-                return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+                messages.warning(request, f"Video upload to YouTube failed: {str(e)}. Lesson saved without video change. You can add a YouTube link below.")
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
 
