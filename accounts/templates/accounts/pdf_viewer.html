@@ -124,7 +124,7 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
 
-var PDF_URL = '{{ signed_url|escapejs }}';
+var PDF_URL = '{{ proxy_url|escapejs }}';
 var TITLE = '{{ title|escapejs }}';
 
 var pdfDoc = null;
