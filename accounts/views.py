@@ -910,29 +910,19 @@ def add_lesson(request, course_uid):
         youtube_upload_status = 'NOT_UPLOADED'
 
         if video_source == 'file' and video_file:
-            import tempfile, os
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-            for chunk in video_file.chunks():
-                tmp.write(chunk)
-            tmp.close()
+            import uuid
+            lesson_uid = str(uuid.uuid4())
             try:
-                from .utils.youtube_uploader import upload_video
-                youtube_video_id = upload_video(
-                    tmp.name,
-                    title=f"{course.title} - {title}",
-                    description=f"Lesson: {title}\nCourse: {course.title}\nTeacher: {request.user.full_name or request.user.username}",
-                    privacy_status='unlisted'
-                )
-                youtube_upload_status = 'UPLOADED'
-                video_url = f"https://www.youtube.com/watch?v={youtube_video_id}"
+                from .utils.supabase_storage import upload_video_to_supabase
+                storage_path = upload_video_to_supabase(video_file, lesson_uid)
+                if storage_path:
+                    video_url = f"supabase://{storage_path}"
+                    messages.success(request, "Video uploaded to storage successfully.")
+                else:
+                    messages.warning(request, "Video upload to storage failed. Lesson saved without video. You can add a YouTube link below.")
             except Exception as e:
-                logger.error(f"YouTube upload failed for lesson '{title}': {e}")
-                messages.warning(request, f"Video upload to YouTube failed: {str(e)}. Lesson saved without video. You can add a YouTube link below or re-upload MP4 later.")
-            finally:
-                try:
-                    os.unlink(tmp.name)
-                except Exception:
-                    pass
+                logger.error(f"Video upload failed for lesson '{title}': {e}")
+                messages.warning(request, f"Video upload failed: {str(e)}. Lesson saved without video. You can add a YouTube link below.")
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
         else:
@@ -1590,6 +1580,20 @@ def course_player(request, course_uid):
     approved_resources = CourseResource.objects.filter(
         course=course, status='APPROVED', is_deleted=False
     ).order_by('-created_at')
+
+    # Resolve Supabase video URLs to signed URLs
+    for lesson in lessons:
+        if lesson.video_url and lesson.video_url.startswith('supabase://'):
+            storage_path = lesson.video_url.replace('supabase://', '', 1)
+            try:
+                from .utils.supabase_storage import get_signed_url
+                signed = get_signed_url(storage_path, expires_in=86400)
+                if signed:
+                    lesson.video_url = signed
+                else:
+                    lesson.video_url = ''
+            except Exception:
+                lesson.video_url = ''
 
     context = {
         'course': course,

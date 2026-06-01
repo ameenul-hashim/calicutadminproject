@@ -128,6 +128,27 @@ def delete_pdf(file_path: str):
         logger.error(f"Supabase Deletion Error: {e}")
         return False
 
+def upload_video_to_supabase(video_file, lesson_uid):
+    """Uploads an MP4 video to Supabase Storage and returns the storage path."""
+    if not supabase:
+        logger.error("Supabase client not initialized")
+        return None
+    try:
+        content = video_file.read()
+        video_file.seek(0)
+        destination_path = f"videos/lesson_{lesson_uid}.mp4"
+        if destination_path.startswith("/"):
+            destination_path = destination_path[1:]
+        supabase.storage.from_(bucket_name).upload(
+            path=destination_path,
+            file=content,
+            file_options={"content-type": "video/mp4", "upsert": "true"}
+        )
+        return destination_path
+    except Exception as e:
+        logger.error(f"Supabase Video Upload Error: {e}")
+        return None
+
 def upload_user_proof(instance, pdf_file):
     """
     High-level helper to upload a user's verification PDF to Supabase.
