@@ -75,9 +75,16 @@
                 urlInput.required = true;
             }
         }
+        function getCSRFToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
         document.querySelector('form').addEventListener('submit', function(e) {
             const fileInput = document.getElementById('video_file');
+            const titleInput = document.getElementById('title');
             if (fileInput && fileInput.files.length > 0) {
+                e.preventDefault();
+                const file = fileInput.files[0];
+                const title = titleInput.value;
                 const progressDiv = document.getElementById('uploadProgress');
                 const progressBar = document.getElementById('progressBar');
                 const progressPercent = document.getElementById('progressPercent');
@@ -86,24 +93,74 @@
                 const submitBtn = this.querySelector('button[type="submit"]');
 
                 progressDiv.style.display = 'block';
+                progressText.textContent = 'Creating upload session...';
                 submitBtn.disabled = true;
-                submitBtn.textContent = 'Uploading...';
+                submitBtn.textContent = 'Uploading to YouTube...';
 
-                let pct = 0;
-                const interval = setInterval(function() {
-                    if (pct < 90) {
-                        pct += Math.floor(Math.random() * 8) + 2;
-                        if (pct > 90) pct = 90;
-                        progressBar.style.width = pct + '%';
-                        progressPercent.textContent = pct + '%';
+                fetch('/api/youtube/init-upload/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        description: 'Lesson: ' + title,
+                        file_size: file.size
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.upload_url) {
+                        throw new Error(data.error || 'Failed to create upload session');
                     }
-                }, 800);
-
-                window._uploadInterval = interval;
-                window._progressBar = progressBar;
-                window._progressPercent = progressPercent;
-                window._progressText = progressText;
-                window._uploadStatus = uploadStatus;
+                    progressText.textContent = 'Uploading to YouTube...';
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('PUT', data.upload_url, true);
+                    xhr.setRequestHeader('Content-Type', 'video/*');
+                    xhr.upload.addEventListener('progress', function(ev) {
+                        if (ev.lengthComputable) {
+                            const pct = Math.round(ev.loaded / ev.total * 100);
+                            progressBar.style.width = pct + '%';
+                            progressPercent.textContent = pct + '%';
+                        }
+                    });
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const result = JSON.parse(xhr.responseText);
+                                const videoId = result.id;
+                                document.getElementById('video_url').value = 'https://www.youtube.com/watch?v=' + videoId;
+                                document.getElementById('fileUploadGroup').style.display = 'none';
+                                document.querySelector('input[name="video_source"][value="url"]').checked = true;
+                                progressText.textContent = 'Upload complete!';
+                                progressBar.style.width = '100%';
+                                progressPercent.textContent = '100%';
+                                submitBtn.textContent = 'Saving lesson...';
+                                document.querySelector('form').submit();
+                            } catch(e) {
+                                uploadStatus.textContent = 'Error: Invalid response from YouTube';
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Try Again';
+                            }
+                        } else {
+                            uploadStatus.textContent = 'Upload failed (HTTP ' + xhr.status + ')';
+                            submitBtn.disabled = false;
+                            submitBtn.textContent = 'Try Again';
+                        }
+                    };
+                    xhr.onerror = function() {
+                        uploadStatus.textContent = 'Network error during upload';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Try Again';
+                    };
+                    xhr.send(file);
+                })
+                .catch(err => {
+                    uploadStatus.textContent = 'Error: ' + err.message;
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Try Again';
+                });
             }
         });
     </script>
@@ -127,6 +184,7 @@
             <div class="form-card">
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
+                    <input type="hidden" name="video_url" id="video_url" value="">
                     <div class="input-group">
                         <label for="title">Lesson Title</label>
                         <input type="text" name="title" id="title" required>
@@ -158,8 +216,8 @@
                         </div>
                     </div>
                     <div class="input-group" id="urlUploadGroup" style="display:none;">
-                        <label for="video_url">YouTube Video Link</label>
-                        <input type="url" name="video_url" id="video_url" placeholder="https://www.youtube.com/watch?v=...">
+                        <label for="video_url_input">YouTube Video Link</label>
+                        <input type="url" id="video_url_input" placeholder="https://www.youtube.com/watch?v=..." oninput="document.getElementById('video_url').value=this.value">
                         <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Paste the YouTube video URL directly. Videos must already be uploaded to YouTube.</p>
                     </div>
                     <div class="input-group">
