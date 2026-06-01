@@ -1,6 +1,10 @@
+import os
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.utils import timezone
+from django.db.models import Sum, Q, Count
+from django.db.models.functions import ExtractMonth
 from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
 from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.firebase_notifications import get_notifications_firebase, get_unread_count_firebase
@@ -152,7 +156,6 @@ def admin_student_profile(request, user_uid):
     current_balance = enrollments.aggregate(total=Sum('course__price'))['total'] or 0
     
     # Calculate Yesterday Balance (Enrollments from yesterday)
-    from django.utils import timezone
     from datetime import timedelta
     yesterday = timezone.now().date() - timedelta(days=1)
     yesterday_balance = enrollments.filter(enrolled_at__date=yesterday).aggregate(total=Sum('course__price'))['total'] or 0
@@ -205,7 +208,6 @@ def admin_teacher_profile(request, user_uid):
     current_balance = all_enrollments.aggregate(total=Sum('course__price'))['total'] or 0
     
     # Calculate Yesterday Revenue
-    from django.utils import timezone
     from datetime import timedelta
     yesterday = timezone.now().date() - timedelta(days=1)
     yesterday_balance = all_enrollments.filter(enrolled_at__date=yesterday).aggregate(total=Sum('course__price'))['total'] or 0
@@ -909,7 +911,6 @@ def reject_lesson(request, lesson_uid):
 def approve_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from accounts.views import create_notification
-    from django.utils import timezone
     from accounts.utils.storage_manager import StorageManager
     
     resource = get_object_or_404(CourseResource, uid=resource_uid)
@@ -1007,7 +1008,6 @@ def approve_resource(request, resource_uid):
 def reject_resource(request, resource_uid):
     from accounts.models import CourseResource
     from accounts.views import create_notification
-    from django.utils import timezone
     resource = get_object_or_404(CourseResource, uid=resource_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason')
@@ -1398,13 +1398,10 @@ def admin_restore_course(request, course_uid):
         
     return redirect('deleted_courses')
 
-from accounts.models import CustomUser, Notification, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
-from axes.models import AccessAttempt
-import os
-
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def enterprise_monitor(request):
+    from axes.models import AccessAttempt
     # 1. Backup Status
     last_backup_time = "Never"
     last_backup_status = "STALE"
