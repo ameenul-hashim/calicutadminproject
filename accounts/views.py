@@ -1314,10 +1314,10 @@ def submit_course_approval(request, course_uid):
         
     return redirect('my_courses')
 
+@login_required
 def logout_view(request):
     if not request.user.is_authenticated:
         return redirect('login')
-        
     user_type = request.user.user_type
     is_staff = getattr(request.user, 'is_staff', False)
     
@@ -2085,9 +2085,12 @@ def init_youtube_upload(request):
 
 
 from django.views.decorators.csrf import csrf_exempt
+from django_ratelimit.decorators import ratelimit
+
 @csrf_exempt
+@ratelimit(key='ip', rate='2/hour', method='POST', block=True)
 def trigger_backup(request):
-    """Triggers backup via external cron service (cron-job.org etc)."""
+    """Triggers encrypted backup. Protected by rate limit + token auth."""
     import json, subprocess, sys, os
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -2095,22 +2098,28 @@ def trigger_backup(request):
         body = json.loads(request.body)
         token = body.get('token', '')
         expected = os.getenv('BACKUP_TOKEN', '')
-        if expected and token != expected:
-            return JsonResponse({'error': 'Invalid token'}, status=403)
+        if not expected or token != expected:
+            logger.warning(f"Unauthorized backup attempt from {request.META.get('REMOTE_ADDR')}")
+            return JsonResponse({'error': 'Forbidden'}, status=403)
     except:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'error': 'Bad request'}, status=400)
 
     try:
         manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
         result = subprocess.run(
-            [sys.executable, manage_py, 'backup_all'],
+            [sys.executable, manage_py, 'backup_all', '--retention'],
             capture_output=True, text=True, timeout=300
         )
+        logger.info(f"Backup {'succeeded' if result.returncode == 0 else 'failed'}")
         return JsonResponse({
             'success': result.returncode == 0,
             'output': result.stdout[-500:],
             'error': result.stderr[-500:],
         })
+    except subprocess.TimeoutExpired:
+        logger.error("Backup timed out after 300s")
+        return JsonResponse({'error': 'Backup timed out'}, status=504)
     except Exception as e:
+        logger.error(f"Backup failed: {e}")
         return JsonResponse({'error': str(e)}, status=500)
 
