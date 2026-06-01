@@ -6,7 +6,7 @@
 {% block page_header %}
     <div>
         <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b; margin: 0;">Edit Profile</h1>
-        <p style="color: #64748b;">Choose your avatar, update your username or password</p>
+        <p style="color: #64748b;">Update your profile picture and credentials</p>
     </div>
 {% endblock %}
 
@@ -282,18 +282,9 @@
 
     {% include 'includes/messages.html' %}
 
-    <form method="POST" id="profileForm">
+    <!-- ════ Form 1: Avatar Update ════ -->
+    <form method="POST" id="avatarForm">
         {% csrf_token %}
-
-        <!-- Current Info (Read-only) -->
-        <div class="field-group">
-            <label>Email Address</label>
-            <input type="text" value="{{ user.email }}" disabled>
-            <div class="hint">Email cannot be changed here.</div>
-        </div>
-
-        <!-- ════ Avatar Selection ════ -->
-        <hr class="section-divider">
         <div class="section-title">🖼️ Choose Your Avatar</div>
         <div class="section-desc">Select a professional avatar that best represents you.</div>
         <div class="avatar-grid">
@@ -304,71 +295,66 @@
             {% endfor %}
         </div>
         <input type="hidden" name="avatar_url" id="avatarUrlInput">
-        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select one of the avatars above.</p>
+        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select an avatar above then click Update.</p>
+        <button type="submit" class="btn-save" id="avatarSubmitBtn">🖼️ Update Profile Picture</button>
+    </form>
 
-                <!-- ════ Manage Credentials Toggle ════ -->
-        <button type="button" onclick="toggleCredSection()" id="credToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-top: 1rem;">
-            🔐 Manage Credentials
-        </button>
-
-        <div id="credSection" style="display: none; margin-top: 1.5rem;">
-            <!-- Username Section -->
-            <hr class="section-divider">
-            <div class="section-title">👤 Change Username</div>
-            <div class="section-desc">Your current username is <strong>@{{ user.username }}</strong></div>
-
-            <div class="field-group">
-                <label for="new_username">New Username</label>
-                <div class="input-with-icon">
-                    <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value="">
-                </div>
-                <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
-                <div class="hint">Leave blank to keep your current username.</div>
+    <!-- ════ Form 2: Credentials Update ════ -->
+    <hr class="section-divider">
+    <form method="POST" id="credForm">
+        {% csrf_token %}
+        <div class="section-title">👤 Change Username</div>
+        <div class="section-desc">Your current username is <strong>@{{ user.username }}</strong></div>
+        <div class="field-group">
+            <label for="new_username">New Username</label>
+            <div class="input-with-icon">
+                <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value="">
             </div>
-
-            <!-- Password Section -->
-            <hr class="section-divider">
-            <div class="section-title">🔒 Change Password</div>
-            <div class="section-desc">Update your login password below.</div>
-
-            <div class="field-group">
-                <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
-                <div class="input-with-icon">
-                    <input type="password" id="current_password" name="current_password" placeholder="Enter current password" autocomplete="current-password">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('current_password', this)" tabindex="-1">👁️</button>
-                </div>
-            </div>
-
-            <div class="field-group">
-                <label for="new_password">New Password</label>
-                <div class="input-with-icon">
-                    <input type="password" id="new_password" name="new_password" placeholder="Create a strong password" autocomplete="new-password">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('new_password', this)" tabindex="-1">👁️</button>
-                </div>
-                <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
-                <div class="hint" id="strengthText">Enter a password to see strength.</div>
-                <div class="requirements">
-                    <p>🔒 Password Requirements:</p>
-                    <ul id="reqList">
-                        <li id="reqLen" class="failed">✗ At least 8 characters</li>
-                        <li id="reqUpper" class="failed">✗ At least one uppercase letter (A-Z)</li>
-                        <li id="reqLower" class="failed">✗ At least one lowercase letter (a-z)</li>
-                        <li id="reqSpecial" class="failed">✗ At least one special character (@$!%*?&#)</li>
-                    </ul>
-                </div>
-            </div>
-
-            <div class="field-group">
-                <label for="confirm_password">Confirm New Password</label>
-                <div class="input-with-icon">
-                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password" autocomplete="new-password">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('confirm_password', this)" tabindex="-1">👁️</button>
-                </div>
-                <div class="hint" id="matchText"></div>
-            </div>
-
-            <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 1.5rem;">Update Profile</button>
+            <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
+            <div class="hint">Leave blank to keep your current username.</div>
         </div>
+
+        <hr class="section-divider">
+        <div class="section-title">🔒 Change Password</div>
+        <div class="section-desc">Update your login password below.</div>
+
+        <div class="field-group">
+            <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
+            <div class="input-with-icon">
+                <input type="password" id="current_password" name="current_password" placeholder="Enter current password" autocomplete="current-password">
+                <button type="button" class="toggle-pw" onclick="togglePassword('current_password', this)" tabindex="-1">👁️</button>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="new_password">New Password</label>
+            <div class="input-with-icon">
+                <input type="password" id="new_password" name="new_password" placeholder="Create a strong password" autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="togglePassword('new_password', this)" tabindex="-1">👁️</button>
+            </div>
+            <div class="strength-bar"><div class="strength-bar-fill" id="strengthFill"></div></div>
+            <div class="hint" id="strengthText">Enter a password to see strength.</div>
+            <div class="requirements">
+                <p>🔒 Password Requirements:</p>
+                <ul id="reqList">
+                    <li id="reqLen" class="failed">✗ At least 8 characters</li>
+                    <li id="reqUpper" class="failed">✗ At least one uppercase letter (A-Z)</li>
+                    <li id="reqLower" class="failed">✗ At least one lowercase letter (a-z)</li>
+                    <li id="reqSpecial" class="failed">✗ At least one special character (@$!%*?&#)</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="field-group">
+            <label for="confirm_password">Confirm New Password</label>
+            <div class="input-with-icon">
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password" autocomplete="new-password">
+                <button type="button" class="toggle-pw" onclick="togglePassword('confirm_password', this)" tabindex="-1">👁️</button>
+            </div>
+            <div class="hint" id="matchText"></div>
+        </div>
+
+        <button type="submit" class="btn-save" id="credSubmitBtn" style="margin-top: 1.5rem;">🔐 Update Credentials</button>
     </form>
 </div>
 
@@ -397,7 +383,6 @@
             .catch(() => {});
     });
 
-    // Password visibility toggle
     function togglePassword(fieldId, btn) {
         const input = document.getElementById(fieldId);
         if (input.type === 'password') {
@@ -409,22 +394,7 @@
         }
     }
 
-    function toggleCredSection() {
-        const section = document.getElementById('credSection');
-        const btn = document.getElementById('credToggleBtn');
-        if (section.style.display === 'none') {
-            section.style.display = 'block';
-            section.style.animation = 'slideDown 0.3s ease';
-            btn.textContent = '✕ Close Credentials';
-            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-        } else {
-            section.style.display = 'none';
-            btn.textContent = '🔐 Manage Credentials';
-            btn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
-        }
-    }
-
-    // Avatar selection
+    // Avatar selection + preview
     const avatarOptions = document.querySelectorAll('.avatar-option');
     const avatarUrlInput = document.getElementById('avatarUrlInput');
     const previewContainer = document.getElementById('previewContainer');
@@ -445,7 +415,7 @@
     const matchText = document.getElementById('matchText');
     const strengthFill = document.getElementById('strengthFill');
     const strengthText = document.getElementById('strengthText');
-    const submitBtn = document.getElementById('submitBtn');
+    const credSubmitBtn = document.getElementById('credSubmitBtn');
 
     function validatePassword() {
         const val = newPw.value;
@@ -508,68 +478,65 @@
     newPw.addEventListener('input', validatePassword);
     confirmPw.addEventListener('input', validatePassword);
 
-    // AJAX form submission
-    document.getElementById('profileForm').addEventListener('submit', function(e) {
+    // ─── Form 1: Avatar submit ───
+    document.getElementById('avatarForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const btn = document.getElementById('avatarSubmitBtn');
+        if (!avatarUrlInput.value) {
+            showToast('Please select an avatar first.', 'error');
+            return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+        const formData = new FormData(this);
+        fetch(window.location.href, {
+            method: 'POST', body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest',
+                      'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
+        })
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => location.reload(), 1500); }
+            else { showToast(d.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; }
+        })
+        .catch(() => { showToast('Connection error', 'error'); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; });
+    });
 
-        const hasAvatar = avatarUrlInput.value;
+    // ─── Form 2: Credentials submit ───
+    document.getElementById('credForm').addEventListener('submit', function(e) {
+        e.preventDefault();
         const newUsername = document.getElementById('new_username').value.trim();
         const currPw = document.getElementById('current_password').value;
         const newPwVal = newPw.value;
         const confirmVal = confirmPw.value;
 
-        if (!hasAvatar && !newUsername && !newPwVal) {
+        if (!newUsername && !newPwVal) {
             showToast('No changes to save.', 'error');
             return;
         }
-
         if (newPwVal) {
-            if (!currPw) {
-                showToast('Current password is required to set a new password.', 'error');
-                return;
-            }
-            if (newPwVal !== confirmVal) {
-                showToast('New passwords do not match.', 'error');
-                return;
-            }
+            if (!currPw) { showToast('Current password is required.', 'error'); return; }
+            if (newPwVal !== confirmVal) { showToast('Passwords do not match.', 'error'); return; }
         }
 
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Updating...';
-
+        credSubmitBtn.disabled = true;
+        credSubmitBtn.textContent = 'Updating...';
         const formData = new FormData(this);
         fetch(window.location.href, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+            method: 'POST', body: formData,
+            headers: {'X-Requested-With': 'XMLHttpRequest',
+                      'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showToast(data.message, 'success');
-                setTimeout(() => { location.reload(); }, 1500);
-            } else {
-                showToast(data.message || 'Update failed', 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Update Profile';
-            }
+        .then(r => r.json())
+        .then(d => {
+            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => location.reload(), 1500); }
+            else { showToast(d.message || 'Failed', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; }
         })
-        .catch(error => {
-            showToast('A connection error occurred.', 'error');
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Update Profile';
-        });
+        .catch(() => { showToast('Connection error', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; });
     });
 
     function showToast(msg, type) {
-        if (window.Toast) {
-            window.Toast.show(msg, type);
-        } else {
-            alert(msg);
-        }
+        if (window.Toast) { window.Toast.show(msg, type); } else { alert(msg); }
     }
 </script>
 {% endblock %}
