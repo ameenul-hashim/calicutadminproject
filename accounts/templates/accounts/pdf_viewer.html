@@ -1,0 +1,185 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>{{ title }} | PDF Viewer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0f172a; }
+#toolbar {
+  height:52px; background:#1e293b; border-bottom:1px solid #334155;
+  display:flex; align-items:center; padding:0 8px; gap:6px; flex-shrink:0; 
+  -webkit-user-select:none; user-select:none;
+}
+#toolbar button, #toolbar a {
+  background:#334155; border:none; color:#e2e8f0; width:38px; height:38px;
+  border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font-size:1.1rem; text-decoration:none; transition:background 0.15s; flex-shrink:0;
+}
+#toolbar button:hover, #toolbar a:hover { background:#475569; }
+#toolbar button:active { background:#0ea5e9; }
+#page-info {
+  flex:1; text-align:center; font-size:0.85rem; font-weight:600; color:#94a3b8;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+}
+#page-input {
+  width:48px; background:#0f172a; border:1px solid #334155; border-radius:6px;
+  color:#e2e8f0; font-size:0.85rem; font-weight:600; text-align:center;
+  padding:4px 0; outline:none;
+}
+#page-input:focus { border-color:#0ea5e9; }
+#page-total { color:#64748b; }
+#zoom-level {
+  color:#94a3b8; font-size:0.75rem; font-weight:600; min-width:40px; text-align:center;
+}
+#main-area {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  overflow:auto; position:relative; -webkit-overflow-scrolling:touch;
+}
+#pdf-canvas {
+  display:block; box-shadow:0 2px 20px rgba(0,0,0,0.4);
+  max-width:100%; height:auto; background:white;
+}
+#loading-overlay {
+  position:fixed; inset:0; background:#0f172a; z-index:100;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+}
+.spinner { width:44px; height:44px; border:3px solid #334155; border-top-color:#10b981; border-radius:50%; animation:spin 1s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#loading-overlay p { color:#94a3b8; font-size:0.9rem; }
+#error-overlay {
+  display:none; position:fixed; inset:0; background:#0f172a; z-index:100;
+  flex-direction:column; align-items:center; justify-content:center; gap:16px; padding:2rem; text-align:center;
+}
+#error-overlay h3 { color:#f87171; font-size:1.1rem; }
+#error-overlay p { color:#94a3b8; font-size:0.88rem; max-width:360px; }
+#error-overlay button {
+  background:#10b981; color:white; border:none; padding:10px 24px; border-radius:10px; font-size:0.95rem; font-weight:700; cursor:pointer;
+}
+#body-wrap { display:flex; flex-direction:column; height:100%; }
+@media (max-width:480px) {
+  #toolbar { height:48px; padding:0 6px; gap:4px; }
+  #toolbar button, #toolbar a { width:34px; height:34px; font-size:1rem; }
+  #page-info { font-size:0.78rem; }
+  #page-input { width:40px; font-size:0.78rem; }
+}
+</style>
+</head>
+<body>
+<div id="body-wrap">
+  <div id="toolbar">
+    <button onclick="goBack()" title="Back">←</button>
+    <a id="download-btn" href="#" download title="Download">⬇</a>
+    <div id="page-info">
+      <input id="page-input" type="number" min="1" value="1" onchange="goToPage(this.value)">
+      <span id="page-total">/ 0</span>
+    </div>
+    <button onclick="zoomOut()" title="Zoom Out">−</button>
+    <span id="zoom-level">100%</span>
+    <button onclick="zoomIn()" title="Zoom In">+</button>
+  </div>
+  <div id="main-area">
+    <canvas id="pdf-canvas"></canvas>
+  </div>
+</div>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p>Loading PDF…</p>
+</div>
+
+<div id="error-overlay">
+  <span style="font-size:3rem;">⚠️</span>
+  <h3>Failed to Load PDF</h3>
+  <p>This content is blocked. Contact the site owner to fix the issue.</p>
+  <button onclick="retryLoad()">↺ Retry</button>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+
+var PDF_URL = '{{ signed_url|escapejs }}';
+var TITLE = '{{ title|escapejs }}';
+
+var pdfDoc = null;
+var currentPage = 1;
+var currentZoom = 1.0;
+var canvas = document.getElementById('pdf-canvas');
+var ctx = canvas.getContext('2d');
+var pageInput = document.getElementById('page-input');
+var pageTotal = document.getElementById('page-total');
+var zoomLevel = document.getElementById('zoom-level');
+var loadingOverlay = document.getElementById('loading-overlay');
+var errorOverlay = document.getElementById('error-overlay');
+
+document.getElementById('download-btn').href = '/resource/{{ uid }}/download/';
+
+function loadPDF() {
+  loadingOverlay.style.display = 'flex';
+  errorOverlay.style.display = 'none';
+  pdfjsLib.getDocument(PDF_URL).promise.then(function(pdf) {
+    pdfDoc = pdf;
+    pageTotal.textContent = '/ ' + pdf.numPages;
+    pageInput.max = pdf.numPages;
+    loadingOverlay.style.display = 'none';
+    renderPage(currentPage);
+  }).catch(function(err) {
+    console.error('PDF load error:', err);
+    loadingOverlay.style.display = 'none';
+    errorOverlay.style.display = 'flex';
+  });
+}
+
+function renderPage(num) {
+  if (!pdfDoc) return;
+  pdfDoc.getPage(num).then(function(page) {
+    var viewport = page.getViewport({ scale: currentZoom });
+    var pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = viewport.width * pixelRatio;
+    canvas.height = viewport.height * pixelRatio;
+    canvas.style.width = Math.min(viewport.width, window.innerWidth - 32) + 'px';
+    canvas.style.height = 'auto';
+    ctx.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    var renderContext = { canvasContext: ctx, viewport: viewport };
+    page.render(renderContext);
+  });
+  currentPage = num;
+  pageInput.value = num;
+}
+
+function goToPage(val) {
+  var p = parseInt(val);
+  if (!pdfDoc || p < 1 || p > pdfDoc.numPages) { pageInput.value = currentPage; return; }
+  renderPage(p);
+}
+
+function nextPage() { if (pdfDoc && currentPage < pdfDoc.numPages) renderPage(currentPage + 1); }
+function prevPage() { if (pdfDoc && currentPage > 1) renderPage(currentPage - 1); }
+function goBack() { window.history.back(); }
+
+function zoomIn() {
+  currentZoom = Math.min(currentZoom + 0.25, 3.0);
+  zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+  if (pdfDoc) renderPage(currentPage);
+}
+function zoomOut() {
+  currentZoom = Math.max(currentZoom - 0.25, 0.25);
+  zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+  if (pdfDoc) renderPage(currentPage);
+}
+
+function retryLoad() { loadPDF(); }
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); nextPage(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); prevPage(); }
+  if (e.key === '+' || e.key === '=') { e.preventDefault(); zoomIn(); }
+  if (e.key === '-') { e.preventDefault(); zoomOut(); }
+});
+
+loadPDF();
+</script>
+</body>
+</html>
