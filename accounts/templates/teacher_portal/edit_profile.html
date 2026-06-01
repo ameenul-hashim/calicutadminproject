@@ -6,7 +6,7 @@
 {% block page_header %}
     <div>
         <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b; margin: 0;">Edit Profile</h1>
-        <p style="color: #64748b;">Update your username and password</p>
+        <p style="color: #64748b;">Choose your avatar, update your username or password</p>
     </div>
 {% endblock %}
 
@@ -292,37 +292,19 @@
             <div class="hint">Email cannot be changed here.</div>
         </div>
 
-        <!-- ════ Avatar Selection Toggle ════ -->
-        <button type="button" onclick="toggleAvatarSection()" id="avatarToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); margin-bottom: 0;">
-            🖼️ Choose Avatar
-        </button>
-
-        <div id="avatarSection" style="display: none; margin-top: 1.5rem;">
-            <hr class="section-divider">
-            <div class="section-title">🖼️ Premium Avatar Selection</div>
-            <div class="section-desc">Choose a professional avatar that best represents you.</div>
-            <div class="avatar-grid">
-                {% for avatar in avatars %}
-                <div class="avatar-option" data-url="{{ avatar }}">
-                    <img src="{{ avatar }}" alt="Avatar">
-                </div>
-                {% endfor %}
+        <!-- ════ Avatar Selection ════ -->
+        <hr class="section-divider">
+        <div class="section-title">🖼️ Choose Your Avatar</div>
+        <div class="section-desc">Select a professional avatar that best represents you.</div>
+        <div class="avatar-grid">
+            {% for avatar in avatars %}
+            <div class="avatar-option" data-url="{{ avatar }}">
+                <img src="{{ avatar }}" alt="Avatar">
             </div>
-                    <input type="hidden" name="avatar_url" id="avatarUrlInput">
-                    <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select one of the high-quality professional avatars above.</p>
-                </div>
-
-                <!-- Upload Your Own Photo -->
-                <div style="margin-top: 1rem; text-align: center;">
-                    <hr class="section-divider">
-                    <div class="section-title">📷 Or Upload Your Own Photo</div>
-                    <div class="section-desc">Upload a profile photo from your device.</div>
-                    <label for="profilePhotoInput" style="display: inline-block; padding: 0.7rem 1.5rem; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 0.75rem; cursor: pointer; color: #475569; font-weight: 600; font-size: 0.85rem; margin-top: 0.5rem; transition: all 0.2s;">
-                        📂 Choose Photo
-                    </label>
-                    <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/*" style="display: none;">
-                    <p id="photoName" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"></p>
-                </div>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="avatar_url" id="avatarUrlInput">
+        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select one of the avatars above.</p>
 
                 <!-- ════ Manage Credentials Toggle ════ -->
         <button type="button" onclick="toggleCredSection()" id="credToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-top: 1rem;">
@@ -415,17 +397,6 @@
             .catch(() => {});
     });
 
-    // Photo upload file name display
-    document.getElementById('profilePhotoInput').addEventListener('change', function() {
-        const nameEl = document.getElementById('photoName');
-        if (this.files && this.files[0]) {
-            nameEl.textContent = 'Selected: ' + this.files[0].name;
-            nameEl.style.color = '#10b981';
-        } else {
-            nameEl.textContent = '';
-        }
-    });
-
     // Password visibility toggle
     function togglePassword(fieldId, btn) {
         const input = document.getElementById(fieldId);
@@ -435,21 +406,6 @@
         } else {
             input.type = 'password';
             btn.textContent = '👁️';
-        }
-    }
-
-    // Avatar section toggle
-    function toggleAvatarSection() {
-        const section = document.getElementById('avatarSection');
-        const btn = document.getElementById('avatarToggleBtn');
-        if (section.style.display === 'none') {
-            section.style.display = 'block';
-            btn.textContent = '✕ Close Avatar Selection';
-            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-        } else {
-            section.style.display = 'none';
-            btn.textContent = '🖼️ Choose Avatar';
-            btn.style.background = 'linear-gradient(135deg, #8b5cf6, #7c3aed)';
         }
     }
 
@@ -557,13 +513,12 @@
         e.preventDefault();
 
         const hasAvatar = avatarUrlInput.value;
-        const hasPhoto = document.getElementById('profilePhotoInput').files.length > 0;
         const newUsername = document.getElementById('new_username').value.trim();
         const currPw = document.getElementById('current_password').value;
         const newPwVal = newPw.value;
         const confirmVal = confirmPw.value;
 
-        if (!hasAvatar && !hasPhoto && !newUsername && !newPwVal) {
+        if (!hasAvatar && !newUsername && !newPwVal) {
             showToast('No changes to save.', 'error');
             return;
         }
