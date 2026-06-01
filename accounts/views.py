@@ -1344,12 +1344,18 @@ def edit_profile(request):
         from django.contrib.auth import update_session_auth_hash
         import re
 
+        changes_made = False
+        password_changed = False
+        avatar_changed = False
+
         new_username = request.POST.get('new_username')
         if new_username:
             new_username = new_username.strip()
             if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
                 return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
-            request.user.username = new_username
+            if new_username != request.user.username:
+                request.user.username = new_username
+                changes_made = True
 
         new_password = request.POST.get('new_password')
         if new_password:
@@ -1364,43 +1370,39 @@ def edit_profile(request):
                 return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
                 
             request.user.set_password(new_password)
-            
-        if new_username or new_password:
-            request.user.save()
-            if new_password:
-                update_session_auth_hash(request, request.user)
-            return JsonResponse({'status': 'success', 'message': '✅ Credentials updated successfully!'})
+            changes_made = True
+            password_changed = True
 
         avatar_url = request.POST.get('avatar_url')
         if avatar_url:
             request.user.image = avatar_url
-            request.user.save(update_fields=['image'])
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
-                return JsonResponse({'status': 'success', 'message': '✅ Avatar updated successfully!'})
-            
-            messages.success(request, '✅ Avatar updated successfully!')
-            return redirect('profile')
+            changes_made = True
+            avatar_changed = True
 
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
-            # Objective: Accept any size up to 2GB and process
-            MAX_SIZE = 2 * 1024 * 1024 * 1024 # 2GB
+            MAX_SIZE = 2 * 1024 * 1024 * 1024
             if profile_photo.size > MAX_SIZE:
                 return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 2GB allowed).'}, status=400)
             
             from .utils.cloudinary_helpers import update_image
             if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
-                # Support both AJAX and Standard Form Submission
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.POST.get('ajax') == 'true':
-                    return JsonResponse({'status': 'success', 'message': '✅ Profile photo updated successfully!'})
-                
-                messages.success(request, '✅ Profile photo updated successfully!')
-                return redirect('profile')
+                changes_made = True
+                avatar_changed = True
             else:
                 return JsonResponse({'status': 'error', 'message': 'Failed to upload photo. Please try again.'}, status=500)
+
+        if changes_made:
+            request.user.save()
+            if password_changed:
+                update_session_auth_hash(request, request.user)
+
+            if avatar_changed and not new_username and not new_password:
+                return JsonResponse({'status': 'success', 'message': '✅ Avatar updated successfully!'})
+            
+            return JsonResponse({'status': 'success', 'message': '✅ Profile updated successfully!'})
         else:
-            return JsonResponse({'status': 'error', 'message': 'Please select an avatar or photo.'}, status=400)
+            return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
     
     if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
         # 10 Professional Admin Avatars (5 Male, 5 Female)
@@ -1428,54 +1430,54 @@ def teacher_edit_profile(request):
         new_password = request.POST.get('new_password', '')
         confirm_password = request.POST.get('confirm_password', '')
         current_password = request.POST.get('current_password', '')
+        avatar_url = request.POST.get('avatar_url', '')
 
         changes_made = False
+        password_changed = False
 
         # --- Username Change ---
         if new_username and new_username != request.user.username:
             if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
-                messages.error(request, "This username is already taken.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
             request.user.username = new_username
             changes_made = True
 
         # --- Password Change ---
         if new_password:
             if not current_password:
-                messages.error(request, "Current password is required to set a new password.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Current password is required.'}, status=400)
             if not request.user.check_password(current_password):
-                messages.error(request, "Current password is incorrect.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Current password is incorrect.'}, status=400)
             if new_password != confirm_password:
-                messages.error(request, "New passwords do not match.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
             if len(new_password) < 8:
-                messages.error(request, "Password must be at least 8 characters long.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Password must be at least 8 characters.'}, status=400)
             if not re.search(r'[A-Z]', new_password):
-                messages.error(request, "Password must contain at least one uppercase letter.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Password needs an uppercase letter.'}, status=400)
             if not re.search(r'[a-z]', new_password):
-                messages.error(request, "Password must contain at least one lowercase letter.")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Password needs a lowercase letter.'}, status=400)
             if not re.search(r'[@$!%*?&#]', new_password):
-                messages.error(request, "Password must contain at least one special character (@$!%*?&#).")
-                return redirect('teacher_edit_profile')
+                return JsonResponse({'status': 'error', 'message': 'Password needs a special character.'}, status=400)
             request.user.set_password(new_password)
+            changes_made = True
+            password_changed = True
+
+        # --- Avatar Change ---
+        if avatar_url:
+            request.user.image = avatar_url
             changes_made = True
 
         if changes_made:
             request.user.save()
-            if new_password:
+            if password_changed:
                 update_session_auth_hash(request, request.user)
-            messages.success(request, "✅ Profile credentials updated successfully! You can now login with your new credentials.")
+            return JsonResponse({'status': 'success', 'message': '✅ Profile updated successfully!'})
         else:
-            messages.info(request, "No changes were made.")
+            return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
 
-        return redirect('teacher_edit_profile')
-
-    return render(request, 'teacher_portal/edit_profile.html', {'user': request.user})
+    avatars = [f"/static/avatars/teacher_m_{i}.png" for i in range(5)] + \
+              [f"/static/avatars/teacher_f_{i}.png" for i in range(5)]
+    return render(request, 'teacher_portal/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
 
 @login_required

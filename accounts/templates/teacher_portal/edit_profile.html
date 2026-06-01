@@ -197,20 +197,65 @@
     .toggle-pw:hover {
         color: #6366f1;
     }
+    .avatar-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        justify-items: center;
+        margin-top: 1.5rem;
+    }
+    .avatar-option {
+        width: 85px;
+        height: 110px;
+        border-radius: 0.4rem;
+        cursor: pointer;
+        border: 2px solid transparent;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #f1f5f9;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    }
+    .avatar-option img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+        transition: transform 0.3s;
+    }
+    .avatar-option:hover {
+        transform: scale(1.1);
+        box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2);
+    }
+    .avatar-option:hover img {
+        transform: scale(1.05);
+    }
+    .avatar-option.selected {
+        border-color: #6366f1;
+        transform: scale(1.1);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+    }
 
     @media (max-width: 640px) {
         .profile-edit-card {
             padding: 1.5rem;
             border-radius: 1rem;
         }
+        .avatar-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 20px !important;
+        }
+        .avatar-option {
+            width: 120px !important;
+            height: 155px !important;
+        }
     }
 </style>
 
 <div class="profile-edit-card">
     <div class="profile-header">
-        <div class="profile-avatar">
+        <div class="profile-avatar" id="previewContainer">
             {% if user.avatar_url %}
-                <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}">
+                <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="previewImg">
             {% else %}
                 <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:#6366f1;font-size:2.5rem;font-weight:800;">
                     {{ user.username|first|upper }}
@@ -220,6 +265,8 @@
         <h2 class="profile-name">{{ user.full_name|default:user.username }}</h2>
         <span class="profile-role">Instructor</span>
     </div>
+
+    {% include 'includes/messages.html' %}
 
     <form method="POST" id="profileForm">
         {% csrf_token %}
@@ -231,8 +278,28 @@
             <div class="hint">Email cannot be changed here.</div>
         </div>
 
+        <!-- ════ Avatar Selection Toggle ════ -->
+        <button type="button" onclick="toggleAvatarSection()" id="avatarToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); margin-bottom: 0;">
+            🖼️ Choose Avatar
+        </button>
+
+        <div id="avatarSection" style="display: none; margin-top: 1.5rem;">
+            <hr class="section-divider">
+            <div class="section-title">🖼️ Premium Avatar Selection</div>
+            <div class="section-desc">Choose a professional avatar that best represents you.</div>
+            <div class="avatar-grid">
+                {% for avatar in avatars %}
+                <div class="avatar-option" data-url="{{ avatar }}">
+                    <img src="{{ avatar }}" alt="Avatar">
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="avatar_url" id="avatarUrlInput">
+            <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select one of the high-quality professional avatars above.</p>
+        </div>
+
         <!-- ════ Manage Credentials Toggle ════ -->
-        <button type="button" onclick="toggleCredSection()" id="credToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-bottom: 0;">
+        <button type="button" onclick="toggleCredSection()" id="credToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-top: 1rem;">
             🔐 Manage Credentials
         </button>
 
@@ -291,7 +358,7 @@
                 <div class="hint" id="matchText"></div>
             </div>
 
-            <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 1.5rem;">Update Credentials</button>
+            <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 1.5rem;">Update Profile</button>
         </div>
     </form>
 </div>
@@ -309,6 +376,21 @@
         }
     }
 
+    // Avatar section toggle
+    function toggleAvatarSection() {
+        const section = document.getElementById('avatarSection');
+        const btn = document.getElementById('avatarToggleBtn');
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            btn.textContent = '✕ Close Avatar Selection';
+            btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+        } else {
+            section.style.display = 'none';
+            btn.textContent = '🖼️ Choose Avatar';
+            btn.style.background = 'linear-gradient(135deg, #8b5cf6, #7c3aed)';
+        }
+    }
+
     function toggleCredSection() {
         const section = document.getElementById('credSection');
         const btn = document.getElementById('credToggleBtn');
@@ -323,6 +405,21 @@
             btn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
         }
     }
+
+    // Avatar selection
+    const avatarOptions = document.querySelectorAll('.avatar-option');
+    const avatarUrlInput = document.getElementById('avatarUrlInput');
+    const previewContainer = document.getElementById('previewContainer');
+
+    avatarOptions.forEach(option => {
+        option.addEventListener('click', function() {
+            avatarOptions.forEach(opt => opt.classList.remove('selected'));
+            this.classList.add('selected');
+            const url = this.getAttribute('data-url');
+            avatarUrlInput.value = url;
+            previewContainer.innerHTML = `<img src="${url}" alt="Avatar" id="previewImg" style="width:100%;height:100%;object-fit:cover;object-position:top;">`;
+        });
+    });
 
     // Live password validation
     const newPw = document.getElementById('new_password');
@@ -350,7 +447,6 @@
         document.getElementById('reqSpecial').className = specialOk ? 'passed' : 'failed';
         document.getElementById('reqSpecial').textContent = (specialOk ? '✓' : '✗') + ' At least one special character (@$!%*?&#)';
 
-        // Strength bar
         let score = 0;
         if (lenOk) score += 25;
         if (upperOk) score += 25;
@@ -380,7 +476,6 @@
             strengthText.style.color = '#94a3b8';
         }
 
-        // Match check
         if (confirm && val !== confirm) {
             matchText.textContent = '✗ Passwords do not match';
             matchText.style.color = '#ef4444';
@@ -395,27 +490,27 @@
     newPw.addEventListener('input', validatePassword);
     confirmPw.addEventListener('input', validatePassword);
 
-    // Form validation on submit
+    // AJAX form submission
     document.getElementById('profileForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const hasAvatar = avatarUrlInput.value;
         const newUsername = document.getElementById('new_username').value.trim();
         const currPw = document.getElementById('current_password').value;
         const newPwVal = newPw.value;
         const confirmVal = confirmPw.value;
 
-        if (!newUsername && !newPwVal) {
-            e.preventDefault();
+        if (!hasAvatar && !newUsername && !newPwVal) {
             showToast('No changes to save.', 'error');
             return;
         }
 
         if (newPwVal) {
             if (!currPw) {
-                e.preventDefault();
                 showToast('Current password is required to set a new password.', 'error');
                 return;
             }
             if (newPwVal !== confirmVal) {
-                e.preventDefault();
                 showToast('New passwords do not match.', 'error');
                 return;
             }
@@ -423,6 +518,32 @@
 
         submitBtn.disabled = true;
         submitBtn.textContent = 'Updating...';
+
+        const formData = new FormData(this);
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showToast(data.message, 'success');
+                setTimeout(() => { location.reload(); }, 1500);
+            } else {
+                showToast(data.message || 'Update failed', 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Update Profile';
+            }
+        })
+        .catch(error => {
+            showToast('A connection error occurred.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update Profile';
+        });
     });
 
     function showToast(msg, type) {
