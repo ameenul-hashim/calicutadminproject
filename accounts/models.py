@@ -128,6 +128,9 @@ class Lesson(models.Model):
     pending_order = models.PositiveIntegerField(null=True, blank=True)
     has_pending_edits = models.BooleanField(default=False, db_index=True)
 
+    youtube_video_id = models.CharField(max_length=100, null=True, blank=True, help_text="YouTube video ID from upload")
+    youtube_upload_status = models.CharField(max_length=20, choices=[('NOT_UPLOADED', 'Not Uploaded'), ('UPLOADING', 'Uploading'), ('UPLOADED', 'Uploaded'), ('FAILED', 'Failed')], default='NOT_UPLOADED', db_index=True)
+    youtube_uploaded_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['order']

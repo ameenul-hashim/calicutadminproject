@@ -1,8 +1,11 @@
 import os
+import logging
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
 from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
@@ -850,7 +853,7 @@ def edit_user_admin(request, user_uid):
 def approve_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
     
-    # If the lesson has pending edits, apply them
+    # Apply pending edits
     if lesson.has_pending_edits:
         if lesson.pending_title:
             lesson.title = lesson.pending_title
@@ -870,19 +873,30 @@ def approve_lesson(request, lesson_uid):
             lesson.order = lesson.pending_order
             lesson.pending_order = None
         lesson.has_pending_edits = False
+
+    # If lesson has a YouTube video, change visibility from PRIVATE to UNLISTED
+    if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED':
+        try:
+            from accounts.utils.youtube_uploader import change_video_visibility
+            change_video_visibility(lesson.youtube_video_id, 'unlisted')
+            lesson.video_url = f"https://www.youtube.com/watch?v={lesson.youtube_video_id}"
+        except Exception as e:
+            logger.error(f"Failed to change YouTube visibility for {lesson.youtube_video_id}: {e}")
+            messages.error(request, f"Lesson approved but failed to update YouTube visibility: {e}")
+            return redirect('admin_view_course_content', course_uid=lesson.course.uid)
         
     lesson.status = 'APPROVED'
     lesson.is_approved = True
     lesson.save()
     create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
     
-    # Notify students enrolled in this course about new content
+    # Notify students
     enrollments = Enrollment.objects.filter(course=lesson.course).select_related('user')
     for enrollment in enrollments:
         if enrollment.user.status == 'ACTIVE':
             create_notification(enrollment.user, f"New content added to your course '{lesson.course.title}': {lesson.title}")
 
-    messages.success(request, f"Lesson '{lesson.title}' approved.")
+    messages.success(request, f"Lesson '{lesson.title}' approved and made visible to students.")
     return redirect('admin_view_course_content', course_uid=lesson.course.uid)
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -890,19 +904,27 @@ def reject_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason')
-        # Objective: Implement resubmission loop for lessons (rejected status)
         lesson_title = lesson.title
         course_uid = lesson.course.uid
         teacher = lesson.course.teacher
-        course_title = lesson.course.title
-        
+
+        # If lesson has a YouTube video, delete it from YouTube
+        if lesson.youtube_video_id:
+            try:
+                from accounts.utils.youtube_uploader import delete_youtube_video
+                delete_youtube_video(lesson.youtube_video_id)
+                lesson.youtube_video_id = None
+                lesson.youtube_upload_status = 'NOT_UPLOADED'
+                lesson.video_url = ''
+            except Exception as e:
+                logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
+
         lesson.status = 'REJECTED'
         lesson.is_approved = False
         lesson.rejection_reason = reason
         lesson.save()
-        
-        # Notify teacher
-        create_notification(teacher, f"Your lesson '{lesson_title}' in course '{course_title}' was rejected. Reason: {reason}. Please edit and resubmit.")
+
+        create_notification(teacher, f"Your lesson '{lesson_title}' was rejected. Reason: {reason}. Please edit and resubmit.")
         messages.warning(request, f"Lesson '{lesson_title}' rejected. The teacher can now edit and resubmit it.")
         return redirect('admin_view_course_content', course_uid=course_uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
