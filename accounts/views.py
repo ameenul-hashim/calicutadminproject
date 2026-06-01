@@ -916,7 +916,7 @@ def add_lesson(request, course_uid):
                     video_file,
                     title=f"{course.title} - {title}",
                     description=f"Lesson: {title}\nCourse: {course.title}\nTeacher: {request.user.full_name or request.user.username}",
-                    privacy_status='private'
+                    privacy_status='unlisted'
                 )
                 youtube_upload_status = 'UPLOADED'
                 video_url = f"https://www.youtube.com/watch?v={youtube_video_id}"
@@ -982,7 +982,7 @@ def edit_lesson(request, lesson_uid):
                     video_file,
                     title=f"{lesson.course.title} - {title}",
                     description=f"Lesson: {title}\nCourse: {lesson.course.title}\nTeacher: {request.user.full_name or request.user.username}",
-                    privacy_status='private'
+                    privacy_status='unlisted'
                 )
                 video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
             except Exception as e:
@@ -1800,12 +1800,7 @@ def access_resource(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
     
-    # Primary: redirect to signed URL (fast, reliable)
-    url = resource.get_signed_url()
-    if url:
-        return redirect(url)
-    
-    # Fallback: stream file bytes directly from Supabase
+    # Primary: stream file bytes directly from Supabase (same as download view)
     try:
         from accounts.utils.storage_manager import supabase as res_supabase
         if res_supabase and resource.firebase_file_path:
@@ -1814,11 +1809,17 @@ def access_resource(request, resource_uid):
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
             file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
             if file_bytes:
+                ext = resource.file_extension or 'pdf'
                 response = HttpResponse(file_bytes, content_type=resource.mime_type or 'application/octet-stream')
-                response['Content-Disposition'] = f'inline; filename="{resource.title}.{resource.file_extension or "pdf"}"'
+                response['Content-Disposition'] = 'inline; filename="' + resource.title + '.' + ext + '"'
                 return response
     except Exception as e:
-        logger.error(f"Resource stream fallback failed for {resource_uid}: {e}")
+        logger.error(f"Resource stream failed for {resource_uid}: {e}")
+    
+    # Fallback: signed URL
+    url = resource.get_signed_url()
+    if url:
+        return redirect(url)
         
     return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
