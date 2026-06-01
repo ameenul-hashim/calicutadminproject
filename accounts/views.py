@@ -2084,4 +2084,33 @@ def init_youtube_upload(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+from django.views.decorators.csrf import csrf_exempt
+@csrf_exempt
+def trigger_backup(request):
+    """Triggers backup via external cron service (cron-job.org etc)."""
+    import json, subprocess, sys, os
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        body = json.loads(request.body)
+        token = body.get('token', '')
+        expected = os.getenv('BACKUP_TOKEN', '')
+        if expected and token != expected:
+            return JsonResponse({'error': 'Invalid token'}, status=403)
+    except:
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+
+    try:
+        manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
+        result = subprocess.run(
+            [sys.executable, manage_py, 'backup_all'],
+            capture_output=True, text=True, timeout=300
+        )
+        return JsonResponse({
+            'success': result.returncode == 0,
+            'output': result.stdout[-500:],
+            'error': result.stderr[-500:],
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
