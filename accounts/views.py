@@ -902,13 +902,14 @@ def add_lesson(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
         title = request.POST.get('title')
-        video_url = request.POST.get('video_url')
+        video_source = request.POST.get('video_source', 'file')
+        video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
 
         youtube_video_id = None
         youtube_upload_status = 'NOT_UPLOADED'
 
-        if video_file:
+        if video_source == 'file' and video_file:
             try:
                 from .utils.youtube_uploader import upload_video
                 youtube_video_id = upload_video(
@@ -918,15 +919,21 @@ def add_lesson(request, course_uid):
                     privacy_status='private'
                 )
                 youtube_upload_status = 'UPLOADED'
+                video_url = f"https://www.youtube.com/watch?v={youtube_video_id}"
             except Exception as e:
                 logger.error(f"YouTube upload failed for lesson '{title}': {e}")
                 messages.error(request, f"Video upload to YouTube failed: {str(e)}. Please try again.")
                 return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+        elif video_source == 'url' and video_url:
+            video_url = video_url.strip()
+        else:
+            messages.error(request, "Please provide a video (upload MP4 or paste YouTube link).")
+            return render(request, 'teacher_portal/add_lesson.html', {'course': course})
 
         lesson = Lesson.objects.create(
             course=course,
             title=title,
-            video_url=video_url or '',
+            video_url=video_url,
             video_file=None,
             order=request.POST.get('order', course.lessons.count() + 1),
             status='PENDING',
@@ -941,10 +948,10 @@ def add_lesson(request, course_uid):
             lesson.save(update_fields=['youtube_uploaded_at'])
 
         if course.status == 'PUBLISHED' or course.is_approved:
-            messages.success(request, f"Lesson '{title}' added! Video uploaded to YouTube (Private). It will be visible to students once approved by admin.")
+            messages.success(request, f"Lesson '{title}' added! Video will be visible to students once approved by admin.")
             notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
         else:
-            messages.success(request, f"Lesson '{title}' added successfully! Video uploaded to YouTube (Private). Submit for admin approval when ready.")
+            messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
             notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
 
         return redirect('course_lessons', course_uid=course.uid)
@@ -956,16 +963,16 @@ def edit_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
         title = request.POST.get('title')
-        video_url = request.POST.get('video_url')
+        video_source = request.POST.get('video_source', 'file')
+        video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
         order = request.POST.get('order', 1)
 
         new_youtube_video_id = None
 
-        if video_file:
+        if video_source == 'file' and video_file:
             try:
                 from .utils.youtube_uploader import upload_video, delete_youtube_video
-                # Delete old YouTube video if replacing
                 if lesson.youtube_video_id:
                     try:
                         delete_youtube_video(lesson.youtube_video_id)
@@ -977,16 +984,17 @@ def edit_lesson(request, lesson_uid):
                     description=f"Lesson: {title}\nCourse: {lesson.course.title}\nTeacher: {request.user.full_name or request.user.username}",
                     privacy_status='private'
                 )
+                video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
             except Exception as e:
                 logger.error(f"YouTube re-upload failed for lesson '{title}': {e}")
                 messages.error(request, f"Video upload to YouTube failed: {str(e)}. Please try again.")
                 return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+        elif video_source == 'url' and video_url:
+            video_url = video_url.strip()
 
         if lesson.is_approved:
             lesson.pending_title = title
             lesson.pending_video_url = video_url
-            if new_youtube_video_id:
-                lesson.pending_video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
             lesson.pending_order = order
             lesson.has_pending_edits = True
             lesson.save()
@@ -1000,9 +1008,7 @@ def edit_lesson(request, lesson_uid):
                 lesson.youtube_upload_status = 'UPLOADED'
                 from django.utils import timezone
                 lesson.youtube_uploaded_at = timezone.now()
-                lesson.video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
-            else:
-                lesson.video_url = video_url
+            lesson.video_url = video_url
             lesson.order = order
             lesson.is_approved = False
             lesson.status = 'PENDING'

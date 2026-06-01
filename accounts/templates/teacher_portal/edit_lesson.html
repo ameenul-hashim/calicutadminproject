@@ -59,6 +59,30 @@
       }
     </script>
     <script>
+        function toggleVideoInput(mode) {
+            const fileGroup = document.getElementById('fileUploadGroup');
+            const urlGroup = document.getElementById('urlUploadGroup');
+            const fileInput = document.getElementById('video_file');
+            const urlInput = document.getElementById('video_url');
+            if (mode === 'file') {
+                fileGroup.style.display = 'block';
+                urlGroup.style.display = 'none';
+                fileInput.required = false;
+                urlInput.required = false;
+            } else {
+                fileGroup.style.display = 'none';
+                urlGroup.style.display = 'block';
+                fileInput.required = false;
+                urlInput.required = false;
+            }
+        }
+        window.addEventListener('DOMContentLoaded', function() {
+            var hasUrl = '{{ lesson.video_url|default:"" }}'.length > 0;
+            if (hasUrl) {
+                document.querySelector('input[name="video_source"][value="url"]').checked = true;
+                toggleVideoInput('url');
+            }
+        });
         document.querySelector('form').addEventListener('submit', function(e) {
             const fileInput = document.getElementById('video_file');
             if (fileInput && fileInput.files.length > 0) {
@@ -114,6 +138,17 @@
                     </div>
                     {% endif %}
                     <div class="input-group">
+                        <label>Video Source</label>
+                        <div style="display:flex;gap:1rem;margin-bottom:1rem;">
+                            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                                <input type="radio" name="video_source" value="file" checked onchange="toggleVideoInput('file')"> Upload MP4
+                            </label>
+                            <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                                <input type="radio" name="video_source" value="url" onchange="toggleVideoInput('url')"> YouTube Link
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group" id="fileUploadGroup">
                         <label for="video_file">Upload New Video (MP4)</label>
                         <input type="file" name="video_file" id="video_file" accept=".mp4,video/mp4">
                         <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Upload a new MP4 to replace the current video. It will be uploaded to Neo Learner's YouTube channel.</p>
@@ -128,7 +163,11 @@
                             <p id="uploadStatus" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;"></p>
                         </div>
                     </div>
-                    <input type="hidden" name="video_url" id="video_url" value="{{ lesson.video_url|default:'' }}">
+                    <div class="input-group" id="urlUploadGroup" style="display:none;">
+                        <label for="video_url">YouTube Video Link</label>
+                        <input type="url" name="video_url" id="video_url" placeholder="https://www.youtube.com/watch?v=..." value="{{ lesson.video_url|default:'' }}">
+                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Paste a YouTube video URL to replace the current video.</p>
+                    </div>
                     <div class="input-group">
                         <label for="order">Lesson Order Number</label>
                         <input type="number" name="order" id="order" value="{{ lesson.order }}" required>

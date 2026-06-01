@@ -37,3 +37,6 @@ pdf_backup/
 
 # Firebase
 firebase-key.json
+
+# One-time utility scripts
+get_youtube_token.py
