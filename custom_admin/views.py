@@ -1126,21 +1126,15 @@ def admin_view_course_content(request, course_uid):
 def storage_dashboard(request):
     from accounts.utils.storage_analytics import get_all_storage_stats
     from accounts.models import CourseResource
-    from django.db.models import Count, Avg
 
     stats = get_all_storage_stats()
-
+    sr = stats.get('supabase_resources', {})
     resources = CourseResource.objects.filter(is_deleted=False)
-    metrics = resources.aggregate(
-        total_count=Count('id'),
-        total_original=Sum('original_size'),
-        total_compressed=Sum('compressed_size'),
-        avg_compressed=Avg('compressed_size')
-    )
-    
-    total_mb = (metrics['total_compressed'] or 0) / (1024 * 1024)
+    total_mb = (sr.get('usage_mb', 0) or 0)
+    total_count = sr.get('total_files', 0)
     max_mb = 1000
     usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
+    avg_bytes = (sr.get('usage_bytes', 0) / total_count) if total_count else 0
 
     notifications = get_notifications(str(request.user.uid))[:10]
     unread_count = get_unread_count(str(request.user.uid))
@@ -1148,8 +1142,9 @@ def storage_dashboard(request):
     return render(request, 'custom_admin/storage_dashboard.html', {
         'stats': stats,
         'resources': resources.order_by('-created_at')[:50],
-        'metrics': metrics,
         'total_mb': round(total_mb, 2),
+        'total_count': total_count,
+        'avg_bytes': round(avg_bytes),
         'usage_percent': round(usage_percent, 1),
         'notifications': notifications,
         'unread_notifications_count': unread_count,
@@ -1466,6 +1461,7 @@ def enterprise_monitor(request):
     from axes.models import AccessAttempt
     from django.db import connection
     from accounts.utils.storage_analytics import get_all_storage_stats
+    from accounts.models import CourseResource
     import time
 
     # 1. Real backup status
@@ -1477,21 +1473,29 @@ def enterprise_monitor(request):
             last_backup_time = f.read().strip()
             last_backup_status = "HEALTHY"
 
-    # 2. Access Logs
+    # Check if Google Drive is configured
+    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
+        os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'utils', 'token.json'))
+
+    # 2. Failed backups count
+    failed_backups = CourseResource.objects.filter(backup_status='FAILED').count()
+
+    # 3. Access Logs
     access_logs = PDFAccessLog.objects.select_related('user').all()[:20]
 
-    # 3. Security Stats
+    # 4. Security Stats
     blocked_ips_count = AccessAttempt.objects.count()
 
-    # 4. Real storage usage from APIs
+    # 5. Real storage usage from APIs
     storage_stats = get_all_storage_stats()
     ss = storage_stats.get('supabase_signup', {})
     sr = storage_stats.get('supabase_resources', {})
     cl = storage_stats.get('cloudinary', {})
     db_stats = storage_stats.get('database', {})
     real_storage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0) + cl.get('storage_used_mb', 0) + db_stats.get('usage_mb', 0)
+    supabase_limit_mb = ss.get('limit_mb', 1024) + sr.get('limit_mb', 1024)
 
-    # 5. Real DB latency
+    # 6. Real DB latency
     db_latency = 0
     try:
         start = time.time()
@@ -1501,7 +1505,7 @@ def enterprise_monitor(request):
     except Exception:
         db_latency = 0
 
-    # 6. Real stats
+    # 7. Real stats
     student_count = CustomUser.objects.filter(user_type='STUDENT').count()
     teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
     course_count = Course.objects.count()
@@ -1509,10 +1513,13 @@ def enterprise_monitor(request):
     context = {
         'last_backup_time': last_backup_time,
         'last_backup_status': last_backup_status,
+        'drive_configured': drive_configured,
+        'failed_backups': failed_backups,
         'access_logs': access_logs,
         'blocked_ips_count': blocked_ips_count,
         'avg_response_time': db_latency,
         'storage_usage': round(real_storage_mb, 1),
+        'supabase_limit_mb': supabase_limit_mb,
         'student_count': student_count,
         'teacher_count': teacher_count,
         'course_count': course_count,
@@ -1640,6 +1647,15 @@ def system_audit_view(request):
     backup_score = 100 if bk_status == 'ONLINE' else 50
     supabase_total_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
 
+    # --- Check backup config ---
+    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
+        os.path.exists(os.path.join(settings.BASE_DIR, 'accounts', 'utils', 'token.json'))
+    from accounts.models import CourseResource
+    failed_backup_count = CourseResource.objects.filter(backup_status='FAILED').count()
+    supabase_usage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
+    supabase_limit_mb = ss.get('limit_mb', 1024)
+    supabase_near_capacity = supabase_usage_mb > (supabase_limit_mb * 0.8)
+
     # --- Free-tier cleanup: auto-purge old records ---
     from datetime import timedelta
     cutoff_90 = timezone.now() - timedelta(days=90)
@@ -1677,6 +1693,11 @@ def system_audit_view(request):
         'firebase_events_24h': 0,
         'firebase_counters': {},
         'firebase_events': [],
+        'drive_configured': drive_configured,
+        'failed_backup_count': failed_backup_count,
+        'supabase_near_capacity': supabase_near_capacity,
+        'supabase_usage_mb': round(supabase_usage_mb, 2),
+        'supabase_limit_mb': supabase_limit_mb,
     }
 
     return render(request, 'custom_admin/system_audit_hub.html', {
@@ -1721,9 +1742,13 @@ def master_audit_summary_view(request):
     else:
         threat_level = 'LOW'
 
-    # 5. Storage & Capacity (estimated from DB counts)
-    db_size_mb = round((student_count * 4.2 + teacher_count * 4.8 + course_count * 9.5) / 1024, 2)
-    supabase_usage_gb = round((student_count * 195) / (1024 * 1024), 3)
+    # 5. Storage & Capacity (real stats)
+    from accounts.utils.storage_analytics import get_all_storage_stats
+    real_stats = get_all_storage_stats()
+    db_size_mb = real_stats.get('database', {}).get('usage_mb', 0)
+    supabase_total_mb = real_stats.get('supabase_signup', {}).get('usage_mb', 0) + real_stats.get('supabase_resources', {}).get('usage_mb', 0)
+    cloudinary_images = real_stats.get('cloudinary', {}).get('total_files', 0)
+    cloudinary_mb = real_stats.get('cloudinary', {}).get('storage_used_mb', 0)
 
     # 6. Billing Safety Audit
     from accounts.utils.billing_safety import billing_guard
@@ -1768,7 +1793,9 @@ def master_audit_summary_view(request):
         },
         'capacity': {
             'db_growth_mb': f"{db_size_mb} MB",
-            'supabase_volume': f"{supabase_usage_gb} GB",
+            'supabase_volume': f"{supabase_total_mb} MB",
+            'cloudinary_images': cloudinary_images,
+            'cloudinary_mb': cloudinary_mb,
             'max_students_capacity': 50000,
             'worker_saturation': '12%',
         },

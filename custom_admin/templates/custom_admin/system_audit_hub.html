@@ -71,6 +71,25 @@
         </div>
     </div>
 
+    {% if audit.supabase_near_capacity or not audit.drive_configured %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert {% if audit.supabase_near_capacity %}alert-warning{% else %}alert-info{% endif %} border-0 rounded-4 shadow-sm mb-0">
+                <i class="fas {% if audit.supabase_near_capacity %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %} me-2"></i>
+                {% if not audit.drive_configured %}
+                Google Drive backup not configured (<code>GOOGLE_DRIVE_CREDENTIALS</code>).
+                {% endif %}
+                {% if audit.supabase_near_capacity %}
+                Supabase nearing free-tier limit: {{ audit.supabase_usage_mb }} MB / {{ audit.supabase_limit_mb }} MB used.
+                {% endif %}
+                {% if audit.failed_backup_count %}
+                <strong>{{ audit.failed_backup_count }} resource(s)</strong> have failed backup.
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Capacity Projections -->
     <div class="row mb-4">
         <div class="col-12">
@@ -206,32 +225,6 @@
                         <div class="progress" style="height: 4px;">
                             <div class="progress-bar bg-success" style="width: 100%"></div>
                         </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Latest Infrastructure Status -->
-            <div class="card audit-card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-server me-2 text-info"></i>Service Health Summary</h5>
-                    <span class="badge bg-info-subtle text-info rounded-pill px-3">{{ audit.infrastructure|length }} Services</span>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush" style="max-height: 220px; overflow-y: auto;">
-                        {% for infra in audit.infrastructure %}
-                        <div class="list-group-item bg-transparent border-light py-2">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-bold small">{{ infra.service }}</span>
-                                <span class="x-small text-muted" style="font-size: 0.65rem;">
-                                    <span class="infrastructure-dot dot-{{ infra.status }}"></span>
-                                    {{ infra.status }}
-                                </span>
-                            </div>
-                            <div class="x-small text-truncate text-muted" style="font-size: 0.7rem;">{{ infra.detail }}</div>
-                        </div>
-                        {% empty %}
-                        <div class="p-4 text-center text-muted small">No services available.</div>
-                        {% endfor %}
                     </div>
                 </div>
             </div>

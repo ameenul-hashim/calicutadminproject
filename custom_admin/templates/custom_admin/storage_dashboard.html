@@ -408,7 +408,7 @@
     <div class="sd-panel" style="margin-bottom:1.5rem;">
         <div class="sd-panel-header">
             <h2 class="sd-panel-title">📦 Compressed Course Resources</h2>
-            <span style="font-size:0.85rem;color:#64748b;">{{ metrics.total_count }} total items · {{ total_mb }} MB compressed</span>
+            <span style="font-size:0.85rem;color:#64748b;">{{ total_count }} total items · {{ total_mb }} MB compressed</span>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
             <div>
@@ -418,7 +418,7 @@
             <div>
                 <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Avg File Size</p>
                 <p style="font-size:1.2rem;font-weight:700;margin:0;">
-                    {% if metrics.avg_compressed %}{{ metrics.avg_compressed|floatformat:0 }} KB{% else %}—{% endif %}
+                    {% if avg_bytes %}{{ avg_bytes|filesizeformat }}{% else %}—{% endif %}
                 </p>
             </div>
             <div>

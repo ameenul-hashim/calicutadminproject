@@ -1484,7 +1484,6 @@ def teacher_edit_profile(request):
         confirm_password = request.POST.get('confirm_password', '')
         current_password = request.POST.get('current_password', '')
         avatar_url = request.POST.get('avatar_url', '')
-        profile_photo = request.FILES.get('profile_photo')
 
         changes_made = False
         password_changed = False
@@ -1522,14 +1521,6 @@ def teacher_edit_profile(request):
             request.user.image_public_id = ''
             changes_made = True
 
-        # --- Photo Upload (file) ---
-        if profile_photo:
-            from .utils.cloudinary_helpers import update_image
-            if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
-                changes_made = True
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Failed to upload photo.'}, status=500)
-
         if changes_made:
             request.user.save()
             if password_changed:
@@ -1538,8 +1529,8 @@ def teacher_edit_profile(request):
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
 
-    avatars = [f"/static/avatars/teacher_m_{i}.png" for i in range(5)] + \
-              [f"/static/avatars/teacher_f_{i}.png" for i in range(5)]
+    avatars = [f"/static/avatars/admin_m_{i}.png" for i in range(5)] + \
+              [f"/static/avatars/admin_f_{i}.png" for i in range(5)]
     return render(request, 'teacher_portal/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
 

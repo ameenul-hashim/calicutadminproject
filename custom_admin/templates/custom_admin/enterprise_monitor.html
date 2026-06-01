@@ -268,9 +268,19 @@
                             <span class="badge {% if blocked_ips_count > 0 %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">{{ blocked_ips_count }}</span>
                         </div>
                     </div>
-                    <div class="alert alert-info mt-4 rounded-4 border-0 small">
-                        <i class="fas fa-info-circle me-2"></i><strong>Live Mode Active:</strong> System is operating under continuous observation with automated failover logic.
+                    {% if failed_backups > 0 %}
+                    <div class="alert alert-warning mt-4 rounded-4 border-0 small py-2">
+                        <i class="fas fa-exclamation-triangle me-2"></i><strong>{{ failed_backups }} resource(s)</strong> have failed backup to Google Drive.
+                        {% if not drive_configured %}
+                        <br><code class="x-small">GOOGLE_DRIVE_CREDENTIALS</code> env var not set — backups will keep failing until configured.
+                        {% endif %}
                     </div>
+                    {% endif %}
+                    {% if not drive_configured and failed_backups == 0 %}
+                    <div class="alert alert-info mt-4 rounded-4 border-0 small py-2">
+                        <i class="fas fa-info-circle me-2"></i>Google Drive backup not configured. Set <code>GOOGLE_DRIVE_CREDENTIALS</code> env var to enable Supabase storage offload.
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
