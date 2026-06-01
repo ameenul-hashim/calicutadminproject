@@ -77,6 +77,15 @@ class Command(BaseCommand):
         if options.get('retention'):
             self._apply_retention()
 
+        # Write heartbeat file for enterprise monitor
+        try:
+            heartbeat = os.path.join(settings.BASE_DIR, 'last_success.txt')
+            with open(heartbeat, 'w') as f:
+                f.write(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+            self.stdout.write(f"  Heartbeat: {heartbeat}")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"  Could not write heartbeat: {e}"))
+
         self.stdout.write(self.style.SUCCESS(
             f"Backup complete: {run_dir} ({_fmt(self.total_bytes)} total)"
         ))
@@ -194,10 +203,26 @@ class Command(BaseCommand):
                 self.stdout.write("  DB integrity: OK")
             else:
                 self.stdout.write(self.style.WARNING(f"  pg_dump failed: {result.stderr[:200]}"))
+                self._backup_db_fallback(run_dir)
         except FileNotFoundError:
-            self.stdout.write(self.style.WARNING("  pg_dump not installed. Skipping."))
+            self.stdout.write(self.style.WARNING("  pg_dump not installed. Using dumpdata fallback."))
+            self._backup_db_fallback(run_dir)
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"  DB backup failed: {e}"))
+            self._backup_db_fallback(run_dir)
+
+    def _backup_db_fallback(self, run_dir):
+        """Fallback: use Django dumpdata if pg_dump is not available."""
+        output = os.path.join(run_dir, 'database_dumpdata.json')
+        try:
+            from django.core import management
+            with open(output, 'w') as f:
+                management.call_command('dumpdata', stdout=f, indent=2, exclude=['contenttypes', 'auth.Permission'])
+            size = os.path.getsize(output)
+            self._check_limit(size)
+            self.stdout.write(f"  DB dumpdata fallback: {output} ({_fmt(size)})")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"  dumpdata fallback failed: {e}"))
 
     def _backup_sqlite(self, run_dir):
         db_path = settings.DATABASES['default']['NAME']

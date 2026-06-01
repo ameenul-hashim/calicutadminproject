@@ -50,18 +50,32 @@ class StorageManager:
 
     @staticmethod
     def _get_drive_service():
-        """Internal helper to build Drive service"""
+        """Build Drive service: env var > local OAuth token > credentials file"""
         try:
             SCOPES = ['https://www.googleapis.com/auth/drive']
-            # Use the local directory where storage_manager.py resides
             UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+            # 1) Try GOOGLE_DRIVE_CREDENTIALS env var (service account JSON)
+            env_creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
+            if env_creds:
+                import json
+                try:
+                    creds_dict = json.loads(env_creds)
+                    if creds_dict.get('type') == 'service_account':
+                        from google.oauth2 import service_account
+                        creds = service_account.Credentials.from_service_account_info(
+                            creds_dict, scopes=SCOPES
+                        )
+                        return build('drive', 'v3', credentials=creds)
+                except Exception as e:
+                    logger.warning(f"GOOGLE_DRIVE_CREDENTIALS parse failed: {e}")
+
+            # 2) Fall back to local OAuth token.json / credentials.json (dev only)
             token_file = os.path.join(UTILS_DIR, "token.json")
             creds_file = os.path.join(UTILS_DIR, "credentials.json")
-            
             creds = None
             if os.path.exists(token_file):
                 creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-            
             if not creds or not creds.valid:
                 if creds and creds.expired and creds.refresh_token:
                     creds.refresh(Request())
