@@ -233,7 +233,7 @@ class EnterpriseHardeningMiddleware:
             "img-src 'self' data: https: http: *.cloudinary.com *.supabase.co ui-avatars.com",
             "font-src 'self' https://fonts.gstatic.com https://ka-f.fontawesome.com",
             "connect-src 'self' https: http: *.supabase.co *.cloudinary.com https://cdn.plyr.io",
-            "frame-src 'self' https://*.youtube.com https://www.youtube.com https://youtube.com https: *.cloudinary.com",
+            "frame-src 'self' https://*.youtube.com https://www.youtube.com https://youtube.com https: *.cloudinary.com https://*.supabase.co",
             "media-src * data: blob:",
             "frame-ancestors 'self'",
             "object-src 'none'",
