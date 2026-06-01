@@ -443,7 +443,10 @@
                         <div style="width: 40px; height: 40px; background: #f0f9ff; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📢</div>
                         <h4 style="margin: 0; font-weight: 800; font-size: 1.1rem; letter-spacing: -0.01em;">Recent Updates</h4>
                     </div>
-                    <span style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; background: #f8fafc; padding: 0.25rem 0.75rem; border-radius: 2rem;">Auto-dismiss in 15s</span>
+                    <div style="font-size: 0.75rem; font-weight: 600; color: #94a3b8; background: #f8fafc; padding: 0.25rem 0.75rem; border-radius: 2rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>Auto-dismiss in 15s</span>
+                        <button onclick="dismissUpdates()" style="background: none; border: none; cursor: pointer; color: #64748b; font-size: 0.9rem; padding: 0; line-height: 1;">✕</button>
+                    </div>
                 </div>
                 
                 <div style="display: flex; flex-direction: column; gap: 0.75rem;">
@@ -457,15 +460,19 @@
             </div>
 
             <script>
+                function dismissUpdates() {
+                    const container = document.getElementById('platform-updates-container');
+                    if (!container) return;
+                    navigator.sendBeacon('/api/dismiss-updates/', '');
+                    container.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+                    container.style.opacity = '0';
+                    container.style.transform = 'translateY(-30px) scale(0.95)';
+                    setTimeout(() => { container.remove(); }, 600);
+                }
                 document.addEventListener("DOMContentLoaded", function() {
                     const container = document.getElementById('platform-updates-container');
                     if (container) {
-                        setTimeout(() => {
-                            container.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
-                            container.style.opacity = '0';
-                            container.style.transform = 'translateY(-30px) scale(0.95)';
-                            setTimeout(() => { container.remove(); }, 600);
-                        }, 15000);
+                        setTimeout(dismissUpdates, 15000);
                     }
                 });
             </script>

@@ -28,6 +28,8 @@ class PortalSecurityMiddleware:
             'teacher_view_auth',
             'health_check',
             'status_page',
+            'trigger_backup',
+            'dismiss_updates',
         ]
         
         # Check if the current URL is in public_url_names
