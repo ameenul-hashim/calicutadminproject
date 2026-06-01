@@ -58,13 +58,13 @@
             <div class="card border-0 shadow-sm rounded-4 bg-dark text-white">
                 <div class="card-body d-flex justify-content-between align-items-center py-3">
                     <div class="d-flex align-items-center">
-                        <span class="badge bg-success me-3 p-2">SLO: COMPLIANT</span>
-                        <span class="small opacity-75">Monthly Availability: <strong>99.98%</strong></span>
+                        <span class="badge {% if last_backup_status == 'HEALTHY' %}bg-success{% else %}bg-warning{% endif %} me-3 p-2">{% if last_backup_status == 'HEALTHY' %}ALL SYSTEMS NOMINAL{% else %}BACKUP STALE{% endif %}</span>
+                        <span class="small opacity-75">Users: <strong>{{ student_count|add:teacher_count }}</strong> · Courses: <strong>{{ course_count }}</strong></span>
                     </div>
                     <div class="d-flex gap-4 small">
-                        <span>p95 Latency: <strong class="text-info">251ms</strong></span>
-                        <span>Error Budget: <strong class="text-warning">94.2%</strong></span>
-                        <span>Uptime: <strong class="text-success">14d 02h</strong></span>
+                        <span>DB Latency: <strong class="text-info">{{ avg_response_time }}ms</strong></span>
+                        <span>Storage: <strong class="text-warning">{{ storage_usage }}MB</strong></span>
+                        <span>Backup: <strong class="text-success">{{ last_backup_status }}</strong></span>
                     </div>
                 </div>
             </div>
@@ -115,7 +115,7 @@
                         </div>
                         <div>
                             <h3 class="mb-0 fw-bold">{{ storage_usage|floatformat:1 }}MB</h3>
-                            <small class="text-muted">Free Tier: 500MB</small>
+                            <small class="text-muted">{{ supabase_files }} files · {{ cloudinary_files }} images</small>
                         </div>
                     </div>
                 </div>
@@ -174,7 +174,7 @@
                                     <td>{{ log.accessed_at|date:"M d, H:i" }}</td>
                                     <td><code>{{ log.ip_address }}</code></td>
                                     <td class="pe-4">
-                                        <span class="badge bg-success-subtle text-success rounded-pill px-3">VERIFIED</span>
+                                        <span class="badge bg-success-subtle text-success rounded-pill px-3">ACCESSED</span>
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -189,37 +189,37 @@
             </div>
         </div>
 
-        <!-- API Health Status -->
+        <!-- Storage Health Summary -->
         <div class="col-lg-4">
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-heartbeat me-2 text-danger"></i>API Multi-Cloud Health</h5>
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-heartbeat me-2 text-danger"></i>Storage Health Summary</h5>
                 </div>
                 <div class="card-body">
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                             <div>
-                                <i class="fab fa-google-drive me-2 text-primary"></i>Google Drive
+                                <i class="fas fa-database me-2 text-primary"></i>Database
                             </div>
-                            <span class="badge bg-success-subtle text-success rounded-pill">HEALTHY</span>
+                            <span class="badge {% if student_count > 0 %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %} rounded-pill">{% if student_count > 0 %}ACTIVE{% else %}EMPTY{% endif %}</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                             <div>
-                                <i class="fas fa-bolt me-2 text-warning"></i>Cloud Storage
+                                <i class="fas fa-cloud me-2 text-warning"></i>Supabase Storage
                             </div>
-                            <span class="badge bg-success-subtle text-success rounded-pill">HEALTHY</span>
+                            <span class="badge {% if supabase_files > 0 %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %} rounded-pill">{{ supabase_files }} files</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                             <div>
-                                <i class="fab fa-aws me-2 text-dark"></i>AWS S3 Redundancy
+                                <i class="fas fa-image me-2 text-info"></i>Cloudinary
                             </div>
-                            <span class="badge bg-light text-muted rounded-pill">CONFIG PENDING</span>
+                            <span class="badge {% if cloudinary_files > 0 %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %} rounded-pill">{{ cloudinary_files }} images</span>
                         </li>
                         <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                             <div>
-                                <i class="fas fa-memory me-2 text-info"></i>Redis Cache
+                                <i class="fas fa-shield-alt me-2 text-success"></i>Backup Integrity
                             </div>
-                            <span class="badge bg-success-subtle text-success rounded-pill">ONLINE</span>
+                            <span class="badge {% if last_backup_status == 'HEALTHY' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %} rounded-pill">{{ last_backup_status }}</span>
                         </li>
                     </ul>
                     <hr class="my-4">
@@ -232,38 +232,40 @@
             </div>
         </div>
         </div>
-        <!-- Live Production Routine -->
+        <!-- System Summary -->
         <div class="col-lg-4 mt-4">
             <div class="card border-0 shadow-sm rounded-4">
                 <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-tasks me-2 text-success"></i>Live Production Routine</h5>
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-tasks me-2 text-success"></i>System Summary</h5>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
-                            <span class="small fw-bold">Daily: Backup & Health Check</span>
-                            <span class="badge bg-success-subtle text-success">COMPLETED</span>
+                            <span class="small fw-bold">Backup Status</span>
+                            <span class="badge {% if last_backup_status == 'HEALTHY' %}bg-success-subtle text-success{% else %}bg-danger-subtle text-danger{% endif %}">{{ last_backup_status }}</span>
                         </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-success" style="width: 100%"></div>
+                        {% if last_backup_time != "Never" %}
+                        <small class="text-muted">Last: {{ last_backup_time }}</small>
+                        {% endif %}
+                    </div>
+                    <hr>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small fw-bold">Platform Users</span>
+                            <span class="badge bg-primary-subtle text-primary">{{ student_count|add:teacher_count }}</span>
+                        </div>
+                        <small class="text-muted">{{ student_count }} Students · {{ teacher_count }} Teachers</small>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small fw-bold">Published Courses</span>
+                            <span class="badge bg-info-subtle text-info">{{ course_count }}</span>
                         </div>
                     </div>
                     <div class="mb-3">
                         <div class="d-flex justify-content-between mb-1">
-                            <span class="small fw-bold">Weekly: Storage & Review</span>
-                            <span class="badge bg-primary-subtle text-primary">IN PROGRESS</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-primary" style="width: 65%"></div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="small fw-bold">Monthly: Security Audit</span>
-                            <span class="badge bg-warning-subtle text-warning">SCHEDULED</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-warning" style="width: 10%"></div>
+                            <span class="small fw-bold">Blocked IPs (django-axes)</span>
+                            <span class="badge {% if blocked_ips_count > 0 %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">{{ blocked_ips_count }}</span>
                         </div>
                     </div>
                     <div class="alert alert-info mt-4 rounded-4 border-0 small">

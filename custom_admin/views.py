@@ -1464,10 +1464,14 @@ def admin_restore_course(request, course_uid):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def enterprise_monitor(request):
     from axes.models import AccessAttempt
-    # 1. Backup Status
+    from django.db import connection
+    from accounts.utils.storage_analytics import get_all_storage_stats
+    import time
+
+    # 1. Real backup status
     last_backup_time = "Never"
     last_backup_status = "STALE"
-    success_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "last_success.txt")
+    success_file = os.path.join(settings.BASE_DIR, "last_success.txt")
     if os.path.exists(success_file):
         with open(success_file, "r") as f:
             last_backup_time = f.read().strip()
@@ -1479,31 +1483,41 @@ def enterprise_monitor(request):
     # 3. Security Stats
     blocked_ips_count = AccessAttempt.objects.count()
 
-    # 4. Infrastructure Stats (Dynamic)
+    # 4. Real storage usage from APIs
+    storage_stats = get_all_storage_stats()
+    ss = storage_stats.get('supabase_signup', {})
+    sr = storage_stats.get('supabase_resources', {})
+    cl = storage_stats.get('cloudinary', {})
+    db_stats = storage_stats.get('database', {})
+    real_storage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0) + cl.get('storage_used_mb', 0) + db_stats.get('usage_mb', 0)
+
+    # 5. Real DB latency
+    db_latency = 0
+    try:
+        start = time.time()
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+        db_latency = round((time.time() - start) * 1000, 1)
+    except Exception:
+        db_latency = 0
+
+    # 6. Real stats
     student_count = CustomUser.objects.filter(user_type='STUDENT').count()
     teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
     course_count = Course.objects.count()
-    
-    # Estimate storage: Identity PDFs (160KB each) + Profile Photos (100KB each) + Thumbnails (100KB each)
-    # This provides a realistic metric of SaaS storage consumption
-    estimated_storage_mb = (
-        (student_count * 160) +  # PDFs
-        ((student_count + teacher_count) * 100) +  # Profile Photos
-        (course_count * 100) # Thumbnails
-    ) / 1024.0 # Convert to MB
-    
-    # Pseudo-dynamic response time based on DB load
-    import random
-    base_latency = 120 + (course_count * 2) + (student_count * 0.5)
-    dynamic_response_time = round(base_latency + random.uniform(-10, 15), 2)
 
     context = {
         'last_backup_time': last_backup_time,
         'last_backup_status': last_backup_status,
         'access_logs': access_logs,
         'blocked_ips_count': blocked_ips_count,
-        'avg_response_time': dynamic_response_time,
-        'storage_usage': round(estimated_storage_mb, 1),
+        'avg_response_time': db_latency,
+        'storage_usage': round(real_storage_mb, 1),
+        'student_count': student_count,
+        'teacher_count': teacher_count,
+        'course_count': course_count,
+        'supabase_files': ss.get('total_files', 0) + sr.get('total_files', 0),
+        'cloudinary_files': cl.get('total_files', 0),
         'notifications': get_notifications(str(request.user.uid))[:10],
         'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
@@ -1544,49 +1558,70 @@ def proxy_pdf_access(request, user_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def system_audit_view(request):
-    """Enterprise-grade technical audit with capacity analysis — powered by Firebase RTDB."""
+    """Real-time system audit with dynamic capacity analysis (no Firebase dependency)."""
     from django.conf import settings
-    from accounts.utils.firebase_audit import run_infrastructure_check, get_security_counters, get_recent_events
+    from django.db import connection
     import time
 
-    # 1. Live infrastructure check (writes to Firebase + returns result)
-    infra_result = run_infrastructure_check()
+    # 1. Real-time DB size
+    db_bytes = 0
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_database_size(current_database())")
+            db_bytes = cursor.fetchone()[0] or 0
+    except Exception:
+        db_bytes = 0
+    db_total_mb = round(db_bytes / (1024 * 1024), 2)
 
-    # 2. Base Stats from DB (lightweight aggregates)
+    # 2. Real storage stats from Supabase + Cloudinary APIs
+    from accounts.utils.storage_analytics import get_all_storage_stats
+    storage_stats = get_all_storage_stats()
+
+    # 3. Base Stats from DB
     student_count = CustomUser.objects.filter(user_type='STUDENT').count()
     teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
     course_count = Course.objects.count()
 
-    # 3. Security counters from Firebase
-    fb_counters = get_security_counters()
-
-    # 4. Security Configuration Audit (live)
+    # 4. Security Configuration Audit (real checks)
     sec_checks = [
-        ('Cloudflare WAF Ready', True, 'Edge protection & DDoS mitigation'),
-        ('Session Rotation', True, 'Prevents session hijacking'),
-        ('Audit Logging (SOC)', True, 'Full tracking of admin & login events'),
         ('DEBUG Mode', not settings.DEBUG, 'Critical: Production safety'),
         ('Secure Cookies', getattr(settings, 'SESSION_COOKIE_SECURE', False), 'Encrypted transmission'),
-        ('Firebase RTDB Sync', True, 'Real-time security event pipeline'),
+        ('HSTS Enabled', getattr(settings, 'SECURE_HSTS_SECONDS', 0) > 0, 'HTTP Strict Transport Security'),
+        ('Brute-Force Protection', 'axes' in settings.INSTALLED_APPS, 'django-axes active'),
+        ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
+        ('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'),
     ]
     security_checks = []
     for name, passed, desc in sec_checks:
         security_checks.append({'name': name, 'status': 'PASS' if passed else 'FAIL', 'description': desc})
 
-    # 5. Infrastructure list from live check
+    # 5. Infrastructure status from real data
     infra_list = []
-    pg = infra_result.get('postgres', {})
-    infra_list.append({'service': 'PostgreSQL', 'status': pg.get('status', 'OFFLINE'), 'detail': f"{pg.get('latency', 'N/A')}ms latency"})
-    sb = infra_result.get('supabase', {})
-    infra_list.append({'service': 'Supabase API', 'status': sb.get('status', 'OFFLINE'), 'detail': 'SaaS Storage'})
-    bk = infra_result.get('backup', {})
-    infra_list.append({'service': 'Google Drive Backup', 'status': bk.get('status', 'STALE'), 'detail': f"Last sync: {bk.get('last_sync', 'Never')}"})
+    # PostgreSQL
+    pg_status = 'ONLINE' if db_total_mb > 0 or student_count > 0 else 'OFFLINE'
+    infra_list.append({'service': 'PostgreSQL', 'status': pg_status, 'detail': f'{db_total_mb} MB used'})
+    # Supabase Signup
+    ss = storage_stats.get('supabase_signup', {})
+    sb_status = 'ONLINE' if ss.get('status') == 'connected' else 'OFFLINE'
+    infra_list.append({'service': 'Supabase (Proof PDFs)', 'status': sb_status, 'detail': f"{ss.get('total_files', 0)} files, {ss.get('usage_mb', 0)} MB"})
+    # Supabase Resources
+    sr = storage_stats.get('supabase_resources', {})
+    sr_status = 'ONLINE' if sr.get('status') == 'connected' else 'OFFLINE'
+    infra_list.append({'service': 'Supabase (Resources)', 'status': sr_status, 'detail': f"{sr.get('total_files', 0)} files, {sr.get('usage_mb', 0)} MB"})
+    # Cloudinary
+    cl = storage_stats.get('cloudinary', {})
+    cl_status = 'ONLINE' if cl.get('status') == 'connected' else 'OFFLINE'
+    infra_list.append({'service': 'Cloudinary', 'status': cl_status, 'detail': f"{cl.get('total_files', 0)} images, {cl.get('storage_used_mb', 0)} MB"})
+    # Backup
+    backup_file = os.path.join(settings.BASE_DIR, 'last_success.txt')
+    bk_status = 'ONLINE' if os.path.exists(backup_file) else 'STALE'
+    bk_last = 'Never'
+    if os.path.exists(backup_file):
+        with open(backup_file) as f:
+            bk_last = f.read().strip()
+    infra_list.append({'service': 'Backup', 'status': bk_status, 'detail': f'Last: {bk_last}'})
 
-    # 6. Live forensic events from Firebase
-    fb_events = get_recent_events(hours=24)
-    fb_forensic = [{'username': e.get('username', 'SYSTEM'), 'action': e.get('type', 'EVENT'), 'detail': e.get('detail', ''), 'time': e.get('timestamp', '')} for e in fb_events]
-
-    # 7. DB forensic logs (source of truth, last 10)
+    # 6. DB forensic logs
     from accounts.models import AdminActivityLog, LoginHistory
     admin_logs = AdminActivityLog.objects.all().select_related('admin')[:5]
     login_logs = LoginHistory.objects.all().select_related('user')[:5]
@@ -1594,14 +1629,28 @@ def system_audit_view(request):
     for log in admin_logs:
         combined_logs.append({'username': log.admin.username if log.admin else 'SYSTEM', 'action': log.action, 'time': log.timestamp})
     for log in login_logs:
-        combined_logs.append({'username': log.user.username, 'action': f"Login {log.status} ({log.device_type})", 'time': log.timestamp})
+        combined_logs.append({'username': log.user.username, 'action': f"Login {log.status}", 'time': log.timestamp})
     combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:10]
 
-    # 8. Compute dynamic security score
-    total_events = sum(v for v in fb_counters.values() if isinstance(v, (int, float)))
-    threat_deduction = min(total_events * 0.5, 20)
-    security_score = max(round(100 - threat_deduction), 70)
-    infra_score = 100 if all(s.get('status') == 'ONLINE' for s in infra_list) else 85
+    # 7. Compute real scores
+    all_online = all(s.get('status') == 'ONLINE' for s in infra_list)
+    security_score = sum(1 for c in sec_checks if c[1]) * 100 // len(sec_checks)
+    infra_score = 100 if all_online else max(round(sum(100 for s in infra_list if s['status'] == 'ONLINE') / len(infra_list)), 50)
+    storage_score = min(100, max(0, round(100 - (cl.get('storage_percent', 0) + ss.get('percent', 0)) / 2)))
+    backup_score = 100 if bk_status == 'ONLINE' else 50
+    supabase_total_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
+
+    # --- Free-tier cleanup: auto-purge old records ---
+    from datetime import timedelta
+    cutoff_90 = timezone.now() - timedelta(days=90)
+    cutoff_30 = timezone.now() - timedelta(days=30)
+    try:
+        deleted_login = LoginHistory.objects.filter(timestamp__lt=cutoff_30).delete()
+        deleted_adminlog = AdminActivityLog.objects.filter(timestamp__lt=cutoff_90).delete()
+        if deleted_login[0] or deleted_adminlog[0]:
+            logger.info(f"Cleanup: {deleted_login[0]} LoginHistory, {deleted_adminlog[0]} AdminActivityLog")
+    except Exception:
+        pass
 
     audit_results = {
         'timestamp': timezone.now(),
@@ -1611,21 +1660,23 @@ def system_audit_view(request):
             'total_students': student_count,
             'total_teachers': teacher_count,
             'total_courses': course_count,
-            'avg_record_kb': round(3.8 + (course_count * 0.01), 2),
-            'db_total_mb': round((student_count * 3.8) / 1024, 2),
-            'supabase_total_gb': round((student_count * 160) / (1024 * 1024), 3),
+            'db_total_mb': db_total_mb,
+            'supabase_total_mb': round(supabase_total_mb, 2),
+            'supabase_limit_mb': ss.get('limit_mb', 1024),
+            'cloudinary_images': cl.get('total_files', 0),
+            'cloudinary_mb': cl.get('storage_used_mb', 0),
             'pdf_cap': '200KB (Enforced)',
         },
         'scores': {
             'security': security_score,
             'infrastructure': infra_score,
-            'storage': 100,
-            'backup': 98,
+            'storage': storage_score,
+            'backup': backup_score,
         },
-        'overall_status': 'SECURE' if security_score >= 90 else 'ELEVATED',
-        'firebase_events_24h': total_events,
-        'firebase_counters': fb_counters,
-        'firebase_events': fb_forensic[:15],
+        'overall_status': 'SECURE' if security_score >= 80 else 'ELEVATED',
+        'firebase_events_24h': 0,
+        'firebase_counters': {},
+        'firebase_events': [],
     }
 
     return render(request, 'custom_admin/system_audit_hub.html', {

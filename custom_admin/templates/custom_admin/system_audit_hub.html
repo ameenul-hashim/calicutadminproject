@@ -89,23 +89,23 @@
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 bg-light rounded-4">
-                                <div class="small text-muted mb-1">Supabase PDF Usage</div>
-                                <div class="h4 mb-0 fw-bold text-dark">{{ audit.storage_metrics.supabase_total_gb }} GB</div>
-                                <div class="small text-muted">Free Limit: 1.00 GB</div>
+                                <div class="small text-muted mb-1">Supabase Storage</div>
+                                <div class="h4 mb-0 fw-bold text-dark">{{ audit.storage_metrics.supabase_total_mb }} MB</div>
+                                <div class="small text-muted">Free Limit: {{ audit.storage_metrics.supabase_limit_mb }} MB</div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 bg-light rounded-4">
-                                <div class="small text-muted mb-1">Record Density</div>
-                                <div class="h4 mb-0 fw-bold text-dark">{{ audit.storage_metrics.avg_record_kb }} KB</div>
-                                <div class="small text-muted">Per Student Avg</div>
+                                <div class="small text-muted mb-1">Cloudinary Images</div>
+                                <div class="h4 mb-0 fw-bold text-dark">{{ audit.storage_metrics.cloudinary_images }}</div>
+                                <div class="small text-muted">{{ audit.storage_metrics.cloudinary_mb }} MB Used</div>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="p-3 bg-light rounded-4">
-                                <div class="small text-muted mb-1">Max Users (Starter)</div>
-                                <div class="h4 mb-0 fw-bold text-primary">10,000+</div>
-                                <div class="small text-muted">Growth Ready</div>
+                                <div class="small text-muted mb-1">Total Users</div>
+                                <div class="h4 mb-0 fw-bold text-primary">{{ audit.storage_metrics.total_students|add:audit.storage_metrics.total_teachers }}</div>
+                                <div class="small text-muted">{{ audit.storage_metrics.total_students }} Students · {{ audit.storage_metrics.total_teachers }} Teachers</div>
                             </div>
                         </div>
                     </div>
@@ -121,7 +121,7 @@
             <div class="card audit-card border-0 shadow-sm mb-4">
                 <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold"><i class="fas fa-shield-halved me-2 text-primary"></i>Security Hardening Controls</h5>
-                    <span class="badge bg-success-subtle text-success rounded-pill px-3">VERIFIED</span>
+                    <span class="badge {% if audit.scores.security >= 80 %}bg-success-subtle text-success{% else %}bg-warning-subtle text-warning{% endif %} rounded-pill px-3">{{ audit.overall_status }}</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -141,7 +141,7 @@
                                         <div class="text-muted x-small" style="font-size: 0.7rem;">{{ check.description }}</div>
                                     </td>
                                     <td><span class="status-badge status-{{ check.status }}">{{ check.status }}</span></td>
-                                    <td class="pe-4 small text-success"><i class="fas fa-check-circle me-1"></i>Compliant</td>
+                                    <td class="pe-4 small {% if check.status == 'PASS' %}text-success{% else %}text-danger{% endif %}"><i class="fas fa-{% if check.status == 'PASS' %}check-circle{% else %}times-circle{% endif %} me-1"></i>{% if check.status == 'PASS' %}Compliant{% else %}Non-Compliant{% endif %}</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -210,24 +210,27 @@
                 </div>
             </div>
 
-            <!-- Firebase Real-time Security Events -->
+            <!-- Latest Infrastructure Status -->
             <div class="card audit-card border-0 shadow-sm mb-4">
-                <div class="card-header bg-white border-0 py-3">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-bolt me-2 text-warning"></i>Real-time Security Events (Firebase)</h5>
-                    <span class="badge bg-warning-subtle text-warning rounded-pill px-3">{{ audit.firebase_events_24h }} in 24h</span>
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-server me-2 text-info"></i>Service Health Summary</h5>
+                    <span class="badge bg-info-subtle text-info rounded-pill px-3">{{ audit.infrastructure|length }} Services</span>
                 </div>
                 <div class="card-body p-0">
-                    <div class="list-group list-group-flush" style="max-height: 200px; overflow-y: auto;">
-                        {% for event in audit.firebase_events %}
+                    <div class="list-group list-group-flush" style="max-height: 220px; overflow-y: auto;">
+                        {% for infra in audit.infrastructure %}
                         <div class="list-group-item bg-transparent border-light py-2">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-bold small">{{ event.username }}</span>
-                                <span class="x-small text-muted" style="font-size: 0.65rem;">{{ event.time|timesince }} ago</span>
+                                <span class="fw-bold small">{{ infra.service }}</span>
+                                <span class="x-small text-muted" style="font-size: 0.65rem;">
+                                    <span class="infrastructure-dot dot-{{ infra.status }}"></span>
+                                    {{ infra.status }}
+                                </span>
                             </div>
-                            <div class="x-small text-truncate text-muted" style="font-size: 0.7rem;">{{ event.action }}: {{ event.detail }}</div>
+                            <div class="x-small text-truncate text-muted" style="font-size: 0.7rem;">{{ infra.detail }}</div>
                         </div>
                         {% empty %}
-                        <div class="p-4 text-center text-muted small">No security events in last 24h.</div>
+                        <div class="p-4 text-center text-muted small">No services available.</div>
                         {% endfor %}
                     </div>
                 </div>
