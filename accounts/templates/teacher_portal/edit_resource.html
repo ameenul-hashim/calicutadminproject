@@ -91,9 +91,7 @@
                         <select name="resource_type" id="resource_type" required style="cursor: pointer;">
                             <option value="PDF" {% if resource.resource_type == 'PDF' %}selected{% endif %}>📄 PDF Document</option>
                             <option value="DOCX" {% if resource.resource_type == 'DOCX' %}selected{% endif %}>📝 Word Document (.docx)</option>
-                            <option value="PPTX" {% if resource.resource_type == 'PPTX' %}selected{% endif %}>📊 PowerPoint (.pptx)</option>
-                            <option value="XLSX" {% if resource.resource_type == 'XLSX' %}selected{% endif %}>📈 Excel Spreadsheet (.xlsx)</option>
-                            <option value="TXT" {% if resource.resource_type == 'TXT' %}selected{% endif %}>🔤 Text File (.txt)</option>
+                        </select>
                         </select>
                     </div>
                     
