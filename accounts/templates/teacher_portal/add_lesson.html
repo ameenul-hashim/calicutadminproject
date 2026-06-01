@@ -57,6 +57,40 @@
         corePlugins: { preflight: false }
       }
     </script>
+    <script>
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const fileInput = document.getElementById('video_file');
+            if (fileInput && fileInput.files.length > 0) {
+                const progressDiv = document.getElementById('uploadProgress');
+                const progressBar = document.getElementById('progressBar');
+                const progressPercent = document.getElementById('progressPercent');
+                const progressText = document.getElementById('progressText');
+                const uploadStatus = document.getElementById('uploadStatus');
+                const submitBtn = this.querySelector('button[type="submit"]');
+
+                progressDiv.style.display = 'block';
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading...';
+
+                let pct = 0;
+                const interval = setInterval(function() {
+                    if (pct < 90) {
+                        pct += Math.floor(Math.random() * 8) + 2;
+                        if (pct > 90) pct = 90;
+                        progressBar.style.width = pct + '%';
+                        progressPercent.textContent = pct + '%';
+                    }
+                }, 800);
+
+                // Store interval ref for cleanup
+                window._uploadInterval = interval;
+                window._progressBar = progressBar;
+                window._progressPercent = progressPercent;
+                window._progressText = progressText;
+                window._uploadStatus = uploadStatus;
+            }
+        });
+    </script>
 </head>
 <body>
     <div class="dashboard-container">
@@ -82,12 +116,19 @@
                         <input type="text" name="title" id="title" required>
                     </div>
                     <div class="input-group">
-                        <label for="video_url">Video Link (YouTube URL)</label>
-                        <input type="url" name="video_url" id="video_url" class="form-input">
-                    </div>
-                    <div class="input-group">
-                        <label for="video_file">Or Upload Video File</label>
-                        <input type="file" name="video_file" id="video_file" accept="video/*">
+                        <label for="video_file">Upload Video (MP4)</label>
+                        <input type="file" name="video_file" id="video_file" accept=".mp4,video/mp4" required>
+                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Video will be uploaded to Neo Learner's YouTube channel automatically. Only MP4 format supported.</p>
+                        <div id="uploadProgress" style="display:none;margin-top:1rem;">
+                            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;margin-bottom:0.3rem;">
+                                <span id="progressText">Uploading to YouTube...</span>
+                                <span id="progressPercent">0%</span>
+                            </div>
+                            <div style="width:100%;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
+                                <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;transition:width 0.3s;"></div>
+                            </div>
+                            <p id="uploadStatus" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;"></p>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label for="order">Lesson Order Number</label>

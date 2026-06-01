@@ -905,25 +905,46 @@ def add_lesson(request, course_uid):
         video_url = request.POST.get('video_url')
         video_file = request.FILES.get('video_file')
 
-        # === APPROVAL ENFORCEMENT ===
-        # Always create lesson as PENDING — never bypass admin review
+        youtube_video_id = None
+        youtube_upload_status = 'NOT_UPLOADED'
+
+        if video_file:
+            try:
+                from .utils.youtube_uploader import upload_video
+                youtube_video_id = upload_video(
+                    video_file,
+                    title=f"{course.title} - {title}",
+                    description=f"Lesson: {title}\nCourse: {course.title}\nTeacher: {request.user.full_name or request.user.username}",
+                    privacy_status='private'
+                )
+                youtube_upload_status = 'UPLOADED'
+            except Exception as e:
+                logger.error(f"YouTube upload failed for lesson '{title}': {e}")
+                messages.error(request, f"Video upload to YouTube failed: {str(e)}. Please try again.")
+                return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+
         lesson = Lesson.objects.create(
             course=course,
             title=title,
-            video_url=video_url,
-            video_file=video_file,
+            video_url=video_url or '',
+            video_file=None,
             order=request.POST.get('order', course.lessons.count() + 1),
             status='PENDING',
             is_approved=False,
+            youtube_video_id=youtube_video_id,
+            youtube_upload_status=youtube_upload_status,
         )
 
-        # If course was already PUBLISHED, we keep it PUBLISHED.
-        # Only the NEW lesson will be PENDING (set above), making it invisible to students.
+        if youtube_video_id:
+            from django.utils import timezone
+            lesson.youtube_uploaded_at = timezone.now()
+            lesson.save(update_fields=['youtube_uploaded_at'])
+
         if course.status == 'PUBLISHED' or course.is_approved:
-            messages.success(request, f"Lesson '{title}' added! It will be visible to students once approved by admin. The rest of your course remains live.")
+            messages.success(request, f"Lesson '{title}' added! Video uploaded to YouTube (Private). It will be visible to students once approved by admin.")
             notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
         else:
-            messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
+            messages.success(request, f"Lesson '{title}' added successfully! Video uploaded to YouTube (Private). Submit for admin approval when ready.")
             notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
 
         return redirect('course_lessons', course_uid=course.uid)
@@ -938,40 +959,60 @@ def edit_lesson(request, lesson_uid):
         video_url = request.POST.get('video_url')
         video_file = request.FILES.get('video_file')
         order = request.POST.get('order', 1)
-        
-        if lesson.is_approved:
-            # Lesson is already approved, so store edits in pending fields
-            lesson.pending_title = title
-            lesson.pending_video_url = video_url
-            if video_file:
-                if lesson.pending_video_file:
+
+        new_youtube_video_id = None
+
+        if video_file:
+            try:
+                from .utils.youtube_uploader import upload_video, delete_youtube_video
+                # Delete old YouTube video if replacing
+                if lesson.youtube_video_id:
                     try:
-                        lesson.pending_video_file.delete(save=False)
+                        delete_youtube_video(lesson.youtube_video_id)
                     except Exception:
                         pass
-                lesson.pending_video_file = video_file
+                new_youtube_video_id = upload_video(
+                    video_file,
+                    title=f"{lesson.course.title} - {title}",
+                    description=f"Lesson: {title}\nCourse: {lesson.course.title}\nTeacher: {request.user.full_name or request.user.username}",
+                    privacy_status='private'
+                )
+            except Exception as e:
+                logger.error(f"YouTube re-upload failed for lesson '{title}': {e}")
+                messages.error(request, f"Video upload to YouTube failed: {str(e)}. Please try again.")
+                return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+
+        if lesson.is_approved:
+            lesson.pending_title = title
+            lesson.pending_video_url = video_url
+            if new_youtube_video_id:
+                lesson.pending_video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
             lesson.pending_order = order
             lesson.has_pending_edits = True
             lesson.save()
-            
-            notify_admins(f"🔁 LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}' in course '{lesson.course.title}'. Changes are pending admin approval.")
+
+            notify_admins(f"🔁 LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
             messages.success(request, "Lesson edits submitted for approval! Students will continue to view the current version until approved.")
         else:
-            # Lesson is not approved yet, overwrite main fields directly
             lesson.title = title
-            lesson.video_url = video_url
-            if video_file:
-                lesson.video_file = video_file
+            if new_youtube_video_id:
+                lesson.youtube_video_id = new_youtube_video_id
+                lesson.youtube_upload_status = 'UPLOADED'
+                from django.utils import timezone
+                lesson.youtube_uploaded_at = timezone.now()
+                lesson.video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
+            else:
+                lesson.video_url = video_url
             lesson.order = order
             lesson.is_approved = False
             lesson.status = 'PENDING'
             lesson.save()
-            
+
             messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
-            notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}' in course '{lesson.course.title}'.")
-            
+            notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}'.")
+
         return redirect('course_lessons', course_uid=lesson.course.uid)
-    
+
     return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
