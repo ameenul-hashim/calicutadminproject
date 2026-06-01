@@ -55,6 +55,7 @@ urlpatterns = [
     path('reset-password/', views.reset_password, name='reset_password'),
     path('api/youtube/init-upload/', views.init_youtube_upload, name='init_youtube_upload'),
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
+    path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),
 ]
 
 

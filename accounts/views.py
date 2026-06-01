@@ -619,10 +619,13 @@ def dashboard_view(request):
 
     # Objective 1: Dynamic Messages instead of DB saving for Students
     platform_updates = []
-    yesterday = timezone.now() - timedelta(hours=24)
-    
+
+    # Track when student last dismissed updates (session-based, no DB)
+    last_cleared = request.session.get('updates_cleared_at')
+    since = last_cleared if last_cleared else (timezone.now() - timedelta(hours=24))
+
     # 1. New Courses added to Explore
-    new_courses = Course.objects.filter(is_approved=True, status='PUBLISHED', created_at__gte=yesterday).only('title')
+    new_courses = Course.objects.filter(is_approved=True, status='PUBLISHED', created_at__gte=since).only('title')
     for c in new_courses:
         platform_updates.append(f"🚀 New Course Added: '{c.title}' is now available in the Explore area!")
 
@@ -631,7 +634,7 @@ def dashboard_view(request):
         new_lessons = Lesson.objects.filter(
             course__enrollments__user=request.user,
             status='APPROVED',
-            created_at__gte=yesterday
+            created_at__gte=since
         ).select_related('course').only('title', 'course__title')
         for l in new_lessons:
             platform_updates.append(f"📖 Content Released: New lesson '{l.title}' added to your course '{l.course.title}'.")
@@ -645,6 +648,12 @@ def dashboard_view(request):
         'platform_updates': platform_updates,
     }
     return render(request, 'accounts/dashboard.html', context)
+
+
+def dismiss_updates(request):
+    request.session['updates_cleared_at'] = timezone.now().isoformat()
+    return JsonResponse({'ok': True})
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
