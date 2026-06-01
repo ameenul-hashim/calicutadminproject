@@ -229,7 +229,7 @@ class EnterpriseHardeningMiddleware:
             "connect-src 'self' https: http: *.supabase.co *.cloudinary.com https://cdn.plyr.io",
             "frame-src 'self' https://*.youtube.com https://www.youtube.com https://youtube.com https: *.cloudinary.com",
             "media-src * data: blob:",
-            "frame-ancestors 'none'",
+            "frame-ancestors 'self'",
             "object-src 'none'",
             "base-uri 'self'",
         ]
