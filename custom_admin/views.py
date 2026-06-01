@@ -1828,6 +1828,8 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     )
     from reportlab.platypus.flowables import HRFlowable
     from io import BytesIO
+    import requests as http_requests
+    import tempfile
 
     from datetime import datetime
 
@@ -1866,13 +1868,48 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     elements.append(t)
     elements.append(Spacer(1, 20))
 
-    # --- BILL TO ---
+    # --- BILL TO (with Avatar) ---
     uid_label = f"#{user_type_label.upper()}-{user_obj.id:05d}"
     elements.append(Paragraph("BILL TO:", ParagraphStyle('BillTitle', parent=styles['Normal'], fontSize=9, textColor=HexColor('#94a3b8'), fontName='Helvetica-Bold', spaceAfter=8)))
-    elements.append(Paragraph(f"<b>{user_obj.full_name or user_obj.username}</b>", ParagraphStyle('Name', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'))))
-    elements.append(Paragraph(f"{user_obj.email}", ParagraphStyle('Email', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'))))
-    elements.append(Paragraph(f"Phone: {user_obj.phone_number or '—'}", ParagraphStyle('Phone', parent=styles['Normal'], fontSize=9, textColor=HexColor('#1e293b'), fontName='Helvetica')))
-    elements.append(Paragraph(f"{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}", ParagraphStyle('Uid', parent=styles['Normal'], fontSize=8, textColor=HexColor('#64748b'))))
+
+    avatar_img = None
+    _tmp_avatar_path = None
+    avatar_url = getattr(user_obj, 'avatar_url', None)
+    if avatar_url:
+        try:
+            resp = http_requests.get(avatar_url, timeout=10)
+            if resp.status_code == 200:
+                _tmp_avatar = tempfile.NamedTemporaryFile(delete=False, suffix='.png')
+                _tmp_avatar.write(resp.content)
+                _tmp_avatar_path = _tmp_avatar.name
+                _tmp_avatar.close()
+                avatar_img = Image(_tmp_avatar_path, width=60, height=60)
+        except Exception:
+            avatar_img = None
+
+    if avatar_img:
+        bill_data = [
+            [avatar_img,
+             Paragraph(
+                 f"<b>{user_obj.full_name or user_obj.username}</b><br/>"
+                 f"<font size='9' color='#64748b'>{user_obj.email}</font><br/>"
+                 f"<font size='9' color='#1e293b'>Phone: {user_obj.phone_number or '—'}</font><br/>"
+                 f"<font size='8' color='#64748b'>{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}</font>",
+                 ParagraphStyle('BillInfo', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'))
+             )]
+        ]
+        bill_table = Table(bill_data, colWidths=[70, 430])
+        bill_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(bill_table)
+    else:
+        elements.append(Paragraph(f"<b>{user_obj.full_name or user_obj.username}</b>", ParagraphStyle('Name', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'))))
+        elements.append(Paragraph(f"{user_obj.email}", ParagraphStyle('Email', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'))))
+        elements.append(Paragraph(f"Phone: {user_obj.phone_number or '—'}", ParagraphStyle('Phone', parent=styles['Normal'], fontSize=9, textColor=HexColor('#1e293b'), fontName='Helvetica')))
+        elements.append(Paragraph(f"{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}", ParagraphStyle('Uid', parent=styles['Normal'], fontSize=8, textColor=HexColor('#64748b'))))
     elements.append(Spacer(1, 20))
 
     # --- ITEMS TABLE ---
@@ -1949,6 +1986,14 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     doc.build(elements)
     pdf_bytes = buf.getvalue()
     buf.close()
+
+    # Cleanup temporary avatar file
+    if _tmp_avatar_path:
+        try:
+            import os
+            os.unlink(_tmp_avatar_path)
+        except Exception:
+            pass
 
     from django.http import HttpResponse
     response = HttpResponse(pdf_bytes, content_type='application/pdf')

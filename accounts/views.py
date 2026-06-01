@@ -1877,27 +1877,26 @@ def access_resource(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
     
-    # Redirect to signed URL (works on all devices natively)
-    url = resource.get_signed_url()
-    if url:
-        return redirect(url)
-    
-    # Fallback: stream file bytes directly from Supabase
-    try:
-        from accounts.utils.storage_manager import supabase as res_supabase
-        if res_supabase and resource.firebase_file_path:
+    # Stream file bytes directly from Supabase (never expose signed URL)
+    from accounts.utils.storage_manager import supabase as res_supabase
+    if res_supabase and resource.firebase_file_path:
+        try:
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
             file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
             if file_bytes:
+                resource.view_count += 1
+                resource.save(update_fields=['view_count'])
                 ext = resource.file_extension or 'pdf'
                 response = HttpResponse(file_bytes, content_type=resource.mime_type or 'application/octet-stream')
                 response['Content-Disposition'] = 'inline; filename="' + resource.title + '.' + ext + '"'
+                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+                response['Pragma'] = 'no-cache'
                 return response
-    except Exception as e:
-        logger.error(f"Resource stream failed for {resource_uid}: {e}")
-        
+        except Exception as e:
+            logger.error(f"Resource stream failed for {resource_uid}: {e}")
+    
     return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
 
@@ -1920,12 +1919,11 @@ def pdf_viewer(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
 
-    signed_url = resource.get_signed_url()
-    if not signed_url:
-        return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
+    # Use proxy URL instead of direct signed URL (never expose storage URL to browser)
+    proxy_url = '/resource/' + str(resource.uid) + '/access/'
 
     return render(request, 'accounts/pdf_viewer.html', {
-        'signed_url': signed_url,
+        'proxy_url': proxy_url,
         'title': resource.title,
         'uid': resource.uid,
     })
@@ -1953,16 +1951,11 @@ def download_resource(request, resource_uid):
         
         resource.download_count += 1
         resource.save(update_fields=['download_count'])
-        
-    # Primary: redirect to Supabase signed URL (zero server RAM, works on all devices)
-    url = resource.get_signed_url()
-    if url:
-        return redirect(url)
     
-    # Fallback: stream file bytes through server (in-memory, for when signed URL fails)
-    try:
-        from accounts.utils.storage_manager import StorageManager, supabase as res_supabase
-        if res_supabase and resource.firebase_file_path:
+    # Stream file bytes directly from Supabase (never expose signed URL)
+    from accounts.utils.storage_manager import supabase as res_supabase
+    if res_supabase and resource.firebase_file_path:
+        try:
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
@@ -1974,11 +1967,54 @@ def download_resource(request, resource_uid):
                 filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 response['Content-Length'] = len(file_bytes)
+                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+                response['Pragma'] = 'no-cache'
                 return response
-    except Exception as e:
-        logger.error(f"Resource proxy download failed for {resource_uid}: {e}")
+        except Exception as e:
+            logger.error(f"Resource proxy download failed for {resource_uid}: {e}")
     
     return HttpResponseForbidden("Failed to download resource. Please contact administrator.")
+
+
+@login_required(login_url='login')
+def stream_video(request, lesson_uid):
+    from accounts.models import Lesson, Enrollment
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponseForbidden, Http404, StreamingHttpResponse
+    from django.db.models import Q
+    import requests
+
+    lesson = get_object_or_404(Lesson, uid=lesson_uid)
+    course = lesson.lesson_course
+    is_teacher = (request.user.user_type == 'TEACHER' and course.teacher == request.user)
+    is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
+
+    if not (is_teacher or is_admin):
+        has_enrollment = Enrollment.objects.filter(user=request.user, course=course).exists()
+        if not has_enrollment:
+            return HttpResponseForbidden("You are not enrolled in this course.")
+
+    if not lesson.video_file:
+        raise Http404("No video file found for this lesson.")
+
+    video_url = lesson.video_file.url
+    if not video_url:
+        raise Http404("No video file found for this lesson.")
+
+    try:
+        req = requests.get(video_url, stream=True)
+        response = StreamingHttpResponse(
+            req.iter_content(chunk_size=8192),
+            content_type=req.headers.get('content-type', 'video/mp4')
+        )
+        response['Content-Disposition'] = 'inline'
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        response['Pragma'] = 'no-cache'
+        return response
+    except Exception as e:
+        logger.error(f"Video stream failed for {lesson_uid}: {e}")
+        return HttpResponseForbidden("Failed to stream video.")
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
