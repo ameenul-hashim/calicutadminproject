@@ -256,7 +256,7 @@
             const action = data.action || 'send';
             
             if (action === 'send') {
-                appendMessage(data.message_uid, data.message, data.sender_uid == currentUserUid, data.timestamp, false);
+                appendMessage(data.message_uid, data.message, data.sender_uid == currentUserUid, data.timestamp, false, data.raw_ts);
             } else if (action === 'edit') {
                 const msgDiv = document.getElementById(`msg-${data.message_uid}`);
                 if (msgDiv) {
@@ -331,24 +331,43 @@
                         const dateLabel = getDateLabel(m.raw_ts);
                         if (dateLabel && dateLabel !== lastDateLabel) {
                             const sep = document.createElement('div');
+                            sep.className = 'date-separator';
+                            sep.setAttribute('data-label', dateLabel);
                             sep.style = 'text-align: center; font-size: 0.75rem; color: #94a3b8; font-weight: 600; padding: 0.5rem 0;';
                             sep.innerText = dateLabel;
                             box.appendChild(sep);
                             lastDateLabel = dateLabel;
                         }
-                        appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited);
+                        appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited, m.raw_ts);
                     });
                 }
                 box.scrollTop = box.scrollHeight;
             });
     }
 
-    function appendMessage(msgId, text, isMe, timestamp, isEdited) {
+    function appendMessage(msgId, text, isMe, timestamp, isEdited, rawTs) {
         const box = document.getElementById('chat-messages');
         const placeholder = document.getElementById('no-messages-placeholder');
         if (placeholder) placeholder.remove();
         
         const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 2;
+
+        // Insert date divider if day changed
+        if (rawTs) {
+            const dateLabel = getDateLabel(parseInt(rawTs));
+            if (dateLabel) {
+                const lastSep = box.querySelector('.date-separator:last-child');
+                const lastDate = lastSep ? lastSep.getAttribute('data-label') : null;
+                if (dateLabel !== lastDate) {
+                    const sep = document.createElement('div');
+                    sep.className = 'date-separator';
+                    sep.setAttribute('data-label', dateLabel);
+                    sep.style = 'text-align: center; font-size: 0.75rem; color: #94a3b8; font-weight: 600; padding: 0.5rem 0;';
+                    sep.innerText = dateLabel;
+                    box.appendChild(sep);
+                }
+            }
+        }
         
         let msgDiv = document.getElementById(`msg-${msgId}`);
         if (!msgDiv) {
