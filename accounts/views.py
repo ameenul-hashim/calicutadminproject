@@ -1053,6 +1053,10 @@ def add_resource(request, course_uid):
             messages.error(request, "File upload missing.")
             return redirect('course_lessons', course_uid=course.uid)
 
+        if resource_type not in ('PDF', 'DOCX'):
+            messages.error(request, "Only PDF and DOCX formats are supported.")
+            return redirect('course_lessons', course_uid=course.uid)
+
         # Pre-read size gate: 20MB raw upload limit to prevent DoS (PyMuPDF uses 2-5x RAM)
         MAX_UPLOAD_BYTES = 20 * 1024 * 1024
         if upload_file.size > MAX_UPLOAD_BYTES:
@@ -1143,6 +1147,10 @@ def edit_resource(request, resource_uid):
         new_comp_size = 0
 
         if upload_file:
+            if resource_type not in ('PDF', 'DOCX'):
+                messages.error(request, "Only PDF and DOCX formats are supported.")
+                return redirect('edit_resource', resource_uid=resource.uid)
+
             # Pre-read size gate
             MAX_UPLOAD_BYTES = 20 * 1024 * 1024
             if upload_file.size > MAX_UPLOAD_BYTES:

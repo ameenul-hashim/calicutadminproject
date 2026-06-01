@@ -21,17 +21,18 @@ MAX_COMPRESSED_SIZE_BYTES = MAX_COMPRESSED_SIZE_MB * 1024 * 1024
 def validate_file(file_obj, filename, expected_type):
     """
     Validates MIME type, extension against expected CourseResource types.
-    expected_type in ['PDF', 'DOCX', 'PPTX', 'XLSX', 'TXT']
+    expected_type in ['PDF', 'DOCX']
     """
     mime_type, _ = mimetypes.guess_type(filename)
     ext = filename.split('.')[-1].lower() if '.' in filename else ''
     
+    allowed = ['PDF', 'DOCX']
+    if expected_type not in allowed:
+        raise ValueError(f"Only PDF and DOCX formats are supported. Got: {expected_type}")
+    
     ALLOWED_CONFIGS = {
         'PDF': {'mimes': ['application/pdf'], 'exts': ['pdf']},
         'DOCX': {'mimes': ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword'], 'exts': ['docx', 'doc']},
-        'PPTX': {'mimes': ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.ms-powerpoint'], 'exts': ['pptx', 'ppt']},
-        'XLSX': {'mimes': ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'], 'exts': ['xlsx', 'xls']},
-        'TXT': {'mimes': ['text/plain'], 'exts': ['txt']}
     }
     
     if expected_type not in ALLOWED_CONFIGS:
