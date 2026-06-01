@@ -615,17 +615,63 @@ def analytics_view(request):
         'pending': all_users.filter(status='PENDING').count(),
     }
 
-    # --- Firebase Realtime Analytics (zero database queries) ---
-    from accounts.utils.firebase_analytics import get_daily_visits, get_hourly_peaks
-    try:
-        daily_visits = get_daily_visits(30)
-        context['daily_visit_labels'] = [d['date'] for d in daily_visits]
-        context['daily_visit_data'] = [d['count'] for d in daily_visits]
-        context['peak_hours'] = get_hourly_peaks(30)
-    except Exception:
-        context['daily_visit_labels'] = []
-        context['daily_visit_data'] = []
-        context['peak_hours'] = [0] * 24
+    # --- Daily User Entries from LoginHistory ---
+    from django.db.models.functions import TruncDate
+    from datetime import timedelta
+    today = timezone.now().date()
+    yesterday = today - timedelta(days=1)
+
+    # Today / Yesterday quick stats
+    context['today_entries'] = LoginHistory.objects.filter(
+        timestamp__date=today, status='SUCCESS'
+    ).values('user').distinct().count()
+    context['yesterday_entries'] = LoginHistory.objects.filter(
+        timestamp__date=yesterday, status='SUCCESS'
+    ).values('user').distinct().count()
+
+    # This Week (last 7 days)
+    week_ago = today - timedelta(days=6)
+    week_logins = LoginHistory.objects.filter(
+        timestamp__date__gte=week_ago, status='SUCCESS'
+    ).annotate(
+        login_date=TruncDate('timestamp')
+    ).values('login_date').annotate(
+        count=Count('user', distinct=True)
+    ).order_by('login_date')
+    week_counts = {r['login_date']: r['count'] for r in week_logins}
+    week_labels = []
+    week_data = []
+    for i in range(7):
+        d = week_ago + timedelta(days=i)
+        week_labels.append(d.strftime('%a'))
+        week_data.append(week_counts.get(d, 0))
+    context['week_daily_labels'] = week_labels
+    context['week_daily_data'] = week_data
+
+    # Last 30 Days
+    month_ago = today - timedelta(days=29)
+    month_logins = LoginHistory.objects.filter(
+        timestamp__date__gte=month_ago, status='SUCCESS'
+    ).annotate(
+        login_date=TruncDate('timestamp')
+    ).values('login_date').annotate(
+        count=Count('user', distinct=True)
+    ).order_by('login_date')
+    month_counts = {r['login_date']: r['count'] for r in month_logins}
+    month_labels = []
+    month_data = []
+    for i in range(30):
+        d = month_ago + timedelta(days=i)
+        month_labels.append(d.strftime('%d %b'))
+        month_data.append(month_counts.get(d, 0))
+    context['daily_visit_labels'] = month_labels
+    context['daily_visit_data'] = month_data
+
+    # Cleanup: delete LoginHistory records older than 30 days
+    cutoff = today - timedelta(days=30)
+    deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
+    if deleted_count[0]:
+        logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
 
     # These shouldn't be cached as they are user-specific/time-sensitive
     context['notifications'] = get_notifications(str(request.user.uid))[:10]
