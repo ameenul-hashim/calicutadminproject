@@ -200,12 +200,18 @@ class EnterpriseHardeningMiddleware:
                 
                 if is_infected:
                     from django.http import HttpResponseForbidden
-                    from accounts.models import AdminActivityLog
-                    AdminActivityLog.objects.create(
-                        admin=None,
-                        action="MALWARE_BLOCK",
-                        details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}"
-                    )
+                    try:
+                        from accounts.models import AdminActivityLog
+                        from accounts.models import CustomUser
+                        admin_user = CustomUser.objects.filter(user_type='ADMIN', is_active=True).first()
+                        if admin_user:
+                            AdminActivityLog.objects.create(
+                                admin=admin_user,
+                                action="MALWARE_BLOCK",
+                                details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}"
+                            )
+                    except Exception:
+                        pass
                     try:
                         from .utils.firebase_audit import log_security_event
                         log_security_event('MALWARE_BLOCK', f"Blocked: {uploaded_file.name} ({reason})", ip=request.META.get('REMOTE_ADDR'))
