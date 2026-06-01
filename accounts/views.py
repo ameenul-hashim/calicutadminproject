@@ -908,10 +908,31 @@ def add_lesson(request, course_uid):
 
         youtube_video_id = None
         youtube_upload_status = 'NOT_UPLOADED'
-        pending_upload = None
 
         if video_source == 'file' and video_file:
-            pending_upload = video_file
+            import tempfile, os
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+            for chunk in video_file.chunks():
+                tmp.write(chunk)
+            tmp.close()
+            try:
+                from .utils.youtube_uploader import upload_video
+                youtube_video_id = upload_video(
+                    tmp.name,
+                    title=f"{course.title} - {title}",
+                    description=f"Lesson: {title}\nCourse: {course.title}\nTeacher: {request.user.full_name or request.user.username}",
+                    privacy_status='unlisted'
+                )
+                youtube_upload_status = 'UPLOADED'
+                video_url = f"https://www.youtube.com/watch?v={youtube_video_id}"
+            except Exception as e:
+                logger.error(f"YouTube upload failed for lesson '{title}': {e}")
+                messages.warning(request, f"Video upload to YouTube failed: {str(e)}. Lesson saved without video. You can add a YouTube link below or re-upload MP4 later.")
+            finally:
+                try:
+                    os.unlink(tmp.name)
+                except Exception:
+                    pass
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
         else:
@@ -930,53 +951,16 @@ def add_lesson(request, course_uid):
             youtube_upload_status=youtube_upload_status,
         )
 
-        if pending_upload:
-            import tempfile, os, threading
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-            for chunk in pending_upload.chunks():
-                tmp.write(chunk)
-            tmp.close()
-            tmp_path = tmp.name
-
-            def _upload(filepath, lesson_id, course_title, lesson_title, teacher_name):
-                try:
-                    import django, os
-                    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'elearning_project.settings')
-                    django.setup()
-                    from accounts.models import Lesson as Lsn
-                    from accounts.utils.youtube_uploader import upload_video as uv
-                    from django.utils import timezone
-                    les = Lsn.objects.get(id=lesson_id)
-                    vid_id = uv(
-                        filepath,
-                        title=f"{course_title} - {lesson_title}",
-                        description=f"Lesson: {lesson_title}\nCourse: {course_title}\nTeacher: {teacher_name}",
-                        privacy_status='unlisted'
-                    )
-                    if vid_id:
-                        les.youtube_video_id = vid_id
-                        les.youtube_upload_status = 'UPLOADED'
-                        les.youtube_uploaded_at = timezone.now()
-                        les.video_url = f"https://www.youtube.com/watch?v={vid_id}"
-                        les.save(update_fields=['youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at', 'video_url'])
-                except Exception as e:
-                    logger.error(f"BG YouTube upload failed for lesson '{lesson_title}': {e}")
-                finally:
-                    try:
-                        os.unlink(filepath)
-                    except Exception:
-                        pass
-
-            threading.Thread(
-                target=_upload,
-                args=(tmp_path, lesson.id, course.title, title, request.user.full_name or request.user.username),
-                daemon=True
-            ).start()
-            messages.success(request, f"Lesson '{title}' added! Video is being uploaded to YouTube in the background. You'll be notified once it's ready.")
+        if youtube_video_id:
+            from django.utils import timezone
+            lesson.youtube_uploaded_at = timezone.now()
+            lesson.save(update_fields=['youtube_uploaded_at'])
 
         if course.status == 'PUBLISHED' or course.is_approved:
+            messages.success(request, f"Lesson '{title}' added! Video will be visible to students once approved by admin.")
             notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
         else:
+            messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
             notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
 
         return redirect('course_lessons', course_uid=course.uid)
