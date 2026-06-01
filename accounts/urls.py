@@ -34,6 +34,7 @@ urlpatterns = [
     path('teacher/explore/', views.explore_courses, name='teacher_explore'),
     path('course/<uuid:course_uid>/play/', views.course_player, name='course_player'),
     path('resource/<uuid:resource_uid>/access/', views.access_resource, name='access_resource'),
+    path('resource/<uuid:resource_uid>/view/', views.pdf_viewer, name='pdf_viewer'),
     path('resource/<uuid:resource_uid>/download/', views.download_resource, name='download_resource'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('student/explore/', views.student_explore, name='student_explore'),

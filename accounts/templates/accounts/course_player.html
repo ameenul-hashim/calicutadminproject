@@ -434,12 +434,7 @@
                 }
 
                 function openResourcePDF(uid, title) {
-                    currentPDFUid = uid;
-                    currentPDFTitle = title;
-                    const container = document.getElementById('category-items-container');
-                    savedScrollPos = container ? container.scrollTop : 0;
-                    history.pushState({view:'pdf', uid:uid, title:title, category:activeCategory, scrollPos:savedScrollPos}, '', window.location.pathname + '#pdf');
-                    _showPDFOverlay(uid, title);
+                    window.location.href = '/resource/' + uid + '/view/';
                 }
             </script>
 

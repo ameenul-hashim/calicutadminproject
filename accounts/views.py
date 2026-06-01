@@ -1829,6 +1829,37 @@ def access_resource(request, resource_uid):
         
     return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
+
+@xframe_options_exempt
+@login_required(login_url='login')
+def pdf_viewer(request, resource_uid):
+    from accounts.models import CourseResource, Enrollment
+    from django.shortcuts import get_object_or_404, redirect, render
+    from django.http import Http404, HttpResponseForbidden
+
+    resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
+
+    is_teacher = (request.user.user_type == 'TEACHER' and resource.course.teacher == request.user)
+    is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
+
+    if not (is_teacher or is_admin):
+        if resource.status != 'APPROVED':
+            raise Http404("Resource not found or not approved.")
+        has_enrollment = Enrollment.objects.filter(user=request.user, course=resource.course).exists()
+        if not has_enrollment:
+            return HttpResponseForbidden("You are not enrolled in this course.")
+
+    signed_url = resource.get_signed_url()
+    if not signed_url:
+        return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
+
+    return render(request, 'accounts/pdf_viewer.html', {
+        'signed_url': signed_url,
+        'title': resource.title,
+        'uid': resource.uid,
+    })
+
+
 @login_required(login_url='login')
 def download_resource(request, resource_uid):
     """Downloads a resource file with Content-Disposition: attachment for actual file download."""
