@@ -875,7 +875,7 @@ def approve_lesson(request, lesson_uid):
         lesson.has_pending_edits = False
 
     # If lesson has a YouTube video, change visibility from PRIVATE to UNLISTED
-    if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED':
+    if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED' and not lesson.video_url.startswith('supabase://'):
         try:
             from accounts.utils.youtube_uploader import change_video_visibility
             change_video_visibility(lesson.youtube_video_id, 'unlisted')
