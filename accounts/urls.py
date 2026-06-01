@@ -53,6 +53,7 @@ urlpatterns = [
     path('recover-username/', views.recover_username, name='recover_username'),
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
+    path('api/youtube/init-upload/', views.init_youtube_upload, name='init_youtube_upload'),
 ]
 
 

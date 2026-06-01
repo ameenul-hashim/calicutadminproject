@@ -1,5 +1,6 @@
 import os
 import io
+import tempfile
 import mimetypes
 import logging
 from PIL import Image
@@ -60,40 +61,51 @@ def validate_file(file_obj, filename, expected_type):
 def process_pdf(file_bytes):
     """
     Compresses PDF and generates a thumbnail WebP.
+    Uses temp file on disk for PyMuPDF to minimize RAM (avoids 2-5x in-memory overhead).
     Returns: (compressed_bytes, webp_thumbnail_bytes)
     """
     if not PYMUPDF_AVAILABLE:
-        # Fallback if no local C lib
         return file_bytes, None
-        
+
+    tmp_path = None
     try:
-        # Load PDF
-        doc = fitz.open(stream=file_bytes, filetype="pdf")
-        
+        # Write to temp file so PyMuPDF reads from disk, not memory
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp:
+            tmp.write(file_bytes)
+            tmp_path = tmp.name
+        file_bytes = None  # allow GC to reclaim
+
+        doc = fitz.open(tmp_path)
+
         # 1. Generate Thumbnail from first page
         thumbnail_bytes = None
         if len(doc) > 0:
             page = doc[0]
-            pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5)) # low res for thumb
+            pix = page.get_pixmap(matrix=fitz.Matrix(0.5, 0.5))
             img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
             thumb_io = io.BytesIO()
-            # Compress WebP between 50-150KB generally via Quality 60
             img.save(thumb_io, format="WEBP", quality=60)
             thumbnail_bytes = thumb_io.getvalue()
-            
+
         # 2. Compress PDF
         compressed_io = io.BytesIO()
         doc.save(compressed_io, garbage=4, deflate=True, clean=True)
         compressed_bytes = compressed_io.getvalue()
-        
+
         doc.close()
-        
+
         if len(compressed_bytes) > MAX_COMPRESSED_SIZE_BYTES:
             raise ValueError(f"Compressed PDF exceeds absolute {MAX_COMPRESSED_SIZE_MB}MB safety limit.")
-            
+
         return compressed_bytes, thumbnail_bytes
-        
+
     except Exception as e:
         logger.error(f"PDF Processing Error: {e}")
         raise ValueError(f"Failed to process PDF document: {str(e)}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 

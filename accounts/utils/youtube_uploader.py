@@ -2,6 +2,7 @@ import os
 import logging
 import tempfile
 import time
+import requests
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
@@ -127,3 +128,60 @@ def delete_youtube_video(video_id):
     except Exception as e:
         logger.error(f"YouTube video delete error: {e}")
         raise
+
+
+def create_resumable_upload_url(title, description, file_size=None):
+    """
+    Creates a YouTube resumable upload session and returns the upload URL.
+    The browser uploads the file directly to this URL — no server RAM used.
+    """
+    from google.auth.transport.requests import Request as GoogleRequest
+    client_id = os.getenv('YOUTUBE_CLIENT_ID')
+    client_secret = os.getenv('YOUTUBE_CLIENT_SECRET')
+    refresh_token = os.getenv('YOUTUBE_REFRESH_TOKEN')
+
+    if not all([client_id, client_secret, refresh_token]):
+        logger.warning("YouTube credentials not configured")
+        return None
+
+    try:
+        creds = Credentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri='https://oauth2.googleapis.com/token',
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=None
+        )
+        creds.refresh(GoogleRequest())
+
+        url = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status'
+        headers = {
+            'Authorization': f'Bearer {creds.token}',
+            'Content-Type': 'application/json',
+            'X-Upload-Content-Type': 'video/*',
+        }
+        if file_size:
+            headers['X-Upload-Content-Length'] = str(file_size)
+
+        body = {
+            'snippet': {
+                'title': title[:100],
+                'description': (description or '')[:5000],
+            },
+            'status': {
+                'privacyStatus': 'unlisted',
+                'selfDeclaredMadeForKids': False,
+            }
+        }
+
+        resp = requests.post(url, headers=headers, json=body)
+        if resp.status_code in (200, 201):
+            upload_url = resp.headers.get('Location')
+            return upload_url
+
+        logger.error(f"YouTube resumable session error: {resp.status_code} {resp.text}")
+        return None
+    except Exception as e:
+        logger.error(f"YouTube resumable session creation failed: {e}")
+        return None

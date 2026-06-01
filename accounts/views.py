@@ -807,9 +807,12 @@ def create_course(request):
             status='DRAFT'
         )
         if thumbnail:
-            success = update_image(course, thumbnail, folder="Neo Learner/courses")
-            if not success:
-                print(f"⚠️ Thumbnail upload failed for course '{title}' — course saved without thumbnail.")
+            if thumbnail.size > 5 * 1024 * 1024:
+                messages.warning(request, "Thumbnail exceeds 5MB limit. Course created without custom thumbnail.")
+            else:
+                success = update_image(course, thumbnail, folder="Neo Learner/courses")
+                if not success:
+                    print(f"⚠️ Thumbnail upload failed for course '{title}' — course saved without thumbnail.")
         
         messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
         return redirect('course_lessons', course_uid=course.uid)
@@ -838,17 +841,20 @@ def edit_course(request, course_uid):
             course.has_pending_edits = True
             
             if thumbnail_file:
-                from .utils.cloudinary_helpers import upload_image_only
-                p_url, p_id = upload_image_only(thumbnail_file, folder="Neo Learner/courses")
-                if p_url:
-                    if course.pending_image_public_id:
-                        try:
-                            import cloudinary.uploader
-                            cloudinary.uploader.destroy(course.pending_image_public_id)
-                        except Exception:
-                            pass
-                    course.pending_image = p_url
-                    course.pending_image_public_id = p_id
+                if thumbnail_file.size > 5 * 1024 * 1024:
+                    messages.warning(request, "Thumbnail exceeds 5MB limit. Changes saved without thumbnail update.")
+                else:
+                    from .utils.cloudinary_helpers import upload_image_only
+                    p_url, p_id = upload_image_only(thumbnail_file, folder="Neo Learner/courses")
+                    if p_url:
+                        if course.pending_image_public_id:
+                            try:
+                                import cloudinary.uploader
+                                cloudinary.uploader.destroy(course.pending_image_public_id)
+                            except Exception:
+                                pass
+                        course.pending_image = p_url
+                        course.pending_image_public_id = p_id
             
             course.save()
             notify_admins(f"🔄 PENDING EDITS: Teacher {request.user.username} edited the approved course '{course.title}'. Changes are pending admin approval.")
@@ -861,10 +867,13 @@ def edit_course(request, course_uid):
             course.level = level
             
             if thumbnail_file:
-                from .utils.cloudinary_helpers import update_image
-                success = update_image(course, thumbnail_file, folder="Neo Learner/courses")
-                if not success:
-                    print(f"⚠️ Thumbnail update failed for course '{course.title}'")
+                if thumbnail_file.size > 5 * 1024 * 1024:
+                    messages.warning(request, "Thumbnail exceeds 5MB limit. Edits saved without thumbnail update.")
+                else:
+                    from .utils.cloudinary_helpers import update_image
+                    success = update_image(course, thumbnail_file, folder="Neo Learner/courses")
+                    if not success:
+                        print(f"⚠️ Thumbnail update failed for course '{course.title}'")
             
             if course.status == 'REJECTED':
                 course.rejection_reason = ""
@@ -906,28 +915,17 @@ def add_lesson(request, course_uid):
         video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
 
-        youtube_video_id = None
-        youtube_upload_status = 'NOT_UPLOADED'
-
         if video_source == 'file' and video_file:
-            import uuid
-            lesson_uid = str(uuid.uuid4())
-            try:
-                from .utils.supabase_storage import upload_video_to_supabase
-                storage_path = upload_video_to_supabase(video_file, lesson_uid)
-                if storage_path:
-                    video_url = f"supabase://{storage_path}"
-                    messages.success(request, "Video uploaded to storage successfully.")
-                else:
-                    messages.warning(request, "Video upload to storage failed. Lesson saved without video. You can add a YouTube link below.")
-            except Exception as e:
-                logger.error(f"Video upload failed for lesson '{title}': {e}")
-                messages.warning(request, f"Video upload failed: {str(e)}. Lesson saved without video. You can add a YouTube link below.")
+            video_url = video_url.strip()
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
         else:
             messages.error(request, "Please provide a video (upload MP4 or paste YouTube link).")
             return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+
+        import re
+        youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
+        youtube_video_id = youtube_match.group(1) if youtube_match else None
 
         lesson = Lesson.objects.create(
             course=course,
@@ -938,7 +936,7 @@ def add_lesson(request, course_uid):
             status='PENDING',
             is_approved=False,
             youtube_video_id=youtube_video_id,
-            youtube_upload_status=youtube_upload_status,
+            youtube_upload_status='UPLOADED' if youtube_video_id else 'NOT_UPLOADED',
         )
 
         if youtube_video_id:
@@ -967,28 +965,14 @@ def edit_lesson(request, lesson_uid):
         video_file = request.FILES.get('video_file')
         order = request.POST.get('order', 1)
 
-        new_youtube_video_id = None
-
         if video_source == 'file' and video_file:
-            try:
-                from .utils.youtube_uploader import upload_video, delete_youtube_video
-                if lesson.youtube_video_id:
-                    try:
-                        delete_youtube_video(lesson.youtube_video_id)
-                    except Exception:
-                        pass
-                new_youtube_video_id = upload_video(
-                    video_file,
-                    title=f"{lesson.course.title} - {title}",
-                    description=f"Lesson: {title}\nCourse: {lesson.course.title}\nTeacher: {request.user.full_name or request.user.username}",
-                    privacy_status='unlisted'
-                )
-                video_url = f"https://www.youtube.com/watch?v={new_youtube_video_id}"
-            except Exception as e:
-                logger.error(f"YouTube re-upload failed for lesson '{title}': {e}")
-                messages.warning(request, f"Video upload to YouTube failed: {str(e)}. Lesson saved without video change. You can add a YouTube link below.")
+            video_url = video_url.strip()
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
+
+        import re
+        youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
+        new_youtube_video_id = youtube_match.group(1) if youtube_match else None
 
         if lesson.is_approved:
             lesson.pending_title = title
@@ -1060,10 +1044,10 @@ def add_resource(request, course_uid):
             messages.error(request, "File upload missing.")
             return redirect('course_lessons', course_uid=course.uid)
 
-        # Pre-read size gate: 50MB raw upload limit to prevent DoS
-        MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+        # Pre-read size gate: 20MB raw upload limit to prevent DoS (PyMuPDF uses 2-5x RAM)
+        MAX_UPLOAD_BYTES = 20 * 1024 * 1024
         if upload_file.size > MAX_UPLOAD_BYTES:
-            messages.error(request, "File too large. Maximum upload size is 50MB.")
+            messages.error(request, "File too large. Maximum upload size is 20MB.")
             return redirect('course_lessons', course_uid=course.uid)
             
         try:
@@ -1151,9 +1135,9 @@ def edit_resource(request, resource_uid):
 
         if upload_file:
             # Pre-read size gate
-            MAX_UPLOAD_BYTES = 50 * 1024 * 1024
+            MAX_UPLOAD_BYTES = 20 * 1024 * 1024
             if upload_file.size > MAX_UPLOAD_BYTES:
-                messages.error(request, "File too large. Maximum upload size is 50MB.")
+                messages.error(request, "File too large. Maximum upload size is 20MB.")
                 return redirect('edit_resource', resource_uid=resource.uid)
                 
             try:
@@ -1859,7 +1843,12 @@ def download_resource(request, resource_uid):
         resource.download_count += 1
         resource.save(update_fields=['download_count'])
         
-    # Primary: stream file bytes directly as attachment (Secure Proxy, No Expiry)
+    # Primary: redirect to Supabase signed URL (zero server RAM, works on all devices)
+    url = resource.get_signed_url()
+    if url:
+        return redirect(url)
+    
+    # Fallback: stream file bytes through server (in-memory, for when signed URL fails)
     try:
         from accounts.utils.storage_manager import StorageManager, supabase as res_supabase
         if res_supabase and resource.firebase_file_path:
@@ -1872,17 +1861,11 @@ def download_resource(request, resource_uid):
                 content_type = resource.mime_type or 'application/octet-stream'
                 response = HttpResponse(file_bytes, content_type=content_type)
                 filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
-                # For 'download', we use 'attachment'
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 response['Content-Length'] = len(file_bytes)
                 return response
     except Exception as e:
         logger.error(f"Resource proxy download failed for {resource_uid}: {e}")
-
-    # Fallback to signed URL
-    url = resource.get_signed_url()
-    if url:
-        return redirect(url)
     
     return HttpResponseForbidden("Failed to download resource. Please contact administrator.")
 
@@ -2072,6 +2055,33 @@ def reset_password(request):
         
     return render(request, 'accounts/reset_password.html', {'user': user})
 
+
+@login_required
+@user_passes_test(lambda u: u.user_type == 'TEACHER')
+def init_youtube_upload(request):
+    """Creates a YouTube resumable upload session. Browser uploads the file directly."""
+    import json
+    from django.http import JsonResponse
+    from django.views.decorators.csrf import csrf_exempt
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        title = data.get('title', '')
+        description = data.get('description', '')
+        file_size = data.get('file_size')
+
+        from .utils.youtube_uploader import create_resumable_upload_url
+        upload_url = create_resumable_upload_url(title, description, file_size)
+
+        if upload_url:
+            return JsonResponse({'upload_url': upload_url})
+        return JsonResponse({'error': 'Failed to create upload session'}, status=500)
+    except Exception as e:
+        logger.error(f"init_youtube_upload error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 
