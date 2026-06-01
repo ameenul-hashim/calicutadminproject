@@ -1065,6 +1065,15 @@ def add_resource(request, course_uid):
             file_bytes = upload_file.read()
             original_size = len(file_bytes)
             
+            # Convert DOCX to PDF internally, then process as PDF
+            if resource_type == 'DOCX':
+                from .utils.pdf_processor import convert_docx_to_pdf
+                pdf_bytes = convert_docx_to_pdf(file_bytes, title)
+                resource_type = 'PDF'
+                mime_type = 'application/pdf'
+                ext = 'pdf'
+                file_bytes = pdf_bytes
+            
             compressed_bytes = file_bytes
             thumbnail_bytes = None
             if resource_type == 'PDF':
@@ -1158,6 +1167,15 @@ def edit_resource(request, resource_uid):
                 new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
                 file_bytes = upload_file.read()
                 new_orig_size = len(file_bytes)
+                
+                # Convert DOCX to PDF internally
+                if resource_type == 'DOCX':
+                    from .utils.pdf_processor import convert_docx_to_pdf
+                    pdf_bytes = convert_docx_to_pdf(file_bytes, title)
+                    resource_type = 'PDF'
+                    new_mime = 'application/pdf'
+                    new_ext = 'pdf'
+                    file_bytes = pdf_bytes
                 
                 compressed_bytes = file_bytes
                 thumbnail_bytes = None

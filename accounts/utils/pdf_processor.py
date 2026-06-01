@@ -18,6 +18,14 @@ except ImportError:
 MAX_COMPRESSED_SIZE_MB = 10
 MAX_COMPRESSED_SIZE_BYTES = MAX_COMPRESSED_SIZE_MB * 1024 * 1024
 
+# Try to import python-docx for DOCX conversion
+try:
+    from docx import Document as DocxDocument
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+    logger.warning("python-docx not installed, DOCX upload will not work")
+
 def validate_file(file_obj, filename, expected_type):
     """
     Validates MIME type, extension against expected CourseResource types.
@@ -109,4 +117,78 @@ def process_pdf(file_bytes):
                 os.unlink(tmp_path)
             except Exception:
                 pass
+
+def convert_docx_to_pdf(file_bytes, title="Document"):
+    """
+    Converts a DOCX file to PDF using python-docx + reportlab.
+    Returns PDF bytes on success, raises ValueError on failure.
+    """
+    if not DOCX_AVAILABLE:
+        raise ValueError("DOCX processing is not available (python-docx not installed). Install it with: pip install python-docx")
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_JUSTIFY
+
+    try:
+        import io
+        docx_doc = DocxDocument(io.BytesIO(file_bytes))
+    except Exception as e:
+        raise ValueError(f"Failed to read DOCX file: {e}")
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=20*mm, rightMargin=20*mm,
+        topMargin=20*mm, bottomMargin=20*mm
+    )
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('DocxTitle', parent=styles['Title'], fontSize=18, spaceAfter=12)
+    heading_style = ParagraphStyle('DocxHeading', parent=styles['Heading1'], fontSize=14, spaceAfter=8, spaceBefore=12)
+    body_style = ParagraphStyle('DocxBody', parent=styles['Normal'], fontSize=10, leading=14, spaceAfter=6, alignment=TA_JUSTIFY)
+    bullet_style = ParagraphStyle('DocxBullet', parent=body_style, leftIndent=20, bulletIndent=10)
+
+    elements = []
+    elements.append(Paragraph(title, title_style))
+    elements.append(Spacer(1, 6*mm))
+
+    for para in docx_doc.paragraphs:
+        text = para.text.strip()
+        if not text:
+            elements.append(Spacer(1, 3*mm))
+            continue
+
+        style_name = para.style.name.lower() if para.style else ''
+
+        if 'heading' in style_name or 'title' in style_name:
+            level = 1
+            for key in para.style.element.xpath('@w:outlineLvl') if hasattr(para.style, 'element') else []:
+                try: level = int(key) + 1
+                except: pass
+            h_style = ParagraphStyle(f'H{level}', parent=heading_style, fontSize=max(14 - (level-1)*2, 10))
+            elements.append(Paragraph(escape_xml(text), h_style))
+        elif para.style and 'list' in style_name:
+            elements.append(Paragraph(f'&bull; {escape_xml(text)}', bullet_style))
+        else:
+            elements.append(Paragraph(escape_xml(text), body_style))
+
+    try:
+        doc.build(elements)
+    except Exception as e:
+        raise ValueError(f"Failed to build PDF from DOCX content: {e}")
+
+    pdf_bytes = buf.getvalue()
+    if len(pdf_bytes) == 0:
+        raise ValueError("Generated PDF is empty")
+
+    return pdf_bytes
+
+
+def escape_xml(text):
+    """Escape text for use in reportlab XML paragraphs."""
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
