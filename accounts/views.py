@@ -2097,7 +2097,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django_ratelimit.decorators import ratelimit
 
 @csrf_exempt
-@ratelimit(key='ip', rate='2/hour', method='POST', block=True)
+@ratelimit(key='ip', rate='10/hour', method='POST', block=True)
 def trigger_backup(request):
     """Triggers encrypted backup. Protected by rate limit + token auth."""
     import json, subprocess, sys, os
