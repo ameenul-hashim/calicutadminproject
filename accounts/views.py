@@ -13,7 +13,7 @@ from django.views.decorators.clickjacking import xframe_options_exempt
 logger = logging.getLogger(__name__)
 import os
 from accounts.utils.supabase_storage import upload_pdf
-from accounts.utils.firebase_notifications import get_notifications_firebase, get_unread_count_firebase
+from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_read, mark_all_read
 import random
 from django.conf import settings
 import cloudinary
@@ -74,19 +74,16 @@ def log_login_attempt(request, user, status='SUCCESS'):
         pass # Never block login due to logging failure
 
 def create_notification(user, message):
-    from .utils.firebase_notifications import create_notification_firebase
+    from .models import Notification
     if user.user_type == 'STUDENT':
         return
-    important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
-    is_important = any(word in message.lower() for word in important_keywords)
-    if is_important:
-        create_notification_firebase(str(user.uid), message)
+    Notification.objects.create(user=user, message=message)
 
 def notify_admins(message):
-    from .models import CustomUser
+    from .models import CustomUser, Notification
     admins = CustomUser.objects.filter(user_type='ADMIN')
-    for admin in admins:
-        create_notification(admin, message)
+    notifs = [Notification(user=admin, message=message) for admin in admins]
+    Notification.objects.bulk_create(notifs)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def signup_view(request):
@@ -684,8 +681,8 @@ def teacher_dashboard(request):
         'recent_courses': recent_courses,
         'courses': page_obj,
         'page_obj': page_obj,
-        'notifications': get_notifications_firebase(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count_firebase(str(request.user.uid)),
+        'notifications': get_notifications(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 
@@ -1726,24 +1723,16 @@ def get_chat_list(request):
 
 @login_required
 def mark_notification_read(request, notif_uid):
-    from .utils.firebase_notifications import mark_read_firebase
-    mark_read_firebase(str(request.user.uid), notif_uid)
+    mark_read(str(request.user.uid), notif_uid)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        from django.http import JsonResponse
         return JsonResponse({"status": "read"})
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @login_required
 def delete_notification(request, notif_uid):
-    from .utils.firebase_notifications import get_notifications_firebase, delete_notification_firebase
-    notifs = get_notifications_firebase(str(request.user.uid))
-    notif = next((n for n in notifs if n.get('uid') == notif_uid), None)
-    if notif and not notif.get('is_read', False):
-        messages.error(request, "Please mark as read before deleting.")
-        return redirect(request.META.get('HTTP_REFERER', '/'))
-    delete_notification_firebase(str(request.user.uid), notif_uid)
+    from .utils.notification_helper import delete_notification as db_del
+    db_del(str(request.user.uid), notif_uid)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-        from django.http import JsonResponse
         return JsonResponse({"status": "deleted"})
     messages.success(request, "Notification deleted.")
     return redirect(request.META.get('HTTP_REFERER', '/'))
@@ -1784,15 +1773,14 @@ def teacher_analytics_view(request):
         'course_data': course_data,
         'trend_labels': enrollment_trend_labels,
         'trend_data': enrollment_trend_data,
-        'notifications': get_notifications_firebase(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count_firebase(str(request.user.uid)),
+        'notifications': get_notifications(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
     return render(request, 'teacher_portal/analytics.html', context)
 
 @login_required
 def mark_all_notifications_read(request):
-    from .utils.firebase_notifications import mark_all_read_firebase
-    mark_all_read_firebase(str(request.user.uid))
+    mark_all_read(str(request.user.uid))
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @xframe_options_exempt
@@ -1921,24 +1909,27 @@ def download_resource(request, resource_uid):
 @login_required
 def all_notifications(request):
     from django.shortcuts import render
-    from datetime import datetime
-    from .utils.firebase_notifications import get_notifications_firebase, mark_all_read_firebase
+    from .utils.notification_helper import cleanup_old_notifications
+    
+    cleanup_old_notifications()
     
     filter_keywords = None
     if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
         filter_keywords = ['added course', 'new content added to your course']
     
-    notifications = get_notifications_firebase(str(request.user.uid), filter_keywords=filter_keywords)
+    notifications = get_notifications(str(request.user.uid))
+    
+    if filter_keywords:
+        notifications = [n for n in notifications if any(kw.lower() in n['message'].lower() for kw in filter_keywords)]
     
     for n in notifications:
-        ts = n.get('created_at', 0)
+        ts = n.get('created_at')
         if ts:
-            n['created_at_display'] = datetime.fromtimestamp(ts / 1000).strftime('%b %d, %Y %I:%M %p')
+            n['created_at_display'] = ts.strftime('%b %d, %Y %I:%M %p')
         else:
             n['created_at_display'] = ''
-        n['is_read'] = n.get('is_read', False)
     
-    mark_all_read_firebase(str(request.user.uid))
+    mark_all_read(str(request.user.uid))
     
     base_template = 'custom_admin/base_admin.html' if (request.user.user_type == 'ADMIN' or request.user.is_superuser) else 'accounts/base.html'
     if request.user.user_type == 'TEACHER' and not request.user.is_superuser:
@@ -1951,14 +1942,16 @@ def all_notifications(request):
 @login_required
 def get_unread_counts(request):
     from django.http import JsonResponse
-    from .utils.firebase_notifications import get_unread_count_firebase
     from .utils.firebase_chat import get_unread_count as get_chat_unread
+    from .utils.notification_helper import cleanup_old_notifications
+    
+    cleanup_old_notifications()
     
     filter_keywords = None
     if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
         filter_keywords = ['added course', 'new content added to your course']
     
-    notif_count = get_unread_count_firebase(str(request.user.uid), filter_keywords=filter_keywords)
+    notif_count = get_unread_count(str(request.user.uid))
     chat_count = get_chat_unread(str(request.user.uid))
     
     return JsonResponse({

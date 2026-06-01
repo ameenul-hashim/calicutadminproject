@@ -1,7 +1,6 @@
 from django.core.cache import cache
 from accounts.models import CustomUser, Course, DeletionRequest
-from accounts.utils.firebase_notifications import get_notifications_firebase, get_unread_count_firebase
-from datetime import datetime
+from accounts.utils.notification_helper import get_notifications, get_unread_count, cleanup_old_notifications
 
 def pending_counts(request):
     try:
@@ -20,12 +19,9 @@ def pending_counts(request):
             'is_admin_preview': request.session.get('student_view_unlocked', False)
         }
         
-        notifs = get_notifications_firebase(str(request.user.uid))[:10]
-        for n in notifs:
-            ts = n.get('created_at', 0)
-            n['created_at'] = datetime.fromtimestamp(ts / 1000) if ts else None
-        context['notifications'] = notifs
-        context['unread_notifications_count'] = get_unread_count_firebase(str(request.user.uid))
+        cleanup_old_notifications()
+        context['notifications'] = get_notifications(str(request.user.uid))[:10]
+        context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
 
         if request.user.user_type == 'ADMIN':
             context['pending_students_count'] = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
