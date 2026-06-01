@@ -651,8 +651,12 @@
                 const videoId = getYouTubeId(videoUrl);
                 if (videoId) {
                     initPlayer('youtube', videoId);
+                } else if (videoUrl.includes('supabase.co') || videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm')) {
+                    initPlayer('html5', videoUrl);
+                    downloadBtn.href = videoUrl;
+                    downloadBtn.style.display = 'block';
+                    actionArea.style.display = 'flex';
                 } else {
-                    // Fallback: open non-YouTube URL in a responsive iframe
                     const playerContainer = document.getElementById('playerContainer');
                     const playerElement = document.getElementById('player');
                     playerContainer.style.display = 'block';
