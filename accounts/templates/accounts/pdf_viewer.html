@@ -35,13 +35,25 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
   color:#94a3b8; font-size:0.75rem; font-weight:600; min-width:40px; text-align:center;
 }
 #main-area {
-  flex:1; display:flex; align-items:center; justify-content:center;
-  overflow:auto; position:relative; -webkit-overflow-scrolling:touch;
+  flex:1; display:flex; align-items:flex-start; justify-content:center;
+  overflow:auto; position:relative; -webkit-overflow-scrolling:touch; padding:16px;
 }
 #pdf-canvas {
   display:block; box-shadow:0 2px 20px rgba(0,0,0,0.4);
-  max-width:100%; height:auto; background:white;
+  width:auto; height:auto; background:white; max-width:100%;
 }
+#nav-bar {
+  display:flex; align-items:center; justify-content:center; gap:12px;
+  padding:8px 0; flex-shrink:0;
+}
+#nav-bar button {
+  background:#334155; border:none; color:#e2e8f0; width:44px; height:40px;
+  border-radius:10px; cursor:pointer; font-size:1.2rem; font-weight:700;
+  transition:background 0.15s; display:flex; align-items:center; justify-content:center;
+}
+#nav-bar button:hover { background:#475569; }
+#nav-bar button:active { background:#0ea5e9; }
+#nav-bar button:disabled { opacity:0.3; cursor:default; }
 #loading-overlay {
   position:fixed; inset:0; background:#0f172a; z-index:100;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
@@ -73,8 +85,10 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
     <button onclick="goBack()" title="Back">←</button>
     <a id="download-btn" href="#" download title="Download">⬇</a>
     <div id="page-info">
+      <button onclick="prevPage()" title="Previous Page" id="prev-btn" style="background:#334155;width:34px;height:34px;border:none;border-radius:8px;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">◀</button>
       <input id="page-input" type="number" min="1" value="1" onchange="goToPage(this.value)">
       <span id="page-total">/ 0</span>
+      <button onclick="nextPage()" title="Next Page" id="next-btn" style="background:#334155;width:34px;height:34px;border:none;border-radius:8px;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">▶</button>
     </div>
     <button onclick="zoomOut()" title="Zoom Out">−</button>
     <span id="zoom-level">100%</span>
@@ -113,6 +127,9 @@ var pageTotal = document.getElementById('page-total');
 var zoomLevel = document.getElementById('zoom-level');
 var loadingOverlay = document.getElementById('loading-overlay');
 var errorOverlay = document.getElementById('error-overlay');
+var prevBtn = document.getElementById('prev-btn');
+var nextBtn = document.getElementById('next-btn');
+var pageNumPages = 0;
 
 document.getElementById('download-btn').href = '/resource/{{ uid }}/download/';
 
@@ -121,10 +138,18 @@ function loadPDF() {
   errorOverlay.style.display = 'none';
   pdfjsLib.getDocument(PDF_URL).promise.then(function(pdf) {
     pdfDoc = pdf;
+    pageNumPages = pdf.numPages;
     pageTotal.textContent = '/ ' + pdf.numPages;
     pageInput.max = pdf.numPages;
     loadingOverlay.style.display = 'none';
-    renderPage(currentPage);
+    var availW = window.innerWidth - 80;
+    pdf.getPage(1).then(function(page) {
+      var vp = page.getViewport({ scale: 1 });
+      var fitZoom = Math.min(availW / vp.width, 2.0);
+      currentZoom = Math.min(Math.max(fitZoom, 0.5), 2.0);
+      zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
+      renderPage(1);
+    });
   }).catch(function(err) {
     console.error('PDF load error:', err);
     loadingOverlay.style.display = 'none';
@@ -147,6 +172,12 @@ function renderPage(num) {
   });
   currentPage = num;
   pageInput.value = num;
+  updateNavButtons();
+}
+
+function updateNavButtons() {
+  if (prevBtn) prevBtn.disabled = currentPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentPage >= pageNumPages;
 }
 
 function goToPage(val) {
