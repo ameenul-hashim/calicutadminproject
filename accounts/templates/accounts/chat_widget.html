@@ -282,7 +282,16 @@
         };
 
         chatSocket.onclose = function(e) {
-            console.error('Chat socket closed unexpectedly');
+            console.warn('Chat socket closed, reconnecting in 3s...');
+            setTimeout(function() {
+                if (currentReceiverUid) {
+                    openChat(currentReceiverUid, document.getElementById('chat-title').innerText);
+                }
+            }, 3000);
+        };
+
+        chatSocket.onerror = function(e) {
+            console.error('Chat socket error');
         };
     }
 

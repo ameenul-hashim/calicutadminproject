@@ -20,6 +20,8 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
 }
 #toolbar button:hover, #toolbar a:hover { background:#475569; }
 #toolbar button:active { background:#0ea5e9; }
+#download-btn { gap:4px; padding:0 10px; width:auto !important; }
+#download-btn .dl-text { font-size:0.75rem; font-weight:600; display:none; }
 #page-info {
   flex:1; text-align:center; font-size:0.85rem; font-weight:600; color:#94a3b8;
   display:flex; align-items:center; justify-content:center; gap:6px;
@@ -74,8 +76,18 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
 @media (max-width:480px) {
   #toolbar { height:48px; padding:0 6px; gap:4px; }
   #toolbar button, #toolbar a { width:34px; height:34px; font-size:1rem; }
+  #download-btn { width:auto !important; padding:0 8px; gap:3px; }
+  #download-btn .dl-text { display:inline; font-size:0.65rem; }
   #page-info { font-size:0.78rem; }
   #page-input { width:40px; font-size:0.78rem; }
+  #main-area { padding:8px; }
+}
+@media (min-width:481px) {
+  #download-btn .dl-text { display:inline; font-size:0.7rem; }
+}
+@media (min-width:768px) {
+  #download-btn .dl-text { display:none; }
+  #download-btn { width:38px !important; padding:0; }
 }
 </style>
 </head>
@@ -83,7 +95,7 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
 <div id="body-wrap">
   <div id="toolbar">
     <button onclick="goBack()" title="Back">←</button>
-    <a id="download-btn" href="#" download title="Download">⬇</a>
+    <a id="download-btn" href="#" download title="Download"><span class="dl-icon">⬇</span><span class="dl-text">Download</span></a>
     <div id="page-info">
       <button onclick="prevPage()" title="Previous Page" id="prev-btn" style="background:#334155;width:34px;height:34px;border:none;border-radius:8px;color:#e2e8f0;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">◀</button>
       <input id="page-input" type="number" min="1" value="1" onchange="goToPage(this.value)">

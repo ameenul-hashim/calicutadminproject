@@ -1762,9 +1762,10 @@ def get_chat_list(request):
         })
     
     # Also include users who have no chat history yet (for new conversations)
-    if request.user.is_superuser or (request.user.is_staff and request.user.user_type != 'TEACHER'):
+    is_admin_user = request.user.is_superuser or request.user.is_staff or request.user.user_type == 'ADMIN'
+    if is_admin_user and request.user.user_type != 'TEACHER':
         existing = {d['uid'] for d in result}
-        teachers = CustomUser.objects.filter(user_type='TEACHER').only('uid', 'full_name', 'username', 'image')
+        teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').only('uid', 'full_name', 'username', 'image')
         for t in teachers:
             if str(t.uid) not in existing:
                 result.append({
@@ -1778,7 +1779,8 @@ def get_chat_list(request):
         existing = {d['uid'] for d in result}
         from django.db.models import Q
         admins = CustomUser.objects.filter(
-            Q(is_superuser=True) | 
+            Q(is_superuser=True) |
+            Q(user_type='ADMIN') |
             (Q(is_staff=True) & ~Q(user_type='TEACHER') & ~Q(user_type='STUDENT'))
         ).distinct().only('uid', 'full_name', 'username', 'image')
         for a in admins:
