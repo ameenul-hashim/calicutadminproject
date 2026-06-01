@@ -128,6 +128,8 @@ def get_cloudinary_stats():
         storage = usage.get('storage', {})
         credits = usage.get('credits', {})
         transformations = usage.get('transformations', {})
+        resources_usage = usage.get('resources', {})
+        images_data = resources_usage.get('image', {}) if resources_usage else {}
 
         storage_used_mb = storage.get('used', 0) / (1024 * 1024) if storage.get('used') else 0
         storage_limit_mb = storage.get('limit', CLOUDINARY_LIMIT_MB) / (1024 * 1024) if storage.get('limit') else CLOUDINARY_LIMIT_MB
@@ -147,6 +149,7 @@ def get_cloudinary_stats():
             'transformations_limit': transformations.get('limit', 0),
             'transformations_percent': round(min((transformations.get('used', 0) / max(transformations.get('limit', 1), 1)) * 100, 100), 1),
             'total_files': usage.get('objects', {}).get('used', 0),
+            'images_count': images_data.get('used', 0),
             'emoji': '🖼️',
             'color': '#f59e0b',
             'description': 'Profile photos, course thumbnails, and resource thumbnails',
@@ -167,6 +170,7 @@ def get_cloudinary_stats():
             'transformations_limit': 0,
             'transformations_percent': 0,
             'total_files': 0,
+            'images_count': 0,
             'emoji': '🖼️',
             'color': '#f59e0b',
             'description': 'Profile photos, course thumbnails, and resource thumbnails',
