@@ -19,6 +19,9 @@
         <button onclick="window.print()" class="view-btn" style="background: #1e293b; color: white; padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
             <span>🖨️</span> Print Invoice
         </button>
+        <a href="{% url 'download_student_invoice_pdf' student.uid %}" class="view-btn" style="background: #0ea5e9; color: white; padding: 0.6rem 1.2rem; border-radius: 0.5rem; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; text-decoration: none;">
+            <span>⬇️</span> Download PDF
+        </a>
     </div>
 </div>
 

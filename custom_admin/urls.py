@@ -31,11 +31,13 @@ urlpatterns = [
     path('user/toggle/<uuid:user_uid>/', views.toggle_user_status, name='toggle_user_status'),
     path('student/create/', views.create_student_admin, name='create_student_admin'),
     path('student/<uuid:user_uid>/profile/', views.admin_student_profile, name='admin_student_profile'),
+    path('student/<uuid:user_uid>/invoice/pdf/', views.download_student_invoice_pdf, name='download_student_invoice_pdf'),
     path('student-view/auth/', views.admin_student_view_auth, name='admin_student_view_auth'),
 
 
     path('teacher/create/', views.create_teacher_admin, name='create_teacher_admin'),
     path('teacher/<uuid:user_uid>/profile/', views.admin_teacher_profile, name='admin_teacher_profile'),
+    path('teacher/<uuid:user_uid>/invoice/pdf/', views.download_teacher_invoice_pdf, name='download_teacher_invoice_pdf'),
     path('user/edit/<uuid:user_uid>/', views.edit_user_admin, name='edit_user_admin'),
     path('user/delete/<uuid:user_uid>/', views.delete_user_admin, name='delete_user_admin'),
     path('analytics/', views.analytics_view, name='admin_analytics'),

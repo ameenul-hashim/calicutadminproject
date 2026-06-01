@@ -1692,6 +1692,203 @@ def master_audit_summary_view(request):
 
     return render(request, 'custom_admin/master_audit_summary.html', context)
 
+def generate_invoice_pdf_response(request, title, user_obj, items, balance, yesterday_balance, invoice_number, invoice_date, user_type_label):
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm, cm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.colors import HexColor, black, white
+    from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
+    from reportlab.platypus import (
+        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
+        Image, PageBreak
+    )
+    from reportlab.platypus.flowables import HRFlowable
+    from io import BytesIO
+
+    from datetime import datetime
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(
+        buf, pagesize=A4,
+        leftMargin=50, rightMargin=50,
+        topMargin=50, bottomMargin=50
+    )
+
+    styles = getSampleStyleSheet()
+    styles.add(ParagraphStyle('InvoiceTitle', parent=styles['Heading1'], fontSize=28, textColor=HexColor('#0ea5e9'), spaceAfter=4, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('Normal8', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8')))
+    styles.add(ParagraphStyle('SmallBold', parent=styles['Normal'], fontSize=9, textColor=HexColor('#334155'), fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('TableHeader', parent=styles['Normal'], fontSize=8, textColor=white, fontName='Helvetica-Bold'))
+
+    elements = []
+
+    # --- HEADER ---
+    header_data = [
+        [Paragraph("Neo Learner", styles['InvoiceTitle']),
+         Paragraph("INVOICE", ParagraphStyle('InvH2', parent=styles['Heading2'], fontSize=24, textColor=HexColor('#cbd5e1'), alignment=TA_RIGHT, spaceAfter=4))],
+        [Paragraph("Learning Academy Portal", ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, textColor=HexColor('#64748b'))),
+         Paragraph(f"# {invoice_number}", ParagraphStyle('InvNum', parent=styles['Normal'], fontSize=10, textColor=HexColor('#334155'), fontName='Helvetica-Bold', alignment=TA_RIGHT))],
+        [Paragraph("123 Academy Way, Digital City", ParagraphStyle('Addr', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8'))),
+         Paragraph(f"Date: {invoice_date.strftime('%b %d, %Y')}", ParagraphStyle('InvDate', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), alignment=TA_RIGHT))],
+    ]
+    t = Table(header_data, colWidths=[250, 250])
+    t.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('SPAN', (0, 0), (0, 1)),
+        ('LINEBELOW', (0, 2), (-1, 2), 1, HexColor('#e2e8f0')),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 20))
+
+    # --- BILL TO ---
+    uid_label = f"#{user_type_label.upper()}-{user_obj.id:05d}"
+    elements.append(Paragraph("BILL TO:", ParagraphStyle('BillTitle', parent=styles['Normal'], fontSize=9, textColor=HexColor('#94a3b8'), fontName='Helvetica-Bold', spaceAfter=8)))
+    elements.append(Paragraph(f"<b>{user_obj.full_name or user_obj.username}</b>", ParagraphStyle('Name', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'))))
+    elements.append(Paragraph(f"{user_obj.email}", ParagraphStyle('Email', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'))))
+    elements.append(Paragraph(f"Phone: {user_obj.phone_number or '—'}", ParagraphStyle('Phone', parent=styles['Normal'], fontSize=9, textColor=HexColor('#1e293b'), fontName='Helvetica')))
+    elements.append(Paragraph(f"{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}", ParagraphStyle('Uid', parent=styles['Normal'], fontSize=8, textColor=HexColor('#64748b'))))
+    elements.append(Spacer(1, 20))
+
+    # --- ITEMS TABLE ---
+    table_data = [
+        [Paragraph("Description", styles['TableHeader']),
+         Paragraph("Date", styles['TableHeader']),
+         Paragraph("Amount", styles['TableHeader'])]
+    ]
+    for item in items:
+        desc = item.get('description', '')
+        date = item.get('date', '')
+        amt = item.get('amount', 0)
+        table_data.append([
+            Paragraph(f"<b>{desc}</b><br/><font size='8' color='#64748b'>{item.get('category', '')}</font>",
+                      ParagraphStyle('Cell', parent=styles['Normal'], fontSize=10, textColor=HexColor('#334155'))),
+            Paragraph(date, ParagraphStyle('DateCell', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), alignment=TA_CENTER)),
+            Paragraph(f"${amt}", ParagraphStyle('AmtCell', parent=styles['Normal'], fontSize=10, textColor=HexColor('#1e293b'), fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+        ])
+    if not items:
+        table_data.append([
+            Paragraph("No entries found.", ParagraphStyle('Empty', parent=styles['Normal'], fontSize=10, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)),
+            "", ""
+        ])
+
+    col_widths = [300, 100, 100]
+    t = Table(table_data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1e293b')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), white),
+        ('FONTSIZE', (0, 0), (-1, 0), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#e2e8f0')),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 25))
+
+    # --- SUMMARY ---
+    summary_data = [
+        ['Subtotal:', f'${balance}'],
+        ['Tax (0%):', '$0.00'],
+        ["Yesterday's Activity:", f'${yesterday_balance}'],
+        ['', ''],
+        ['TOTAL AMOUNT:', f'${balance}'],
+        ['Amount Due:', '$0.00'],
+    ]
+    t = Table(summary_data, colWidths=[350, 50])
+    t.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('LINEBELOW', (0, 0), (0, 2), 0.5, HexColor('#e2e8f0')),
+        ('LINEBELOW', (1, 0), (1, 2), 0.5, HexColor('#e2e8f0')),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('FONTSIZE', (0, 4), (-1, 4), 12),
+        ('FONTNAME', (0, 4), (-1, 4), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 4), (-1, 4), HexColor('#1e293b')),
+        ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
+        ('TEXTCOLOR', (0, 5), (-1, 5), HexColor('#10b981')),
+        ('BACKGROUND', (0, 4), (-1, 4), HexColor('#f8fafc')),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 40))
+
+    # --- FOOTER ---
+    elements.append(HRFlowable(width="100%", color=HexColor('#e2e8f0')))
+    elements.append(Spacer(1, 10))
+    elements.append(Paragraph("Thank you for being part of Neo Learner Learning Academy.", ParagraphStyle('Footer', parent=styles['Normal'], fontSize=9, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)))
+    elements.append(Paragraph("This is a computer-generated document and does not require a physical signature.", ParagraphStyle('Footer2', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)))
+
+    doc.build(elements)
+    pdf_bytes = buf.getvalue()
+    buf.close()
+
+    from django.http import HttpResponse
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{invoice_number}.pdf"'
+    response['Content-Length'] = len(pdf_bytes)
+    return response
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def download_student_invoice_pdf(request, user_uid):
+    student = get_object_or_404(CustomUser, uid=user_uid, user_type='STUDENT')
+    enrollments = Enrollment.objects.filter(user=student).select_related('course')
+    current_balance = enrollments.aggregate(total=Sum('course__price'))['total'] or 0
+    from datetime import timedelta
+    yesterday = timezone.now().date() - timedelta(days=1)
+    yesterday_balance = enrollments.filter(enrolled_at__date=yesterday).aggregate(total=Sum('course__price'))['total'] or 0
+    invoice_date = timezone.now().date()
+    invoice_number = f"INV-STU-{student.id:05d}"
+
+    items = []
+    for e in enrollments:
+        items.append({
+            'description': e.course.title,
+            'category': f"Category: {e.course.category}",
+            'date': e.enrolled_at.strftime('%b %d, %Y'),
+            'amount': float(e.course.price or 0),
+        })
+
+    return generate_invoice_pdf_response(
+        request, 'Student Invoice', student, items,
+        float(current_balance), float(yesterday_balance),
+        invoice_number, invoice_date, 'STU'
+    )
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def download_teacher_invoice_pdf(request, user_uid):
+    teacher = get_object_or_404(CustomUser, uid=user_uid, user_type='TEACHER')
+    courses = Course.objects.filter(teacher=teacher)
+    all_enrollments = Enrollment.objects.filter(course__in=courses)
+    current_balance = all_enrollments.aggregate(total=Sum('course__price'))['total'] or 0
+    from datetime import timedelta
+    yesterday = timezone.now().date() - timedelta(days=1)
+    yesterday_balance = all_enrollments.filter(enrolled_at__date=yesterday).aggregate(total=Sum('course__price'))['total'] or 0
+    invoice_date = timezone.now().date()
+    invoice_number = f"INV-TEA-{teacher.id:05d}"
+
+    items = []
+    for c in courses:
+        enrolled_count = Enrollment.objects.filter(course=c).count()
+        items.append({
+            'description': c.title,
+            'category': f"Students enrolled: {enrolled_count} | Category: {c.category}",
+            'date': c.created_at.strftime('%b %d, %Y') if hasattr(c, 'created_at') and c.created_at else invoice_date.strftime('%b %d, %Y'),
+            'amount': float(c.price or 0),
+        })
+
+    return generate_invoice_pdf_response(
+        request, 'Teacher Revenue Report', teacher, items,
+        float(current_balance), float(yesterday_balance),
+        invoice_number, invoice_date, 'TEA'
+    )
+
+
 def error_404(request, exception):
     return render(request, '404.html', status=404)
 
