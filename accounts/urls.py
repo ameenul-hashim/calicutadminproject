@@ -54,6 +54,7 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('api/youtube/init-upload/', views.init_youtube_upload, name='init_youtube_upload'),
+    path('api/backup/', views.trigger_backup, name='trigger_backup'),
 ]
 
 
