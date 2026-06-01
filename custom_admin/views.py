@@ -10,7 +10,7 @@ from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
 from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
 from accounts.utils.cloudinary_helpers import update_image
-from accounts.utils.firebase_notifications import get_notifications_firebase, get_unread_count_firebase
+from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
 
@@ -32,13 +32,10 @@ def log_admin_activity(request, action, target_user=None, details=""):
         pass
 
 def create_notification(user, message):
-    from accounts.utils.firebase_notifications import create_notification_firebase
+    from accounts.models import Notification
     if user.user_type == 'STUDENT':
         return
-    important_keywords = ['approved', 'rejected', 'request', 'resubmit', 'deletion', 'submitted']
-    is_important = any(word in message.lower() for word in important_keywords)
-    if is_important:
-        create_notification_firebase(str(user.uid), message)
+    Notification.objects.create(user=user, message=message)
 
 @user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -132,8 +129,8 @@ def manage_students(request):
         )
     
     # Fast notification fetch
-    notifications = get_notifications_firebase(str(request.user.uid))[:10]
-    unread_count = get_unread_count_firebase(str(request.user.uid))
+    notifications = get_notifications(str(request.user.uid))[:10]
+    unread_count = get_unread_count(str(request.user.uid))
     
     # Pagination
     from django.core.paginator import Paginator
@@ -631,8 +628,8 @@ def analytics_view(request):
         context['peak_hours'] = [0] * 24
 
     # These shouldn't be cached as they are user-specific/time-sensitive
-    context['notifications'] = get_notifications_firebase(str(request.user.uid))[:10]
-    context['unread_notifications_count'] = get_unread_count_firebase(str(request.user.uid))
+    context['notifications'] = get_notifications(str(request.user.uid))[:10]
+    context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
     
     return render(request, 'custom_admin/analytics.html', context)
 
@@ -670,8 +667,8 @@ def pending_courses_view(request):
         Q(lessons__is_approved=False) |
         Q(lessons__has_pending_edits=True)
     ).prefetch_related('lessons').distinct().order_by('-created_at')
-    notifications = get_notifications_firebase(str(request.user.uid))[:10]
-    unread_count = get_unread_count_firebase(str(request.user.uid))
+    notifications = get_notifications(str(request.user.uid))[:10]
+    unread_count = get_unread_count(str(request.user.uid))
     return render(request, 'custom_admin/pending_courses.html', {
         'courses': courses,
         'notifications': notifications,
@@ -1061,8 +1058,8 @@ def admin_view_course_content(request, course_uid):
     # Show all non-deleted resources — admin must be able to see REJECTED ones to re-approve after teacher fixes
     resources = course.resources.exclude(is_deleted=True).order_by('-created_at')
     
-    notifications = get_notifications_firebase(str(request.user.uid))[:10]
-    unread_count = get_unread_count_firebase(str(request.user.uid))
+    notifications = get_notifications(str(request.user.uid))[:10]
+    unread_count = get_unread_count(str(request.user.uid))
     
     pending_resources = resources.filter(status__in=['PENDING', 'DELETION_PENDING'])
     approved_resources = resources.filter(status='APPROVED')
@@ -1099,8 +1096,8 @@ def storage_dashboard(request):
     max_mb = 1000
     usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
 
-    notifications = get_notifications_firebase(str(request.user.uid))[:10]
-    unread_count = get_unread_count_firebase(str(request.user.uid))
+    notifications = get_notifications(str(request.user.uid))[:10]
+    unread_count = get_unread_count(str(request.user.uid))
     
     return render(request, 'custom_admin/storage_dashboard.html', {
         'stats': stats,
@@ -1227,13 +1224,10 @@ def delete_user_admin(request, user_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_all_notifications(request):
-    from accounts.utils.firebase_notifications import mark_all_read_firebase
-    from datetime import datetime
-    all_notifs = get_notifications_firebase(str(request.user.uid))
-    for n in all_notifs:
-        ts = n.get('created_at', 0)
-        n['created_at'] = datetime.fromtimestamp(ts / 1000) if ts else None
-    mark_all_read_firebase(str(request.user.uid))
+    from accounts.utils.notification_helper import cleanup_old_notifications
+    cleanup_old_notifications()
+    all_notifs = get_notifications(str(request.user.uid), limit=200)
+    mark_all_read(str(request.user.uid))
     return render(request, 'custom_admin/all_notifications.html', {
         'all_notifications': all_notifs[:50],
         'unread_notifications_count': 0,
@@ -1252,8 +1246,8 @@ def manage_deletion_requests(request):
     pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
     # Also show recently processed requests for admin reference
     history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
-    notifications = get_notifications_firebase(str(request.user.uid))[:10]
-    unread_notifications_count = get_unread_count_firebase(str(request.user.uid))
+    notifications = get_notifications(str(request.user.uid))[:10]
+    unread_notifications_count = get_unread_count(str(request.user.uid))
     return render(request, 'custom_admin/manage_deletion_requests.html', {
         'requests': pending_requests,
         'history_requests': history_requests,
@@ -1366,8 +1360,8 @@ def deleted_courses_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    notifications = get_notifications_firebase(str(request.user.uid))[:10]
-    unread_notifications_count = get_unread_count_firebase(str(request.user.uid))
+    notifications = get_notifications(str(request.user.uid))[:10]
+    unread_notifications_count = get_unread_count(str(request.user.uid))
     
     return render(request, 'custom_admin/deleted_courses.html', {
         'courses': page_obj,
@@ -1464,8 +1458,8 @@ def enterprise_monitor(request):
         'blocked_ips_count': blocked_ips_count,
         'avg_response_time': dynamic_response_time,
         'storage_usage': round(estimated_storage_mb, 1),
-        'notifications': get_notifications_firebase(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count_firebase(str(request.user.uid)),
+        'notifications': get_notifications(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
     return render(request, 'custom_admin/enterprise_monitor.html', context)
 
@@ -1591,8 +1585,8 @@ def system_audit_view(request):
     return render(request, 'custom_admin/system_audit_hub.html', {
         'audit': audit_results,
         'audit_logs': combined_logs,
-        'notifications': get_notifications_firebase(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count_firebase(str(request.user.uid)),
+        'notifications': get_notifications(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     })
 
 
