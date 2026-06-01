@@ -9,11 +9,7 @@ from google.auth.transport.requests import Request
 
 logger = logging.getLogger(__name__)
 
-SCOPES = [
-    'https://www.googleapis.com/auth/youtube.upload',
-    'https://www.googleapis.com/auth/youtube',
-    'https://www.googleapis.com/auth/youtubepartner',
-]
+SCOPES = ['https://www.googleapis.com/auth/youtube']
 
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
