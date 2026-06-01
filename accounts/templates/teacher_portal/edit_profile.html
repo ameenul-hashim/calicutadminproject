@@ -235,11 +235,7 @@
         box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
     }
 
-    @media (max-width: 640px) {
-        .profile-edit-card {
-            padding: 1.5rem;
-            border-radius: 1rem;
-        }
+    @media (max-width: 768px) {
         .avatar-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 20px !important;
@@ -248,6 +244,24 @@
             width: 120px !important;
             height: 155px !important;
         }
+    }
+    @media (max-width: 640px) {
+        .profile-edit-card {
+            padding: 1.5rem;
+            border-radius: 1rem;
+        }
+        .avatar-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+        }
+        .avatar-option {
+            width: 100% !important;
+            height: 130px !important;
+        }
+        #profileForm input {
+            font-size: 16px !important;
+        }
+        .section-title { font-size: 0.9rem !important; }
     }
 </style>
 
@@ -294,11 +308,23 @@
                 </div>
                 {% endfor %}
             </div>
-            <input type="hidden" name="avatar_url" id="avatarUrlInput">
-            <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select one of the high-quality professional avatars above.</p>
-        </div>
+                    <input type="hidden" name="avatar_url" id="avatarUrlInput">
+                    <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select one of the high-quality professional avatars above.</p>
+                </div>
 
-        <!-- ════ Manage Credentials Toggle ════ -->
+                <!-- Upload Your Own Photo -->
+                <div style="margin-top: 1rem; text-align: center;">
+                    <hr class="section-divider">
+                    <div class="section-title">📷 Or Upload Your Own Photo</div>
+                    <div class="section-desc">Upload a profile photo from your device.</div>
+                    <label for="profilePhotoInput" style="display: inline-block; padding: 0.7rem 1.5rem; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 0.75rem; cursor: pointer; color: #475569; font-weight: 600; font-size: 0.85rem; margin-top: 0.5rem; transition: all 0.2s;">
+                        📂 Choose Photo
+                    </label>
+                    <input type="file" id="profilePhotoInput" name="profile_photo" accept="image/*" style="display: none;">
+                    <p id="photoName" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem;"></p>
+                </div>
+
+                <!-- ════ Manage Credentials Toggle ════ -->
         <button type="button" onclick="toggleCredSection()" id="credToggleBtn" class="btn-save" style="background: linear-gradient(135deg, #6366f1, #4f46e5); margin-top: 1rem;">
             🔐 Manage Credentials
         </button>
@@ -314,6 +340,7 @@
                 <div class="input-with-icon">
                     <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value="">
                 </div>
+                <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
                 <div class="hint">Leave blank to keep your current username.</div>
             </div>
 
@@ -364,6 +391,41 @@
 </div>
 
 <script>
+    const teacherOrigUsername = '{{ user.username }}';
+    const teacherUsernameInput = document.getElementById('new_username');
+    const teacherUsernameStatus = document.getElementById('usernameStatus');
+
+    teacherUsernameInput.addEventListener('blur', function() {
+        const val = this.value.trim();
+        if (!val || val === teacherOrigUsername) {
+            teacherUsernameStatus.textContent = '';
+            return;
+        }
+        fetch('/check-username/?username=' + encodeURIComponent(val))
+            .then(r => r.json())
+            .then(data => {
+                if (data.available) {
+                    teacherUsernameStatus.textContent = '✓ Username available';
+                    teacherUsernameStatus.style.color = '#10b981';
+                } else {
+                    teacherUsernameStatus.textContent = '✗ Username already taken';
+                    teacherUsernameStatus.style.color = '#ef4444';
+                }
+            })
+            .catch(() => {});
+    });
+
+    // Photo upload file name display
+    document.getElementById('profilePhotoInput').addEventListener('change', function() {
+        const nameEl = document.getElementById('photoName');
+        if (this.files && this.files[0]) {
+            nameEl.textContent = 'Selected: ' + this.files[0].name;
+            nameEl.style.color = '#10b981';
+        } else {
+            nameEl.textContent = '';
+        }
+    });
+
     // Password visibility toggle
     function togglePassword(fieldId, btn) {
         const input = document.getElementById(fieldId);
@@ -495,12 +557,13 @@
         e.preventDefault();
 
         const hasAvatar = avatarUrlInput.value;
+        const hasPhoto = document.getElementById('profilePhotoInput').files.length > 0;
         const newUsername = document.getElementById('new_username').value.trim();
         const currPw = document.getElementById('current_password').value;
         const newPwVal = newPw.value;
         const confirmVal = confirmPw.value;
 
-        if (!hasAvatar && !newUsername && !newPwVal) {
+        if (!hasAvatar && !hasPhoto && !newUsername && !newPwVal) {
             showToast('No changes to save.', 'error');
             return;
         }

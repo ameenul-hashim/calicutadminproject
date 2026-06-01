@@ -147,6 +147,7 @@
                         <label for="new_username">New Username</label>
                         <input type="text" id="new_username" name="new_username" value="{{ user.username }}"
                                style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem;">
+                        <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
                         <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Only letters, numbers, and @/./+/-/_ allowed.</p>
                     </div>
                 </div>
@@ -220,6 +221,31 @@
                 icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
             }
         }
+
+        const origUsername = '{{ user.username }}';
+        const usernameInput = document.getElementById('new_username');
+        const usernameStatus = document.getElementById('usernameStatus');
+
+        usernameInput.addEventListener('blur', function() {
+            const val = this.value.trim();
+            if (!val || val === origUsername) {
+                usernameStatus.textContent = '';
+                usernameStatus.style.color = 'transparent';
+                return;
+            }
+            fetch('/check-username/?username=' + encodeURIComponent(val))
+                .then(r => r.json())
+                .then(data => {
+                    if (data.available) {
+                        usernameStatus.textContent = '✓ Username available';
+                        usernameStatus.style.color = '#10b981';
+                    } else {
+                        usernameStatus.textContent = '✗ Username already taken';
+                        usernameStatus.style.color = '#ef4444';
+                    }
+                })
+                .catch(() => {});
+        });
 
         function toggleCredSection() {
             const section = document.getElementById('credSection');

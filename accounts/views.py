@@ -1332,6 +1332,16 @@ def profile_view(request):
     return render(request, 'accounts/profile.html', {'user': request.user})
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def check_username(request):
+    from django.http import JsonResponse
+    username = request.GET.get('username', '').strip()
+    if not username or len(username) < 3:
+        return JsonResponse({'available': False, 'error': 'Username must be at least 3 characters.'})
+    exclude_id = request.user.id if request.user.is_authenticated else None
+    exists = CustomUser.objects.filter(username__iexact=username).exclude(id=exclude_id).exists()
+    return JsonResponse({'available': not exists})
+
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def edit_profile(request):
     has_photo = bool(request.user.image) or bool(request.user.profile_photo)
@@ -1431,6 +1441,7 @@ def teacher_edit_profile(request):
         confirm_password = request.POST.get('confirm_password', '')
         current_password = request.POST.get('current_password', '')
         avatar_url = request.POST.get('avatar_url', '')
+        profile_photo = request.FILES.get('profile_photo')
 
         changes_made = False
         password_changed = False
@@ -1462,10 +1473,19 @@ def teacher_edit_profile(request):
             changes_made = True
             password_changed = True
 
-        # --- Avatar Change ---
+        # --- Avatar Change (preset) ---
         if avatar_url:
             request.user.image = avatar_url
+            request.user.image_public_id = ''
             changes_made = True
+
+        # --- Photo Upload (file) ---
+        if profile_photo:
+            from .utils.cloudinary_helpers import update_image
+            if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
+                changes_made = True
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Failed to upload photo.'}, status=500)
 
         if changes_made:
             request.user.save()
