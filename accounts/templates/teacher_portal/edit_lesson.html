@@ -124,7 +124,7 @@
                     return;
                 }
 
-                // MP4 file upload — AJAX with real progress
+                // MP4 file upload — browser uploads directly to YouTube
                 if (videoSource !== 'file' || !fileInput.files.length) {
                     this.submit();
                     return;
@@ -157,14 +157,54 @@
                 uploadPhase.textContent = 'Initializing...';
                 progressDetail.textContent = '';
 
-                try {
-                    // Step 1: Upload file via XHR (real progress)
-                    await new Promise((resolve, reject) => {
-                        const xhr = new XMLHttpRequest();
-                        const formData = new FormData();
-                        formData.append('video_file', file);
-                        formData.append('lesson_uid', '{{ lesson.uid }}');
+                function formatSize(bytes) {
+                    if (bytes < 1024) return bytes + ' B';
+                    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                    if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+                    return (bytes / 1073741824).toFixed(2) + ' GB';
+                }
+                function formatSpeed(bps) {
+                    if (bps < 1048576) return (bps / 1024).toFixed(0) + ' KB/s';
+                    return (bps / 1048576).toFixed(1) + ' MB/s';
+                }
+                function formatTimeRemaining(bytesRemaining, bps) {
+                    if (bps <= 0) return 'calculating...';
+                    const secs = Math.ceil(bytesRemaining / bps);
+                    if (secs < 60) return secs + 's remaining';
+                    return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's remaining';
+                }
 
+                try {
+                    // Step 1: Get YouTube upload URL for this lesson
+                    const initResp = await fetch('/api/video/init-youtube-edit/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('neolearner_sessionid') || getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify({
+                            lesson_uid: '{{ lesson.uid }}',
+                        })
+                    });
+
+                    if (!initResp.ok) {
+                        const err = await initResp.json();
+                        throw new Error(err.error || 'Failed to initialize upload');
+                    }
+
+                    const initData = await initResp.json();
+                    const uploadUrl = initData.upload_url;
+                    const accessToken = initData.access_token;
+
+                    progressBar.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                    progressText.textContent = 'Uploading 0%';
+                    uploadPhase.textContent = 'Uploading ' + sizeMB + ' MB directly to YouTube...';
+                    progressDetail.textContent = 'Starting upload...';
+
+                    // Step 2: PUT file directly to YouTube (browser → YouTube, zero Django RAM)
+                    const videoId = await new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
                         let lastLoaded = 0, lastTime = Date.now();
 
                         xhr.upload.addEventListener('progress', function(ev) {
@@ -179,7 +219,7 @@
                                     progressBar.style.width = pct + '%';
                                     progressPercent.textContent = pct + '%';
                                     progressText.textContent = 'Uploading ' + pct + '%';
-                                    uploadPhase.textContent = 'Uploading ' + sizeMB + ' MB to cloud storage...';
+                                    uploadPhase.textContent = 'Uploading ' + sizeMB + ' MB to YouTube...';
                                     progressDetail.textContent = formatSize(ev.loaded) + ' / ' + formatSize(ev.total) + '  (' + formatSpeed(bps) + ')  ' + formatTimeRemaining(remaining, bps);
                                     lastLoaded = ev.loaded;
                                     lastTime = now;
@@ -191,13 +231,14 @@
                             if (xhr.status >= 200 && xhr.status < 300) {
                                 try {
                                     const resp = JSON.parse(xhr.responseText);
-                                    if (resp.success) resolve(resp);
-                                    else reject(new Error(resp.error || 'Upload failed'));
-                                } catch(ex) { reject(new Error('Invalid response')); }
+                                    if (resp.id) resolve(resp.id);
+                                    else reject(new Error('No video ID returned from YouTube'));
+                                } catch(ex) { reject(new Error('Invalid response from YouTube')); }
                             } else {
                                 try {
                                     const resp = JSON.parse(xhr.responseText);
-                                    reject(new Error(resp.error || 'Upload failed (HTTP ' + xhr.status + ')'));
+                                    const msg = resp.error && resp.error.message ? resp.error.message : 'Upload failed';
+                                    reject(new Error(msg + ' (HTTP ' + xhr.status + ')'));
                                 } catch(ex) { reject(new Error('Upload failed (HTTP ' + xhr.status + ')')); }
                             }
                         });
@@ -205,17 +246,37 @@
                         xhr.addEventListener('error', function() { reject(new Error('Network error')); });
                         xhr.addEventListener('abort', function() { reject(new Error('Cancelled')); });
 
-                        xhr.open('POST', '/api/video/edit-upload/');
-                        xhr.setRequestHeader('X-CSRFToken', getCookie('neolearner_sessionid') || getCookie('csrftoken'));
-                        xhr.send(formData);
+                        // PUT binary file directly to YouTube — MP4 never touches Django
+                        xhr.open('PUT', uploadUrl);
+                        xhr.setRequestHeader('Content-Type', 'video/mp4');
+                        xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+                        xhr.send(file);
                     });
+
+                    // Step 3: Tell Django the video_id
+                    const completeResp = await fetch('/api/video/youtube-edit-complete/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('neolearner_sessionid') || getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify({
+                            lesson_uid: '{{ lesson.uid }}',
+                            video_id: videoId,
+                        })
+                    });
+
+                    if (!completeResp.ok) {
+                        const err = await completeResp.json();
+                        throw new Error(err.error || 'Failed to save video info');
+                    }
 
                     // Success
                     progressBar.style.width = '100%';
                     progressBar.classList.add('complete');
                     progressPercent.textContent = '100%';
                     progressText.textContent = 'Upload complete!';
-                    uploadPhase.textContent = 'Video ready!';
+                    uploadPhase.textContent = 'Video uploaded! Processing on YouTube...';
                     uploadPhase.classList.add('complete');
                     progressDetail.textContent = '';
 

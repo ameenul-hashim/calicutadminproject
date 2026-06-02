@@ -178,7 +178,7 @@ def create_resumable_upload_url(title, description, file_size=None):
         resp = requests.post(url, headers=headers, json=body)
         if resp.status_code in (200, 201):
             upload_url = resp.headers.get('Location')
-            return upload_url
+            return {'upload_url': upload_url, 'access_token': creds.token}
 
         logger.error(f"YouTube resumable session error: {resp.status_code} {resp.text}")
         return None

@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
 import logging
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.http import require_POST
 from django.utils.html import escape
@@ -923,7 +923,7 @@ def course_lessons(request, course_uid):
 def add_lesson(request, course_uid):
     """
     Handles YouTube URL lesson creation (form POST).
-    MP4 file uploads use AJAX via /api/video/init-upload/ + /api/video/do-upload/.
+    MP4 file uploads use AJAX via /api/video/init-youtube/ + browser→YouTube PUT.
     """
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
@@ -978,7 +978,7 @@ def add_lesson(request, course_uid):
 def edit_lesson(request, lesson_uid):
     """
     Handles YouTube URL lesson updates (form POST).
-    MP4 file uploads use AJAX via /api/video/edit-upload/.
+    MP4 file uploads use AJAX via /api/video/init-youtube-edit/ + browser→YouTube PUT.
     """
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
@@ -2381,46 +2381,14 @@ def reset_password(request):
     return render(request, 'accounts/reset_password.html', {'user': user})
 
 
-@login_required
-@user_passes_test(lambda u: u.user_type == 'TEACHER')
-def init_youtube_upload(request):
-    """Creates a YouTube resumable upload session. Browser uploads the file directly."""
-    import json
-    from django.http import JsonResponse
-    from django.views.decorators.csrf import csrf_exempt
-
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST required'}, status=405)
-
-    try:
-        data = json.loads(request.body)
-        title = data.get('title', '')
-        description = data.get('description', '')
-        file_size = data.get('file_size')
-
-        from .utils.youtube_uploader import create_resumable_upload_url
-        upload_url = create_resumable_upload_url(title, description, file_size)
-
-        if upload_url:
-            return JsonResponse({'upload_url': upload_url})
-        return JsonResponse({'error': 'Failed to create upload session'}, status=500)
-    except Exception as e:
-        logger.error(f"init_youtube_upload error: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
-
-
-from django.views.decorators.csrf import csrf_exempt
-
-
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def init_video_upload(request):
     """
-    Phase 1 of AJAX video upload.
-    Creates a Lesson with upload_status=PENDING, returns lesson_uid for progress tracking.
-    The actual file upload is handled by a separate AJAX POST to /api/video/do-upload/.
+    Phase 1: Create lesson record and get YouTube resumable upload URL.
+    Browser uploads MP4 directly to YouTube — no bytes pass through Django.
+    Returns {lesson_uid, upload_url} for browser to PUT file to YouTube.
     """
     import json
-    from django.utils import timezone as tz
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -2430,14 +2398,12 @@ def init_video_upload(request):
         course_uid = data.get('course_uid')
         title = data.get('title', '').strip()
         order = data.get('order', 1)
-        video_source = data.get('video_source', 'file')
 
         if not title:
             return JsonResponse({'error': 'Title is required'}, status=400)
 
         course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
 
-        lesson_uid = uuid.uuid4()
         lesson = Lesson.objects.create(
             course=course,
             title=title,
@@ -2445,12 +2411,30 @@ def init_video_upload(request):
             status='PENDING',
             is_approved=False,
             upload_status='PENDING',
-            youtube_upload_status='NOT_UPLOADED',
+            youtube_upload_status='PENDING',
         )
+
+        from .utils.youtube_uploader import create_resumable_upload_url
+        result = create_resumable_upload_url(
+            title=title,
+            description=f'Lesson from course: {course.title}',
+        )
+
+        if not result:
+            lesson.delete()
+            return JsonResponse({'error': 'YouTube upload service unavailable. Check YouTube credentials.'}, status=500)
+
+        upload_url = result['upload_url']
+        access_token = result['access_token']
+
+        lesson.upload_status = 'UPLOADING'
+        lesson.youtube_upload_status = 'UPLOADING'
+        lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
 
         return JsonResponse({
             'lesson_uid': str(lesson.uid),
-            'upload_status': 'PENDING',
+            'upload_url': upload_url,
+            'access_token': access_token,
         })
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
@@ -2461,58 +2445,50 @@ def init_video_upload(request):
 
 @csrf_exempt
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def do_video_upload(request):
+def youtube_upload_complete(request):
     """
-    Phase 2 of AJAX video upload.
-    Receives the MP4 file via multipart POST, uploads to Supabase.
-    Returns JSON with upload status and signed video URL.
+    Phase 2: Browser has finished uploading MP4 directly to YouTube.
+    Receives video_id from browser, saves to lesson.
+    MP4 bytes never touched Django.
     """
     from django.utils import timezone as tz
+    import json
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
-    lesson_uid_str = request.POST.get('lesson_uid')
-    video_file = request.FILES.get('video_file')
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    if not lesson_uid_str or not video_file:
-        return JsonResponse({'error': 'lesson_uid and video_file required'}, status=400)
+    lesson_uid_str = data.get('lesson_uid')
+    video_id = data.get('video_id', '').strip()
+
+    if not lesson_uid_str:
+        return JsonResponse({'error': 'lesson_uid required'}, status=400)
+    if not video_id:
+        return JsonResponse({'error': 'video_id required'}, status=400)
 
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found'}, status=404)
 
-    # Validate file type
-    if not video_file.name.lower().endswith('.mp4'):
-        return JsonResponse({'error': 'Only MP4 files are supported'}, status=400)
-
-    file_size = video_file.size
-
-    # Update status to UPLOADING
-    lesson.upload_status = 'UPLOADING'
-    lesson.file_size = file_size
-    lesson.save(update_fields=['upload_status', 'file_size'])
-
-    # Upload to Supabase (streaming, memory-optimized)
-    from .utils.supabase_storage import stream_video_upload
-    video_path = stream_video_upload(video_file, str(lesson.uid))
-
-    if not video_path:
-        lesson.upload_status = 'FAILED'
-        lesson.save(update_fields=['upload_status'])
-        return JsonResponse({'error': 'Upload to cloud storage failed. Please try again.'}, status=500)
-
-    # Success — update lesson
-    lesson.video_url = f"supabase://{video_path}"
-    lesson.upload_status = 'READY'
-    lesson.save(update_fields=['video_url', 'upload_status'])
+    lesson.youtube_video_id = video_id
+    lesson.youtube_upload_status = 'UPLOADED'
+    lesson.youtube_uploaded_at = tz.now()
+    lesson.upload_status = 'PROCESSING'
+    lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
+    lesson.save(update_fields=[
+        'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
+        'upload_status', 'video_url',
+    ])
 
     return JsonResponse({
         'success': True,
-        'upload_status': 'READY',
-        'video_url': lesson.video_url,
-        'file_size': file_size,
+        'upload_status': 'PROCESSING',
+        'video_id': video_id,
     })
 
 
@@ -2529,61 +2505,115 @@ def video_upload_status(request, lesson_uid):
         return JsonResponse({'error': 'Lesson not found'}, status=404)
 
 
-@csrf_exempt
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def do_edit_video_upload(request):
+def init_youtube_edit_upload(request):
     """
-    AJAX video upload for EDIT lesson flow.
-    Receives MP4 file, uploads to Supabase, updates existing lesson.
+    Phase 1 of EDIT flow: create YouTube resumable upload session for existing lesson.
+    Browser uploads MP4 directly to YouTube — no bytes pass through Django.
     """
-    from django.utils import timezone as tz
+    import json
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
 
-    lesson_uid_str = request.POST.get('lesson_uid')
-    video_file = request.FILES.get('video_file')
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    if not lesson_uid_str or not video_file:
-        return JsonResponse({'error': 'lesson_uid and video_file required'}, status=400)
+    lesson_uid_str = data.get('lesson_uid')
+    if not lesson_uid_str:
+        return JsonResponse({'error': 'lesson_uid required'}, status=400)
 
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found'}, status=404)
 
-    if not video_file.name.lower().endswith('.mp4'):
-        return JsonResponse({'error': 'Only MP4 files are supported'}, status=400)
+    from .utils.youtube_uploader import create_resumable_upload_url
+    result = create_resumable_upload_url(
+        title=lesson.title,
+        description=f'Updated lesson: {lesson.title}',
+    )
 
-    file_size = video_file.size
+    if not result:
+        return JsonResponse({'error': 'YouTube upload service unavailable. Check YouTube credentials.'}, status=500)
+
+    upload_url = result['upload_url']
+    access_token = result['access_token']
+
     lesson.upload_status = 'UPLOADING'
-    lesson.file_size = file_size
-    lesson.save(update_fields=['upload_status', 'file_size'])
+    lesson.youtube_upload_status = 'UPLOADING'
+    lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
 
-    from .utils.supabase_storage import stream_video_upload
-    video_path = stream_video_upload(video_file, str(lesson.uid))
+    return JsonResponse({
+        'lesson_uid': str(lesson.uid),
+        'upload_url': upload_url,
+        'access_token': access_token,
+    })
 
-    if not video_path:
-        lesson.upload_status = 'FAILED'
-        lesson.save(update_fields=['upload_status'])
-        return JsonResponse({'error': 'Upload to cloud storage failed. Please try again.'}, status=500)
 
-    # Update lesson with new video
+@csrf_exempt
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def youtube_edit_complete(request):
+    """
+    Phase 2 of EDIT flow: browser finished uploading replacement MP4 to YouTube.
+    Saves video_id. If lesson is approved, stages as pending edit for admin approval.
+    MP4 bytes never touched Django.
+    """
+    from django.utils import timezone as tz
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    lesson_uid_str = data.get('lesson_uid')
+    video_id = data.get('video_id', '').strip()
+
+    if not lesson_uid_str:
+        return JsonResponse({'error': 'lesson_uid required'}, status=400)
+    if not video_id:
+        return JsonResponse({'error': 'video_id required'}, status=400)
+
+    try:
+        lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+    new_youtube_url = f'https://www.youtube.com/watch?v={video_id}'
+
     if lesson.is_approved:
-        lesson.pending_video_url = f"supabase://{video_path}"
+        lesson.pending_video_url = new_youtube_url
         lesson.has_pending_edits = True
-        lesson.save(update_fields=['pending_video_url', 'has_pending_edits'])
+        lesson.youtube_video_id = video_id
+        lesson.youtube_upload_status = 'UPLOADED'
+        lesson.youtube_uploaded_at = tz.now()
+        lesson.upload_status = 'PROCESSING'
+        lesson.save(update_fields=[
+            'pending_video_url', 'has_pending_edits', 'youtube_video_id',
+            'youtube_upload_status', 'youtube_uploaded_at', 'upload_status',
+        ])
         notify_admins(f"LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
     else:
-        lesson.video_url = f"supabase://{video_path}"
-        lesson.upload_status = 'READY'
-        lesson.save(update_fields=['video_url', 'upload_status'])
+        lesson.youtube_video_id = video_id
+        lesson.youtube_upload_status = 'UPLOADED'
+        lesson.youtube_uploaded_at = tz.now()
+        lesson.upload_status = 'PROCESSING'
+        lesson.video_url = new_youtube_url
+        lesson.save(update_fields=[
+            'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
+            'upload_status', 'video_url',
+        ])
 
     return JsonResponse({
         'success': True,
-        'upload_status': 'READY',
-        'video_url': lesson.video_url or lesson.pending_video_url,
-        'file_size': file_size,
+        'upload_status': 'PROCESSING',
+        'video_id': video_id,
     })
 
 
