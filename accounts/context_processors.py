@@ -1,6 +1,7 @@
 from django.core.cache import cache
 from accounts.models import CustomUser, Course, DeletionRequest
-from accounts.utils.notification_helper import get_notifications, get_unread_count, cleanup_old_notifications
+from accounts.utils.notification_helper import get_notifications, get_unread_count
+from time import time
 
 def pending_counts(request):
     try:
@@ -19,7 +20,16 @@ def pending_counts(request):
             'is_admin_preview': request.session.get('student_view_unlocked', False)
         }
         
-        cleanup_old_notifications()
+        cleanup_cache_key = "cleanup_notifications_last_run"
+        last_cleanup = cache.get(cleanup_cache_key, 0)
+        if time() - last_cleanup > 3600:
+            from accounts.utils.notification_helper import cleanup_old_notifications
+            cleanup_old_notifications()
+            try:
+                cache.set(cleanup_cache_key, time(), 7200)
+            except Exception:
+                pass
+
         context['notifications'] = get_notifications(str(request.user.uid))[:10]
         context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
 
@@ -28,7 +38,7 @@ def pending_counts(request):
             context['pending_teachers_count'] = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
             
             pending_courses = Course.objects.filter(status='PENDING').count()
-            courses_with_updates = Course.objects.filter(status='PUBLISHED').filter(lessons__is_approved=False).distinct().count()
+            courses_with_updates = Course.objects.filter(status='PUBLISHED', lessons__is_approved=False).values_list('id', flat=True).distinct().count()
             
             context['pending_courses_total'] = pending_courses + courses_with_updates
             context['pending_deletions_count'] = DeletionRequest.objects.filter(status='PENDING').count()
@@ -42,15 +52,13 @@ def pending_counts(request):
         elif request.user.user_type == 'STUDENT':
             context['unread_student_notifs'] = context['unread_notifications_count']
 
-        # Cache for 60 seconds
         try:
-            cache.set(cache_key, context, 60)
+            cache.set(cache_key, context, 120)
         except Exception:
             pass
             
         return context
     except Exception:
-        # Absolute fallback to prevent 500 error on every page
         return {}
 
 
