@@ -1,0 +1,214 @@
+{% extends "custom_admin/base_admin.html" %}
+{% block title %}Backup Info | Neo Learner{% endblock %}
+{% block extra_css %}
+<style>
+    .backup-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 2rem;
+    }
+    .backup-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+    .backup-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+    }
+    .backup-card .label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+    .backup-card .value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .backup-card .sub {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.25rem;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 9999px;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+    .status-badge.healthy { background: #dcfce7; color: #166534; }
+    .status-badge.degraded { background: #fef9c3; color: #854d0e; }
+    .status-badge.stale, .status-badge.unknown { background: #fee2e2; color: #991b1b; }
+    .status-badge.never { background: #f1f5f9; color: #475569; }
+
+    .backup-run {
+        background: white;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 0.75rem;
+        overflow: hidden;
+    }
+    .backup-run-header {
+        padding: 1rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        transition: background 0.15s;
+        user-select: none;
+    }
+    .backup-run-header:hover { background: #f8fafc; }
+    .backup-run-header .run-name { font-weight: 700; color: #0f172a; }
+    .backup-run-header .run-meta { color: #64748b; font-size: 0.85rem; }
+    .backup-run-body {
+        padding: 0 1.25rem 1rem;
+        display: none;
+    }
+    .backup-run-body.open { display: block; }
+    .backup-run-body table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    .backup-run-body th {
+        text-align: left;
+        padding: 0.5rem 0.75rem;
+        border-bottom: 1px solid #e2e8f0;
+        color: #64748b;
+        font-weight: 600;
+    }
+    .backup-run-body td {
+        padding: 0.4rem 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+        color: #334155;
+    }
+    .backup-run-body tr:last-child td { border-bottom: none; }
+
+    .error-box {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        font-size: 0.85rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block header_title %}📦 Backup Information{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1rem;">
+    <div style="font-size: 0.85rem; color: #64748b;">
+        <a href="{% url 'admin_dashboard' %}" style="color: #6366f1; text-decoration: none;">Dashboard</a>
+        <span style="margin: 0 0.4rem;">›</span>
+        <span style="color: #0f172a; font-weight: 600;">Backup Information</span>
+    </div>
+</div>
+
+{% if error_message %}
+<div class="error-box">{{ error_message }}</div>
+{% endif %}
+
+<div class="backup-grid">
+    <div class="backup-card">
+        <div class="label">Backup Status</div>
+        <div style="margin-top: 0.25rem;">
+            <span class="status-badge {{ overall_status|lower }}">
+                {% if overall_status == 'HEALTHY' %}✅ Healthy
+                {% elif overall_status == 'DEGRADED' %}⚠️ Degraded
+                {% elif overall_status == 'STALE' %}❌ Stale
+                {% elif overall_status == 'NEVER_BACKED_UP' %}🕳️ Never Backed Up
+                {% else %}❓ Unknown{% endif %}
+            </span>
+        </div>
+        <div class="sub">Last success: {{ last_success_time }}</div>
+    </div>
+    <div class="backup-card">
+        <div class="label">Total Backup Runs</div>
+        <div class="value">{{ total_runs }}</div>
+        <div class="sub">In Supabase cloud storage</div>
+    </div>
+    <div class="backup-card">
+        <div class="label">Total Files</div>
+        <div class="value">{{ total_files_count }}</div>
+        <div class="sub">Encrypted backup archives</div>
+    </div>
+    <div class="backup-card">
+        <div class="label">Total Size</div>
+        <div class="value">{{ total_backup_size }}</div>
+        <div class="sub">Across all backup runs</div>
+    </div>
+</div>
+
+{% if not supabase_configured %}
+<div class="error-box">⚠️ Supabase environment variables (SUPABASE_URL, SUPABASE_KEY) not configured. Backup data cannot be fetched.</div>
+{% endif %}
+
+<h2 style="font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 1.5rem 0 1rem;">
+    📋 Backup Runs
+    <span style="font-weight: 400; font-size: 0.85rem; color: #64748b;">(last 30, newest first)</span>
+</h2>
+
+{% if backup_runs %}
+    {% for run in backup_runs %}
+    <div class="backup-run">
+        <div class="backup-run-header" onclick="toggleBackup(this)">
+            <div>
+                <div class="run-name">📁 {{ run.folder }}</div>
+                <div class="run-meta" style="margin-top: 0.2rem;">{{ run.file_count }} files · {{ run.total_size_fmt }}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                {% if run.error %}
+                <span style="color: #ef4444; font-size: 0.75rem;">⚠️ {{ run.error }}</span>
+                {% endif %}
+                <span style="color: #94a3b8; font-size: 0.75rem;">{{ run.timestamp }}</span>
+                <span id="arrow-{{ forloop.counter }}" style="color: #94a3b8; transition: transform 0.2s;">▼</span>
+            </div>
+        </div>
+        <div class="backup-run-body" id="body-{{ forloop.counter }}">
+            <table>
+                <thead><tr><th>File</th><th>Size</th></tr></thead>
+                <tbody>
+                    {% for file in run.files %}
+                    <tr>
+                        <td style="word-break: break-all;">{{ file.name }}</td>
+                        <td style="white-space: nowrap;">{{ file.size_fmt }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="2" style="color: #94a3b8; font-style: italic;">No files listed</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 0.75rem; padding: 3rem 2rem; text-align: center; color: #94a3b8;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+        <div style="font-weight: 600; color: #64748b; font-size: 1.1rem;">No Backup Runs Found</div>
+        <div style="margin-top: 0.5rem; font-size: 0.9rem;">Run <code style="background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 4px;">python manage.py backup_all --cron --retention</code> to create the first backup.</div>
+    </div>
+{% endif %}
+
+<script>
+function toggleBackup(el) {
+    const body = el.nextElementSibling;
+    const arrow = el.querySelector('span[id^="arrow-"]');
+    body.classList.toggle('open');
+    arrow.style.transform = body.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
+}
+</script>
+{% endblock %}

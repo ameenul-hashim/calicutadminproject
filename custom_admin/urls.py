@@ -24,7 +24,7 @@ urlpatterns = [
     path('resource/reject/<uuid:resource_uid>/', views.reject_resource, name='reject_resource'),
     
     path('storage-dashboard/', views.storage_dashboard, name='storage_dashboard'),
-    
+    path('backup-info/', views.backup_info_view, name='backup_info'),
 
     path('user/accept/<uuid:user_uid>/', views.accept_user, name='accept_user'),
     path('user/decline/<uuid:user_uid>/', views.decline_user, name='decline_user'),

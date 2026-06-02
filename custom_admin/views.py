@@ -2058,6 +2058,123 @@ def download_teacher_invoice_pdf(request, user_uid):
     )
 
 
+@user_passes_test(is_admin, login_url='admin_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def backup_info_view(request):
+    """Real-time backup dashboard — queries Supabase 'backups' bucket directly (not DB-saved)."""
+    from supabase import create_client
+    from datetime import datetime, timezone
+    import time as time_module
+
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
+    backup_bucket = 'backups'
+
+    backup_runs = []
+    overall_status = 'UNKNOWN'
+    last_success_time = None
+    total_backup_size_bytes = 0
+    total_files_count = 0
+    error_message = None
+
+    # 1. Check heartbeat
+    success_file = os.path.join(settings.BASE_DIR, "last_success.txt")
+    if os.path.exists(success_file):
+        try:
+            with open(success_file, "r") as f:
+                last_success_time = f.read().strip()
+            last_dt = datetime.strptime(last_success_time, '%Y-%m-%d %H:%M:%S')
+            now = datetime.now()
+            hours_ago = (now - last_dt).total_seconds() / 3600
+            if hours_ago <= 25:
+                overall_status = 'HEALTHY'
+            elif hours_ago <= 48:
+                overall_status = 'DEGRADED'
+            else:
+                overall_status = 'STALE'
+        except Exception:
+            overall_status = 'UNKNOWN'
+    else:
+        overall_status = 'NEVER_BACKED_UP'
+
+    # 2. Query Supabase backups bucket
+    if supabase_url and supabase_key:
+        try:
+            client = create_client(supabase_url, supabase_key)
+            folders = client.storage.from_(backup_bucket).list()
+            backup_folders = sorted(
+                [f for f in folders if f.get('id') is None and f.get('name')],
+                key=lambda x: x['name'], reverse=True
+            )
+
+            for folder in backup_folders[:30]:  # last 30 runs
+                folder_name = folder['name']
+                try:
+                    files = client.storage.from_(backup_bucket).list(folder_name)
+                    file_list = []
+                    folder_size = 0
+                    for f in files:
+                        name = f.get('name', '')
+                        if name in ['.', '..'] or not name:
+                            continue
+                        metadata = f.get('metadata') or {}
+                        size = int(metadata.get('size', 0))
+                        folder_size += size
+                        file_list.append({
+                            'name': name,
+                            'size': size,
+                            'size_fmt': _fmt_size(size),
+                        })
+                    total_backup_size_bytes += folder_size
+                    total_files_count += len(file_list)
+
+                    backup_runs.append({
+                        'folder': folder_name,
+                        'timestamp': folder_name.replace('backup_', '').replace('_', ' '),
+                        'files': file_list,
+                        'file_count': len(file_list),
+                        'total_size': folder_size,
+                        'total_size_fmt': _fmt_size(folder_size),
+                    })
+                except Exception as e:
+                    backup_runs.append({
+                        'folder': folder_name,
+                        'timestamp': folder_name.replace('backup_', '').replace('_', ' '),
+                        'files': [],
+                        'file_count': 0,
+                        'total_size': 0,
+                        'total_size_fmt': '0B',
+                        'error': str(e)[:100],
+                    })
+        except Exception as e:
+            error_message = f"Supabase connection failed: {str(e)[:200]}"
+    else:
+        error_message = "Supabase not configured (SUPABASE_URL / SUPABASE_KEY missing)"
+
+    context = {
+        'overall_status': overall_status,
+        'last_success_time': last_success_time or 'Never',
+        'backup_runs': backup_runs,
+        'total_backup_size': _fmt_size(total_backup_size_bytes),
+        'total_backup_size_bytes': total_backup_size_bytes,
+        'total_runs': len(backup_runs),
+        'total_files_count': total_files_count,
+        'error_message': error_message,
+        'supabase_configured': bool(supabase_url and supabase_key),
+        'notifications': get_notifications(str(request.user.uid))[:10],
+        'unread_notifications_count': get_unread_count(str(request.user.uid)),
+    }
+    return render(request, 'custom_admin/backup_info.html', context)
+
+
+def _fmt_size(bytes_val):
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if bytes_val < 1024:
+            return f"{bytes_val:.1f}{unit}"
+        bytes_val /= 1024
+    return f"{bytes_val:.1f}TB"
+
+
 def error_404(request, exception):
     return render(request, '404.html', status=404)
 
