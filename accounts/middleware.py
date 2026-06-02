@@ -20,6 +20,8 @@ class PortalSecurityMiddleware:
             'teacher_signup',
             'admin_login',
             'forgot_password',
+            'verify_reset_code',
+            'set_new_password',
             'verify_otp',
             'reset_password',
             'logout',

@@ -364,6 +364,23 @@ class LoginHistory(models.Model):
             models.Index(fields=['ip_address', 'user']),
         ]
 
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='password_reset_otps')
+    otp_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempts = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def is_expired(self):
+        from django.utils import timezone
+        return timezone.now() > self.expires_at
+
+    def is_blocked(self):
+        return self.attempts >= 5
+
 class AdminActivityLog(models.Model):
     admin = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='admin_actions')
     action = models.CharField(max_length=255)
