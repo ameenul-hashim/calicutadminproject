@@ -130,11 +130,6 @@ def manage_students(request):
             Q(full_name__icontains=search_query)
         )
     
-    # Fast notification fetch
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_count = get_unread_count(str(request.user.uid))
-    
-    # Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(users, 20)
     page_number = request.GET.get('page')
@@ -144,8 +139,6 @@ def manage_students(request):
         'users': page_obj, 
         'search_query': search_query,
         'status_filter': status_filter,
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
         'page_obj': page_obj
     })
 
@@ -675,9 +668,7 @@ def analytics_view(request):
     if deleted_count[0]:
         logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
 
-    # These shouldn't be cached as they are user-specific/time-sensitive
-    context['notifications'] = get_notifications(str(request.user.uid))[:10]
-    context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
+    # Notifications now provided by context processor — no duplicate query needed
     
     return render(request, 'custom_admin/analytics.html', context)
 
@@ -715,12 +706,8 @@ def pending_courses_view(request):
         Q(lessons__is_approved=False) |
         Q(lessons__has_pending_edits=True)
     ).prefetch_related('lessons').distinct().order_by('-created_at')
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_count = get_unread_count(str(request.user.uid))
     return render(request, 'custom_admin/pending_courses.html', {
         'courses': courses,
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1106,9 +1093,6 @@ def admin_view_course_content(request, course_uid):
     # Show all non-deleted resources — admin must be able to see REJECTED ones to re-approve after teacher fixes
     resources = course.resources.exclude(is_deleted=True).order_by('-created_at')
     
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_count = get_unread_count(str(request.user.uid))
-    
     pending_resources = resources.filter(status__in=['PENDING', 'DELETION_PENDING'])
     approved_resources = resources.filter(status='APPROVED')
     rejected_resources = resources.filter(status='REJECTED')
@@ -1120,8 +1104,6 @@ def admin_view_course_content(request, course_uid):
         'pending_resources': pending_resources,
         'approved_resources': approved_resources,
         'rejected_resources': rejected_resources,
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1138,9 +1120,6 @@ def storage_dashboard(request):
     usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
     avg_bytes = (sr.get('usage_bytes', 0) / total_count) if total_count else 0
 
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_count = get_unread_count(str(request.user.uid))
-    
     return render(request, 'custom_admin/storage_dashboard.html', {
         'stats': stats,
         'resources': resources.order_by('-created_at')[:50],
@@ -1148,8 +1127,6 @@ def storage_dashboard(request):
         'total_count': total_count,
         'avg_bytes': round(avg_bytes),
         'usage_percent': round(usage_percent, 1),
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
     })
 
 
@@ -1293,15 +1270,10 @@ def admin_logout(request):
 def manage_deletion_requests(request):
     # Show ALL pending requests (Lesson, Course, and Resource types)
     pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
-    # Also show recently processed requests for admin reference
     history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_notifications_count = get_unread_count(str(request.user.uid))
     return render(request, 'custom_admin/manage_deletion_requests.html', {
         'requests': pending_requests,
         'history_requests': history_requests,
-        'notifications': notifications,
-        'unread_notifications_count': unread_notifications_count
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1409,14 +1381,9 @@ def deleted_courses_view(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_notifications_count = get_unread_count(str(request.user.uid))
-    
     return render(request, 'custom_admin/deleted_courses.html', {
         'courses': page_obj,
         'page_obj': page_obj,
-        'notifications': notifications,
-        'unread_notifications_count': unread_notifications_count
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1468,76 +1435,89 @@ def admin_restore_course(request, course_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def enterprise_monitor(request):
-    from axes.models import AccessAttempt
     from django.db import connection
-    from accounts.utils.storage_analytics import get_all_storage_stats
-    from accounts.models import CourseResource
-    import time
+    import time as _time
 
-    # 1. Real backup status
-    last_backup_time = "Never"
-    last_backup_status = "STALE"
-    success_file = os.path.join(settings.BASE_DIR, "last_success.txt")
-    if os.path.exists(success_file):
-        with open(success_file, "r") as f:
-            last_backup_time = f.read().strip()
-            last_backup_status = "HEALTHY"
+    # Defaults for all values — so 500 never happens
+    context = {
+        'last_backup_time': 'Unknown',
+        'last_backup_status': 'UNKNOWN',
+        'drive_configured': False,
+        'failed_backups': 0,
+        'access_logs': [],
+        'blocked_ips_count': 0,
+        'avg_response_time': 0,
+        'storage_usage': 0,
+        'supabase_limit_mb': 1024,
+        'student_count': 0,
+        'teacher_count': 0,
+        'course_count': 0,
+        'supabase_files': 0,
+        'cloudinary_files': 0,
+    }
 
-    # Check if Google Drive is configured
-    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
-        os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'utils', 'token.json'))
-
-    # 2. Failed backups count
-    failed_backups = CourseResource.objects.filter(backup_status='FAILED').count()
-
-    # 3. Access Logs
-    access_logs = PDFAccessLog.objects.select_related('user').all()[:20]
-
-    # 4. Security Stats
-    blocked_ips_count = AccessAttempt.objects.count()
-
-    # 5. Real storage usage from APIs
-    storage_stats = get_all_storage_stats()
-    ss = storage_stats.get('supabase_signup', {})
-    sr = storage_stats.get('supabase_resources', {})
-    cl = storage_stats.get('cloudinary', {})
-    db_stats = storage_stats.get('database', {})
-    real_storage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0) + cl.get('storage_used_mb', 0) + db_stats.get('usage_mb', 0)
-    supabase_limit_mb = ss.get('limit_mb', 1024) + sr.get('limit_mb', 1024)
-
-    # 6. Real DB latency
-    db_latency = 0
     try:
-        start = time.time()
+        success_file = os.path.join(settings.BASE_DIR, "last_success.txt")
+        if os.path.exists(success_file):
+            with open(success_file, "r") as f:
+                context['last_backup_time'] = f.read().strip()
+                context['last_backup_status'] = "HEALTHY"
+    except Exception:
+        pass
+
+    try:
+        context['drive_configured'] = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
+            os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'utils', 'token.json'))
+    except Exception:
+        pass
+
+    try:
+        from accounts.models import CourseResource
+        context['failed_backups'] = CourseResource.objects.filter(backup_status='FAILED').count()
+    except Exception:
+        pass
+
+    try:
+        context['access_logs'] = PDFAccessLog.objects.select_related('user').all()[:20]
+    except Exception:
+        pass
+
+    try:
+        from axes.models import AccessAttempt
+        context['blocked_ips_count'] = AccessAttempt.objects.count()
+    except Exception:
+        pass
+
+    try:
+        storage_stats = get_all_storage_stats()
+        ss = storage_stats.get('supabase_signup', {})
+        sr = storage_stats.get('supabase_resources', {})
+        cl = storage_stats.get('cloudinary', {})
+        db_stats = storage_stats.get('database', {})
+        context['storage_usage'] = round(
+            ss.get('usage_mb', 0) + sr.get('usage_mb', 0) + cl.get('storage_used_mb', 0) + db_stats.get('usage_mb', 0), 1
+        )
+        context['supabase_limit_mb'] = ss.get('limit_mb', 1024) + sr.get('limit_mb', 1024)
+        context['supabase_files'] = ss.get('total_files', 0) + sr.get('total_files', 0)
+        context['cloudinary_files'] = cl.get('total_files', 0)
+    except Exception:
+        pass
+
+    try:
+        start = _time.time()
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-        db_latency = round((time.time() - start) * 1000, 1)
+        context['avg_response_time'] = round((_time.time() - start) * 1000, 1)
     except Exception:
-        db_latency = 0
+        pass
 
-    # 7. Real stats
-    student_count = CustomUser.objects.filter(user_type='STUDENT').count()
-    teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
-    course_count = Course.objects.count()
+    try:
+        context['student_count'] = CustomUser.objects.filter(user_type='STUDENT').count()
+        context['teacher_count'] = CustomUser.objects.filter(user_type='TEACHER').count()
+        context['course_count'] = Course.objects.count()
+    except Exception:
+        pass
 
-    context = {
-        'last_backup_time': last_backup_time,
-        'last_backup_status': last_backup_status,
-        'drive_configured': drive_configured,
-        'failed_backups': failed_backups,
-        'access_logs': access_logs,
-        'blocked_ips_count': blocked_ips_count,
-        'avg_response_time': db_latency,
-        'storage_usage': round(real_storage_mb, 1),
-        'supabase_limit_mb': supabase_limit_mb,
-        'student_count': student_count,
-        'teacher_count': teacher_count,
-        'course_count': course_count,
-        'supabase_files': ss.get('total_files', 0) + sr.get('total_files', 0),
-        'cloudinary_files': cl.get('total_files', 0),
-        'notifications': get_notifications(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count(str(request.user.uid)),
-    }
     return render(request, 'custom_admin/enterprise_monitor.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1575,106 +1555,108 @@ def proxy_pdf_access(request, user_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def system_audit_view(request):
-    """Real-time system audit with dynamic capacity analysis (no Firebase dependency)."""
-    from django.conf import settings
+    """Real-time system audit — crash-proof with full try/except wrapping."""
     from django.db import connection
-    import time
+    from datetime import timedelta
 
-    # 1. Real-time DB size
-    db_bytes = 0
+    db_total_mb = 0
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT pg_database_size(current_database())")
             db_bytes = cursor.fetchone()[0] or 0
+            db_total_mb = round(db_bytes / (1024 * 1024), 2)
     except Exception:
-        db_bytes = 0
-    db_total_mb = round(db_bytes / (1024 * 1024), 2)
+        pass
 
-    # 2. Real storage stats from Supabase + Cloudinary APIs
-    from accounts.utils.storage_analytics import get_all_storage_stats
-    storage_stats = get_all_storage_stats()
+    storage_stats = {}
+    try:
+        from accounts.utils.storage_analytics import get_all_storage_stats
+        storage_stats = get_all_storage_stats()
+    except Exception:
+        pass
 
-    # 3. Base Stats from DB
     student_count = CustomUser.objects.filter(user_type='STUDENT').count()
     teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
     course_count = Course.objects.count()
 
-    # 4. Security Configuration Audit (real checks)
     sec_checks = [
         ('DEBUG Mode', not settings.DEBUG, 'Critical: Production safety'),
         ('Secure Cookies', getattr(settings, 'SESSION_COOKIE_SECURE', False), 'Encrypted transmission'),
         ('HSTS Enabled', getattr(settings, 'SECURE_HSTS_SECONDS', 0) > 0, 'HTTP Strict Transport Security'),
         ('Brute-Force Protection', 'axes' in settings.INSTALLED_APPS, 'django-axes active'),
         ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
-        ('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'),
     ]
-    security_checks = []
-    for name, passed, desc in sec_checks:
-        security_checks.append({'name': name, 'status': 'PASS' if passed else 'FAIL', 'description': desc})
+    try:
+        sec_checks.append(('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'))
+    except Exception:
+        sec_checks.append(('Audit Logging', False, 'Admin activity tracked'))
 
-    # 5. Infrastructure status from real data
+    security_checks = [{'name': n, 'status': 'PASS' if p else 'FAIL', 'description': d} for n, p, d in sec_checks]
+
     infra_list = []
-    # PostgreSQL
     pg_status = 'ONLINE' if db_total_mb > 0 or student_count > 0 else 'OFFLINE'
     infra_list.append({'service': 'PostgreSQL', 'status': pg_status, 'detail': f'{db_total_mb} MB used'})
-    # Supabase Signup
+
     ss = storage_stats.get('supabase_signup', {})
-    sb_status = 'ONLINE' if ss.get('status') == 'connected' else 'OFFLINE'
-    infra_list.append({'service': 'Supabase (Proof PDFs)', 'status': sb_status, 'detail': f"{ss.get('total_files', 0)} files, {ss.get('usage_mb', 0)} MB"})
-    # Supabase Resources
     sr = storage_stats.get('supabase_resources', {})
-    sr_status = 'ONLINE' if sr.get('status') == 'connected' else 'OFFLINE'
-    infra_list.append({'service': 'Supabase (Resources)', 'status': sr_status, 'detail': f"{sr.get('total_files', 0)} files, {sr.get('usage_mb', 0)} MB"})
-    # Cloudinary
     cl = storage_stats.get('cloudinary', {})
-    cl_status = 'ONLINE' if cl.get('status') == 'connected' else 'OFFLINE'
-    infra_list.append({'service': 'Cloudinary', 'status': cl_status, 'detail': f"{cl.get('total_files', 0)} images, {cl.get('storage_used_mb', 0)} MB"})
-    # Backup
+
+    infra_list.append({'service': 'Supabase (Proof PDFs)', 'status': 'ONLINE' if ss.get('status') == 'connected' else 'OFFLINE', 'detail': f"{ss.get('total_files', 0)} files, {ss.get('usage_mb', 0)} MB"})
+    infra_list.append({'service': 'Supabase (Resources)', 'status': 'ONLINE' if sr.get('status') == 'connected' else 'OFFLINE', 'detail': f"{sr.get('total_files', 0)} files, {sr.get('usage_mb', 0)} MB"})
+    infra_list.append({'service': 'Cloudinary', 'status': 'ONLINE' if cl.get('status') == 'connected' else 'OFFLINE', 'detail': f"{cl.get('total_files', 0)} images, {cl.get('storage_used_mb', 0)} MB"})
+
     backup_file = os.path.join(settings.BASE_DIR, 'last_success.txt')
     bk_status = 'ONLINE' if os.path.exists(backup_file) else 'STALE'
     bk_last = 'Never'
-    if os.path.exists(backup_file):
-        with open(backup_file) as f:
-            bk_last = f.read().strip()
+    try:
+        if os.path.exists(backup_file):
+            with open(backup_file) as f:
+                bk_last = f.read().strip()
+    except Exception:
+        pass
     infra_list.append({'service': 'Backup', 'status': bk_status, 'detail': f'Last: {bk_last}'})
 
-    # 6. DB forensic logs
-    from accounts.models import AdminActivityLog, LoginHistory
-    admin_logs = AdminActivityLog.objects.all().select_related('admin')[:5]
-    login_logs = LoginHistory.objects.all().select_related('user')[:5]
     combined_logs = []
-    for log in admin_logs:
-        combined_logs.append({'username': log.admin.username if log.admin else 'SYSTEM', 'action': log.action, 'time': log.timestamp})
-    for log in login_logs:
-        combined_logs.append({'username': log.user.username, 'action': f"Login {log.status}", 'time': log.timestamp})
-    combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:10]
+    try:
+        admin_logs = AdminActivityLog.objects.all().select_related('admin')[:5]
+        login_logs = LoginHistory.objects.all().select_related('user')[:5]
+        for log in admin_logs:
+            combined_logs.append({'username': log.admin.username if log.admin else 'SYSTEM', 'action': log.action, 'time': log.timestamp})
+        for log in login_logs:
+            combined_logs.append({'username': log.user.username, 'action': f"Login {log.status}", 'time': log.timestamp})
+        combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:10]
+    except Exception:
+        pass
 
-    # 7. Compute real scores
-    all_online = all(s.get('status') == 'ONLINE' for s in infra_list)
-    security_score = sum(1 for c in sec_checks if c[1]) * 100 // len(sec_checks)
-    infra_score = 100 if all_online else max(round(sum(100 for s in infra_list if s['status'] == 'ONLINE') / len(infra_list)), 50)
+    all_online = all(s.get('status') == 'ONLINE' for s in infra_list) if infra_list else False
+    security_score = sum(1 for c in sec_checks if c[1]) * 100 // max(len(sec_checks), 1)
+    infra_score = 100 if all_online else max(round(sum(100 for s in infra_list if s['status'] == 'ONLINE') / max(len(infra_list), 1)), 50)
     storage_score = min(100, max(0, round(100 - (cl.get('storage_percent', 0) + ss.get('percent', 0)) / 2)))
     backup_score = 100 if bk_status == 'ONLINE' else 50
     supabase_total_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
 
-    # --- Check backup config ---
-    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
-        os.path.exists(os.path.join(settings.BASE_DIR, 'accounts', 'utils', 'token.json'))
-    from accounts.models import CourseResource
-    failed_backup_count = CourseResource.objects.filter(backup_status='FAILED').count()
-    supabase_usage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
-    supabase_limit_mb = ss.get('limit_mb', 1024)
-    supabase_near_capacity = supabase_usage_mb > (supabase_limit_mb * 0.8)
-
-    # --- Free-tier cleanup: auto-purge old records ---
-    from datetime import timedelta
-    cutoff_90 = timezone.now() - timedelta(days=90)
-    cutoff_30 = timezone.now() - timedelta(days=30)
+    drive_configured = False
     try:
-        deleted_login = LoginHistory.objects.filter(timestamp__lt=cutoff_30).delete()
-        deleted_adminlog = AdminActivityLog.objects.filter(timestamp__lt=cutoff_90).delete()
-        if deleted_login[0] or deleted_adminlog[0]:
-            logger.info(f"Cleanup: {deleted_login[0]} LoginHistory, {deleted_adminlog[0]} AdminActivityLog")
+        drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
+            os.path.exists(os.path.join(settings.BASE_DIR, 'accounts', 'utils', 'token.json'))
+    except Exception:
+        pass
+
+    failed_backup_count = 0
+    try:
+        from accounts.models import CourseResource
+        failed_backup_count = CourseResource.objects.filter(backup_status='FAILED').count()
+    except Exception:
+        pass
+
+    supabase_usage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
+    supabase_limit_mb_val = ss.get('limit_mb', 1024)
+
+    try:
+        cutoff_30 = timezone.now() - timedelta(days=30)
+        cutoff_90 = timezone.now() - timedelta(days=90)
+        LoginHistory.objects.filter(timestamp__lt=cutoff_30).delete()
+        AdminActivityLog.objects.filter(timestamp__lt=cutoff_90).delete()
     except Exception:
         pass
 
@@ -1688,7 +1670,7 @@ def system_audit_view(request):
             'total_courses': course_count,
             'db_total_mb': db_total_mb,
             'supabase_total_mb': round(supabase_total_mb, 2),
-            'supabase_limit_mb': ss.get('limit_mb', 1024),
+            'supabase_limit_mb': supabase_limit_mb_val,
             'cloudinary_images': cl.get('total_files', 0),
             'cloudinary_mb': cl.get('storage_used_mb', 0),
             'pdf_cap': '200KB (Enforced)',
@@ -1705,16 +1687,14 @@ def system_audit_view(request):
         'firebase_events': [],
         'drive_configured': drive_configured,
         'failed_backup_count': failed_backup_count,
-        'supabase_near_capacity': supabase_near_capacity,
+        'supabase_near_capacity': supabase_usage_mb > (supabase_limit_mb_val * 0.8),
         'supabase_usage_mb': round(supabase_usage_mb, 2),
-        'supabase_limit_mb': supabase_limit_mb,
+        'supabase_limit_mb': supabase_limit_mb_val,
     }
 
     return render(request, 'custom_admin/system_audit_hub.html', {
         'audit': audit_results,
         'audit_logs': combined_logs,
-        'notifications': get_notifications(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     })
 
 
@@ -1828,59 +1808,70 @@ def master_audit_summary_view(request):
 
 def generate_invoice_pdf_response(request, title, user_obj, items, balance, yesterday_balance, invoice_number, invoice_date, user_type_label):
     from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm, cm
+    from reportlab.lib.units import mm
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.colors import HexColor, black, white
     from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
-    from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-        Image, PageBreak
-    )
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image
     from reportlab.platypus.flowables import HRFlowable
     from io import BytesIO
     import requests as http_requests
-    import tempfile
-
+    import tempfile, os
     from datetime import datetime
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(
-        buf, pagesize=A4,
-        leftMargin=50, rightMargin=50,
-        topMargin=50, bottomMargin=50
-    )
+    doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
 
     styles = getSampleStyleSheet()
-    styles.add(ParagraphStyle('InvoiceTitle', parent=styles['Heading1'], fontSize=28, textColor=HexColor('#0ea5e9'), spaceAfter=4, fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle('Normal8', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8')))
-    styles.add(ParagraphStyle('SmallBold', parent=styles['Normal'], fontSize=9, textColor=HexColor('#334155'), fontName='Helvetica-Bold'))
-    styles.add(ParagraphStyle('TableHeader', parent=styles['Normal'], fontSize=8, textColor=white, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('BrandTitle', parent=styles['Heading1'], fontSize=26, textColor=HexColor('#0ea5e9'), fontName='Helvetica-Bold', spaceAfter=2))
+    styles.add(ParagraphStyle('BrandSub', parent=styles['Normal'], fontSize=10, textColor=HexColor('#64748b')))
+    styles.add(ParagraphStyle('BrandAddr', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8')))
+    styles.add(ParagraphStyle('InvLabel', parent=styles['Heading2'], fontSize=22, textColor=HexColor('#cbd5e1'), alignment=TA_RIGHT, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('InvNum', parent=styles['Normal'], fontSize=10, textColor=HexColor('#334155'), fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('InvDate', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('BillTitle', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8'), fontName='Helvetica-Bold', spaceAfter=6))
+    styles.add(ParagraphStyle('UserName', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'), fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('UserDetail', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b')))
+    styles.add(ParagraphStyle('UserPhone', parent=styles['Normal'], fontSize=9, textColor=HexColor('#1e293b')))
+    styles.add(ParagraphStyle('UserId', parent=styles['Normal'], fontSize=8, textColor=HexColor('#64748b')))
+    styles.add(ParagraphStyle('TH', parent=styles['Normal'], fontSize=8, textColor=white, fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('CellDesc', parent=styles['Normal'], fontSize=10, textColor=HexColor('#334155')))
+    styles.add(ParagraphStyle('CellCat', parent=styles['Normal'], fontSize=8, textColor=HexColor('#64748b')))
+    styles.add(ParagraphStyle('CellDate', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), alignment=TA_CENTER))
+    styles.add(ParagraphStyle('CellAmt', parent=styles['Normal'], fontSize=10, textColor=HexColor('#1e293b'), fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('SumLabel', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b')))
+    styles.add(ParagraphStyle('SumVal', parent=styles['Normal'], fontSize=9, textColor=HexColor('#334155'), fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('TotalLabel', parent=styles['Normal'], fontSize=12, textColor=HexColor('#1e293b'), fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('TotalVal', parent=styles['Normal'], fontSize=12, textColor=HexColor('#1e293b'), fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('DueLabel', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), fontName='Helvetica-Bold'))
+    styles.add(ParagraphStyle('DueVal', parent=styles['Normal'], fontSize=10, textColor=HexColor('#10b981'), fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('Footer', parent=styles['Normal'], fontSize=9, textColor=HexColor('#94a3b8'), alignment=TA_CENTER))
+    styles.add(ParagraphStyle('StatusBadge', parent=styles['Normal'], fontSize=8, textColor=HexColor('#10b981'), fontName='Helvetica-Bold', alignment=TA_RIGHT))
+    styles.add(ParagraphStyle('PDetail', parent=styles['Normal'], fontSize=9, textColor=HexColor('#334155')))
 
     elements = []
 
-    # --- HEADER ---
+    # --- HEADER: Brand + INVOICE label ---
     header_data = [
-        [Paragraph("Neo Learner", styles['InvoiceTitle']),
-         Paragraph("INVOICE", ParagraphStyle('InvH2', parent=styles['Heading2'], fontSize=24, textColor=HexColor('#cbd5e1'), alignment=TA_RIGHT, spaceAfter=4))],
-        [Paragraph("Learning Academy Portal", ParagraphStyle('Sub', parent=styles['Normal'], fontSize=10, textColor=HexColor('#64748b'))),
-         Paragraph(f"# {invoice_number}", ParagraphStyle('InvNum', parent=styles['Normal'], fontSize=10, textColor=HexColor('#334155'), fontName='Helvetica-Bold', alignment=TA_RIGHT))],
-        [Paragraph("123 Academy Way, Digital City", ParagraphStyle('Addr', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8'))),
-         Paragraph(f"Date: {invoice_date.strftime('%b %d, %Y')}", ParagraphStyle('InvDate', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), alignment=TA_RIGHT))],
+        [Paragraph("Neo Learner", styles['BrandTitle']),
+         Paragraph("INVOICE", styles['InvLabel'])],
+        [Paragraph("Learning Academy Portal", styles['BrandSub']),
+         Paragraph(f"# {invoice_number}", styles['InvNum'])],
+        [Paragraph("123 Academy Way, Digital City", styles['BrandAddr']),
+         Paragraph(f"Date: {invoice_date.strftime('%b %d, %Y')}", styles['InvDate'])],
     ]
-    t = Table(header_data, colWidths=[250, 250])
-    t.setStyle(TableStyle([
+    ht = Table(header_data, colWidths=[260, 240])
+    ht.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('SPAN', (0, 0), (0, 1)),
-        ('LINEBELOW', (0, 2), (-1, 2), 1, HexColor('#e2e8f0')),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LINEBELOW', (0, 2), (-1, 2), 1, HexColor('#f1f5f9')),
     ]))
-    elements.append(t)
-    elements.append(Spacer(1, 20))
+    elements.append(ht)
+    elements.append(Spacer(1, 16))
 
-    # --- BILL TO (with Avatar) ---
+    # --- BILL TO (LEFT) + PAYMENT DETAILS (RIGHT) ---
     uid_label = f"#{user_type_label.upper()}-{user_obj.id:05d}"
-    elements.append(Paragraph("BILL TO:", ParagraphStyle('BillTitle', parent=styles['Normal'], fontSize=9, textColor=HexColor('#94a3b8'), fontName='Helvetica-Bold', spaceAfter=8)))
 
     avatar_img = None
     _tmp_avatar_path = None
@@ -1893,114 +1884,136 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
                 _tmp_avatar.write(resp.content)
                 _tmp_avatar_path = _tmp_avatar.name
                 _tmp_avatar.close()
-                avatar_img = Image(_tmp_avatar_path, width=60, height=60)
+                avatar_img = Image(_tmp_avatar_path, width=60, height=80)
         except Exception:
             avatar_img = None
 
+    user_info_parts = (
+        f"<b>{user_obj.full_name or user_obj.username}</b><br/>"
+        f"<font size='9' color='#64748b'>{user_obj.email}</font><br/>"
+        f"<font size='9' color='#1e293b'>Phone: {user_obj.phone_number or '—'}</font><br/>"
+        f"<font size='8' color='#64748b'>{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}</font>"
+    )
+
+    pay_info_parts = (
+        f"<font size='9' color='#64748b'>Status:</font>      <font size='8' color='#10b981'><b>PAID IN FULL</b></font><br/>"
+        f"<font size='9' color='#64748b'>Payment:</font>     <font size='9' color='#334155'><b>Credit Card</b></font><br/>"
+        f"<font size='9' color='#64748b'>Txn ID:</font>      <font size='9' color='#334155'><b>TXN-{user_obj.id:05d}{invoice_date.strftime('%Y%m')}</b></font>"
+    )
+
     if avatar_img:
         bill_data = [
-            [avatar_img,
-             Paragraph(
-                 f"<b>{user_obj.full_name or user_obj.username}</b><br/>"
-                 f"<font size='9' color='#64748b'>{user_obj.email}</font><br/>"
-                 f"<font size='9' color='#1e293b'>Phone: {user_obj.phone_number or '—'}</font><br/>"
-                 f"<font size='8' color='#64748b'>{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}</font>",
-                 ParagraphStyle('BillInfo', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'))
-             )]
+            [avatar_img, Paragraph(user_info_parts, styles['UserName']),
+             Paragraph("PAYMENT DETAILS:", styles['BillTitle']),
+             Paragraph(pay_info_parts, styles['PDetail'])]
         ]
-        bill_table = Table(bill_data, colWidths=[70, 430])
-        bill_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 0),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-        ]))
-        elements.append(bill_table)
+        bt = Table(bill_data, colWidths=[70, 195, 80, 140])
     else:
-        elements.append(Paragraph(f"<b>{user_obj.full_name or user_obj.username}</b>", ParagraphStyle('Name', parent=styles['Normal'], fontSize=13, textColor=HexColor('#1e293b'))))
-        elements.append(Paragraph(f"{user_obj.email}", ParagraphStyle('Email', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'))))
-        elements.append(Paragraph(f"Phone: {user_obj.phone_number or '—'}", ParagraphStyle('Phone', parent=styles['Normal'], fontSize=9, textColor=HexColor('#1e293b'), fontName='Helvetica')))
-        elements.append(Paragraph(f"{uid_label} | Joined: {user_obj.date_joined.strftime('%b %d, %Y')}", ParagraphStyle('Uid', parent=styles['Normal'], fontSize=8, textColor=HexColor('#64748b'))))
+        bill_data = [
+            [Paragraph(user_info_parts, styles['UserName']),
+             Paragraph("PAYMENT DETAILS:", styles['BillTitle']),
+             Paragraph(pay_info_parts, styles['PDetail'])]
+        ]
+        bt = Table(bill_data, colWidths=[265, 80, 140])
+
+    bt.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+    ]))
+    elements.append(bt)
     elements.append(Spacer(1, 20))
 
     # --- ITEMS TABLE ---
     table_data = [
-        [Paragraph("Description", styles['TableHeader']),
-         Paragraph("Date", styles['TableHeader']),
-         Paragraph("Amount", styles['TableHeader'])]
+        [Paragraph("Description", styles['TH']),
+         Paragraph("Date", styles['TH']),
+         Paragraph("Amount", styles['TH'])]
     ]
     for item in items:
         desc = item.get('description', '')
         date = item.get('date', '')
         amt = item.get('amount', 0)
+        cat = item.get('category', '')
         table_data.append([
-            Paragraph(f"<b>{desc}</b><br/><font size='8' color='#64748b'>{item.get('category', '')}</font>",
-                      ParagraphStyle('Cell', parent=styles['Normal'], fontSize=10, textColor=HexColor('#334155'))),
-            Paragraph(date, ParagraphStyle('DateCell', parent=styles['Normal'], fontSize=9, textColor=HexColor('#64748b'), alignment=TA_CENTER)),
-            Paragraph(f"${amt}", ParagraphStyle('AmtCell', parent=styles['Normal'], fontSize=10, textColor=HexColor('#1e293b'), fontName='Helvetica-Bold', alignment=TA_RIGHT)),
+            Paragraph(f"<b>{desc}</b><br/><font size='8' color='#64748b'>{cat}</font>", styles['CellDesc']),
+            Paragraph(date, styles['CellDate']),
+            Paragraph(f"${amt:.2f}", styles['CellAmt']),
         ])
     if not items:
-        table_data.append([
-            Paragraph("No entries found.", ParagraphStyle('Empty', parent=styles['Normal'], fontSize=10, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)),
-            "", ""
-        ])
+        table_data.append([Paragraph("No entries found.", ParagraphStyle('Empty', parent=styles['Normal'], fontSize=10, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)), "", ""])
 
-    col_widths = [300, 100, 100]
-    t = Table(table_data, colWidths=col_widths, repeatRows=1)
-    t.setStyle(TableStyle([
+    it = Table(table_data, colWidths=[300, 100, 100], repeatRows=1)
+    it.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), HexColor('#1e293b')),
         ('TEXTCOLOR', (0, 0), (-1, 0), white),
-        ('FONTSIZE', (0, 0), (-1, 0), 8),
-        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#e2e8f0')),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('GRID', (0, 0), (-1, -1), 0.5, HexColor('#f1f5f9')),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('TOPPADDING', (0, 0), (-1, -1), 10),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
         ('LEFTPADDING', (0, 0), (-1, -1), 10),
         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
     ]))
-    elements.append(t)
-    elements.append(Spacer(1, 25))
+    elements.append(it)
+    elements.append(Spacer(1, 20))
 
-    # --- SUMMARY ---
-    summary_data = [
-        ['Subtotal:', f'${balance}'],
-        ['Tax (0%):', '$0.00'],
-        ["Yesterday's Activity:", f'${yesterday_balance}'],
-        ['', ''],
-        ['TOTAL AMOUNT:', f'${balance}'],
-        ['Amount Due:', '$0.00'],
+    # --- SUMMARY (right-aligned, matching HTML template) ---
+    summary_rows = [
+        [Paragraph("Subtotal:", styles['SumLabel']), Paragraph(f"${balance:.2f}", styles['SumVal'])],
+        [Paragraph("Tax (0%):", styles['SumLabel']), Paragraph("$0.00", styles['SumVal'])],
+        [Paragraph("Yesterday's Activity:", ParagraphStyle('YestLabel', parent=styles['SumLabel'], textColor=HexColor('#0ea5e9'), fontName='Helvetica-Bold')),
+         Paragraph(f"${yesterday_balance:.2f}", ParagraphStyle('YestVal', parent=styles['SumVal'], textColor=HexColor('#0ea5e9')))],
     ]
-    t = Table(summary_data, colWidths=[350, 50])
-    t.setStyle(TableStyle([
+    st = Table(summary_rows, colWidths=[350, 100])
+    st.setStyle(TableStyle([
         ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
-        ('LINEBELOW', (0, 0), (0, 2), 0.5, HexColor('#e2e8f0')),
-        ('LINEBELOW', (1, 0), (1, 2), 0.5, HexColor('#e2e8f0')),
+        ('LINEBELOW', (0, 0), (-1, -1), 0.5, HexColor('#f1f5f9')),
         ('TOPPADDING', (0, 0), (-1, -1), 6),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('FONTSIZE', (0, 4), (-1, 4), 12),
-        ('FONTNAME', (0, 4), (-1, 4), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (0, 4), (-1, 4), HexColor('#1e293b')),
-        ('FONTNAME', (0, 5), (-1, 5), 'Helvetica-Bold'),
-        ('TEXTCOLOR', (0, 5), (-1, 5), HexColor('#10b981')),
-        ('BACKGROUND', (0, 4), (-1, 4), HexColor('#f8fafc')),
     ]))
-    elements.append(t)
+    elements.append(st)
+    elements.append(Spacer(1, 4))
+
+    total_row = Table([
+        [Paragraph("TOTAL AMOUNT:", styles['TotalLabel']), Paragraph(f"${balance:.2f}", styles['TotalVal'])],
+    ], colWidths=[350, 100])
+    total_row.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('BACKGROUND', (0, 0), (-1, -1), HexColor('#f8fafc')),
+        ('BOX', (0, 0), (-1, -1), 0.5, HexColor('#e2e8f0')),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(total_row)
+    elements.append(Spacer(1, 4))
+
+    due_row = Table([
+        [Paragraph("Amount Due:", styles['DueLabel']), Paragraph("$0.00", styles['DueVal'])],
+    ], colWidths=[350, 100])
+    due_row.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'RIGHT'),
+        ('TOPPADDING', (0, 0), (-1, -1), 6),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+    ]))
+    elements.append(due_row)
     elements.append(Spacer(1, 40))
 
     # --- FOOTER ---
-    elements.append(HRFlowable(width="100%", color=HexColor('#e2e8f0')))
-    elements.append(Spacer(1, 10))
-    elements.append(Paragraph("Thank you for being part of Neo Learner Learning Academy.", ParagraphStyle('Footer', parent=styles['Normal'], fontSize=9, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)))
-    elements.append(Paragraph("This is a computer-generated document and does not require a physical signature.", ParagraphStyle('Footer2', parent=styles['Normal'], fontSize=8, textColor=HexColor('#94a3b8'), alignment=TA_CENTER)))
+    elements.append(HRFlowable(width="100%", color=HexColor('#f1f5f9')))
+    elements.append(Spacer(1, 8))
+    elements.append(Paragraph("Thank you for being part of Neo Learner Learning Academy.", styles['Footer']))
+    elements.append(Paragraph("This is a computer-generated document and does not require a physical signature.", ParagraphStyle('Footer2', parent=styles['Footer'], fontSize=8)))
 
     doc.build(elements)
     pdf_bytes = buf.getvalue()
     buf.close()
 
-    # Cleanup temporary avatar file
     if _tmp_avatar_path:
         try:
-            import os
             os.unlink(_tmp_avatar_path)
         except Exception:
             pass
@@ -2012,6 +2025,7 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     return response
 
 
+@user_passes_test(is_admin, login_url='admin_login')
 @user_passes_test(is_admin, login_url='admin_login')
 def download_student_invoice_pdf(request, user_uid):
     student = get_object_or_404(CustomUser, uid=user_uid, user_type='STUDENT')

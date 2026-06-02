@@ -207,7 +207,7 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # Admin and Teacher logins override this by calling session.set_expiry(0) manually.
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 SESSION_COOKIE_AGE = 10800  # 3 hours (prevents mobile login loops for students)
-SESSION_SAVE_EVERY_REQUEST = True
+SESSION_SAVE_EVERY_REQUEST = False
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # Keeps students logged in when switching apps on mobile
 SESSION_COOKIE_NAME = 'neolearner_sessionid'
 

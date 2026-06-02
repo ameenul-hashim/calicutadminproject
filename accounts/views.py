@@ -436,9 +436,13 @@ def login_view(request):
         if user_candidate.status == 'ACTIVE':
             user = authenticate(request, username=username, password=password)
             if user is not None:
-                from django.contrib.sessions.models import Session
+                # Invalidate any previous session efficiently
                 if user.current_session_key:
-                    Session.objects.filter(session_key=user.current_session_key).delete()
+                    try:
+                        from django.contrib.sessions.models import Session
+                        Session.objects.filter(session_key=user.current_session_key).delete()
+                    except Exception:
+                        pass
                 
                 login(request, user)
                 request.session.set_expiry(0)
@@ -574,7 +578,6 @@ from django.db.models import Count, Q, Sum
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required(login_url='login')
 def dashboard_view(request):
-    # Check for access
     is_unlocked = request.session.get('student_view_unlocked')
     is_admin = getattr(request.user, 'is_staff', False)
     
@@ -583,16 +586,14 @@ def dashboard_view(request):
         return redirect('login')
 
     if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
-        # Admin or Teacher in Student View - strictly mimic student by showing only approved courses
-        # This prevents "previewing" unapproved/deleted/draft content in the live student environment
-        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
+        courses = Course.objects.filter(is_approved=True, status='PUBLISHED').annotate(
+            lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
+        ).only('id', 'uid', 'title', 'image', 'thumbnail', 'category', 'teacher').select_related('teacher')
     elif request.user.user_type == 'TEACHER' and not is_admin:
-        # Teacher viewing normally - show their own courses (all statuses)
         courses = Course.objects.filter(teacher=request.user).annotate(
             lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED'))
         ).only('id', 'uid', 'title', 'image', 'thumbnail', 'status', 'category', 'teacher').select_related('teacher')
     else:
-        # Real Student - show only their enrolled courses that are PUBLISHED and APPROVED
         courses = Course.objects.filter(
             enrollments__user=request.user, 
             is_approved=True, 
@@ -605,19 +606,20 @@ def dashboard_view(request):
     if search_query:
         courses = courses.filter(title__icontains=search_query)
 
-    # Objective 1: Dynamic Messages instead of DB saving for Students
-    platform_updates = []
+    # Platform updates — use DB aggregate for total lessons, not Python sum()
+    from django.db.models import Sum as DBSum
+    total_lessons = courses.aggregate(total=DBSum('lesson_count'))['total'] or 0
 
-    # Track when student last dismissed updates (session-based, no DB)
+    platform_updates = []
     last_cleared = request.session.get('updates_cleared_at')
     since = last_cleared if last_cleared else (timezone.now() - timedelta(hours=24))
 
-    # 1. New Courses added to Explore
-    new_courses = Course.objects.filter(is_approved=True, status='PUBLISHED', created_at__gte=since).only('title')
+    new_courses = Course.objects.filter(
+        is_approved=True, status='PUBLISHED', created_at__gte=since
+    ).only('title')
     for c in new_courses:
-        platform_updates.append(f"🚀 New Course Added: '{c.title}' is now available in the Explore area!")
+        platform_updates.append(f"\U0001f680 New Course Added: '{c.title}' is now available in the Explore area!")
 
-    # 2. New Content in Enrolled Courses
     if request.user.is_authenticated and request.user.user_type == 'STUDENT':
         new_lessons = Lesson.objects.filter(
             course__enrollments__user=request.user,
@@ -625,13 +627,12 @@ def dashboard_view(request):
             created_at__gte=since
         ).select_related('course').only('title', 'course__title')
         for l in new_lessons:
-            platform_updates.append(f"📖 Content Released: New lesson '{l.title}' added to your course '{l.course.title}'.")
+            platform_updates.append(f"\U0001f4d6 Content Released: New lesson '{l.title}' added to your course '{l.course.title}'.")
 
-    # Build initial context
     context = {
         'courses': courses,
         'search_query': search_query,
-        'total_lessons': sum(c.lesson_count for c in courses),
+        'total_lessons': total_lessons,
         'is_admin_preview': is_unlocked,
         'platform_updates': platform_updates,
     }
@@ -646,34 +647,41 @@ def dismiss_updates(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_dashboard(request):
-    courses = Course.objects.filter(teacher=request.user).annotate(
+    from django.core.paginator import Paginator
+
+    teacher_courses = Course.objects.filter(teacher=request.user)
+
+    # Single aggregate query for all stats — replaces 5+ separate COUNT queries
+    stats = teacher_courses.aggregate(
+        total_courses=Count('id'),
+        published_courses=Count('id', filter=Q(status='PUBLISHED')),
+        pending_courses=Count('id', filter=Q(status='PENDING')),
+    )
+
+    total_students = Enrollment.objects.filter(course__teacher=request.user).count()
+    pending_deletions = DeletionRequest.objects.filter(teacher=request.user, status='PENDING').count()
+
+    courses = teacher_courses.annotate(
         total_lessons=Count('lessons'),
         approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
         pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING'))
     ).only('id', 'uid', 'title', 'status', 'created_at', 'image', 'thumbnail')
-    
-    total_students = Enrollment.objects.filter(course__teacher=request.user).count()
-    
-    # Efficient aggregation
+
     recent_courses = courses.order_by('-created_at')[:5]
-    
-    # Pagination for courses
-    from django.core.paginator import Paginator
-    paginator = Paginator(courses, 20)  # 20 courses per page
+
+    paginator = Paginator(courses, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
-    
+
     context = {
-        'total_courses': courses.count(),
-        'published_courses': courses.filter(status='PUBLISHED').count(),
-        'pending_courses': courses.filter(Q(status='PENDING') | Q(pending_lessons__gt=0)).distinct().count(),
+        'total_courses': stats['total_courses'],
+        'published_courses': stats['published_courses'],
+        'pending_courses': stats['pending_courses'],
         'total_students': total_students,
-        'pending_deletions': DeletionRequest.objects.filter(teacher=request.user, status='PENDING').count(),
+        'pending_deletions': pending_deletions,
         'recent_courses': recent_courses,
         'courses': page_obj,
         'page_obj': page_obj,
-        'notifications': get_notifications(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
     return render(request, 'teacher_portal/dashboard.html', context)
 
