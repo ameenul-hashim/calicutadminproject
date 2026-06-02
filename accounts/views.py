@@ -928,7 +928,15 @@ def add_lesson(request, course_uid):
         video_file = request.FILES.get('video_file')
 
         if video_source == 'file' and video_file:
-            video_url = video_url.strip()
+            # Upload video to Supabase Storage (disk-based, Render-safe)
+            from .utils.supabase_storage import upload_video_to_supabase
+            import uuid
+            lesson_uid = str(uuid.uuid4())
+            video_path = upload_video_to_supabase(video_file, lesson_uid)
+            if not video_path:
+                messages.error(request, "Video upload failed. Please try again.")
+                return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+            video_url = f"supabase://{video_path}"
         elif video_source == 'url' and video_url:
             video_url = video_url.strip()
         else:
@@ -1607,8 +1615,16 @@ def course_player(request, course_uid):
         if lesson.video_url and lesson.video_url.startswith('supabase://'):
             storage_path = lesson.video_url.replace('supabase://', '', 1)
             try:
-                from .utils.supabase_storage import get_signed_url
-                signed = get_signed_url(storage_path, expires_in=86400)
+                from .utils.supabase_storage import supabase as vid_supabase
+                # Path may include bucket prefix: "bucket_name/videos/lesson_xxx.mp4"
+                parts = storage_path.split('/', 1)
+                if len(parts) == 2 and '-' in parts[0]:
+                    v_bucket, v_path = parts[0], parts[1]
+                else:
+                    from .utils.supabase_storage import video_bucket as v_bucket
+                    v_path = storage_path
+                res = vid_supabase.storage.from_(v_bucket).create_signed_url(v_path, 86400)
+                signed = res.get("signedURL") if isinstance(res, dict) else res
                 if signed:
                     lesson.video_url = signed
                 else:
