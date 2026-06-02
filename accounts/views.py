@@ -9,6 +9,11 @@ import re
 import logging
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.clickjacking import xframe_options_exempt
+from django.views.decorators.http import require_POST
+from django.utils.html import escape
+from urllib.parse import urlparse
+import socket
+from django_ratelimit.decorators import ratelimit
 
 logger = logging.getLogger(__name__)
 import os
@@ -42,6 +47,31 @@ def is_strong_password(password):
     if not re.search(r'[@$!%*?&#]', password):
         return False, "Password must contain at least one special character (@$!%*?&#)."
     return True, ""
+
+def validate_avatar_url(url):
+    """SSRF guard: only allow Cloudinary and ui-avatars URLs, block private IPs."""
+    if not url:
+        return True
+    ALLOWED_DOMAINS = (
+        'res.cloudinary.com',
+        'ui-avatars.com',
+    )
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname.lower()
+        if hostname not in ALLOWED_DOMAINS:
+            logger.warning(f"SSRF blocked: disallowed domain {hostname}")
+            return False
+        try:
+            addr = socket.getaddrinfo(hostname, 80)[0][4][0]
+            if addr.startswith(('127.', '10.', '172.16.', '192.168.', '169.254.')) or addr == '::1':
+                logger.warning(f"SSRF blocked: private IP {addr} for {hostname}")
+                return False
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
 
 def log_login_attempt(request, user, status='SUCCESS'):
     """Audit helper for enterprise login tracking."""
@@ -99,36 +129,21 @@ def signup_view(request):
         phone_number = request.POST.get('phone_number')
         is_mobile = request.POST.get('is_mobile') == 'true'
 
-        # 1. Extensive Debug Logging
-        print("\n--- [STUDENT SIGNUP] ---")
-        print(f"User: {username} | Mobile Device: {is_mobile}")
-        if proof_file:
-            print(f"FILE: {proof_file.name} | SIZE: {proof_file.size} bytes | TYPE: {proof_file.content_type}")
-        else:
-            print("[WARN] NO FILE")
+        logger.debug("Student signup attempt: %s", username)
 
-        # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
-        # Email format check
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             messages.error(request, "Please enter a valid email address.")
             return render(request, 'accounts/signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
 
-        # Unique checks
-        if CustomUser.objects.filter(username=username).exists():
-            messages.error(request, "This username is already taken. Please try another one.")
+        if (CustomUser.objects.filter(username=username).exists() or
+            CustomUser.objects.filter(email=email).exists() or
+            CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists()):
+            messages.error(request, "This information conflicts with an existing account. Please check your details or try logging in.")
             return render(request, 'accounts/signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
-        
-        if CustomUser.objects.filter(email=email).exists():
-            messages.error(request, "This email is already registered. If it's yours, try logging in.")
-            return render(request, 'accounts/signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
-        
-        if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
-            messages.error(request, "This phone number is already associated with an account.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
 
         # Phone digits check
         phone_digits = ''.join(filter(str.isdigit, phone_number))
@@ -174,13 +189,12 @@ def signup_view(request):
                     messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
                     return redirect('login')
 
-                print("[PDF] Uploading directly to Supabase...")
+                logger.debug("Uploading PDF to Supabase for %s", username)
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"[IMG] Processing image ({file_ext}) directly from memory...")
-                # convert_image_to_pdf now processes the file object directly in RAM
+                logger.debug("Processing image (%s) for %s", file_ext, username)
                 optimized_pdf = convert_image_to_pdf(proof_file)
                 
                 if not optimized_pdf:
@@ -191,18 +205,16 @@ def signup_view(request):
                     user.delete()
                     raise Exception("Supabase upload failed.")
                 
-                print(f"[OK] Fast-track student registration complete for {username}")
+                logger.info("Student registration complete: %s", username)
 
             messages.success(request, "Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
             return redirect('login')
 
         except Exception as e:
-            import traceback
-            print(f"[ERROR] SIGNUP: {str(e)}")
-            print(traceback.format_exc())
+            logger.error("Student signup failed for %s: %s", username, str(e), exc_info=True)
             if 'user' in locals() and user: user.delete()
-            messages.error(request, f"Registration failed: {str(e)}")
+            messages.error(request, "Registration failed due to a system error. Please try again later.")
             return redirect('login')
 
 
@@ -221,14 +233,6 @@ def teacher_signup_view(request):
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
         is_mobile = request.POST.get('is_mobile') == 'true'
-
-        # 1. Extensive Debug Logging
-        print("\n--- [TEACHER SIGNUP] ---")
-        print(f"Teacher: {username} | Mobile: {is_mobile}")
-        if proof_file:
-            print(f"FILE: {proof_file.name} | SIZE: {proof_file.size} bytes")
-        else:
-            print("[WARN] NO FILE")
 
         # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
@@ -297,12 +301,12 @@ def teacher_signup_view(request):
                     messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
                     return redirect('teacher_login')
 
-                print("[PDF] Uploading directly to Supabase...")
+                logger.debug("Teacher signup: uploading PDF to Supabase for %s", username)
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
             else:
-                print(f"[IMG] Processing teacher image ({file_ext}) directly from memory...")
+                logger.debug("Teacher signup: processing image for %s", username)
                 # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
                 
@@ -314,18 +318,16 @@ def teacher_signup_view(request):
                     user.delete()
                     raise Exception("Supabase upload failed.")
                 
-                print(f"[OK] Fast-track teacher registration complete for {username}")
+                logger.info("Teacher registration complete for %s", username)
 
             messages.success(request, "Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
             return redirect('teacher_login')
 
         except Exception as e:
-            import traceback
-            print(f"[ERROR] TEACHER SIGNUP: {str(e)}")
-            print(traceback.format_exc())
+            logger.error("Teacher signup failed for %s: %s", username, str(e), exc_info=True)
             if 'user' in locals() and user: user.delete()
-            messages.error(request, f"Registration failed: {str(e)}")
+            messages.error(request, "Registration failed due to a system error. Please try again later.")
             return redirect('teacher_login')
 
     return render(request, 'accounts/teacher_signup.html')
@@ -407,55 +409,49 @@ def login_view(request):
             messages.error(request, "Please enter your username and password.")
             return render(request, 'accounts/login.html')
 
-        # 1. Check if user exists
+        # 1. Generic check — same message whether user exists or password wrong (anti-enumeration)
         user_candidate = CustomUser.objects.filter(username=username).first()
-        if not user_candidate:
-            messages.error(request, "Account not found. Please check your username or sign up.")
+        if not user_candidate or not user_candidate.check_password(password):
+            if user_candidate:
+                log_login_attempt(request, user_candidate, status='FAILED')
+            messages.error(request, "Invalid username or password. Please try again.")
             return render(request, 'accounts/login.html')
 
-        # 2. Check if password is correct
-        if not user_candidate.check_password(password):
-            log_login_attempt(request, user_candidate, status='FAILED')
-            messages.error(request, "Incorrect password. Please try again.")
-            return render(request, 'accounts/login.html')
-
-        # 3. User exists and password is correct, check user_type
+        # 2. Check user_type — generic message to prevent type enumeration
         if user_candidate.user_type != 'STUDENT':
-            messages.error(request, "This login area is strictly for Students. Teachers and Admins must use their respective portals.")
+            messages.error(request, "Invalid username or password. Please try again.")
             return render(request, 'accounts/login.html')
 
-        # 4. Check account status
-        if user_candidate.status == 'PENDING':
-            messages.warning(request, "Your account is currently PENDING approval. Admin approval is required to login. Please wait for a while or contact the administration.")
-            return render(request, 'accounts/login.html')
-        elif user_candidate.status == 'REJECTED':
-            messages.error(request, "Your registration was REJECTED. Please contact admin for details.")
-            return render(request, 'accounts/login.html')
-        elif user_candidate.status == 'BLOCKED':
-            messages.error(request, "Your account has been BLOCKED. Access is restricted.")
+        # 3. Check account status — only reveal status if credentials are valid
+        if user_candidate.status in ('PENDING', 'REJECTED', 'BLOCKED'):
+            status_msgs = {
+                'PENDING': 'Your account is PENDING approval. Please wait or contact administration.',
+                'REJECTED': 'Your account was REJECTED. Please contact admin for details.',
+                'BLOCKED': 'Your account has been BLOCKED. Access is restricted.',
+            }
+            messages.error(request, status_msgs[user_candidate.status])
             return render(request, 'accounts/login.html')
 
         # 5. Status is ACTIVE, proceed with authentication
         if user_candidate.status == 'ACTIVE':
             user = authenticate(request, username=username, password=password)
             if user is not None:
-                # Concurrent login restriction for students
                 from django.contrib.sessions.models import Session
                 if user.current_session_key:
                     Session.objects.filter(session_key=user.current_session_key).delete()
                 
                 login(request, user)
-                request.session.set_expiry(0)  # Instantly expire session on browser close
+                request.session.set_expiry(0)
                 
                 if not request.session.session_key:
                     request.session.save()
                 user.current_session_key = request.session.session_key
                 user.save(update_fields=['current_session_key'])
                 
-                messages.success(request, f"Welcome back, {user.full_name}! Student dashboard loaded.")
+                messages.success(request, f"Welcome back, {user.full_name}!")
                 return redirect('dashboard')
             else:
-                messages.error(request, "Authentication failed. Please check your credentials.")
+                messages.error(request, "Invalid username or password. Please try again.")
                 return render(request, 'accounts/login.html')
             
     return render(request, 'accounts/login.html')
@@ -543,37 +539,32 @@ def teacher_login_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
 
-        # Check for inactive/pending users FIRST because authenticate() returns None for them
         user_candidate = CustomUser.objects.filter(username=username).first()
-        if user_candidate:
-            if user_candidate.status == 'PENDING':
-                messages.warning(request, "Your teacher account is PENDING approval. Admin approval is needed to login. Please wait for a while or contact the administration.")
-                return render(request, 'accounts/teacher_login.html')
-            elif user_candidate.status == 'REJECTED':
-                messages.error(request, "Your teacher application was REJECTED. Please contact admin for details.")
-                return render(request, 'accounts/teacher_login.html')
-            elif user_candidate.status == 'BLOCKED':
-                messages.error(request, "Your teacher account has been BLOCKED.")
-                return render(request, 'accounts/teacher_login.html')
-
         user = authenticate(request, username=username, password=password)
+        
         if user is not None:
+            if user.status == 'PENDING':
+                messages.warning(request, "Your account is PENDING approval. Please wait or contact administration.")
+                return render(request, 'accounts/teacher_login.html')
+            elif user.status == 'REJECTED':
+                messages.error(request, "Your account was REJECTED. Please contact admin for details.")
+                return render(request, 'accounts/teacher_login.html')
+            elif user.status == 'BLOCKED':
+                messages.error(request, "Your account has been BLOCKED. Access is restricted.")
+                return render(request, 'accounts/teacher_login.html')
+            
             if user.user_type != 'TEACHER':
-                messages.error(request, "This login area is strictly for Teachers. Students and Admins must use their respective portals.")
+                messages.error(request, "Invalid username or password. Please try again.")
                 return render(request, 'accounts/teacher_login.html')
                 
             if user.status == 'ACTIVE':
                 login(request, user)
-                request.session.set_expiry(0)  # Instantly expire session on browser close
-                messages.success(request, f"Welcome, {user.full_name}! Teacher Dashboard active.")
+                request.session.set_expiry(0)
+                messages.success(request, f"Welcome, {user.full_name}!")
                 return redirect('teacher_dashboard')
         else:
-            # Check existence vs wrong password
-            if user_candidate:
-                log_login_attempt(request, user_candidate, status='FAILED')
-                messages.error(request, "Incorrect password. Please try again.")
-            else:
-                messages.error(request, "Teacher account not found. Please check your username or apply.")
+            log_login_attempt(request, user_candidate, status='FAILED')
+            messages.error(request, "Invalid username or password. Please try again.")
             
     return render(request, 'accounts/teacher_login.html')
 
@@ -818,7 +809,7 @@ def create_course(request):
             else:
                 success = update_image(course, thumbnail, folder="Neo Learner/courses")
                 if not success:
-                    print(f"⚠️ Thumbnail upload failed for course '{title}' — course saved without thumbnail.")
+                    logger.warning("Thumbnail upload failed for course '%s' — saved without thumbnail.", title)
         
         messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
         return redirect('course_lessons', course_uid=course.uid)
@@ -879,7 +870,7 @@ def edit_course(request, course_uid):
                     from .utils.cloudinary_helpers import update_image
                     success = update_image(course, thumbnail_file, folder="Neo Learner/courses")
                     if not success:
-                        print(f"⚠️ Thumbnail update failed for course '{course.title}'")
+                        logger.warning("Thumbnail update failed for course '%s'", course.title)
             
             if course.status == 'REJECTED':
                 course.rejection_reason = ""
@@ -1061,7 +1052,11 @@ def add_resource(request, course_uid):
             return redirect('course_lessons', course_uid=course.uid)
             
         try:
+            from .utils.malware_scanner import scanner
             mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
+            is_infected, scan_reason = scanner.scan_file(upload_file)
+            if is_infected:
+                raise ValueError(f"Security scan failed: {scan_reason}")
             file_bytes = upload_file.read()
             original_size = len(file_bytes)
             
@@ -1164,7 +1159,11 @@ def edit_resource(request, resource_uid):
                 return redirect('edit_resource', resource_uid=resource.uid)
                 
             try:
+                from .utils.malware_scanner import scanner
                 new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
+                is_infected, scan_reason = scanner.scan_file(upload_file)
+                if is_infected:
+                    raise ValueError(f"Security scan failed: {scan_reason}")
                 file_bytes = upload_file.read()
                 new_orig_size = len(file_bytes)
                 
@@ -1346,6 +1345,7 @@ def submit_course_approval(request, course_uid):
         
     return redirect('my_courses')
 
+@require_POST
 @login_required
 def logout_view(request):
     if not request.user.is_authenticated:
@@ -1622,10 +1622,11 @@ def send_chat_message(request):
         from django.utils import timezone
         try:
             receiver = CustomUser.objects.get(uid=receiver_uid)
+            safe_message = escape(message_text)
             msg = ChatMessage.objects.create(
                 sender=request.user,
                 receiver=receiver,
-                message=message_text,
+                message=safe_message,
             )
             ts_str = msg.timestamp.strftime('%I:%M %p')
             msg_uid = str(msg.uid)
@@ -1860,6 +1861,7 @@ def mark_all_notifications_read(request):
 
 @xframe_options_exempt
 @login_required(login_url='login')
+@ratelimit(key='user', rate='60/m', block=True)
 def access_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from django.shortcuts import get_object_or_404, redirect
@@ -1930,6 +1932,7 @@ def pdf_viewer(request, resource_uid):
 
 
 @login_required(login_url='login')
+@ratelimit(key='user', rate='20/m', block=True)
 def download_resource(request, resource_uid):
     """Downloads a resource file with Content-Disposition: attachment for actual file download."""
     from accounts.models import CourseResource, Enrollment
@@ -2239,7 +2242,7 @@ def init_youtube_upload(request):
 
 
 from django.views.decorators.csrf import csrf_exempt
-from django_ratelimit.decorators import ratelimit
+
 
 @csrf_exempt
 @ratelimit(key='ip', rate='10/hour', method='POST', block=True)

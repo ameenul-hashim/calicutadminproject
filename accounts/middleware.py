@@ -286,4 +286,25 @@ class EnterpriseHardeningMiddleware:
         cache.set(cache_key, True, 3600)
 
 
+import time
+import logging
 
+slow_query_logger = logging.getLogger('django.db.backends.schema')
+
+class SlowQueryMonitorMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start = time.time()
+        response = self.get_response(request)
+        duration = time.time() - start
+        if duration > 1.0:
+            slow_query_logger.warning(
+                "SLOW_REQUEST: %.2fs %s %s | user=%s",
+                duration,
+                request.method,
+                request.path,
+                request.user.username if request.user.is_authenticated else 'anonymous',
+            )
+        return response

@@ -58,6 +58,12 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return f"{self.username} ({self.user_type})"
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user_type', 'status']),
+            models.Index(fields=['phone_number', 'user_type']),
+        ]
+
 class Course(models.Model):
     STATUS_CHOICES = (
         ('DRAFT', 'Draft'),
@@ -134,6 +140,9 @@ class Lesson(models.Model):
 
     class Meta:
         ordering = ['order']
+        indexes = [
+            models.Index(fields=['course', 'status']),
+        ]
 
 class CourseResource(models.Model):
     CATEGORY_CHOICES = (
@@ -199,30 +208,11 @@ class CourseResource(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-
-    def __str__(self):
-        return f"{self.title} - {self.get_category_display()}"
-        
-    def get_signed_url(self):
-        from accounts.utils.storage_manager import StorageManager
-        import datetime
-        try:
-            manager = StorageManager()
-            expiration = datetime.timedelta(days=7)
-            url = manager.generate_supabase_signed_url(self.firebase_file_path, expiration)
-            if isinstance(url, dict):
-                return url.get('signedURL') or url.get('signedUrl') or url.get('signed_url')
-            if isinstance(url, str) and url.startswith('http'):
-                return url
-            return None
-        except Exception:
-            return None
-
-class LiveClass(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='live_classes')
-    title = models.CharField(max_length=255)
-    meeting_link = models.URLField()
-    date_time = models.DateTimeField()
+        indexes = [
+            models.Index(fields=['course', 'status', 'is_deleted']),
+            models.Index(fields=['status', 'is_deleted']),
+            models.Index(fields=['course', '-created_at']),
+        ]
 
 class Enrollment(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='enrollments')
@@ -231,6 +221,9 @@ class Enrollment(models.Model):
 
     class Meta:
         unique_together = ('user', 'course')
+        indexes = [
+            models.Index(fields=['course', 'user']),
+        ]
 
 class ApprovalLog(models.Model):
     content_type = models.CharField(max_length=50)
@@ -262,6 +255,9 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'is_read', '-created_at']),
+        ]
 
 class ChatMessage(models.Model):
     sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='sent_messages')
@@ -275,6 +271,10 @@ class ChatMessage(models.Model):
 
     class Meta:
         ordering = ['timestamp']
+        indexes = [
+            models.Index(fields=['sender', 'receiver', 'timestamp']),
+            models.Index(fields=['receiver', 'is_read']),
+        ]
 
 class EmailOTP(models.Model):
     PURPOSE_CHOICES = (
@@ -358,6 +358,11 @@ class LoginHistory(models.Model):
     class Meta:
         ordering = ['-timestamp']
         verbose_name_plural = "Login Histories"
+        indexes = [
+            models.Index(fields=['user', '-timestamp']),
+            models.Index(fields=['user', 'status', '-timestamp']),
+            models.Index(fields=['ip_address', 'user']),
+        ]
 
 class AdminActivityLog(models.Model):
     admin = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='admin_actions')
