@@ -22,43 +22,52 @@
         .input-group input { width: 100%; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
         .input-group input:focus { border-color: #6366f1; }
         .helper-text { font-size: 0.8rem; color: #94a3b8; margin-top: 0.3rem; }
-    
-        /* RESPONSIVE INJECTIONS */
+
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
             .sidebar.active { transform: translateX(0); }
             .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
-            /* Forms */
             .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
         }
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
-        /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
-        /* Django Messages Toast */
-        .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
-        }
-        </style>
+        @media (min-width: 768px) and (max-width: 1024px) { }
 
+        .upload-progress { display: none; margin-top: 1.2rem; padding: 1.2rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+        .upload-progress.active { display: block; }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
+        .progress-label { font-size: 0.85rem; font-weight: 600; color: #334155; }
+        .progress-percent { font-size: 0.85rem; font-weight: 700; color: #6366f1; }
+        .progress-track { width: 100%; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 4px; transition: width 0.3s ease; }
+        .progress-fill.complete { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .progress-fill.error { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .progress-detail { font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; }
+        .upload-phase { font-size: 0.8rem; color: #64748b; margin-top: 0.3rem; font-weight: 500; }
+        .upload-phase.complete { color: #16a34a; }
+        .upload-phase.error { color: #dc2626; }
+        .upload-error { display: none; margin-top: 1rem; padding: 0.8rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; color: #dc2626; font-size: 0.85rem; }
+        .upload-error.active { display: block; }
+    </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
-      tailwind.config = {
-        corePlugins: { preflight: false }
-      }
+      tailwind.config = { corePlugins: { preflight: false } }
     </script>
     <script>
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
         function toggleVideoInput(mode) {
             const fileGroup = document.getElementById('fileUploadGroup');
             const urlGroup = document.getElementById('urlUploadGroup');
@@ -73,101 +82,158 @@
                 fileInput.required = false;
             }
         }
-        function getCSRFToken() {
-            return document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+            if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
+            return (bytes / 1073741824).toFixed(2) + ' GB';
         }
-        window.addEventListener('DOMContentLoaded', function() {
+
+        function formatSpeed(bytesPerSec) {
+            if (bytesPerSec < 1048576) return (bytesPerSec / 1024).toFixed(0) + ' KB/s';
+            return (bytesPerSec / 1048576).toFixed(1) + ' MB/s';
+        }
+
+        function formatTimeRemaining(bytesRemaining, bytesPerSec) {
+            if (bytesPerSec <= 0) return 'calculating...';
+            const secs = Math.ceil(bytesRemaining / bytesPerSec);
+            if (secs < 60) return secs + 's remaining';
+            return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's remaining';
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
             var hasUrl = '{{ lesson.video_url|default:"" }}'.length > 0;
             if (hasUrl) {
                 document.querySelector('input[name="video_source"][value="url"]').checked = true;
                 toggleVideoInput('url');
                 document.getElementById('video_url').value = document.getElementById('video_url_input').value;
             }
-        });
-        document.querySelector('form').addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('video_file');
-            const titleInput = document.getElementById('title');
-            if (fileInput && fileInput.files.length > 0) {
+
+            document.getElementById('lessonForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
+                const fileInput = document.getElementById('video_file');
+                const urlInput = document.getElementById('video_url');
+                const videoSource = document.querySelector('input[name="video_source"]:checked').value;
+                const uploadError = document.getElementById('uploadError');
+                uploadError.classList.remove('active');
+
+                // YouTube URL path — simple form submit
+                if (videoSource === 'url' && urlInput.value.trim()) {
+                    this.submit();
+                    return;
+                }
+
+                // MP4 file upload — AJAX with real progress
+                if (videoSource !== 'file' || !fileInput.files.length) {
+                    this.submit();
+                    return;
+                }
+
                 const file = fileInput.files[0];
-                const title = titleInput.value;
+                if (!file.name.toLowerCase().endsWith('.mp4')) {
+                    uploadError.textContent = 'Only MP4 files are supported.';
+                    uploadError.classList.add('active');
+                    return;
+                }
+
+                const fileSize = file.size;
+                const sizeMB = (fileSize / (1024 * 1024)).toFixed(1);
                 const progressDiv = document.getElementById('uploadProgress');
                 const progressBar = document.getElementById('progressBar');
                 const progressPercent = document.getElementById('progressPercent');
                 const progressText = document.getElementById('progressText');
-                const uploadStatus = document.getElementById('uploadStatus');
-                const submitBtn = this.querySelector('button[type="submit"]');
+                const progressDetail = document.getElementById('progressDetail');
+                const uploadPhase = document.getElementById('uploadPhase');
+                const submitBtn = document.getElementById('submitBtn');
 
-                progressDiv.style.display = 'block';
-                progressText.textContent = 'Creating upload session...';
+                progressDiv.classList.add('active');
                 submitBtn.disabled = true;
-                submitBtn.textContent = 'Uploading to YouTube...';
+                submitBtn.textContent = 'Uploading...';
+                submitBtn.style.opacity = '0.7';
+                progressBar.style.width = '0%';
+                progressPercent.textContent = '0%';
+                progressText.textContent = 'Preparing upload...';
+                uploadPhase.textContent = 'Initializing...';
+                progressDetail.textContent = '';
 
-                fetch('/api/youtube/init-upload/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    body: JSON.stringify({
-                        title: title,
-                        description: 'Lesson: ' + title,
-                        file_size: file.size
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.upload_url) {
-                        throw new Error(data.error || 'Failed to create upload session');
-                    }
-                    progressText.textContent = 'Uploading to YouTube...';
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('PUT', data.upload_url, true);
-                    xhr.setRequestHeader('Content-Type', 'video/*');
-                    xhr.upload.addEventListener('progress', function(ev) {
-                        if (ev.lengthComputable) {
-                            const pct = Math.round(ev.loaded / ev.total * 100);
-                            progressBar.style.width = pct + '%';
-                            progressPercent.textContent = pct + '%';
-                        }
-                    });
-                    xhr.onload = function() {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            try {
-                                const result = JSON.parse(xhr.responseText);
-                                const videoId = result.id;
-                                document.getElementById('video_url').value = 'https://www.youtube.com/watch?v=' + videoId;
-                                document.getElementById('fileUploadGroup').style.display = 'none';
-                                document.querySelector('input[name="video_source"][value="url"]').checked = true;
-                                progressText.textContent = 'Upload complete!';
-                                progressBar.style.width = '100%';
-                                progressPercent.textContent = '100%';
-                                submitBtn.textContent = 'Saving lesson...';
-                                document.querySelector('form').submit();
-                            } catch(e) {
-                                uploadStatus.textContent = 'Error: Invalid response from YouTube';
-                                submitBtn.disabled = false;
-                                submitBtn.textContent = 'Try Again';
+                try {
+                    // Step 1: Upload file via XHR (real progress)
+                    await new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        const formData = new FormData();
+                        formData.append('video_file', file);
+                        formData.append('lesson_uid', '{{ lesson.uid }}');
+
+                        let lastLoaded = 0, lastTime = Date.now();
+
+                        xhr.upload.addEventListener('progress', function(ev) {
+                            if (ev.lengthComputable) {
+                                const pct = Math.round(ev.loaded / ev.total * 100);
+                                const now = Date.now();
+                                const timeDelta = (now - lastTime) / 1000;
+
+                                if (timeDelta > 0.3) {
+                                    const bps = (ev.loaded - lastLoaded) / timeDelta;
+                                    const remaining = ev.total - ev.loaded;
+                                    progressBar.style.width = pct + '%';
+                                    progressPercent.textContent = pct + '%';
+                                    progressText.textContent = 'Uploading ' + pct + '%';
+                                    uploadPhase.textContent = 'Uploading ' + sizeMB + ' MB to cloud storage...';
+                                    progressDetail.textContent = formatSize(ev.loaded) + ' / ' + formatSize(ev.total) + '  (' + formatSpeed(bps) + ')  ' + formatTimeRemaining(remaining, bps);
+                                    lastLoaded = ev.loaded;
+                                    lastTime = now;
+                                }
                             }
-                        } else {
-                            uploadStatus.textContent = 'Upload failed (HTTP ' + xhr.status + ')';
-                            submitBtn.disabled = false;
-                            submitBtn.textContent = 'Try Again';
-                        }
-                    };
-                    xhr.onerror = function() {
-                        uploadStatus.textContent = 'Network error during upload';
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Try Again';
-                    };
-                    xhr.send(file);
-                })
-                .catch(err => {
-                    uploadStatus.textContent = 'Error: ' + err.message;
+                        });
+
+                        xhr.addEventListener('load', function() {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                try {
+                                    const resp = JSON.parse(xhr.responseText);
+                                    if (resp.success) resolve(resp);
+                                    else reject(new Error(resp.error || 'Upload failed'));
+                                } catch(ex) { reject(new Error('Invalid response')); }
+                            } else {
+                                try {
+                                    const resp = JSON.parse(xhr.responseText);
+                                    reject(new Error(resp.error || 'Upload failed (HTTP ' + xhr.status + ')'));
+                                } catch(ex) { reject(new Error('Upload failed (HTTP ' + xhr.status + ')')); }
+                            }
+                        });
+
+                        xhr.addEventListener('error', function() { reject(new Error('Network error')); });
+                        xhr.addEventListener('abort', function() { reject(new Error('Cancelled')); });
+
+                        xhr.open('POST', '/api/video/edit-upload/');
+                        xhr.setRequestHeader('X-CSRFToken', getCookie('neolearner_sessionid') || getCookie('csrftoken'));
+                        xhr.send(formData);
+                    });
+
+                    // Success
+                    progressBar.style.width = '100%';
+                    progressBar.classList.add('complete');
+                    progressPercent.textContent = '100%';
+                    progressText.textContent = 'Upload complete!';
+                    uploadPhase.textContent = 'Video ready!';
+                    uploadPhase.classList.add('complete');
+                    progressDetail.textContent = '';
+
+                    setTimeout(function() {
+                        window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                    }, 800);
+
+                } catch(err) {
+                    progressBar.classList.add('error');
+                    uploadPhase.textContent = 'Error: ' + err.message;
+                    uploadPhase.classList.add('error');
+                    uploadError.textContent = err.message || 'Upload failed. Please try again.';
+                    uploadError.classList.add('active');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Try Again';
-                });
-            }
+                    submitBtn.style.opacity = '1';
+                }
+            });
         });
     </script>
 </head>
@@ -188,7 +254,7 @@
             </header>
 
             <div class="form-card">
-                <form method="POST" enctype="multipart/form-data">
+                <form id="lessonForm" method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="video_url" id="video_url" value="">
                     <div class="input-group">
@@ -215,29 +281,32 @@
                     <div class="input-group" id="fileUploadGroup">
                         <label for="video_file">Upload New Video (MP4)</label>
                         <input type="file" name="video_file" id="video_file" accept=".mp4,video/mp4">
-                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Upload a new MP4 to replace the current video. It will be uploaded to Neo Learner's YouTube channel.</p>
-                        <div id="uploadProgress" style="display:none;margin-top:1rem;">
-                            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;margin-bottom:0.3rem;">
-                                <span id="progressText">Uploading to YouTube...</span>
-                                <span id="progressPercent">0%</span>
+                        <p class="helper-text">Upload a new MP4 to replace the current video. Video will be uploaded to cloud storage.</p>
+
+                        <div id="uploadProgress" class="upload-progress">
+                            <div class="progress-header">
+                                <span id="progressText" class="progress-label">Uploading...</span>
+                                <span id="progressPercent" class="progress-percent">0%</span>
                             </div>
-                            <div style="width:100%;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
-                                <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;transition:width 0.3s;"></div>
+                            <div class="progress-track">
+                                <div id="progressBar" class="progress-fill"></div>
                             </div>
-                            <p id="uploadStatus" style="font-size:0.75rem;color:#94a3b8;margin-top:0.5rem;"></p>
+                            <div id="progressDetail" class="progress-detail"></div>
+                            <div id="uploadPhase" class="upload-phase"></div>
                         </div>
+                        <div id="uploadError" class="upload-error"></div>
                     </div>
                     <div class="input-group" id="urlUploadGroup" style="display:none;">
                         <label for="video_url_input">YouTube Video Link</label>
                         <input type="url" id="video_url_input" placeholder="https://www.youtube.com/watch?v=..." value="{{ lesson.video_url|default:'' }}" oninput="document.getElementById('video_url').value=this.value">
-                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Paste a YouTube video URL to replace the current video.</p>
+                        <p class="helper-text">Paste a YouTube video URL to replace the current video.</p>
                     </div>
                     <div class="input-group">
                         <label for="order">Lesson Order Number</label>
                         <input type="number" name="order" id="order" value="{{ lesson.order }}" required>
                     </div>
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                        <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Save Changes</button>
+                        <button type="submit" id="submitBtn" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 600; border: none; cursor: pointer;">Save Changes</button>
                         <a href="{% url 'course_lessons' course.uid %}" class="btn" style="background: #f1f5f9; color: #64748b; padding: 0.8rem 2rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">Cancel</a>
                     </div>
                 </form>
@@ -247,5 +316,3 @@
 </body>
 
 </html>
-
-

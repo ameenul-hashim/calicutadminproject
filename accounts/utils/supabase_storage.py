@@ -129,37 +129,62 @@ def delete_pdf(file_path: str):
         logger.error(f"Supabase Deletion Error: {e}")
         return False
 
-def upload_video_to_supabase(video_file, lesson_uid):
-    """Uploads an MP4 video to Supabase via temp file (keeps RAM usage low on Render 512MB)."""
+def create_signed_upload_url(file_path: str, expires_in: int = 3600):
+    """
+    Creates a signed upload URL for browser-direct upload to Supabase.
+    The browser can PUT files directly to this URL without going through Django.
+    Returns dict with 'signed_url' and 'token', or None on error.
+    """
+    if not supabase or not file_path:
+        return None
+    try:
+        if file_path.startswith("/"):
+            file_path = file_path[1:]
+        res = supabase.storage.from_(video_bucket).create_signed_upload_url(file_path)
+        if isinstance(res, dict) and 'signed_url' in res:
+            return res
+        return res
+    except Exception as e:
+        logger.error(f"Supabase Signed Upload URL Error: {e}")
+        return None
+
+def stream_video_upload(video_file, lesson_uid):
+    """
+    Uploads an MP4 video to Supabase. Memory-optimized for Render 512MB.
+    Writes to temp file first, then reads back and uploads.
+    Note: Supabase SDK requires full file in memory for upload — this is unavoidable.
+    """
     if not supabase:
         logger.error("Supabase client not initialized")
         return None
-    import tempfile, os
+    import tempfile, os, gc
     destination_path = f"videos/lesson_{lesson_uid}.mp4"
     if destination_path.startswith("/"):
         destination_path = destination_path[1:]
 
     tmp_path = None
     try:
-        # 1. Stream upload to temp file (Django uses disk if FILE_UPLOAD_MAX_MEMORY_SIZE is set)
+        # Step 1: Stream incoming file to temp on disk (keeps Django memory low)
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
         tmp_path = tmp.name
-        for chunk in video_file.chunks(chunk_size=5 * 1024 * 1024):
+        total_written = 0
+        for chunk in video_file.chunks(chunk_size=1024 * 1024):
             tmp.write(chunk)
+            total_written += len(chunk)
         tmp.close()
+        logger.info(f"Video temp file ready: {tmp_path} ({total_written} bytes)")
 
-        file_size = os.path.getsize(tmp_path)
-        logger.info(f"Video temp file ready: {tmp_path} ({file_size} bytes)")
-
-        # 2. Upload from disk to Supabase video bucket
+        # Step 2: Read from disk and upload to Supabase
         with open(tmp_path, 'rb') as f:
             content = f.read()
+        gc.collect()  # Hint Python to free other objects before large allocation
         supabase.storage.from_(video_bucket).upload(
             path=destination_path,
             file=content,
             file_options={"content-type": "video/mp4", "upsert": "true"}
         )
-        del content  # Free memory immediately
+        del content
+        gc.collect()
         logger.info(f"Video uploaded to Supabase ({video_bucket}): {destination_path}")
         return f"{video_bucket}/{destination_path}"
     except Exception as e:
@@ -171,6 +196,13 @@ def upload_video_to_supabase(video_file, lesson_uid):
                 os.unlink(tmp_path)
             except Exception:
                 pass
+
+def upload_video_to_supabase(video_file, lesson_uid):
+    """
+    Uploads an MP4 video to Supabase. Memory-optimized for Render 512MB.
+    Writes to temp file first, then streams to Supabase.
+    """
+    return stream_video_upload(video_file, lesson_uid)
 
 def upload_user_proof(instance, pdf_file):
     """

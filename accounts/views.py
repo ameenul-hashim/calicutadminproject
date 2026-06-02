@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, PasswordResetOTP
+import uuid
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
@@ -920,6 +921,10 @@ def course_lessons(request, course_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def add_lesson(request, course_uid):
+    """
+    Handles YouTube URL lesson creation (form POST).
+    MP4 file uploads use AJAX via /api/video/init-upload/ + /api/video/do-upload/.
+    """
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -927,23 +932,17 @@ def add_lesson(request, course_uid):
         video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
 
+        # MP4 file uploads should use the AJAX endpoints
         if video_source == 'file' and video_file:
-            # Upload video to Supabase Storage (disk-based, Render-safe)
-            from .utils.supabase_storage import upload_video_to_supabase
-            import uuid
-            lesson_uid = str(uuid.uuid4())
-            video_path = upload_video_to_supabase(video_file, lesson_uid)
-            if not video_path:
-                messages.error(request, "Video upload failed. Please try again.")
-                return render(request, 'teacher_portal/add_lesson.html', {'course': course})
-            video_url = f"supabase://{video_path}"
-        elif video_source == 'url' and video_url:
-            video_url = video_url.strip()
-        else:
-            messages.error(request, "Please provide a video (upload MP4 or paste YouTube link).")
+            messages.error(request, "MP4 uploads must use the upload button. Please try again.")
             return render(request, 'teacher_portal/add_lesson.html', {'course': course})
 
-        import re
+        if video_source == 'url' and video_url:
+            video_url = video_url.strip()
+        else:
+            messages.error(request, "Please provide a YouTube video link.")
+            return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         youtube_video_id = youtube_match.group(1) if youtube_match else None
 
@@ -957,19 +956,19 @@ def add_lesson(request, course_uid):
             is_approved=False,
             youtube_video_id=youtube_video_id,
             youtube_upload_status='UPLOADED' if youtube_video_id else 'NOT_UPLOADED',
+            upload_status='READY' if youtube_video_id else 'NOT_UPLOADED',
         )
 
         if youtube_video_id:
-            from django.utils import timezone
             lesson.youtube_uploaded_at = timezone.now()
             lesson.save(update_fields=['youtube_uploaded_at'])
 
         if course.status == 'PUBLISHED' or course.is_approved:
             messages.success(request, f"Lesson '{title}' added! Video will be visible to students once approved by admin.")
-            notify_admins(f"🆕 NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
+            notify_admins(f"NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
         else:
             messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
-            notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
+            notify_admins(f"NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
 
         return redirect('course_lessons', course_uid=course.uid)
     
@@ -977,6 +976,10 @@ def add_lesson(request, course_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_lesson(request, lesson_uid):
+    """
+    Handles YouTube URL lesson updates (form POST).
+    MP4 file uploads use AJAX via /api/video/edit-upload/.
+    """
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
         title = request.POST.get('title')
@@ -985,12 +988,16 @@ def edit_lesson(request, lesson_uid):
         video_file = request.FILES.get('video_file')
         order = request.POST.get('order', 1)
 
+        # MP4 file uploads should use the AJAX endpoint
         if video_source == 'file' and video_file:
-            video_url = video_url.strip()
-        elif video_source == 'url' and video_url:
-            video_url = video_url.strip()
+            messages.error(request, "MP4 uploads must use the upload button. Please try again.")
+            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
 
-        import re
+        if video_source == 'url' and video_url:
+            video_url = video_url.strip()
+        else:
+            video_url = lesson.video_url or ''
+
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         new_youtube_video_id = youtube_match.group(1) if youtube_match else None
 
@@ -1001,14 +1008,13 @@ def edit_lesson(request, lesson_uid):
             lesson.has_pending_edits = True
             lesson.save()
 
-            notify_admins(f"🔁 LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
+            notify_admins(f"LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
             messages.success(request, "Lesson edits submitted for approval! Students will continue to view the current version until approved.")
         else:
             lesson.title = title
             if new_youtube_video_id:
                 lesson.youtube_video_id = new_youtube_video_id
                 lesson.youtube_upload_status = 'UPLOADED'
-                from django.utils import timezone
                 lesson.youtube_uploaded_at = timezone.now()
             lesson.video_url = video_url
             lesson.order = order
@@ -1017,7 +1023,7 @@ def edit_lesson(request, lesson_uid):
             lesson.save()
 
             messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
-            notify_admins(f"🔁 CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}'.")
+            notify_admins(f"CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}'.")
 
         return redirect('course_lessons', course_uid=lesson.course.uid)
 
@@ -1613,6 +1619,10 @@ def course_player(request, course_uid):
     # Resolve Supabase video URLs to signed URLs
     for lesson in lessons:
         if lesson.video_url and lesson.video_url.startswith('supabase://'):
+            # Skip if upload not yet complete
+            if lesson.upload_status not in ('READY', 'NOT_UPLOADED'):
+                lesson.video_url = ''
+                continue
             storage_path = lesson.video_url.replace('supabase://', '', 1)
             try:
                 from .utils.supabase_storage import supabase as vid_supabase
@@ -2400,6 +2410,181 @@ def init_youtube_upload(request):
 
 
 from django.views.decorators.csrf import csrf_exempt
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def init_video_upload(request):
+    """
+    Phase 1 of AJAX video upload.
+    Creates a Lesson with upload_status=PENDING, returns lesson_uid for progress tracking.
+    The actual file upload is handled by a separate AJAX POST to /api/video/do-upload/.
+    """
+    import json
+    from django.utils import timezone as tz
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        course_uid = data.get('course_uid')
+        title = data.get('title', '').strip()
+        order = data.get('order', 1)
+        video_source = data.get('video_source', 'file')
+
+        if not title:
+            return JsonResponse({'error': 'Title is required'}, status=400)
+
+        course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+
+        lesson_uid = uuid.uuid4()
+        lesson = Lesson.objects.create(
+            course=course,
+            title=title,
+            order=order,
+            status='PENDING',
+            is_approved=False,
+            upload_status='PENDING',
+            youtube_upload_status='NOT_UPLOADED',
+        )
+
+        return JsonResponse({
+            'lesson_uid': str(lesson.uid),
+            'upload_status': 'PENDING',
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        logger.error(f"init_video_upload error: {e}")
+        return JsonResponse({'error': 'Server error'}, status=500)
+
+
+@csrf_exempt
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def do_video_upload(request):
+    """
+    Phase 2 of AJAX video upload.
+    Receives the MP4 file via multipart POST, uploads to Supabase.
+    Returns JSON with upload status and signed video URL.
+    """
+    from django.utils import timezone as tz
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    lesson_uid_str = request.POST.get('lesson_uid')
+    video_file = request.FILES.get('video_file')
+
+    if not lesson_uid_str or not video_file:
+        return JsonResponse({'error': 'lesson_uid and video_file required'}, status=400)
+
+    try:
+        lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+    # Validate file type
+    if not video_file.name.lower().endswith('.mp4'):
+        return JsonResponse({'error': 'Only MP4 files are supported'}, status=400)
+
+    file_size = video_file.size
+
+    # Update status to UPLOADING
+    lesson.upload_status = 'UPLOADING'
+    lesson.file_size = file_size
+    lesson.save(update_fields=['upload_status', 'file_size'])
+
+    # Upload to Supabase (streaming, memory-optimized)
+    from .utils.supabase_storage import stream_video_upload
+    video_path = stream_video_upload(video_file, str(lesson.uid))
+
+    if not video_path:
+        lesson.upload_status = 'FAILED'
+        lesson.save(update_fields=['upload_status'])
+        return JsonResponse({'error': 'Upload to cloud storage failed. Please try again.'}, status=500)
+
+    # Success — update lesson
+    lesson.video_url = f"supabase://{video_path}"
+    lesson.upload_status = 'READY'
+    lesson.save(update_fields=['video_url', 'upload_status'])
+
+    return JsonResponse({
+        'success': True,
+        'upload_status': 'READY',
+        'video_url': lesson.video_url,
+        'file_size': file_size,
+    })
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def video_upload_status(request, lesson_uid):
+    """Phase 3: Poll upload status for progress tracking."""
+    try:
+        lesson = Lesson.objects.get(uid=lesson_uid, course__teacher=request.user)
+        return JsonResponse({
+            'upload_status': lesson.upload_status,
+            'file_size': lesson.file_size,
+        })
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+
+@csrf_exempt
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def do_edit_video_upload(request):
+    """
+    AJAX video upload for EDIT lesson flow.
+    Receives MP4 file, uploads to Supabase, updates existing lesson.
+    """
+    from django.utils import timezone as tz
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    lesson_uid_str = request.POST.get('lesson_uid')
+    video_file = request.FILES.get('video_file')
+
+    if not lesson_uid_str or not video_file:
+        return JsonResponse({'error': 'lesson_uid and video_file required'}, status=400)
+
+    try:
+        lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+    if not video_file.name.lower().endswith('.mp4'):
+        return JsonResponse({'error': 'Only MP4 files are supported'}, status=400)
+
+    file_size = video_file.size
+    lesson.upload_status = 'UPLOADING'
+    lesson.file_size = file_size
+    lesson.save(update_fields=['upload_status', 'file_size'])
+
+    from .utils.supabase_storage import stream_video_upload
+    video_path = stream_video_upload(video_file, str(lesson.uid))
+
+    if not video_path:
+        lesson.upload_status = 'FAILED'
+        lesson.save(update_fields=['upload_status'])
+        return JsonResponse({'error': 'Upload to cloud storage failed. Please try again.'}, status=500)
+
+    # Update lesson with new video
+    if lesson.is_approved:
+        lesson.pending_video_url = f"supabase://{video_path}"
+        lesson.has_pending_edits = True
+        lesson.save(update_fields=['pending_video_url', 'has_pending_edits'])
+        notify_admins(f"LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
+    else:
+        lesson.video_url = f"supabase://{video_path}"
+        lesson.upload_status = 'READY'
+        lesson.save(update_fields=['video_url', 'upload_status'])
+
+    return JsonResponse({
+        'success': True,
+        'upload_status': 'READY',
+        'video_url': lesson.video_url or lesson.pending_video_url,
+        'file_size': file_size,
+    })
 
 
 @csrf_exempt
