@@ -170,16 +170,15 @@ def get_cloudinary_stats():
 
 
 def get_database_stats():
-    """PostgreSQL database size (falls back to DB row count estimates on SQLite)"""
+    """PostgreSQL database size — now Neon (free tier: 500MB)"""
+    NEON_LIMIT_MB = 500
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT pg_database_size(current_database())")
             db_size_bytes = cursor.fetchone()[0]
         usage_mb = db_size_bytes / (1024 * 1024)
     except Exception:
-        # Fallback for SQLite/dev: estimate from table sizes
         try:
-            from django.db.models import Count
             from accounts.models import CustomUser, Course, Lesson, CourseResource, ChatMessage
             total_rows = (
                 CustomUser.objects.count() +
@@ -188,21 +187,166 @@ def get_database_stats():
                 CourseResource.objects.count() +
                 ChatMessage.objects.count()
             )
-            usage_mb = total_rows * 0.5  # rough estimate: ~0.5KB per row
+            usage_mb = total_rows * 0.5
         except Exception:
             usage_mb = 0
-    percent = min((usage_mb / DB_LIMIT_MB) * 100, 100) if DB_LIMIT_MB else 0
+    percent = min((usage_mb / NEON_LIMIT_MB) * 100, 100) if NEON_LIMIT_MB else 0
     return {
-        'label': 'PostgreSQL Database',
+        'label': 'Neon Database',
         'status': 'connected',
         'usage_mb': round(usage_mb, 2),
-        'limit_mb': DB_LIMIT_MB,
+        'limit_mb': NEON_LIMIT_MB,
         'percent': round(percent, 1),
-        'remaining_mb': round(max(DB_LIMIT_MB - usage_mb, 0), 2),
-        'emoji': '🗄️',
+        'remaining_mb': round(max(NEON_LIMIT_MB - usage_mb, 0), 2),
+        'emoji': '🐘',
         'color': '#3b82f6',
-        'description': 'All platform data: users, courses, lessons, enrollments',
+        'description': 'PostgreSQL on Neon — users, courses, lessons, enrollments',
     }
+
+
+def get_firebase_rtdb_stats():
+    """Firebase Realtime Database stats — audit events, analytics, notifications."""
+    FB_LIMIT_MB = 1024  # Firebase free tier: 1GB
+    db_url = os.getenv('FIREBASE_RTDB_URL')
+    if not db_url:
+        return {
+            'label': 'Firebase RTDB',
+            'status': 'disconnected',
+            'usage_mb': 0,
+            'limit_mb': FB_LIMIT_MB,
+            'percent': 0,
+            'remaining_mb': FB_LIMIT_MB,
+            'audit_events_24h': 0,
+            'audit_count': 0,
+            'analytics_days': 0,
+            'security_counters': {},
+            'emoji': '🔥',
+            'color': '#ef4444',
+            'description': 'Real-time audit events, analytics, and security counters',
+        }
+
+    try:
+        import firebase_admin
+        from firebase_admin import credentials, db as rtdb
+
+        json_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
+        json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
+        cred = None
+        if json_str:
+            cred = credentials.Certificate(json.loads(json_str))
+        elif json_path and os.path.exists(json_path):
+            cred = credentials.Certificate(json_path)
+
+        app = None
+        if cred:
+            try:
+                app = firebase_admin.get_app('analytics_stats')
+            except ValueError:
+                app = firebase_admin.initialize_app(
+                    cred, {'databaseURL': db_url}, name='analytics_stats'
+                )
+
+        if not app:
+            return {
+                'label': 'Firebase RTDB',
+                'status': 'disconnected',
+                'usage_mb': 0,
+                'limit_mb': FB_LIMIT_MB,
+                'percent': 0,
+                'remaining_mb': FB_LIMIT_MB,
+                'audit_events_24h': 0,
+                'audit_count': 0,
+                'analytics_days': 0,
+                'security_counters': {},
+                'emoji': '🔥',
+                'color': '#ef4444',
+                'description': 'Real-time audit events, analytics, and security counters',
+            }
+
+        # Audit events count
+        audit_count = 0
+        audit_events_24h = 0
+        try:
+            from datetime import datetime, timedelta, timezone
+            audit_ref = rtdb.reference('/audit/events', app=app)
+            audit_data = audit_ref.get() or {}
+            cutoff_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+            for date_key, day_data in audit_data.items():
+                if isinstance(day_data, dict):
+                    for hour_key, hour_events in day_data.items():
+                        if isinstance(hour_events, dict):
+                            for eid, entry in hour_events.items():
+                                if isinstance(entry, dict):
+                                    audit_count += 1
+                                    try:
+                                        ts = datetime.fromisoformat(entry.get('timestamp', ''))
+                                        if ts >= cutoff_24h:
+                                            audit_events_24h += 1
+                                    except Exception:
+                                        pass
+        except Exception:
+            pass
+
+        # Security counters
+        security_counters = {}
+        try:
+            counter_ref = rtdb.reference('/audit/counters', app=app)
+            counter_data = counter_ref.get() or {}
+            security_counters = {
+                'malware_blocked': counter_data.get('malware_block', 0),
+                'failed_login': counter_data.get('failed_login', 0),
+                'admin_action': counter_data.get('admin_action', 0),
+                'suspicious_travel': counter_data.get('suspicious_travel', 0),
+            }
+        except Exception:
+            pass
+
+        # Analytics days with data
+        analytics_days = 0
+        try:
+            analytics_ref = rtdb.reference('/analytics/daily_counts', app=app)
+            analytics_data = analytics_ref.get() or {}
+            analytics_days = len(analytics_data)
+        except Exception:
+            pass
+
+        # Estimate storage (rough: each event ~200 bytes)
+        estimated_bytes = (audit_count * 200) + (analytics_days * 500)
+        usage_mb = estimated_bytes / (1024 * 1024)
+        percent = min((usage_mb / FB_LIMIT_MB) * 100, 100) if FB_LIMIT_MB else 0
+
+        return {
+            'label': 'Firebase RTDB',
+            'status': 'connected',
+            'usage_mb': round(usage_mb, 4),
+            'limit_mb': FB_LIMIT_MB,
+            'percent': round(percent, 2),
+            'remaining_mb': round(max(FB_LIMIT_MB - usage_mb, 0), 2),
+            'audit_events_24h': audit_events_24h,
+            'audit_count': audit_count,
+            'analytics_days': analytics_days,
+            'security_counters': security_counters,
+            'emoji': '🔥',
+            'color': '#ef4444',
+            'description': 'Real-time audit events, analytics, and security counters',
+        }
+    except Exception as e:
+        logger.error(f"Firebase RTDB stats error: {e}")
+        return {
+            'label': 'Firebase RTDB',
+            'status': 'error',
+            'usage_mb': 0,
+            'limit_mb': FB_LIMIT_MB,
+            'percent': 0,
+            'remaining_mb': FB_LIMIT_MB,
+            'audit_events_24h': 0,
+            'audit_count': 0,
+            'analytics_days': 0,
+            'security_counters': {},
+            'emoji': '🔥',
+            'color': '#ef4444',
+            'description': 'Real-time audit events, analytics, and security counters',
+        }
 
 
 def get_all_storage_stats():
@@ -211,4 +355,5 @@ def get_all_storage_stats():
         'supabase_resources': get_supabase_resource_stats(),
         'cloudinary': get_cloudinary_stats(),
         'database': get_database_stats(),
+        'firebase_rtdb': get_firebase_rtdb_stats(),
     }

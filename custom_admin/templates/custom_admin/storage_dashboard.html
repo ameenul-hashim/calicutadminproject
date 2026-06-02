@@ -11,11 +11,14 @@
 <style>
     .sd-grid {
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
-    @media (max-width: 1024px) {
+    @media (max-width: 1200px) {
+        .sd-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 900px) {
         .sd-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 640px) {
@@ -182,7 +185,7 @@
 {% endblock %}
 
 {% block content %}
-{% with ss=stats.supabase_signup sr=stats.supabase_resources cl=stats.cloudinary db=stats.database %}
+{% with ss=stats.supabase_signup sr=stats.supabase_resources cl=stats.cloudinary db=stats.database fb=stats.firebase_rtdb %}
 <div class="p-1">
 
     <!-- 4 Summary Cards -->
@@ -233,6 +236,18 @@
                 <div class="bar-fill" style="width: {{ db.percent }}%; background: {{ db.color }};"></div>
             </div>
             <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ db.percent }}% of {{ db.limit_mb }} MB</p>
+        </div>
+
+        <!-- Firebase RTDB -->
+        <div class="sd-card">
+            <div class="accent-bar" style="background: {{ fb.color }};"></div>
+            <h3>{{ fb.emoji }} {{ fb.label }}</h3>
+            <p class="big-value">{{ fb.audit_count }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">events</span></p>
+            <p class="sub-text">{{ fb.audit_events_24h }} in 24h · {{ fb.analytics_days }} days analytics</p>
+            <div class="bar-wrap">
+                <div class="bar-fill" style="width: {{ fb.percent }}%; background: {{ fb.color }};"></div>
+            </div>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ fb.usage_mb }} MB of {{ fb.limit_mb }} MB</p>
         </div>
     </div>
 
@@ -323,8 +338,8 @@
         </div>
     </div>
 
-    <!-- Third Row: Cloudinary Detail + Database Detail -->
-    <div class="sd-detail-grid">
+    <!-- Third Row: Cloudinary + Database + Firebase -->
+    <div class="sd-detail-grid" style="grid-template-columns: 1fr 1fr 1fr;">
         <div class="sd-panel">
             <div class="sd-panel-header">
                 <h2 class="sd-panel-title"><span class="dot" style="background:{{ cl.color }};"></span> {{ cl.emoji }} Cloudinary Details</h2>
@@ -395,11 +410,57 @@
             </div>
             <div class="stat-row">
                 <span class="stat-label">Engine</span>
-                <span class="stat-value">PostgreSQL (Render)</span>
+                <span class="stat-value">PostgreSQL (Neon)</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">Description</span>
                 <span class="stat-value sd-muted">{{ db.description }}</span>
+            </div>
+        </div>
+
+        <!-- Firebase RTDB Details -->
+        <div class="sd-panel">
+            <div class="sd-panel-header">
+                <h2 class="sd-panel-title"><span class="dot" style="background:{{ fb.color }};"></span> {{ fb.emoji }} Firebase RTDB</h2>
+                {% if fb.status == 'connected' %}
+                <span class="status-badge ok">● Live</span>
+                {% elif fb.status == 'disconnected' %}
+                <span class="status-badge off">● Offline</span>
+                {% else %}
+                <span class="status-badge critical">● Error</span>
+                {% endif %}
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Total Audit Events</span>
+                <span class="stat-value">{{ fb.audit_count }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Events (24h)</span>
+                <span class="stat-value">{{ fb.audit_events_24h }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Analytics Days</span>
+                <span class="stat-value">{{ fb.analytics_days }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Malware Blocked</span>
+                <span class="stat-value">{{ fb.security_counters.malware_blocked|default:"0" }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Failed Logins</span>
+                <span class="stat-value">{{ fb.security_counters.failed_login|default:"0" }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Admin Actions</span>
+                <span class="stat-value">{{ fb.security_counters.admin_action|default:"0" }}</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Storage Used</span>
+                <span class="stat-value">{{ fb.usage_mb }} MB / {{ fb.limit_mb }} MB</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-label">Description</span>
+                <span class="stat-value sd-muted">{{ fb.description }}</span>
             </div>
         </div>
     </div>
@@ -508,15 +569,16 @@
     const sr_usage = {{ stats.supabase_resources.usage_mb }};
     const cl_usage = {{ stats.cloudinary.storage_used_mb }};
     const db_usage = {{ stats.database.usage_mb }};
+    const fb_usage = {{ stats.firebase_rtdb.usage_mb }};
 
     new Chart(document.getElementById('storageBarChart'), {
         type: 'bar',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Database'],
+            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Neon DB', 'Firebase RTDB'],
             datasets: [{
                 label: 'MB Used',
-                data: [ss_usage, sr_usage, cl_usage, db_usage],
-                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6'],
+                data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage],
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444'],
                 borderRadius: 6,
                 barPercentage: 0.5,
             }]
@@ -548,10 +610,10 @@
     new Chart(document.getElementById('storageDoughnut'), {
         type: 'doughnut',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Database'],
+            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Neon DB', 'Firebase RTDB'],
             datasets: [{
-                data: [ss_usage, sr_usage, cl_usage, db_usage],
-                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6'],
+                data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage],
+                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444'],
                 borderWidth: 0,
                 cutout: '65%'
             }]
