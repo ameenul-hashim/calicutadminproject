@@ -1,0 +1,99 @@
+{% extends "accounts/base.html" %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card animate-fade-in">
+        <div class="auth-header">
+            <div class="auth-icon pulse">
+                <i class="fas fa-shield-alt"></i>
+            </div>
+            <h2>Verify Code</h2>
+            <p>A 6-digit verification code has been sent to your registered email.</p>
+        </div>
+
+        <form method="POST" class="auth-form" id="codeForm" novalidate>
+            {% include 'includes/validation_engine.html' %}
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="code">Verification Code</label>
+                <div class="otp-input-wrapper">
+                    <input type="text" name="code" id="code" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required autofocus placeholder="000000">
+                </div>
+                <small class="form-hint">Code expires in <span id="timerDisplay">10:00</span></small>
+            </div>
+
+            <button type="submit" class="btn-primary" id="submitBtn">
+                <span>Verify</span>
+                <i class="fas fa-check-circle"></i>
+            </button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Didn't receive the code? 
+                <a href="{% url 'forgot_password' %}">Request again</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .otp-input-wrapper { position: relative; margin: 20px 0; }
+    .otp-input-wrapper input {
+        width: 100%; padding: 15px; font-size: 32px; font-weight: 800;
+        text-align: center; letter-spacing: 12px;
+        border: 2px solid #e2e8f0; border-radius: 12px;
+        transition: all 0.3s ease; color: #1e293b; box-sizing: border-box;
+    }
+    .otp-input-wrapper input:focus {
+        border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); outline: none;
+    }
+    .pulse { animation: pulse-animation 2s infinite; }
+    @keyframes pulse-animation {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+        70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        Validation.initForm('codeForm', {
+            fields: [
+                { id: 'code', label: 'Verification Code', required: true, custom: function(val) {
+                    if (val.length !== 6 || !/^\d+$/.test(val)) return "Please enter a valid 6-digit code";
+                    return null;
+                }}
+            ]
+        });
+
+        // Countdown timer: 10 minutes
+        var totalSeconds = 600;
+        var timerDisplay = document.getElementById('timerDisplay');
+        var countdown = setInterval(function() {
+            totalSeconds--;
+            if (totalSeconds <= 0) {
+                clearInterval(countdown);
+                timerDisplay.textContent = 'Expired';
+                timerDisplay.style.color = '#ef4444';
+                return;
+            }
+            var min = Math.floor(totalSeconds / 60);
+            var sec = totalSeconds % 60;
+            timerDisplay.textContent = 
+                (min < 10 ? '0' : '') + min + ':' + 
+                (sec < 10 ? '0' : '') + sec;
+        }, 1000);
+
+        // Auto-submit when 6 digits entered
+        var codeInput = document.getElementById('code');
+        codeInput.addEventListener('input', function() {
+            if (this.value.length === 6 && /^\d+$/.test(this.value)) {
+                var form = document.getElementById('codeForm');
+                var event = new Event('submit', { cancelable: true });
+                if (form.dispatchEvent(event)) {
+                    form.submit();
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

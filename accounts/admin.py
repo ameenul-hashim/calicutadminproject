@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, DeletionRequest, EmailOTP
+from .models import CustomUser, Course, Lesson, Enrollment, Notification, ChatMessage, DeletionRequest, EmailOTP, PasswordResetOTP
 
 @admin.register(EmailOTP)
 class EmailOTPAdmin(admin.ModelAdmin):
@@ -23,6 +23,16 @@ admin.site.register(Enrollment)
 admin.site.register(Notification)
 admin.site.register(ChatMessage)
 admin.site.register(DeletionRequest)
+
+@admin.register(PasswordResetOTP)
+class PasswordResetOTPAdmin(admin.ModelAdmin):
+    list_display = ('user', 'attempts', 'expires_at', 'created_at')
+    list_filter = ('created_at',)
+    search_fields = ('user__username', 'user__email')
+    readonly_fields = ('otp_hash', 'created_at', 'expires_at')
+    
+    def has_add_permission(self, request):
+        return False
 
 
 

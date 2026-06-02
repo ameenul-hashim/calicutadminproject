@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest
+from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, PasswordResetOTP
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
@@ -2077,43 +2077,160 @@ def get_unread_counts(request):
 
 # ====== ENTERPRISE OTP RECOVERY PIPELINE ======
 from .utils.otp_engine import OTPEngine
+import secrets
+from django.contrib.auth.hashers import make_password, check_password
 
+
+def send_reset_code_email(user, code):
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+    from django.conf import settings
+    from django.utils import timezone
+    subject = 'NeoLearn Password Reset Verification Code'
+    context = {
+        'user': user,
+        'otp': code,
+        'expiry': '10',
+    }
+    html_content = render_to_string('emails/password_reset_code.html', context)
+    text_content = f'Hello {user.full_name or user.username},\n\nYour verification code is: {code}\n\nThis code expires in 10 minutes.\n\nIf you did not request a password reset, ignore this email.\n\nNeoLearn Team'
+    msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email])
+    msg.attach_alternative(html_content, 'text/html')
+    try:
+        msg.send()
+        return True
+    except Exception as e:
+        logger.error("Failed to send password reset email: %s", str(e))
+        return False
+
+
+@csrf_protect
 def forgot_password(request):
     user_type = request.GET.get('type', 'student').upper()
-    
     if request.method == 'POST':
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        
-        # Security: Verify both username and email belong to the same user
+        username = request.POST.get('username', '').strip()
+        email = request.POST.get('email', '').strip()
         user = None
         if username and email:
             user = CustomUser.objects.filter(username=username, email=email).first()
-            if user and user.is_superuser:
-                messages.error(request, "This is not changeable credentials")
-                return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
-        
-        # Security: Always show success message to prevent email enumeration
-        if user:
-            result = OTPEngine.create_otp(user, 'PASSWORD_RESET', request)
-            if isinstance(result, tuple) and result[0] is not None:
-                raw_otp, otp_obj = result
-                # Disable email sending as requested by user and display OTP directly
-                messages.success(request, f"✅ Verification successful! Your OTP is: {raw_otp}. (It will disappear in 15 seconds)")
-                
-                request.session['recovery_otp_uid'] = str(otp_obj.uid)
-                request.session['recovery_user_uid'] = str(user.uid)
-                return redirect('verify_otp')
-            else:
-                # Rate limited or system error
-                msg = result[1] if isinstance(result, tuple) else "Security system triggered. Please try again later."
-                messages.error(request, f"🛡️ {msg}")
-                return redirect('login' if user_type == 'STUDENT' else 'teacher_login')
-        else:
-            messages.error(request, "Username and email not correct please enter correctly")
+        if not user:
+            messages.error(request, "We could not verify your details. Please try again.")
             return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
-            
+        if user.is_superuser:
+            messages.error(request, "Password reset is not available for this account.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        from django.utils import timezone
+        from datetime import timedelta
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+        recent_count = PasswordResetOTP.objects.filter(user=user, created_at__gte=one_hour_ago).count()
+        if recent_count >= 5:
+            messages.error(request, "Too many reset requests. Please try again later.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        code = f"{secrets.randbelow(1000000):06d}"
+        expires_at = timezone.now() + timedelta(minutes=10)
+        otp_obj = PasswordResetOTP.objects.create(
+            user=user,
+            otp_hash=make_password(code),
+            expires_at=expires_at,
+        )
+        email_sent = send_reset_code_email(user, code)
+        if not email_sent:
+            otp_obj.delete()
+            messages.error(request, "Unable to send verification email. Please try again later.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        PasswordResetOTP.objects.filter(user=user, expires_at__gt=timezone.now()).exclude(id=otp_obj.id).delete()
+        request.session['reset_user_uid'] = str(user.uid)
+        request.session['reset_otp_id'] = otp_obj.id
+        messages.success(request, "A verification code has been sent to your registered email.")
+        return redirect('verify_reset_code')
     return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+
+
+@csrf_protect
+def verify_reset_code(request):
+    user_uid = request.session.get('reset_user_uid')
+    otp_id = request.session.get('reset_otp_id')
+    if not user_uid or not otp_id:
+        messages.error(request, "Session expired. Please restart the password reset process.")
+        return redirect('forgot_password')
+    try:
+        user = CustomUser.objects.get(uid=user_uid)
+        otp_obj = PasswordResetOTP.objects.get(id=otp_id, user=user)
+    except (CustomUser.DoesNotExist, PasswordResetOTP.DoesNotExist):
+        messages.error(request, "Session expired. Please restart the password reset process.")
+        return redirect('forgot_password')
+    if request.method == 'POST':
+        if otp_obj.is_expired():
+            otp_obj.delete()
+            request.session.pop('reset_otp_id', None)
+            messages.error(request, "The code has expired. Please request a new one.")
+            return redirect('forgot_password')
+        if otp_obj.is_blocked():
+            otp_obj.delete()
+            request.session.pop('reset_otp_id', None)
+            messages.error(request, "Too many failed attempts. Please request a new code.")
+            return redirect('forgot_password')
+        raw_code = request.POST.get('code', '').strip()
+        if not raw_code or not raw_code.isdigit() or len(raw_code) != 6:
+            otp_obj.attempts += 1
+            otp_obj.save()
+            remaining = 5 - otp_obj.attempts
+            messages.error(request, f"Invalid code. {remaining} attempt(s) remaining.")
+            return render(request, 'accounts/verify_reset_code.html')
+        if check_password(raw_code, otp_obj.otp_hash):
+            request.session['reset_verified'] = True
+            messages.success(request, "Verification successful. Please set a new password.")
+            return redirect('set_new_password')
+        else:
+            otp_obj.attempts += 1
+            otp_obj.save()
+            remaining = 5 - otp_obj.attempts
+            if remaining <= 0:
+                otp_obj.delete()
+                request.session.pop('reset_otp_id', None)
+                messages.error(request, "Too many failed attempts. Please request a new code.")
+                return redirect('forgot_password')
+            messages.error(request, f"Invalid code. {remaining} attempt(s) remaining.")
+            return render(request, 'accounts/verify_reset_code.html')
+    return render(request, 'accounts/verify_reset_code.html')
+
+
+@csrf_protect
+def set_new_password(request):
+    user_uid = request.session.get('reset_user_uid')
+    is_verified = request.session.get('reset_verified')
+    if not user_uid or not is_verified:
+        messages.error(request, "Security verification required. Please restart the process.")
+        return redirect('forgot_password')
+    try:
+        user = CustomUser.objects.get(uid=user_uid)
+    except CustomUser.DoesNotExist:
+        messages.error(request, "Security verification required. Please restart the process.")
+        return redirect('forgot_password')
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password', '')
+        confirm_password = request.POST.get('confirm_password', '')
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'accounts/set_new_password.html')
+        from django.contrib.auth.password_validation import validate_password
+        from django.core.exceptions import ValidationError
+        try:
+            validate_password(new_password, user=user)
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, msg)
+            return render(request, 'accounts/set_new_password.html')
+        user.set_password(new_password)
+        user.save()
+        PasswordResetOTP.objects.filter(user=user).delete()
+        request.session.flush()
+        messages.success(request, "Password updated successfully.")
+        if user.user_type == 'TEACHER':
+            return redirect('teacher_login')
+        return redirect('login')
+    return render(request, 'accounts/set_new_password.html')
+
 
 def recover_username(request):
     user_type = request.GET.get('type', 'student').upper()
