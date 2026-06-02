@@ -58,6 +58,10 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('api/youtube/init-upload/', views.init_youtube_upload, name='init_youtube_upload'),
+    path('api/video/init-upload/', views.init_video_upload, name='init_video_upload'),
+    path('api/video/do-upload/', views.do_video_upload, name='do_video_upload'),
+    path('api/video/edit-upload/', views.do_edit_video_upload, name='do_edit_video_upload'),
+    path('api/video/status/<uuid:lesson_uid>/', views.video_upload_status, name='video_upload_status'),
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
     path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),
 ]

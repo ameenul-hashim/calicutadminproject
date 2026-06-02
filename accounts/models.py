@@ -138,6 +138,17 @@ class Lesson(models.Model):
     youtube_upload_status = models.CharField(max_length=20, choices=[('NOT_UPLOADED', 'Not Uploaded'), ('UPLOADING', 'Uploading'), ('UPLOADED', 'Uploaded'), ('FAILED', 'Failed')], default='NOT_UPLOADED', db_index=True)
     youtube_uploaded_at = models.DateTimeField(null=True, blank=True)
 
+    UPLOAD_STATUS_CHOICES = (
+        ('NOT_UPLOADED', 'Not Uploaded'),
+        ('PENDING', 'Pending Upload'),
+        ('UPLOADING', 'Uploading'),
+        ('PROCESSING', 'Processing'),
+        ('READY', 'Ready'),
+        ('FAILED', 'Failed'),
+    )
+    upload_status = models.CharField(max_length=20, choices=UPLOAD_STATUS_CHOICES, default='NOT_UPLOADED', db_index=True)
+    file_size = models.PositiveBigIntegerField(default=0, help_text="Video file size in bytes")
+
     class Meta:
         ordering = ['order']
         indexes = [
