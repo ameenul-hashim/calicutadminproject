@@ -8,13 +8,14 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
-from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
+from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, LoginHistory
 from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
+from django.conf import settings
 
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions."""
@@ -1436,6 +1437,7 @@ def admin_restore_course(request, course_uid):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def enterprise_monitor(request):
     from django.db import connection
+    from accounts.utils.storage_analytics import get_all_storage_stats
     import time as _time
 
     # Defaults for all values — so 500 never happens
