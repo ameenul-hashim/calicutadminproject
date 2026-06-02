@@ -188,7 +188,7 @@
                     return;
                 }
 
-                // MP4 file upload — AJAX with real progress
+                // MP4 file upload — browser uploads directly to YouTube
                 if (videoSource !== 'file' || !fileInput.files.length) {
                     form.submit();
                     return;
@@ -211,8 +211,8 @@
                 setPhase('Initializing...');
 
                 try {
-                    // Step 1: Init upload (create lesson record)
-                    const initResp = await fetch('/api/video/init-upload/', {
+                    // Step 1: Create lesson + get YouTube upload URL
+                    const initResp = await fetch('/api/video/init-youtube/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -222,7 +222,6 @@
                             course_uid: '{{ course.uid }}',
                             title: document.getElementById('title').value,
                             order: document.getElementById('order').value,
-                            video_source: 'file',
                         })
                     });
 
@@ -233,20 +232,39 @@
 
                     const initData = await initResp.json();
                     const lessonUid = initData.lesson_uid;
+                    const uploadUrl = initData.upload_url;
+                    const accessToken = initData.access_token;
 
-                    setProgress(0, 'Uploading to cloud...');
-                    setPhase('Uploading ' + sizeMB + ' MB to cloud storage...');
+                    setProgress(0, 'Uploading to YouTube...');
+                    setPhase('Uploading ' + sizeMB + ' MB directly to YouTube...');
                     document.getElementById('progressDetail').textContent = 'Starting upload...';
 
-                    // Step 2: Upload file via XHR (real progress tracking)
-                    await uploadFileWithProgress(file, lessonUid, fileSize);
+                    // Step 2: PUT file directly to YouTube (browser → YouTube, zero Django RAM)
+                    const videoId = await uploadToYouTube(uploadUrl, file, fileSize, accessToken);
 
-                    // Step 3: Redirect to lessons page
+                    // Step 3: Tell Django the video_id
+                    const completeResp = await fetch('/api/video/youtube-complete/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('neolearner_sessionid') || getCookie('csrftoken'),
+                        },
+                        body: JSON.stringify({
+                            lesson_uid: lessonUid,
+                            video_id: videoId,
+                        })
+                    });
+
+                    if (!completeResp.ok) {
+                        const err = await completeResp.json();
+                        throw new Error(err.error || 'Failed to save video info');
+                    }
+
+                    // Step 4: Redirect to lessons page
                     setProgress(100, 'Upload complete!');
-                    setPhase('Video ready!', 'complete');
+                    setPhase('Video uploaded! Processing on YouTube...', 'complete');
                     document.getElementById('progressDetail').textContent = '';
 
-                    // Short delay so teacher sees "ready" state
                     setTimeout(function() {
                         window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
                     }, 800);
@@ -260,13 +278,9 @@
                 }
             });
 
-            function uploadFileWithProgress(file, lessonUid, fileSize) {
+            function uploadToYouTube(uploadUrl, file, fileSize, accessToken) {
                 return new Promise((resolve, reject) => {
                     const xhr = new XMLHttpRequest();
-                    const formData = new FormData();
-                    formData.append('video_file', file);
-                    formData.append('lesson_uid', lessonUid);
-
                     let startTime = Date.now();
                     let lastLoaded = 0;
                     let lastTime = startTime;
@@ -298,18 +312,19 @@
                         if (xhr.status >= 200 && xhr.status < 300) {
                             try {
                                 const resp = JSON.parse(xhr.responseText);
-                                if (resp.success) {
-                                    resolve(resp);
+                                if (resp.id) {
+                                    resolve(resp.id);
                                 } else {
-                                    reject(new Error(resp.error || 'Upload failed'));
+                                    reject(new Error('No video ID returned from YouTube'));
                                 }
                             } catch(e) {
-                                reject(new Error('Invalid response from server'));
+                                reject(new Error('Invalid response from YouTube'));
                             }
                         } else {
                             try {
                                 const resp = JSON.parse(xhr.responseText);
-                                reject(new Error(resp.error || 'Upload failed (' + xhr.status + ')'));
+                                const msg = resp.error && resp.error.message ? resp.error.message : 'Upload failed';
+                                reject(new Error(msg + ' (HTTP ' + xhr.status + ')'));
                             } catch(e) {
                                 reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
                             }
@@ -324,9 +339,11 @@
                         reject(new Error('Upload was cancelled.'));
                     });
 
-                    xhr.open('POST', '/api/video/do-upload/');
-                    xhr.setRequestHeader('X-CSRFToken', getCookie('neolearner_sessionid') || getCookie('csrftoken'));
-                    xhr.send(formData);
+                    // PUT binary file directly to YouTube — MP4 never touches Django
+                    xhr.open('PUT', uploadUrl);
+                    xhr.setRequestHeader('Content-Type', 'video/mp4');
+                    xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+                    xhr.send(file);
                 });
             }
         });

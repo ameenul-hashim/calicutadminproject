@@ -920,6 +920,7 @@ def approve_lesson(request, lesson_uid):
         
     lesson.status = 'APPROVED'
     lesson.is_approved = True
+    lesson.upload_status = 'READY'
     lesson.save()
     create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
     
@@ -948,6 +949,7 @@ def reject_lesson(request, lesson_uid):
                 delete_youtube_video(lesson.youtube_video_id)
                 lesson.youtube_video_id = None
                 lesson.youtube_upload_status = 'NOT_UPLOADED'
+                lesson.upload_status = 'NOT_UPLOADED'
                 lesson.video_url = ''
             except Exception as e:
                 logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
