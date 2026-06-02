@@ -20,6 +20,7 @@ import os
 from accounts.utils.supabase_storage import upload_pdf
 from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_read, mark_all_read
 import random
+from django.db.models import F
 from django.conf import settings
 import cloudinary
 
@@ -1877,7 +1878,7 @@ def mark_all_notifications_read(request):
 def access_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from django.shortcuts import get_object_or_404, redirect
-    from django.http import HttpResponseForbidden, Http404, HttpResponse
+    from django.http import HttpResponseForbidden, Http404
     
     resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
     
@@ -1891,25 +1892,21 @@ def access_resource(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
     
-    # Stream file bytes directly from Supabase (never expose signed URL)
-    from accounts.utils.storage_manager import supabase as res_supabase
-    if res_supabase and resource.firebase_file_path:
+    # Generate a short-lived signed URL — browser loads PDF directly from Supabase
+    if resource.firebase_file_path:
         try:
+            # firebase_file_path format: "bucket_name/path/in/bucket" — bucket is in the path
+            from accounts.utils.storage_manager import supabase as res_supabase
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
-            file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
-            if file_bytes:
-                resource.view_count += 1
-                resource.save(update_fields=['view_count'])
-                ext = resource.file_extension or 'pdf'
-                response = HttpResponse(file_bytes, content_type=resource.mime_type or 'application/octet-stream')
-                response['Content-Disposition'] = 'inline; filename="' + resource.title + '.' + ext + '"'
-                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-                response['Pragma'] = 'no-cache'
-                return response
+
+            res = res_supabase.storage.from_(bucket).create_signed_url(path_in_bucket, 600)
+            signed_url = res.get("signedURL") if isinstance(res, dict) else res
+            if signed_url:
+                return redirect(signed_url)
         except Exception as e:
-            logger.error(f"Resource stream failed for {resource_uid}: {e}")
+            logger.error(f"Signed URL generation failed for {resource_uid}: {e}")
     
     return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
@@ -1933,11 +1930,27 @@ def pdf_viewer(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
 
-    # Use proxy URL instead of direct signed URL (never expose storage URL to browser)
-    proxy_url = '/resource/' + str(resource.uid) + '/access/'
+    # Use signed URL instead of direct proxy — browser loads PDF from Supabase directly
+    signed_url = None
+    if resource.firebase_file_path:
+        try:
+            from accounts.utils.storage_manager import supabase as res_supabase
+            parts = resource.firebase_file_path.split('/', 1)
+            bucket = parts[0]
+            path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
+            res = res_supabase.storage.from_(bucket).create_signed_url(path_in_bucket, 600)
+            signed_url = res.get("signedURL") if isinstance(res, dict) else res
+        except Exception as e:
+            logger.error(f"Signed URL failed in pdf_viewer for {resource_uid}: {e}")
+
+    if not signed_url:
+        return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
+
+    # Track view on initial page load (not on iframe redirect)
+    CourseResource.objects.filter(pk=resource.pk).update(view_count=models.F('view_count') + 1)
 
     return render(request, 'accounts/pdf_viewer.html', {
-        'proxy_url': proxy_url,
+        'proxy_url': signed_url,
         'title': resource.title,
         'uid': resource.uid,
     })
@@ -2096,7 +2109,6 @@ from django.contrib.auth.hashers import make_password, check_password
 def send_reset_code_email(user, code):
     from django.core.mail import EmailMultiAlternatives
     from django.template.loader import render_to_string
-    from django.conf import settings
     from django.utils import timezone
     subject = 'NeoLearn Password Reset Verification Code'
     context = {
