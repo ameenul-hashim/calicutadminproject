@@ -243,11 +243,14 @@ class EnterpriseHardeningMiddleware:
                     )
                 except Exception:
                     pass
-                try:
-                    from .utils.firebase_audit import log_security_event
-                    log_security_event('SUSPICIOUS_TRAVEL', f"IP change: {last_login.ip_address} -> {current_ip}", username=request.user.username, ip=current_ip)
-                except Exception:
-                    pass
+                def _async_suspicious():
+                    try:
+                        from .utils.firebase_audit import log_security_event
+                        log_security_event('SUSPICIOUS_TRAVEL', f"IP change: {last_login.ip_address} -> {current_ip}", username=request.user.username, ip=current_ip)
+                    except Exception:
+                        pass
+                import threading
+                threading.Thread(target=_async_suspicious, daemon=True).start()
 
         cache.set(cache_key, True, 3600)
 
