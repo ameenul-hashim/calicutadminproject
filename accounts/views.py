@@ -442,13 +442,14 @@ def login_view(request):
         if user_candidate.status == 'ACTIVE':
             user = authenticate(request, username=username, password=password)
             if user is not None:
-                # Invalidate any previous session efficiently
+                # Invalidate any previous session — async to not block login response
                 if user.current_session_key:
-                    try:
-                        from django.contrib.sessions.models import Session
-                        Session.objects.filter(session_key=user.current_session_key).delete()
-                    except Exception:
-                        pass
+                    old_key = user.current_session_key
+                    import threading
+                    threading.Thread(
+                        target=lambda: __import__('django.contrib.sessions.models', fromlist=['Session']).Session.objects.filter(session_key=old_key).delete(),
+                        daemon=True
+                    ).start()
                 
                 login(request, user)
                 request.session.set_expiry(0)
