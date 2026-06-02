@@ -88,6 +88,7 @@ if AXES_ENABLED:
 MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
+    'accounts.middleware.SlowQueryMonitorMiddleware',
 ]
 
 AUTHENTICATION_BACKENDS = []
@@ -103,8 +104,8 @@ AXES_LOCKOUT_TEMPLATE = 'accounts/lockout.html'
 AXES_RESET_ON_SUCCESS = True
 
 # Performance & Security Tweaks
-DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
 RATELIMIT_ENABLE = True
 
 ROOT_URLCONF = 'elearning_project.urls'
@@ -188,7 +189,6 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    SESSION_COOKIE_HTTPONLY = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_HSTS_SECONDS = 31536000
@@ -214,7 +214,8 @@ SESSION_COOKIE_NAME = 'neolearner_sessionid'
 # Enterprise CSRF Hardening: Store token in session to prevent subdomain clashes
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_NAME = 'neolearner_csrftoken'
-CSRF_COOKIE_HTTPONLY = False  # Must be false for AJAX if needed later
+CSRF_COOKIE_HTTPONLY = True
+SESSION_COOKIE_HTTPONLY = True
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

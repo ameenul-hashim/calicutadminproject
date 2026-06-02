@@ -26,10 +26,11 @@ RETENTION = {
 def _get_cipher():
     key = os.getenv('BACKUP_ENCRYPTION_KEY')
     if not key:
-        raw = os.getenv('SECRET_KEY', 'fallback-dev-only')
-        raw = raw.ljust(32)[:32]
-        key = base64.urlsafe_b64encode(raw.encode())
-    return Fernet(key)
+        raise ValueError(
+            "BACKUP_ENCRYPTION_KEY environment variable is required. "
+            "Generate with: python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
+    return Fernet(key.encode() if isinstance(key, str) else key)
 
 
 def _fmt(bytes_val):

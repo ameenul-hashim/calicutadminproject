@@ -43,3 +43,6 @@ firebase-key.json
 # One-time utility scripts
 get_youtube_token.py
 test_youtube.py
+
+# Scratch / temp scripts
+scratch/

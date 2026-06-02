@@ -13,6 +13,8 @@ from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
 
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions."""
@@ -1153,6 +1155,8 @@ def storage_dashboard(request):
 
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def admin_delete_course_secure(request, course_uid):
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
@@ -1194,6 +1198,8 @@ def admin_delete_course_secure(request, course_uid):
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def admin_delete_lesson_secure(request, lesson_uid):
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
@@ -1229,6 +1235,8 @@ def admin_delete_lesson_secure(request, lesson_uid):
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def delete_user_admin(request, user_uid):
     target_user = get_object_or_404(CustomUser, uid=user_uid)
     
@@ -1412,6 +1420,8 @@ def deleted_courses_view(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def admin_permanent_delete_course_secure(request, course_uid):
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
