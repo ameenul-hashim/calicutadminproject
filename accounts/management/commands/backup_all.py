@@ -46,6 +46,8 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--retention', action='store_true',
                             help='Apply retention policy (delete old backups)')
+        parser.add_argument('--cron', action='store_true',
+                            help='Cron mode: skip local file downloads (DB dump + Firebase + cloud upload only)')
 
     def handle(self, *args, **options):
         import base64
@@ -62,10 +64,18 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Total size limit reached."))
             return
 
-        self._backup_storage_manifest(run_dir)
-        self._backup_proof_pdfs(run_dir)
-        self._backup_course_resources(run_dir)
-        self._backup_cloudinary_images(run_dir)
+        cron_mode = options.get('cron', False)
+
+        if cron_mode:
+            # Cron mode: only backup critical data (fast)
+            self.stdout.write("  Cron mode: skipping local file downloads")
+        else:
+            # Full mode: download all files locally
+            self._backup_storage_manifest(run_dir)
+            self._backup_proof_pdfs(run_dir)
+            self._backup_course_resources(run_dir)
+            self._backup_cloudinary_images(run_dir)
+
         self._backup_firebase_rtdb(run_dir)
 
         # Create integrity checksum
