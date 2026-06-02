@@ -61,10 +61,15 @@ class PortalSecurityMiddleware:
     def __call__(self, request):
         path = request.path
 
-        try:
-            url_name = resolve(path).url_name
-        except Exception:
-            url_name = None
+        # Cache URL resolution per path — avoid resolve() on repeated requests
+        _url_cache_key = f"un:{path}"
+        url_name = cache.get(_url_cache_key)
+        if url_name is None:
+            try:
+                url_name = resolve(path).url_name
+            except Exception:
+                url_name = None
+            cache.set(_url_cache_key, url_name, 600)
 
         is_public = (
             url_name in _PUBLIC_URL_NAMES
@@ -103,19 +108,28 @@ class PortalSecurityMiddleware:
                 # Write activity to CACHE (not session) — avoids session DB write
                 cache.set(f"last_activity_{request.user.id}", int(_time.time()), 1800)
 
-            # Check for active status
+            # --- Cached status check (avoids DB hit per request) ---
             if not request.user.is_superuser:
-                if hasattr(request.user, 'status') and request.user.status != 'ACTIVE':
-                    status_msg = "Your account is pending admin approval." if request.user.status == 'PENDING' else "Your account has been blocked."
+                status_cache_key = f"user_status_{request.user.id}"
+                cached_status = cache.get(status_cache_key)
+                if cached_status is None:
+                    cached_status = request.user.status
+                    cache.set(status_cache_key, cached_status, 300)
+                if cached_status != 'ACTIVE':
+                    status_msg = "Your account is pending admin approval." if cached_status == 'PENDING' else "Your account has been blocked."
                     request.session.flush()
                     logout(request)
                     messages.error(request, status_msg)
                     if url_name != 'login':
                         return redirect('login')
 
-            # --- Mandatory Profile Photo Constraint ---
+            # --- Cached profile photo constraint ---
             if not request.user.is_superuser and request.user.user_type in ['STUDENT', 'TEACHER']:
-                has_photo = bool(request.user.image) or bool(request.user.profile_photo)
+                photo_cache_key = f"user_has_photo_{request.user.id}"
+                has_photo = cache.get(photo_cache_key)
+                if has_photo is None:
+                    has_photo = bool(request.user.image) or bool(request.user.profile_photo)
+                    cache.set(photo_cache_key, has_photo, 300)
                 if not has_photo and url_name not in ['edit_profile', 'logout', 'student_view_auth', 'teacher_view_auth']:
                     return redirect('edit_profile')
 
@@ -206,7 +220,8 @@ class EnterpriseHardeningMiddleware:
                     return HttpResponseForbidden(f"Security Alert: {reason}. Upload blocked by Enterprise SOC.")
 
         if request.user.is_authenticated:
-            self.detect_impossible_travel(request)
+            import threading
+            threading.Thread(target=self._check_impossible_travel, args=(request,), daemon=True).start()
 
         response = self.get_response(request)
 
@@ -219,7 +234,7 @@ class EnterpriseHardeningMiddleware:
 
         return response
 
-    def detect_impossible_travel(self, request):
+    def _check_impossible_travel(self, request):
         from accounts.models import LoginHistory
         from django.utils import timezone
         from datetime import timedelta

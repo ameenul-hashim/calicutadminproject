@@ -1,6 +1,4 @@
 from django.core.cache import cache
-from accounts.models import CustomUser, Course, DeletionRequest
-from accounts.utils.notification_helper import get_notifications, get_unread_count
 from time import time as _time
 
 
@@ -21,12 +19,13 @@ def pending_counts(request):
             'is_admin_preview': request.session.get('student_view_unlocked', False)
         }
 
-        # Notification data (already efficient — 2 queries, cached per-user)
+        # Notification data — use user.id directly (no extra user lookup)
+        from accounts.utils.notification_helper import _get_user, get_notifications, get_unread_count
         context['notifications'] = get_notifications(str(request.user.uid))[:10]
         context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
 
         if request.user.user_type == 'ADMIN':
-            # Single aggregate query instead of 4 separate COUNT queries
+            from accounts.models import CustomUser, Course, DeletionRequest
             from django.db.models import Count, Q
             counts = CustomUser.objects.filter(
                 Q(user_type='STUDENT', status='PENDING') |
@@ -48,6 +47,7 @@ def pending_counts(request):
             context['unread_admin_notifs'] = context['unread_notifications_count']
 
         elif request.user.user_type == 'TEACHER':
+            from accounts.models import Course
             from django.db.models import Count, Q
             teacher_counts = Course.objects.filter(teacher=request.user).aggregate(
                 pending=Count('id', filter=Q(status='PENDING')),
@@ -72,7 +72,7 @@ def pending_counts(request):
                 pass
 
         try:
-            cache.set(cache_key, context, 180)
+            cache.set(cache_key, context, 300)
         except Exception:
             pass
 

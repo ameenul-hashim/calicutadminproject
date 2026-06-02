@@ -4,9 +4,15 @@ from datetime import timedelta
 RETENTION_DAYS = 7
 
 
+def _get_user(user_uid):
+    """Shared helper — single DB lookup for user by uid."""
+    from accounts.models import CustomUser
+    return CustomUser.objects.filter(uid=user_uid).only('id').first()
+
+
 def get_notifications(user_uid, limit=50):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification
+    user = _get_user(user_uid)
     if not user:
         return []
     cutoff = timezone.now() - timedelta(days=RETENTION_DAYS)
@@ -20,8 +26,8 @@ def get_notifications(user_uid, limit=50):
 
 
 def get_unread_count(user_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification
+    user = _get_user(user_uid)
     if not user:
         return 0
     cutoff = timezone.now() - timedelta(days=RETENTION_DAYS)
@@ -29,24 +35,24 @@ def get_unread_count(user_uid):
 
 
 def mark_read(user_uid, notif_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification
+    user = _get_user(user_uid)
     if not user:
         return
     Notification.objects.filter(user=user, uid=notif_uid).update(is_read=True)
 
 
 def mark_all_read(user_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification
+    user = _get_user(user_uid)
     if not user:
         return
     Notification.objects.filter(user=user, is_read=False).update(is_read=True)
 
 
 def delete_notification(user_uid, notif_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification
+    user = _get_user(user_uid)
     if not user:
         return
     Notification.objects.filter(user=user, uid=notif_uid).delete()
