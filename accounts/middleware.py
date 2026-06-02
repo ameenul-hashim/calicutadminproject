@@ -158,13 +158,17 @@ class PortalSecurityMiddleware:
                         request.session['next_teacher_url'] = path
                         return redirect('teacher_view_auth')
 
-        # --- Firebase Analytics: log authenticated page views ---
+        # --- Firebase Analytics: log authenticated page views (throttled) ---
         if request.user.is_authenticated and request.method == 'GET' and not request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            try:
-                from .utils.firebase_analytics import log_visit_async
-                log_visit_async(request.user)
-            except Exception:
-                pass
+            last_logged = request.session.get('last_firebase_log', 0)
+            now_ts = __import__('time').time()
+            if now_ts - last_logged > 300:
+                request.session['last_firebase_log'] = now_ts
+                try:
+                    from .utils.firebase_analytics import log_visit_async
+                    log_visit_async(request.user)
+                except Exception:
+                    pass
 
         try:
             response = self.get_response(request)
@@ -250,16 +254,21 @@ class EnterpriseHardeningMiddleware:
         return response
 
     def detect_impossible_travel(self, request):
-        """Detects if a user logs in from two geographically distant IPs too quickly."""
+        """Detects if a user logs in from two geographically distant IPs too quickly.
+        Cached per session to avoid DB query on every request."""
         from accounts.models import LoginHistory
         from django.utils import timezone
         from datetime import timedelta
+        from django.core.cache import cache
+        
+        cache_key = f"impossible_travel_{request.user.id}"
+        if cache.get(cache_key):
+            return
         
         current_ip = request.META.get('REMOTE_ADDR')
         last_login = LoginHistory.objects.filter(user=request.user, status='SUCCESS').order_by('-timestamp').first()
         
         if last_login and last_login.ip_address != current_ip:
-            # If last login was within 1 hour and IP changed significantly (mocked check)
             if timezone.now() - last_login.timestamp < timedelta(hours=1):
                 from accounts.models import AdminActivityLog
                 AdminActivityLog.objects.create(
@@ -273,6 +282,8 @@ class EnterpriseHardeningMiddleware:
                     log_security_event('SUSPICIOUS_TRAVEL', f"IP change: {last_login.ip_address} -> {current_ip}", username=request.user.username, ip=current_ip)
                 except Exception:
                     pass
+        
+        cache.set(cache_key, True, 3600)
 
 
 
