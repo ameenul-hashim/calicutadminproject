@@ -74,7 +74,8 @@ def validate_avatar_url(url):
         return False
 
 def log_login_attempt(request, user, status='SUCCESS'):
-    """Audit helper for enterprise login tracking."""
+    """Audit helper for enterprise login tracking — Firebase logging is async to avoid blocking login."""
+    import threading
     try:
         from .models import LoginHistory
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -84,7 +85,6 @@ def log_login_attempt(request, user, status='SUCCESS'):
             ip = request.META.get('REMOTE_ADDR')
         
         user_agent = request.META.get('HTTP_USER_AGENT', '')
-        # Basic device detection
         device = "Desktop"
         if "Mobile" in user_agent: device = "Mobile"
         elif "Tablet" in user_agent: device = "Tablet"
@@ -98,10 +98,15 @@ def log_login_attempt(request, user, status='SUCCESS'):
         )
 
         if status == 'FAILED':
-            from .utils.firebase_audit import log_security_event
-            log_security_event('FAILED_LOGIN', f'Failed login for {user.username}', username=user.username, ip=ip)
+            def _async_firebase_log():
+                try:
+                    from .utils.firebase_audit import log_security_event
+                    log_security_event('FAILED_LOGIN', f'Failed login for {user.username}', username=user.username, ip=ip)
+                except Exception:
+                    pass
+            threading.Thread(target=_async_firebase_log, daemon=True).start()
     except Exception:
-        pass # Never block login due to logging failure
+        pass
 
 def create_notification(user, message):
     from .models import Notification
@@ -1353,7 +1358,6 @@ def submit_course_approval(request, course_uid):
         
     return redirect('my_courses')
 
-@require_POST
 @login_required
 def logout_view(request):
     if not request.user.is_authenticated:
