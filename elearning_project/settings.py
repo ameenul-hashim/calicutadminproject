@@ -105,7 +105,8 @@ AXES_RESET_ON_SUCCESS = True
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)
-FILE_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880   # 5MB — files larger go to /tmp disk (prevents RAM overflow on Render)
+FILE_UPLOAD_TEMP_DIR = '/tmp'           # Ensure temp uploads go to disk, not RAM
 RATELIMIT_ENABLE = True
 
 ROOT_URLCONF = 'elearning_project.urls'

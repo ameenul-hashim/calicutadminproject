@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 bucket_name: str = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
+video_bucket: str = os.getenv("SUPABASE_VIDEO_BUCKET", bucket_name)
 
 # Initialize client
 supabase: Client = None
@@ -129,25 +130,47 @@ def delete_pdf(file_path: str):
         return False
 
 def upload_video_to_supabase(video_file, lesson_uid):
-    """Uploads an MP4 video to Supabase Storage and returns the storage path."""
+    """Uploads an MP4 video to Supabase via temp file (keeps RAM usage low on Render 512MB)."""
     if not supabase:
         logger.error("Supabase client not initialized")
         return None
+    import tempfile, os
+    destination_path = f"videos/lesson_{lesson_uid}.mp4"
+    if destination_path.startswith("/"):
+        destination_path = destination_path[1:]
+
+    tmp_path = None
     try:
-        content = video_file.read()
-        video_file.seek(0)
-        destination_path = f"videos/lesson_{lesson_uid}.mp4"
-        if destination_path.startswith("/"):
-            destination_path = destination_path[1:]
-        supabase.storage.from_(bucket_name).upload(
+        # 1. Stream upload to temp file (Django uses disk if FILE_UPLOAD_MAX_MEMORY_SIZE is set)
+        tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        tmp_path = tmp.name
+        for chunk in video_file.chunks(chunk_size=5 * 1024 * 1024):
+            tmp.write(chunk)
+        tmp.close()
+
+        file_size = os.path.getsize(tmp_path)
+        logger.info(f"Video temp file ready: {tmp_path} ({file_size} bytes)")
+
+        # 2. Upload from disk to Supabase video bucket
+        with open(tmp_path, 'rb') as f:
+            content = f.read()
+        supabase.storage.from_(video_bucket).upload(
             path=destination_path,
             file=content,
             file_options={"content-type": "video/mp4", "upsert": "true"}
         )
-        return destination_path
+        del content  # Free memory immediately
+        logger.info(f"Video uploaded to Supabase ({video_bucket}): {destination_path}")
+        return f"{video_bucket}/{destination_path}"
     except Exception as e:
         logger.error(f"Supabase Video Upload Error: {e}")
         return None
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
 def upload_user_proof(instance, pdf_file):
     """

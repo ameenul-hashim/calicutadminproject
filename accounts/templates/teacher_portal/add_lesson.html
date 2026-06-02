@@ -75,92 +75,23 @@
                 urlInput.required = true;
             }
         }
-        function getCSRFToken() {
-            return document.querySelector('[name=csrfmiddlewaretoken]').value;
-        }
         document.querySelector('form').addEventListener('submit', function(e) {
             const fileInput = document.getElementById('video_file');
-            const titleInput = document.getElementById('title');
             if (fileInput && fileInput.files.length > 0) {
-                e.preventDefault();
                 const file = fileInput.files[0];
-                const title = titleInput.value;
-                const progressDiv = document.getElementById('uploadProgress');
-                const progressBar = document.getElementById('progressBar');
-                const progressPercent = document.getElementById('progressPercent');
-                const progressText = document.getElementById('progressText');
-                const uploadStatus = document.getElementById('uploadStatus');
+                const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
                 const submitBtn = this.querySelector('button[type="submit"]');
+                const progressDiv = document.getElementById('uploadProgress');
+                const progressText = document.getElementById('progressText');
+                const progressPercent = document.getElementById('progressPercent');
+                const progressBar = document.getElementById('progressBar');
 
                 progressDiv.style.display = 'block';
-                progressText.textContent = 'Creating upload session...';
+                progressText.textContent = 'Uploading ' + sizeMB + 'MB video to server... This may take a few minutes for large files.';
+                progressPercent.textContent = '';
+                progressBar.style.width = '50%';
                 submitBtn.disabled = true;
-                submitBtn.textContent = 'Uploading to YouTube...';
-
-                fetch('/api/youtube/init-upload/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    },
-                    body: JSON.stringify({
-                        title: title,
-                        description: 'Lesson: ' + title,
-                        file_size: file.size
-                    })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (!data.upload_url) {
-                        throw new Error(data.error || 'Failed to create upload session');
-                    }
-                    progressText.textContent = 'Uploading to YouTube...';
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('PUT', data.upload_url, true);
-                    xhr.setRequestHeader('Content-Type', 'video/*');
-                    xhr.upload.addEventListener('progress', function(ev) {
-                        if (ev.lengthComputable) {
-                            const pct = Math.round(ev.loaded / ev.total * 100);
-                            progressBar.style.width = pct + '%';
-                            progressPercent.textContent = pct + '%';
-                        }
-                    });
-                    xhr.onload = function() {
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            try {
-                                const result = JSON.parse(xhr.responseText);
-                                const videoId = result.id;
-                                document.getElementById('video_url').value = 'https://www.youtube.com/watch?v=' + videoId;
-                                document.getElementById('fileUploadGroup').style.display = 'none';
-                                document.querySelector('input[name="video_source"][value="url"]').checked = true;
-                                progressText.textContent = 'Upload complete!';
-                                progressBar.style.width = '100%';
-                                progressPercent.textContent = '100%';
-                                submitBtn.textContent = 'Saving lesson...';
-                                document.querySelector('form').submit();
-                            } catch(e) {
-                                uploadStatus.textContent = 'Error: Invalid response from YouTube';
-                                submitBtn.disabled = false;
-                                submitBtn.textContent = 'Try Again';
-                            }
-                        } else {
-                            uploadStatus.textContent = 'Upload failed (HTTP ' + xhr.status + ')';
-                            submitBtn.disabled = false;
-                            submitBtn.textContent = 'Try Again';
-                        }
-                    };
-                    xhr.onerror = function() {
-                        uploadStatus.textContent = 'Network error during upload';
-                        submitBtn.disabled = false;
-                        submitBtn.textContent = 'Try Again';
-                    };
-                    xhr.send(file);
-                })
-                .catch(err => {
-                    uploadStatus.textContent = 'Error: ' + err.message;
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Try Again';
-                });
+                submitBtn.textContent = 'Uploading...';
             }
         });
     </script>
@@ -203,11 +134,11 @@
                     <div class="input-group" id="fileUploadGroup">
                         <label for="video_file">Upload Video (MP4)</label>
                         <input type="file" name="video_file" id="video_file" accept=".mp4,video/mp4">
-                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Video will be uploaded to Neo Learner's YouTube channel automatically. Only MP4 format supported.</p>
+                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Video will be uploaded to cloud storage. Only MP4 format supported. Max 500MB.</p>
                         <div id="uploadProgress" style="display:none;margin-top:1rem;">
                             <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;margin-bottom:0.3rem;">
-                                <span id="progressText">Uploading to YouTube...</span>
-                                <span id="progressPercent">0%</span>
+                                <span id="progressText">Uploading...</span>
+                                <span id="progressPercent"></span>
                             </div>
                             <div style="width:100%;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
                                 <div id="progressBar" style="height:100%;width:0%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;transition:width 0.3s;"></div>
