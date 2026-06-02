@@ -41,7 +41,7 @@ def _fmt(bytes_val):
 
 
 class Command(BaseCommand):
-    help = 'Full encrypted backup: DB + Supabase files + Cloudinary images'
+    help = 'Full encrypted backup: DB + Supabase files + Cloudinary images + Firebase RTDB'
 
     def add_arguments(self, parser):
         parser.add_argument('--retention', action='store_true',
@@ -66,12 +66,16 @@ class Command(BaseCommand):
         self._backup_proof_pdfs(run_dir)
         self._backup_course_resources(run_dir)
         self._backup_cloudinary_images(run_dir)
+        self._backup_firebase_rtdb(run_dir)
 
         # Create integrity checksum
         self._write_checksum(run_dir)
 
         # Encrypt all files
         self._encrypt_backup(run_dir)
+
+        # Upload critical files to Supabase (survives Render deletion)
+        self._upload_to_supabase(run_dir)
 
         # Apply retention if requested
         if options.get('retention'):
@@ -243,6 +247,7 @@ class Command(BaseCommand):
         )
         manifest = {
             'proof_pdfs': [], 'resources': [], 'cloudinary_images': [],
+            'firebase_rtdb': {},
             'generated_at': datetime.datetime.utcnow().isoformat(),
         }
 
@@ -250,11 +255,11 @@ class Command(BaseCommand):
         bucket = os.getenv('SUPABASE_BUCKET', 'calicutadminpanelpdf')
         if client1:
             try:
-                files = client1.storage.from_(bucket).list()
+                files = self._supabase_list_all_files(client1, bucket)
                 for f in files:
                     manifest['proof_pdfs'].append({
-                        'name': f.get('name'), 'id': f.get('id'),
-                        'updated_at': f.get('updated_at'),
+                        'name': f['name'], 'id': f['meta'].get('id'),
+                        'updated_at': f['meta'].get('updated_at'),
                     })
                 self.stdout.write(f"  Proof PDFs: {len(files)} files")
             except Exception as e:
@@ -263,11 +268,11 @@ class Command(BaseCommand):
         from accounts.utils.storage_manager import supabase as client2
         if client2:
             try:
-                files = client2.storage.from_('resources').list()
+                files = self._supabase_list_all_files(client2, 'resources')
                 for f in files:
                     manifest['resources'].append({
-                        'name': f.get('name'), 'id': f.get('id'),
-                        'updated_at': f.get('updated_at'),
+                        'name': f['name'], 'id': f['meta'].get('id'),
+                        'updated_at': f['meta'].get('updated_at'),
                     })
                 self.stdout.write(f"  Resources: {len(files)} files")
             except Exception as e:
@@ -296,6 +301,26 @@ class Command(BaseCommand):
         self._check_limit(size)
         self.stdout.write(f"  Manifest: {manifest_path}")
 
+    def _supabase_list_all_files(self, client, bucket, path=''):
+        """Recursively list all files in a Supabase bucket folder."""
+        all_files = []
+        try:
+            entries = client.storage.from_(bucket).list(path)
+            for entry in entries:
+                name = entry.get('name', '')
+                if not name:
+                    continue
+                full_path = f"{path}/{name}" if path else name
+                # If id is None, it's a folder — recurse
+                if entry.get('id') is None:
+                    sub_files = self._supabase_list_all_files(client, bucket, full_path)
+                    all_files.extend(sub_files)
+                else:
+                    all_files.append({'name': full_path, 'meta': entry})
+        except Exception:
+            pass
+        return all_files
+
     def _backup_proof_pdfs(self, run_dir):
         from accounts.utils.supabase_storage import supabase as client1
         bucket = os.getenv('SUPABASE_BUCKET', 'calicutadminpanelpdf')
@@ -305,11 +330,9 @@ class Command(BaseCommand):
         os.makedirs(pdf_dir, exist_ok=True)
         count = 0
         try:
-            files = client1.storage.from_(bucket).list()
+            files = self._supabase_list_all_files(client1, bucket)
             for f in files:
-                name = f.get('name', '')
-                if not name:
-                    continue
+                name = f['name']
                 try:
                     data = client1.storage.from_(bucket).download(name)
                     if data:
@@ -333,11 +356,9 @@ class Command(BaseCommand):
         os.makedirs(res_dir, exist_ok=True)
         count = 0
         try:
-            files = client2.storage.from_('resources').list()
+            files = self._supabase_list_all_files(client2, 'resources')
             for f in files:
-                name = f.get('name', '')
-                if not name:
-                    continue
+                name = f['name']
                 try:
                     data = client2.storage.from_('resources').download(name)
                     if data:
@@ -385,3 +406,178 @@ class Command(BaseCommand):
             self.stdout.write(f"  Cloudinary images downloaded: {count}")
         except Exception as e:
             self.stdout.write(self.style.WARNING(f"  Cloudinary backup failed: {e}"))
+
+    def _backup_firebase_rtdb(self, run_dir):
+        """Export Firebase RTDB: /audit (security events) and /analytics (visit counts)."""
+        db_url = os.getenv('FIREBASE_RTDB_URL')
+        if not db_url:
+            self.stdout.write("  Firebase RTDB: skipped (FIREBASE_RTDB_URL not set)")
+            return
+
+        try:
+            import firebase_admin
+            from firebase_admin import credentials, db as rtdb
+        except ImportError:
+            self.stdout.write(self.style.WARNING("  Firebase RTDB: skipped (firebase-admin not installed)"))
+            return
+
+        # Initialize Firebase app (reuse existing if available)
+        app = None
+        try:
+            json_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
+            json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
+            cred = None
+            if json_str:
+                cred = credentials.Certificate(json.loads(json_str))
+            elif json_path and os.path.exists(json_path):
+                cred = credentials.Certificate(json_path)
+
+            if cred:
+                # Try to get existing app, or initialize new one
+                try:
+                    app = firebase_admin.get_app('backup')
+                except ValueError:
+                    app = firebase_admin.initialize_app(
+                        cred, {'databaseURL': db_url}, name='backup'
+                    )
+            else:
+                self.stdout.write(self.style.WARNING("  Firebase RTDB: skipped (no credentials)"))
+                return
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"  Firebase RTDB init failed: {e}"))
+            return
+
+        firebase_dir = os.path.join(run_dir, 'firebase_rtdb')
+        os.makedirs(firebase_dir, exist_ok=True)
+
+        # Export /audit (security events + counters + infra status)
+        audit_exported = False
+        try:
+            ref = rtdb.reference('/audit', app=app)
+            audit_data = ref.get()
+            if audit_data:
+                audit_path = os.path.join(firebase_dir, 'audit_events.json')
+                with open(audit_path, 'w') as f:
+                    json.dump(audit_data, f, indent=2, default=str)
+                size = os.path.getsize(audit_path)
+                self._check_limit(size)
+                self.stdout.write(f"  Firebase /audit: exported ({_fmt(size)})")
+                audit_exported = True
+            else:
+                self.stdout.write("  Firebase /audit: empty")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"  Firebase /audit backup failed: {e}"))
+
+        # Export /analytics (visit counts)
+        analytics_exported = False
+        try:
+            ref = rtdb.reference('/analytics', app=app)
+            analytics_data = ref.get()
+            if analytics_data:
+                analytics_path = os.path.join(firebase_dir, 'analytics.json')
+                with open(analytics_path, 'w') as f:
+                    json.dump(analytics_data, f, indent=2, default=str)
+                size = os.path.getsize(analytics_path)
+                self._check_limit(size)
+                self.stdout.write(f"  Firebase /analytics: exported ({_fmt(size)})")
+                analytics_exported = True
+            else:
+                self.stdout.write("  Firebase /analytics: empty")
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"  Firebase /analytics backup failed: {e}"))
+
+        if not audit_exported and not analytics_exported:
+            self.stdout.write(self.style.WARNING("  Firebase RTDB: no data exported"))
+
+    def _upload_to_supabase(self, run_dir):
+        """Upload critical backup files to Supabase Storage (survives Render deletion)."""
+        from accounts.utils.supabase_storage import supabase
+        if not supabase:
+            self.stdout.write(self.style.WARNING("  Supabase upload: skipped (not configured)"))
+            return
+
+        bucket = 'backups'
+        timestamp = os.path.basename(run_dir)  # backup_YYYYMMDD_HHMMSS
+        uploaded = 0
+
+        # Ensure bucket exists
+        try:
+            supabase.storage.get_bucket(bucket)
+        except Exception:
+            try:
+                supabase.storage.create_bucket(bucket, options={"public": False})
+                self.stdout.write(f"  Created Supabase bucket: {bucket}")
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"  Could not create bucket '{bucket}': {e}"))
+                return
+
+        # Files to upload (find .encrypted versions first, fall back to originals)
+        files_to_upload = []
+        for pattern in ['database.sql.encrypted', 'database.sql',
+                        'database_dumpdata.json.encrypted', 'database_dumpdata.json']:
+            path = os.path.join(run_dir, pattern)
+            if os.path.exists(path):
+                files_to_upload.append(('database.sql', path))
+                break
+
+        for pattern in ['checksums.json.encrypted', 'checksums.json']:
+            path = os.path.join(run_dir, pattern)
+            if os.path.exists(path):
+                files_to_upload.append(('checksums.json', path))
+                break
+
+        for pattern in ['storage_manifest.json.encrypted', 'storage_manifest.json']:
+            path = os.path.join(run_dir, pattern)
+            if os.path.exists(path):
+                files_to_upload.append(('storage_manifest.json', path))
+                break
+
+        # Firebase files
+        firebase_dir = os.path.join(run_dir, 'firebase_rtdb')
+        if os.path.isdir(firebase_dir):
+            for fname in os.listdir(firebase_dir):
+                fpath = os.path.join(firebase_dir, fname)
+                if os.path.isfile(fpath):
+                    upload_name = fname.replace('.encrypted', '') if fname.endswith('.encrypted') else fname
+                    files_to_upload.append((f'firebase_rtdb/{upload_name}', fpath))
+
+        # Upload each file
+        for remote_name, local_path in files_to_upload:
+            remote_path = f'{timestamp}/{remote_name}'
+            try:
+                with open(local_path, 'rb') as f:
+                    file_data = f.read()
+                supabase.storage.from_(bucket).upload(
+                    path=remote_path,
+                    file=file_data,
+                    file_options={"content-type": "application/octet-stream", "upsert": "true"}
+                )
+                size = len(file_data)
+                self.stdout.write(f"  Supabase upload: {remote_name} ({_fmt(size)})")
+                uploaded += 1
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"  Supabase upload failed for {remote_name}: {e}"))
+
+        # Cleanup: keep only last 7 backups in Supabase
+        try:
+            existing = supabase.storage.from_(bucket).list()
+            backup_folders = sorted(
+                [e['name'] for e in existing if e.get('id') is None],
+                reverse=True
+            )
+            for old_folder in backup_folders[7:]:
+                try:
+                    old_files = supabase.storage.from_(bucket).list(old_folder)
+                    for of in old_files:
+                        if of.get('name'):
+                            supabase.storage.from_(bucket).remove([f"{old_folder}/{of['name']}"])
+                    self.stdout.write(f"  Supabase cleanup: removed {old_folder}")
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        if uploaded:
+            self.stdout.write(f"  Supabase cloud backup: {uploaded} files uploaded")
+        else:
+            self.stdout.write(self.style.WARNING("  Supabase cloud backup: no files uploaded"))
