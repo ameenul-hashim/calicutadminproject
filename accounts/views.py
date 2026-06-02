@@ -2261,8 +2261,8 @@ def trigger_backup(request):
     try:
         manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
         result = subprocess.run(
-            [sys.executable, manage_py, 'backup_all', '--retention'],
-            capture_output=True, text=True, timeout=300
+            [sys.executable, manage_py, 'backup_all', '--retention', '--cron'],
+            capture_output=True, text=True,             timeout=600
         )
         logger.info(f"Backup {'succeeded' if result.returncode == 0 else 'failed'}")
         return JsonResponse({
