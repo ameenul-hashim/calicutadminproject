@@ -180,7 +180,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('neolearner_sessionid') || getCookie('csrftoken'),
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                         },
                         body: JSON.stringify({
                             lesson_uid: '{{ lesson.uid }}',
@@ -258,7 +258,7 @@
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': getCookie('neolearner_sessionid') || getCookie('csrftoken'),
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                         },
                         body: JSON.stringify({
                             lesson_uid: '{{ lesson.uid }}',
