@@ -2245,7 +2245,7 @@ from django_ratelimit.decorators import ratelimit
 @ratelimit(key='ip', rate='10/hour', method='POST', block=True)
 def trigger_backup(request):
     """Triggers encrypted backup. Protected by rate limit + token auth."""
-    import json, subprocess, sys, os
+    import json, subprocess, sys, os, threading
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
     try:
@@ -2258,22 +2258,18 @@ def trigger_backup(request):
     except:
         return JsonResponse({'error': 'Bad request'}, status=400)
 
-    try:
-        manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
-        result = subprocess.run(
-            [sys.executable, manage_py, 'backup_all', '--retention', '--cron'],
-            capture_output=True, text=True,             timeout=600
-        )
-        logger.info(f"Backup {'succeeded' if result.returncode == 0 else 'failed'}")
-        return JsonResponse({
-            'success': result.returncode == 0,
-            'output': result.stdout[-500:],
-            'error': result.stderr[-500:],
-        })
-    except subprocess.TimeoutExpired:
-        logger.error("Backup timed out after 300s")
-        return JsonResponse({'error': 'Backup timed out'}, status=504)
-    except Exception as e:
-        logger.error(f"Backup failed: {e}")
-        return JsonResponse({'error': str(e)}, status=500)
+    def run_backup():
+        try:
+            manage_py = os.path.join(settings.BASE_DIR, 'manage.py')
+            result = subprocess.run(
+                [sys.executable, manage_py, 'backup_all', '--retention', '--cron'],
+                capture_output=True, text=True, timeout=600
+            )
+            logger.info(f"Backup {'succeeded' if result.returncode == 0 else 'failed'}")
+        except Exception as e:
+            logger.error(f"Backup failed: {e}")
+
+    thread = threading.Thread(target=run_backup, daemon=True)
+    thread.start()
+    return JsonResponse({'success': True, 'message': 'Backup started'})
 
