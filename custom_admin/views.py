@@ -340,20 +340,24 @@ def decline_user(request, user_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def toggle_user_status(request, user_uid):
-    user = get_object_or_404(CustomUser, uid=user_uid)
-    if user.status == 'ACTIVE':
-        user.status = 'BLOCKED'
-        user.is_active = False
-        msg = "blocked"
-    else:
-        user.status = 'ACTIVE'
-        user.is_active = True
-        msg = "activated"
-    user.save()
-    messages.success(request, f"✅ User {user.username} has been {msg}.")
-    if user.user_type == 'TEACHER':
-        return redirect('manage_teachers')
-    return redirect('manage_students')
+    try:
+        user = get_object_or_404(CustomUser, uid=user_uid)
+        if user.status == 'ACTIVE':
+            user.status = 'BLOCKED'
+            user.is_active = False
+            msg = "blocked"
+        else:
+            user.status = 'ACTIVE'
+            user.is_active = True
+            msg = "activated"
+        user.save()
+        messages.success(request, f"✅ User {user.username} has been {msg}.")
+        if user.user_type == 'TEACHER':
+            return redirect('manage_teachers')
+        return redirect('manage_students')
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not update user status: {str(e)}")
+        return redirect('manage_students')
 
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -740,121 +744,126 @@ def pending_courses_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_course(request, course_uid):
-    course = get_object_or_404(Course, uid=course_uid)
-    
-    # If the course has pending edits, apply them
-    if course.has_pending_edits:
-        if course.pending_title:
-            course.title = course.pending_title
-            course.pending_title = ""
-        if course.pending_description:
-            course.description = course.pending_description
-            course.pending_description = ""
-        if course.pending_category:
-            course.category = course.pending_category
-            course.pending_category = ""
-        if course.pending_level:
-            course.level = course.pending_level
-            course.pending_level = ""
-        if course.pending_image:
-            # Clean up old main image if different
-            if course.image_public_id and course.image_public_id != course.pending_image_public_id:
-                try:
-                    import cloudinary.uploader
-                    cloudinary.uploader.destroy(course.image_public_id)
-                except Exception:
-                    pass
-            course.image = course.pending_image
-            course.image_public_id = course.pending_image_public_id
-            course.pending_image = ""
-            course.pending_image_public_id = ""
-        course.has_pending_edits = False
+    try:
+        course = get_object_or_404(Course, uid=course_uid)
         
-    course.status = 'PUBLISHED'
-    course.is_approved = True
-    course.approved_by = request.user
-    course.rejection_reason = ""
-    course.save()
-    
-    # Auto-approve ONLY lessons that are currently PENDING (awaiting first review).
-    course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
-    
-    # Also approve any lessons that have pending edits!
-    for lesson in course.lessons.filter(has_pending_edits=True):
-        if lesson.pending_title:
-            lesson.title = lesson.pending_title
-            lesson.pending_title = ""
-        if lesson.pending_video_url:
-            lesson.video_url = lesson.pending_video_url
-            lesson.pending_video_url = ""
-        if lesson.pending_video_file:
-            if lesson.video_file:
-                try:
-                    lesson.video_file.delete(save=False)
-                except Exception:
-                    pass
-            lesson.video_file = lesson.pending_video_file
-            lesson.pending_video_file = None
-        if lesson.pending_order is not None:
-            lesson.order = lesson.pending_order
-            lesson.pending_order = None
-        lesson.has_pending_edits = False
-        lesson.status = 'APPROVED'
-        lesson.is_approved = True
-        lesson.save()
-
-    create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
-    
-    # Notify all active students about new course
-    students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
-    teacher_name = course.teacher.full_name or course.teacher.username
-    for student in students:
-        create_notification(student, f"{teacher_name} added course {course.title}")
-    
-    ApprovalLog.objects.create(
-        content_type='COURSE',
-        object_id=course.id,
-        status='APPROVED',
-        reviewed_by=request.user,
-        comments="Course published."
-    )
-    
-    messages.success(request, f"Course '{course.title}' has been approved and published!")
-    referer = request.META.get('HTTP_REFERER')
-    if referer and ('content' in referer or 'pending' in referer):
-        return redirect(referer)
-    return redirect('pending_courses')
-
-@user_passes_test(is_admin, login_url='admin_login')
-def reject_course(request, course_uid):
-    course = get_object_or_404(Course, uid=course_uid)
-    if request.method == 'POST':
-        reason = request.POST.get('reason', '')
-        teacher = course.teacher
-        course_title = course.title
-
-        # Objective: Replace permanent purging with status change for resubmission
-        course.status = 'REJECTED'
-        course.is_approved = False
-        course.rejection_reason = reason
+        # If the course has pending edits, apply them
+        if course.has_pending_edits:
+            if course.pending_title:
+                course.title = course.pending_title
+                course.pending_title = ""
+            if course.pending_description:
+                course.description = course.pending_description
+                course.pending_description = ""
+            if course.pending_category:
+                course.category = course.pending_category
+                course.pending_category = ""
+            if course.pending_level:
+                course.level = course.pending_level
+                course.pending_level = ""
+            if course.pending_image:
+                # Clean up old main image if different
+                if course.image_public_id and course.image_public_id != course.pending_image_public_id:
+                    try:
+                        import cloudinary.uploader
+                        cloudinary.uploader.destroy(course.image_public_id)
+                    except Exception:
+                        pass
+                course.image = course.pending_image
+                course.image_public_id = course.pending_image_public_id
+                course.pending_image = ""
+                course.pending_image_public_id = ""
+            course.has_pending_edits = False
+            
+        course.status = 'PUBLISHED'
+        course.is_approved = True
+        course.approved_by = request.user
+        course.rejection_reason = ""
         course.save()
+        
+        # Auto-approve ONLY lessons that are currently PENDING (awaiting first review).
+        course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
+        
+        # Also approve any lessons that have pending edits!
+        for lesson in course.lessons.filter(has_pending_edits=True):
+            if lesson.pending_title:
+                lesson.title = lesson.pending_title
+                lesson.pending_title = ""
+            if lesson.pending_video_url:
+                lesson.video_url = lesson.pending_video_url
+                lesson.pending_video_url = ""
+            if lesson.pending_video_file:
+                if lesson.video_file:
+                    try:
+                        lesson.video_file.delete(save=False)
+                    except Exception:
+                        pass
+                lesson.video_file = lesson.pending_video_file
+                lesson.pending_video_file = None
+            if lesson.pending_order is not None:
+                lesson.order = lesson.pending_order
+                lesson.pending_order = None
+            lesson.has_pending_edits = False
+            lesson.status = 'APPROVED'
+            lesson.is_approved = True
+            lesson.save()
 
-        # Log rejection
+        create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
+        
+        # Notify all active students about new course
+        students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
+        teacher_name = course.teacher.full_name or course.teacher.username
+        for student in students:
+            create_notification(student, f"{teacher_name} added course {course.title}")
+        
         ApprovalLog.objects.create(
             content_type='COURSE',
             object_id=course.id,
-            status='REJECTED',
+            status='APPROVED',
             reviewed_by=request.user,
-            comments=f"Course '{course_title}' rejected. Reason: {reason}"
+            comments="Course published."
         )
+        
+        messages.success(request, f"Course '{course.title}' has been approved and published!")
+        referer = request.META.get('HTTP_REFERER')
+        if referer and ('content' in referer or 'pending' in referer):
+            return redirect(referer)
+        return redirect('pending_courses')
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not approve course: {str(e)}")
+        return redirect('pending_courses')
 
-        # Notify teacher: course was rejected for resubmission
-        create_notification(teacher, f"❌ Your course '{course_title}' was rejected. Reason: {reason}. Please fix the issues and resubmit for approval.")
+@user_passes_test(is_admin, login_url='admin_login')
+def reject_course(request, course_uid):
+    try:
+        course = get_object_or_404(Course, uid=course_uid)
+        if request.method == 'POST':
+            reason = request.POST.get('reason', '')
+            teacher = course.teacher
+            course_title = course.title
 
-        messages.warning(request, f"Course '{course_title}' has been rejected. The teacher has been notified to resubmit.")
-        return redirect('admin_content')
+            course.status = 'REJECTED'
+            course.is_approved = False
+            course.rejection_reason = reason
+            course.save()
 
-    return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
+            ApprovalLog.objects.create(
+                content_type='COURSE',
+                object_id=course.id,
+                status='REJECTED',
+                reviewed_by=request.user,
+                comments=f"Course '{course_title}' rejected. Reason: {reason}"
+            )
+
+            create_notification(teacher, f"❌ Your course '{course_title}' was rejected. Reason: {reason}. Please fix the issues and resubmit for approval.")
+
+            messages.warning(request, f"Course '{course_title}' has been rejected. The teacher has been notified to resubmit.")
+            return redirect('admin_content')
+
+        return render(request, 'custom_admin/decline_reason.html', {'course': course, 'is_course': True})
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not reject course: {str(e)}")
+        return redirect('pending_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def edit_user_admin(request, user_uid):
@@ -917,202 +926,214 @@ def edit_user_admin(request, user_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_lesson(request, lesson_uid):
-    lesson = get_object_or_404(Lesson, uid=lesson_uid)
-    
-    # Apply pending edits
-    if lesson.has_pending_edits:
-        if lesson.pending_title:
-            lesson.title = lesson.pending_title
-            lesson.pending_title = ""
-        if lesson.pending_video_url:
-            lesson.video_url = lesson.pending_video_url
-            lesson.pending_video_url = ""
-        if lesson.pending_video_file:
-            if lesson.video_file:
-                try:
-                    lesson.video_file.delete(save=False)
-                except Exception:
-                    pass
-            lesson.video_file = lesson.pending_video_file
-            lesson.pending_video_file = None
-        if lesson.pending_order is not None:
-            lesson.order = lesson.pending_order
-            lesson.pending_order = None
-        lesson.has_pending_edits = False
-
-    # If lesson has a YouTube video, change visibility from PRIVATE to UNLISTED
-    if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED' and lesson.video_url and not lesson.video_url.startswith('supabase://'):
-        try:
-            from accounts.utils.youtube_uploader import change_video_visibility
-            change_video_visibility(lesson.youtube_video_id, 'unlisted')
-            lesson.video_url = f"https://www.youtube.com/watch?v={lesson.youtube_video_id}"
-        except Exception as e:
-            logger.error(f"Failed to change YouTube visibility for {lesson.youtube_video_id}: {e}")
-            messages.error(request, f"Lesson approved but failed to update YouTube visibility: {e}")
-            return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+    try:
+        lesson = get_object_or_404(Lesson, uid=lesson_uid)
         
-    lesson.status = 'APPROVED'
-    lesson.is_approved = True
-    lesson.save()
-    create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
-    
-    # Notify students
-    enrollments = Enrollment.objects.filter(course=lesson.course).select_related('user')
-    for enrollment in enrollments:
-        if enrollment.user.status == 'ACTIVE':
-            create_notification(enrollment.user, f"New content added to your course '{lesson.course.title}': {lesson.title}")
+        # Apply pending edits
+        if lesson.has_pending_edits:
+            if lesson.pending_title:
+                lesson.title = lesson.pending_title
+                lesson.pending_title = ""
+            if lesson.pending_video_url:
+                lesson.video_url = lesson.pending_video_url
+                lesson.pending_video_url = ""
+            if lesson.pending_video_file:
+                if lesson.video_file:
+                    try:
+                        lesson.video_file.delete(save=False)
+                    except Exception:
+                        pass
+                lesson.video_file = lesson.pending_video_file
+                lesson.pending_video_file = None
+            if lesson.pending_order is not None:
+                lesson.order = lesson.pending_order
+                lesson.pending_order = None
+            lesson.has_pending_edits = False
 
-    messages.success(request, f"Lesson '{lesson.title}' approved and made visible to students.")
-    return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+        # If lesson has a YouTube video, change visibility from PRIVATE to UNLISTED
+        if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED' and lesson.video_url and not lesson.video_url.startswith('supabase://'):
+            try:
+                from accounts.utils.youtube_uploader import change_video_visibility
+                change_video_visibility(lesson.youtube_video_id, 'unlisted')
+                lesson.video_url = f"https://www.youtube.com/watch?v={lesson.youtube_video_id}"
+            except Exception as e:
+                logger.error(f"Failed to change YouTube visibility for {lesson.youtube_video_id}: {e}")
+                messages.error(request, f"Lesson approved but failed to update YouTube visibility: {e}")
+                return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+            
+        lesson.status = 'APPROVED'
+        lesson.is_approved = True
+        lesson.save()
+        create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
+        
+        # Notify students
+        enrollments = Enrollment.objects.filter(course=lesson.course).select_related('user')
+        for enrollment in enrollments:
+            if enrollment.user.status == 'ACTIVE':
+                create_notification(enrollment.user, f"New content added to your course '{lesson.course.title}': {lesson.title}")
+
+        messages.success(request, f"Lesson '{lesson.title}' approved and made visible to students.")
+        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not approve lesson: {str(e)}")
+        return redirect('pending_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_lesson(request, lesson_uid):
-    lesson = get_object_or_404(Lesson, uid=lesson_uid)
-    if request.method == 'POST':
-        reason = request.POST.get('reason')
-        lesson_title = lesson.title
-        course_uid = lesson.course.uid
-        teacher = lesson.course.teacher
+    try:
+        lesson = get_object_or_404(Lesson, uid=lesson_uid)
+        if request.method == 'POST':
+            reason = request.POST.get('reason')
+            lesson_title = lesson.title
+            course_uid = lesson.course.uid
+            teacher = lesson.course.teacher
 
-        # If lesson has a YouTube video, delete it from YouTube
-        if lesson.youtube_video_id:
-            try:
-                from accounts.utils.youtube_uploader import delete_youtube_video
-                delete_youtube_video(lesson.youtube_video_id)
-                lesson.youtube_video_id = None
-                lesson.youtube_upload_status = 'NOT_UPLOADED'
-                lesson.video_url = ''
-            except Exception as e:
-                logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
+            if lesson.youtube_video_id:
+                try:
+                    from accounts.utils.youtube_uploader import delete_youtube_video
+                    delete_youtube_video(lesson.youtube_video_id)
+                    lesson.youtube_video_id = None
+                    lesson.youtube_upload_status = 'NOT_UPLOADED'
+                    lesson.video_url = ''
+                except Exception as e:
+                    logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
 
-        lesson.status = 'REJECTED'
-        lesson.is_approved = False
-        lesson.rejection_reason = reason
-        lesson.save()
+            lesson.status = 'REJECTED'
+            lesson.is_approved = False
+            lesson.rejection_reason = reason
+            lesson.save()
 
-        create_notification(teacher, f"Your lesson '{lesson_title}' was rejected. Reason: {reason}. Please edit and resubmit.")
-        messages.warning(request, f"Lesson '{lesson_title}' rejected. The teacher can now edit and resubmit it.")
-        return redirect('admin_view_course_content', course_uid=course_uid)
-    return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
+            create_notification(teacher, f"Your lesson '{lesson_title}' was rejected. Reason: {reason}. Please edit and resubmit.")
+            messages.warning(request, f"Lesson '{lesson_title}' rejected. The teacher can now edit and resubmit it.")
+            return redirect('admin_view_course_content', course_uid=course_uid)
+        return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not reject lesson: {str(e)}")
+        return redirect('pending_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from accounts.views import create_notification
     from accounts.utils.storage_manager import StorageManager
-    
-    resource = get_object_or_404(CourseResource, uid=resource_uid)
-    is_edit_approval = resource.has_pending_edits
-    
-    # Track the "Original" path supplied by the teacher
-    teacher_original_path = resource.pending_firebase_file_path if is_edit_approval else resource.firebase_file_path
-    final_supabase_path = teacher_original_path # Default
-    
-    # 1. OPTIONAL: Compression Step on Approval
-    if resource.resource_type == 'PDF' and teacher_original_path:
-        try:
-            from accounts.utils.supabase_storage import get_client as get_res_client
-            from accounts.utils.pdf_processor import process_pdf
-            
-            # Download original
-            parts = teacher_original_path.split('/', 1)
-            bucket_name = parts[0]
-            p_in_b = parts[1] if len(parts) > 1 else teacher_original_path
-            res_client = get_res_client(use_resource_project=True)
-            if not res_client:
-                raise Exception("Supabase resource client not available")
-            original_bytes = res_client.storage.from_(bucket_name).download(p_in_b)
-            
-            if original_bytes:
-                comp_bytes, _ = process_pdf(original_bytes)
-                if comp_bytes and len(comp_bytes) < len(original_bytes):
-                    # Upload compressed
-                    import uuid
-                    new_dest = f"resources/{resource.course.uid}/compressed_{uuid.uuid4()}.pdf"
-                    StorageManager.upload_to_supabase_storage(comp_bytes, new_dest, 'application/pdf')
-                    final_supabase_path = new_dest
-                    resource.compressed_size = len(comp_bytes)
-                    resource.original_size = len(original_bytes)
-        except Exception as e:
-            messages.warning(request, f"Compression skipped: {str(e)}")
-
-    if is_edit_approval:
-        # Apply all file properties from pending fields
-        resource.firebase_file_path = final_supabase_path
-        resource.thumbnail_path = resource.pending_thumbnail_path or resource.thumbnail_path
-        resource.thumbnail_public_id = resource.pending_thumbnail_public_id or resource.thumbnail_public_id
-        resource.mime_type = resource.pending_mime_type or resource.mime_type
-        resource.file_extension = resource.pending_file_extension or resource.file_extension
-        
-        # Apply metadata
-        if resource.pending_title: resource.title = resource.pending_title
-        if resource.pending_category: resource.category = resource.pending_category
-        if resource.pending_resource_type: resource.resource_type = resource.pending_resource_type
-            
-        # Clear pending fields
-        resource.pending_title = None
-        resource.pending_category = None
-        resource.pending_resource_type = None
-        resource.pending_firebase_file_path = None
-        resource.pending_thumbnail_path = None
-        resource.pending_thumbnail_public_id = None
-        resource.has_pending_edits = False
-        # CRITICAL: Ensure APPROVED status is maintained after an edit is approved
-        resource.status = 'APPROVED'
-        resource.is_approved = True
-    else:
-        resource.firebase_file_path = final_supabase_path
-        resource.status = 'APPROVED'
-        resource.is_approved = True
-
-    resource.approved_by = request.user
-    resource.approved_at = timezone.now()
-    resource.save()
-
-    # 2. Trigger Background Backup & Cleanup of the ORIGINAL
-    # This will: Upload teacher_original_path to Drive -> If success, Delete teacher_original_path from Supabase
     try:
-        import threading
-        thread = threading.Thread(target=StorageManager.backup_and_cleanup, args=(resource.id, teacher_original_path))
-        thread.daemon = True
-        thread.start()
-        messages.success(request, f"Resource approved. Original file is being backed up to Drive and will be purged from Supabase automatically.")
+        resource = get_object_or_404(CourseResource, uid=resource_uid)
+        is_edit_approval = resource.has_pending_edits
+        
+        # Track the "Original" path supplied by the teacher
+        teacher_original_path = resource.pending_firebase_file_path if is_edit_approval else resource.firebase_file_path
+        final_supabase_path = teacher_original_path # Default
+        
+        # 1. OPTIONAL: Compression Step on Approval
+        if resource.resource_type == 'PDF' and teacher_original_path:
+            try:
+                from accounts.utils.supabase_storage import get_client as get_res_client
+                from accounts.utils.pdf_processor import process_pdf
+                
+                # Download original
+                parts = teacher_original_path.split('/', 1)
+                bucket_name = parts[0]
+                p_in_b = parts[1] if len(parts) > 1 else teacher_original_path
+                res_client = get_res_client(use_resource_project=True)
+                if not res_client:
+                    raise Exception("Supabase resource client not available")
+                original_bytes = res_client.storage.from_(bucket_name).download(p_in_b)
+                
+                if original_bytes:
+                    comp_bytes, _ = process_pdf(original_bytes)
+                    if comp_bytes and len(comp_bytes) < len(original_bytes):
+                        # Upload compressed
+                        import uuid
+                        new_dest = f"resources/{resource.course.uid}/compressed_{uuid.uuid4()}.pdf"
+                        StorageManager.upload_to_supabase_storage(comp_bytes, new_dest, 'application/pdf')
+                        final_supabase_path = new_dest
+                        resource.compressed_size = len(comp_bytes)
+                        resource.original_size = len(original_bytes)
+            except Exception as e:
+                messages.warning(request, f"Compression skipped: {str(e)}")
+
+        if is_edit_approval:
+            # Apply all file properties from pending fields
+            resource.firebase_file_path = final_supabase_path
+            resource.thumbnail_path = resource.pending_thumbnail_path or resource.thumbnail_path
+            resource.thumbnail_public_id = resource.pending_thumbnail_public_id or resource.thumbnail_public_id
+            resource.mime_type = resource.pending_mime_type or resource.mime_type
+            resource.file_extension = resource.pending_file_extension or resource.file_extension
+            
+            # Apply metadata
+            if resource.pending_title: resource.title = resource.pending_title
+            if resource.pending_category: resource.category = resource.pending_category
+            if resource.pending_resource_type: resource.resource_type = resource.pending_resource_type
+                
+            # Clear pending fields
+            resource.pending_title = None
+            resource.pending_category = None
+            resource.pending_resource_type = None
+            resource.pending_firebase_file_path = None
+            resource.pending_thumbnail_path = None
+            resource.pending_thumbnail_public_id = None
+            resource.has_pending_edits = False
+            resource.status = 'APPROVED'
+            resource.is_approved = True
+        else:
+            resource.firebase_file_path = final_supabase_path
+            resource.status = 'APPROVED'
+            resource.is_approved = True
+
+        resource.approved_by = request.user
+        resource.approved_at = timezone.now()
+        resource.save()
+
+        # 2. Trigger Background Backup & Cleanup of the ORIGINAL
+        try:
+            import threading
+            thread = threading.Thread(target=StorageManager.backup_and_cleanup, args=(resource.id, teacher_original_path))
+            thread.daemon = True
+            thread.start()
+            messages.success(request, f"Resource approved. Original file is being backed up to Drive and will be purged from Supabase automatically.")
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to spawn backup thread: {e}")
+
+        # Notify users
+        if is_edit_approval:
+            create_notification(resource.course.teacher, f"Your edits to resource '{resource.title}' in course '{resource.course.title}' have been approved.")
+            messages.success(request, f"Changes to resource '{resource.title}' approved successfully.")
+        else:
+            create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
+            enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
+            for enrollment in enrollments:
+                if enrollment.user.status == 'ACTIVE':
+                    create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
+            messages.success(request, f"Resource '{resource.title}' approved successfully.")
+
+        return redirect('admin_view_course_content', course_uid=resource.course.uid)
     except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Failed to spawn backup thread: {e}")
-
-    # Notify users
-    if is_edit_approval:
-        create_notification(resource.course.teacher, f"Your edits to resource '{resource.title}' in course '{resource.course.title}' have been approved.")
-        messages.success(request, f"Changes to resource '{resource.title}' approved successfully.")
-    else:
-        create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
-        enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
-        for enrollment in enrollments:
-            if enrollment.user.status == 'ACTIVE':
-                create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
-        messages.success(request, f"Resource '{resource.title}' approved successfully.")
-
-    return redirect('admin_view_course_content', course_uid=resource.course.uid)
+        messages.error(request, f"⚠️ Could not approve resource: {str(e)}")
+        return redirect('pending_resources')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_resource(request, resource_uid):
     from accounts.models import CourseResource
     from accounts.views import create_notification
-    resource = get_object_or_404(CourseResource, uid=resource_uid)
-    if request.method == 'POST':
-        reason = request.POST.get('reason')
-        resource.status = 'REJECTED'
-        resource.is_approved = False
-        resource.rejection_reason = reason
-        resource.rejected_by = request.user
-        resource.rejected_at = timezone.now()
-        resource.save()
-        
-        create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' was rejected. Reason: {reason}.")
-        messages.warning(request, f"Resource '{resource.title}' rejected.")
-        return redirect('admin_view_course_content', course_uid=resource.course.uid)
-    return render(request, 'custom_admin/decline_reason.html', {'lesson': resource, 'is_content': True, 'content_type': 'Resource', 'is_resource': True})
+    try:
+        resource = get_object_or_404(CourseResource, uid=resource_uid)
+        if request.method == 'POST':
+            reason = request.POST.get('reason')
+            resource.status = 'REJECTED'
+            resource.is_approved = False
+            resource.rejection_reason = reason
+            resource.rejected_by = request.user
+            resource.rejected_at = timezone.now()
+            resource.save()
+            
+            create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' was rejected. Reason: {reason}.")
+            messages.warning(request, f"Resource '{resource.title}' rejected.")
+            return redirect('admin_view_course_content', course_uid=resource.course.uid)
+        return render(request, 'custom_admin/decline_reason.html', {'lesson': resource, 'is_content': True, 'content_type': 'Resource', 'is_resource': True})
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not reject resource: {str(e)}")
+        return redirect('pending_resources')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_resources(request):
@@ -1122,29 +1143,35 @@ def pending_resources(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
-    course = get_object_or_404(Course, uid=course_uid)
-    
-    # Active items (Pending, Approved)
-    active_lessons = course.lessons.exclude(status='REJECTED').order_by('order')
-    rejected_lessons = course.lessons.filter(status='REJECTED').order_by('-updated_at')
-    
-    from accounts.models import CourseResource
-    
-    active_resources = course.resources.exclude(status='REJECTED').exclude(is_deleted=True).order_by('order', '-created_at')
-    rejected_resources = course.resources.filter(status='REJECTED', is_deleted=False).order_by('-updated_at')
-    
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_count = get_unread_count(str(request.user.uid))
-    
-    return render(request, 'custom_admin/course_content_verify.html', {
-        'course': course,
-        'active_lessons': active_lessons,
-        'rejected_lessons': rejected_lessons,
-        'active_resources': active_resources,
-        'rejected_resources': rejected_resources,
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
-    })
+    try:
+        course = get_object_or_404(Course, uid=course_uid)
+        
+        active_lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+        rejected_lessons = course.lessons.filter(status='REJECTED').order_by('-updated_at')
+        
+        from accounts.models import CourseResource
+        
+        try:
+            active_resources = course.resources.exclude(status='REJECTED').exclude(is_deleted=True).order_by('order', '-created_at')
+        except Exception:
+            active_resources = course.resources.exclude(status='REJECTED').exclude(is_deleted=True).order_by('-created_at')
+        rejected_resources = course.resources.filter(status='REJECTED', is_deleted=False).order_by('-updated_at')
+        
+        notifications = get_notifications(str(request.user.uid))[:10]
+        unread_count = get_unread_count(str(request.user.uid))
+        
+        return render(request, 'custom_admin/course_content_verify.html', {
+            'course': course,
+            'active_lessons': active_lessons,
+            'rejected_lessons': rejected_lessons,
+            'active_resources': active_resources,
+            'rejected_resources': rejected_resources,
+            'notifications': notifications,
+            'unread_notifications_count': unread_count,
+        })
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load course content: {str(e)}")
+        return redirect('admin_content')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def storage_dashboard(request):
@@ -1178,114 +1205,115 @@ def storage_dashboard(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_course_secure(request, course_uid):
-    if request.method == 'POST':
-        username = request.POST.get('admin_username', '').strip()
-        password = request.POST.get('admin_password', '')
-        
-        # Robust verification: Support both username and email (case-insensitive)
-        admin_user = request.user
-        is_identity_match = (
-            username.lower() == admin_user.username.lower() or 
-            username.lower() == admin_user.email.lower()
-        )
-        
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
-            course = get_object_or_404(Course, uid=course_uid)
-            course_title = course.title
+    try:
+        if request.method == 'POST':
+            username = request.POST.get('admin_username', '').strip()
+            password = request.POST.get('admin_password', '')
             
-            # 1. Cleanup all Course Resources from Supabase
-            from accounts.models import CourseResource
-            from accounts.utils.storage_manager import StorageManager
-            resources = CourseResource.objects.filter(course=course)
-            for res in resources:
-                if res.firebase_file_path:
-                    try:
-                        StorageManager.delete_from_supabase_storage(res.firebase_file_path)
-                        if res.thumbnail_public_id:
-                            from accounts.utils.cloudinary_helpers import delete_temp_image
-                            delete_temp_image(res.thumbnail_public_id)
-                    except Exception as e:
-                        print(f"Error deleting resource {res.uid}: {e}")
+            admin_user = request.user
+            is_identity_match = (
+                username.lower() == admin_user.username.lower() or 
+                username.lower() == admin_user.email.lower()
+            )
+            
+            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+                course = get_object_or_404(Course, uid=course_uid)
+                course_title = course.title
+                
+                from accounts.models import CourseResource
+                from accounts.utils.storage_manager import StorageManager
+                resources = CourseResource.objects.filter(course=course)
+                for res in resources:
+                    if res.firebase_file_path:
+                        try:
+                            StorageManager.delete_from_supabase_storage(res.firebase_file_path)
+                            if res.thumbnail_public_id:
+                                from accounts.utils.cloudinary_helpers import delete_temp_image
+                                delete_temp_image(res.thumbnail_public_id)
+                        except Exception as e:
+                            print(f"Error deleting resource {res.uid}: {e}")
 
-            # 2. Delete the course (cascades to internal models)
-            course.delete()
-            
-            messages.success(request, f"✅ '{course_title}' and all associated storage files have been permanently purged.")
-            return redirect('deleted_courses')
-        else:
-            messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
-            
+                course.delete()
+                
+                messages.success(request, f"✅ '{course_title}' and all associated storage files have been permanently purged.")
+                return redirect('deleted_courses')
+            else:
+                messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not delete course: {str(e)}")
+        
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_lesson_secure(request, lesson_uid):
-    if request.method == 'POST':
-        username = request.POST.get('admin_username', '').strip()
-        password = request.POST.get('admin_password', '')
-        
-        # Robust verification
-        admin_user = request.user
-        is_identity_match = (
-            username.lower() == admin_user.username.lower() or 
-            username.lower() == admin_user.email.lower()
-        )
-        
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
-            lesson = get_object_or_404(Lesson, uid=lesson_uid)
-            lesson_title = lesson.title
-            course_uid = lesson.course.uid
+    try:
+        if request.method == 'POST':
+            username = request.POST.get('admin_username', '').strip()
+            password = request.POST.get('admin_password', '')
             
-            # Explicit file cleanup for Lesson videos
-            if lesson.video_file:
-                try:
-                    import os
-                    if os.path.isfile(lesson.video_file.path):
-                        os.remove(lesson.video_file.path)
-                except Exception as e:
-                    print(f"Error deleting lesson video file: {e}")
+            admin_user = request.user
+            is_identity_match = (
+                username.lower() == admin_user.username.lower() or 
+                username.lower() == admin_user.email.lower()
+            )
+            
+            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+                lesson = get_object_or_404(Lesson, uid=lesson_uid)
+                lesson_title = lesson.title
+                course_uid = lesson.course.uid
+                
+                if lesson.video_file:
+                    try:
+                        import os
+                        if os.path.isfile(lesson.video_file.path):
+                            os.remove(lesson.video_file.path)
+                    except Exception as e:
+                        print(f"Error deleting lesson video file: {e}")
 
-            lesson.delete()
-            messages.success(request, f"✅ {lesson_title} removed successfully.")
-            return redirect('admin_view_course_content', course_uid=course_uid)
-        else:
-            messages.error(request, "Action not allowed. Please verify administrator credentials.")
+                lesson.delete()
+                messages.success(request, f"✅ {lesson_title} removed successfully.")
+                return redirect('admin_view_course_content', course_uid=course_uid)
+            else:
+                messages.error(request, "Action not allowed. Please verify administrator credentials.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not delete lesson: {str(e)}")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_resource_secure(request, resource_uid):
     from accounts.models import CourseResource
-    
-    if request.method == 'POST':
-        username = request.POST.get('admin_username', '').strip()
-        password = request.POST.get('admin_password', '')
-        
-        # Robust verification
-        admin_user = request.user
-        is_identity_match = (
-            username.lower() == admin_user.username.lower() or 
-            username.lower() == admin_user.email.lower()
-        )
-        
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
-            resource = get_object_or_404(CourseResource, uid=resource_uid)
-            resource_title = resource.title
-            course_uid = resource.course.uid
+    try:
+        if request.method == 'POST':
+            username = request.POST.get('admin_username', '').strip()
+            password = request.POST.get('admin_password', '')
             
-            # Wipe from Supabase
-            if resource.firebase_file_path:
-                try:
-                    from accounts.utils.storage_manager import StorageManager
-                    manager = StorageManager()
-                    manager.delete_supabase_file(resource.firebase_file_path)
-                except Exception as e:
-                    print(f"Error wiping Supabase file: {e}")
-                    
-            resource.delete()
-            messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
-            return redirect('admin_view_course_content', course_uid=course_uid)
-        else:
-            messages.error(request, "Action not allowed. Please verify administrator credentials.")
+            admin_user = request.user
+            is_identity_match = (
+                username.lower() == admin_user.username.lower() or 
+                username.lower() == admin_user.email.lower()
+            )
+            
+            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+                resource = get_object_or_404(CourseResource, uid=resource_uid)
+                resource_title = resource.title
+                course_uid = resource.course.uid
+                
+                if resource.firebase_file_path:
+                    try:
+                        from accounts.utils.storage_manager import StorageManager
+                        manager = StorageManager()
+                        manager.delete_supabase_file(resource.firebase_file_path)
+                    except Exception as e:
+                        print(f"Error wiping Supabase file: {e}")
+                        
+                resource.delete()
+                messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
+                return redirect('admin_view_course_content', course_uid=course_uid)
+            else:
+                messages.error(request, "Action not allowed. Please verify administrator credentials.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not delete resource: {str(e)}")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
@@ -1319,34 +1347,41 @@ def admin_update_order(request, item_type, uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def delete_user_admin(request, user_uid):
-    target_user = get_object_or_404(CustomUser, uid=user_uid)
+    try:
+        target_user = get_object_or_404(CustomUser, uid=user_uid)
+    except Exception:
+        messages.error(request, "⚠️ User not found.")
+        return redirect('manage_students')
     
     if request.method == 'POST':
-        username = request.POST.get('admin_username', '').strip()
-        password = request.POST.get('admin_password', '')
-        
-        # Robust verification
-        admin_user = request.user
-        is_identity_match = (
-            username.lower() == admin_user.username.lower() or 
-            username.lower() == admin_user.email.lower()
-        )
-        
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
-            user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
+        try:
+            username = request.POST.get('admin_username', '').strip()
+            password = request.POST.get('admin_password', '')
             
-            # Explicitly cleanup logs that don't cascade
-            ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
+            admin_user = request.user
+            is_identity_match = (
+                username.lower() == admin_user.username.lower() or 
+                username.lower() == admin_user.email.lower()
+            )
             
-            target_user.delete()
-            messages.success(request, f"✅ User {user_info} and all associated data permanently purged.")
-            
-            # Redirect back to appropriate list
+            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+                user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
+                
+                ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
+                
+                target_user.delete()
+                messages.success(request, f"✅ User {user_info} and all associated data permanently purged.")
+                
+                if target_user.user_type == 'TEACHER':
+                    return redirect('manage_teachers')
+                return redirect('manage_students')
+            else:
+                messages.error(request, "Action not allowed. Please verify administrator credentials.")
+        except Exception as e:
+            messages.error(request, f"⚠️ Could not delete user: {str(e)}")
             if target_user.user_type == 'TEACHER':
                 return redirect('manage_teachers')
             return redirect('manage_students')
-        else:
-            messages.error(request, "Action not allowed. Please verify administrator credentials.")
             
     return render(request, 'custom_admin/delete_user_confirm.html', {
         'target_user': target_user
@@ -1387,97 +1422,105 @@ def manage_deletion_requests(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def verify_deletion_request(request, request_uid):
-    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    if del_request.item_type == 'Lesson':
-        lesson = Lesson.objects.filter(id=del_request.item_id).first()
-        if lesson:
-            messages.info(request, f"ℹ️ Verifying request for {lesson.title}.")
-            return redirect('admin_view_course_content', course_uid=lesson.course.uid)
-    elif del_request.item_type == 'Course':
-        course = Course.objects.filter(id=del_request.item_id).first()
-        if course:
-            messages.info(request, f"ℹ️ Verifying request for {course.title}.")
-            return redirect('admin_view_course_content', course_uid=course.uid)
-    elif del_request.item_type == 'Resource':
-        from accounts.models import CourseResource
-        resource = CourseResource.objects.filter(id=del_request.item_id).first()
-        if resource:
-            messages.info(request, f"ℹ️ Verifying request for {resource.title}.")
-            return redirect('admin_view_course_content', course_uid=resource.course.uid)
-            
-    messages.error(request, "The item could not be found or verified.")
+    try:
+        del_request = get_object_or_404(DeletionRequest, uid=request_uid)
+        if del_request.item_type == 'Lesson':
+            lesson = Lesson.objects.filter(id=del_request.item_id).first()
+            if lesson:
+                messages.info(request, f"ℹ️ Verifying request for {lesson.title}.")
+                return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+        elif del_request.item_type == 'Course':
+            course = Course.objects.filter(id=del_request.item_id).first()
+            if course:
+                messages.info(request, f"ℹ️ Verifying request for {course.title}.")
+                return redirect('admin_view_course_content', course_uid=course.uid)
+        elif del_request.item_type == 'Resource':
+            from accounts.models import CourseResource
+            resource = CourseResource.objects.filter(id=del_request.item_id).first()
+            if resource:
+                messages.info(request, f"ℹ️ Verifying request for {resource.title}.")
+                return redirect('admin_view_course_content', course_uid=resource.course.uid)
+                
+        messages.error(request, "The item could not be found or verified.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not verify request: {str(e)}")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def approve_deletion_request(request, request_uid):
-    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    
-    if del_request.status != 'PENDING':
-        messages.error(request, "This request has already been processed.")
-        return redirect('manage_deletion_requests')
+    try:
+        del_request = get_object_or_404(DeletionRequest, uid=request_uid)
+        
+        if del_request.status != 'PENDING':
+            messages.error(request, "This request has already been processed.")
+            return redirect('manage_deletion_requests')
 
-    success_msg = f"{del_request.item_type} '{del_request.item_name}' deleted successfully."
-    
-    if del_request.item_type == 'Lesson':
-        lesson = Lesson.objects.filter(id=del_request.item_id).first()
-        if lesson:
-            lesson.delete()
-        else:
-            messages.warning(request, "Item already gone.")
-    elif del_request.item_type == 'Course':
-        course = Course.objects.filter(id=del_request.item_id).first()
-        if course:
-            course.status = 'DELETED'
-            course.is_approved = False
-            course.save()
-            success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
-        else:
-            messages.warning(request, "Item already gone.")
-    elif del_request.item_type == 'Resource':
-        from accounts.models import CourseResource
-        resource = CourseResource.objects.filter(id=del_request.item_id).first()
-        if resource:
-            from accounts.utils.storage_manager import StorageManager
-            from accounts.utils.cloudinary_helpers import delete_temp_image
-            try:
-                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                if resource.thumbnail_public_id:
-                    delete_temp_image(resource.thumbnail_public_id)
-            except Exception:
-                pass
-            resource.delete()
-        else:
-            messages.warning(request, "Resource already gone.")
+        success_msg = f"{del_request.item_type} '{del_request.item_name}' deleted successfully."
+        
+        if del_request.item_type == 'Lesson':
+            lesson = Lesson.objects.filter(id=del_request.item_id).first()
+            if lesson:
+                lesson.delete()
+            else:
+                messages.warning(request, "Item already gone.")
+        elif del_request.item_type == 'Course':
+            course = Course.objects.filter(id=del_request.item_id).first()
+            if course:
+                course.status = 'DELETED'
+                course.is_approved = False
+                course.save()
+                success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
+            else:
+                messages.warning(request, "Item already gone.")
+        elif del_request.item_type == 'Resource':
+            from accounts.models import CourseResource
+            resource = CourseResource.objects.filter(id=del_request.item_id).first()
+            if resource:
+                from accounts.utils.storage_manager import StorageManager
+                from accounts.utils.cloudinary_helpers import delete_temp_image
+                try:
+                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                    if resource.thumbnail_public_id:
+                        delete_temp_image(resource.thumbnail_public_id)
+                except Exception:
+                    pass
+                resource.delete()
+            else:
+                messages.warning(request, "Resource already gone.")
 
-    del_request.delete() # Free up space after processing
-    messages.success(request, f"✅ {success_msg}")
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
+        del_request.delete()
+        messages.success(request, f"✅ {success_msg}")
+        create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not process deletion request: {str(e)}")
     return redirect('manage_deletion_requests')
 
 
 @user_passes_test(is_admin, login_url='admin_login')
 def reject_deletion_request(request, request_uid):
-    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    
-    if del_request.status != 'PENDING':
-        messages.error(request, "This request has already been processed.")
-        return redirect('manage_deletion_requests')
-    
-    # If it's a Resource deletion request, restore the resource status to APPROVED
-    if del_request.item_type == 'Resource':
-        from accounts.models import CourseResource
-        resource = CourseResource.objects.filter(id=del_request.item_id).first()
-        if resource:
-            resource.status = 'APPROVED'
-            resource.save()
-    
-    del_request.status = 'REJECTED'
-    del_request.reviewed_by = request.user
-    del_request.reviewed_at = timezone.now()
-    del_request.save()
-    
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. The content remains live.")
-    messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Resource restored to Approved status.")
+    try:
+        del_request = get_object_or_404(DeletionRequest, uid=request_uid)
+        
+        if del_request.status != 'PENDING':
+            messages.error(request, "This request has already been processed.")
+            return redirect('manage_deletion_requests')
+        
+        if del_request.item_type == 'Resource':
+            from accounts.models import CourseResource
+            resource = CourseResource.objects.filter(id=del_request.item_id).first()
+            if resource:
+                resource.status = 'APPROVED'
+                resource.save()
+        
+        del_request.status = 'REJECTED'
+        del_request.reviewed_by = request.user
+        del_request.reviewed_at = timezone.now()
+        del_request.save()
+        
+        create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. The content remains live.")
+        messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Resource restored to Approved status.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not reject deletion request: {str(e)}")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1502,45 +1545,48 @@ def deleted_courses_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_permanent_delete_course_secure(request, course_uid):
-    if request.method == 'POST':
-        username = request.POST.get('admin_username', '').strip()
-        password = request.POST.get('admin_password', '')
-        
-        # Robust verification: Support both username and email (case-insensitive)
-        admin_user = request.user
-        is_identity_match = (
-            username.lower() == admin_user.username.lower() or 
-            username.lower() == admin_user.email.lower()
-        )
-        
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
-            course = get_object_or_404(Course, uid=course_uid, status='DELETED')
-            course_title = course.title
-            course.delete()
-            messages.success(request, f"✅ Course '{course_title}' has been PERMANENTLY deleted from the database.")
-            return redirect('deleted_courses')
-        else:
-            messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
+    try:
+        if request.method == 'POST':
+            username = request.POST.get('admin_username', '').strip()
+            password = request.POST.get('admin_password', '')
             
+            admin_user = request.user
+            is_identity_match = (
+                username.lower() == admin_user.username.lower() or 
+                username.lower() == admin_user.email.lower()
+            )
+            
+            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+                course = get_object_or_404(Course, uid=course_uid, status='DELETED')
+                course_title = course.title
+                course.delete()
+                messages.success(request, f"✅ Course '{course_title}' has been PERMANENTLY deleted from the database.")
+                return redirect('deleted_courses')
+            else:
+                messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not permanently delete course: {str(e)}")
+        
     return redirect(request.META.get('HTTP_REFERER', 'deleted_courses'))
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_restore_course(request, course_uid):
-    if request.method == 'POST':
-        course = get_object_or_404(Course, uid=course_uid, status='DELETED')
-        course_title = course.title
-        course.status = 'PUBLISHED'
-        course.is_approved = True
-        course.save()
-        
-        # Restore/Approve all lessons of this course so they are visible and playable
-        course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
-        
-        # Restore any deletion requests that were associated with this course
-        DeletionRequest.objects.filter(item_type='Course', item_id=course.id).delete()
-        
-        create_notification(course.teacher, f"Your course '{course_title}' has been successfully restored from the Recycle Bin and is now active!")
-        messages.success(request, f"✅ Course '{course_title}' has been successfully restored from the Recycle Bin.")
+    try:
+        if request.method == 'POST':
+            course = get_object_or_404(Course, uid=course_uid, status='DELETED')
+            course_title = course.title
+            course.status = 'PUBLISHED'
+            course.is_approved = True
+            course.save()
+            
+            course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
+            
+            DeletionRequest.objects.filter(item_type='Course', item_id=course.id).delete()
+            
+            create_notification(course.teacher, f"Your course '{course_title}' has been successfully restored from the Recycle Bin and is now active!")
+            messages.success(request, f"✅ Course '{course_title}' has been successfully restored from the Recycle Bin.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not restore course: {str(e)}")
         
     return redirect('deleted_courses')
 
