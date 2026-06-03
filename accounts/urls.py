@@ -56,6 +56,9 @@ urlpatterns = [
     path('verify-otp/', views.verify_otp, name='verify_otp'),
     path('reset-password/', views.reset_password, name='reset_password'),
     path('api/youtube/init-upload/', views.init_youtube_upload, name='init_youtube_upload'),
+    path('api/youtube/upload/<uuid:job_uid>/progress/', views.update_upload_progress, name='update_upload_progress'),
+    path('api/youtube/upload/<uuid:job_uid>/complete/', views.complete_youtube_upload, name='complete_youtube_upload'),
+    path('api/youtube/upload/<uuid:job_uid>/status/', views.get_upload_status, name='get_upload_status'),
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
     path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),
 ]

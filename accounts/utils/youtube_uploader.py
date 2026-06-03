@@ -130,6 +130,34 @@ def delete_youtube_video(video_id):
         raise
 
 
+def verify_youtube_video(video_id):
+    """Verify a video exists and is accessible on YouTube. Returns True/False."""
+    if not video_id:
+        return False
+    try:
+        resp = requests.head(
+            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return True
+        resp2 = requests.get(
+            f"https://www.googleapis.com/youtube/v3/videos?id={video_id}&part=id",
+            headers=None,
+            timeout=10
+        )
+        youtube = get_authenticated_service()
+        if not youtube:
+            return resp.status_code < 500
+        request = youtube.videos().list(part='id', id=video_id)
+        response = request.execute()
+        items = response.get('items', [])
+        return len(items) > 0
+    except Exception as e:
+        logger.error(f"YouTube verification error for {video_id}: {e}")
+        return False
+
+
 def create_resumable_upload_url(title, description, file_size=None):
     """
     Creates a YouTube resumable upload session and returns the upload URL.

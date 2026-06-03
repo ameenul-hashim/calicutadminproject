@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from django.db import models
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
-from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest
+from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, UploadJob
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control
 import re
@@ -1028,6 +1028,13 @@ def add_lesson(request, course_uid):
             youtube_video_id=youtube_video_id,
             youtube_upload_status='UPLOADED' if youtube_video_id else 'NOT_UPLOADED',
         )
+
+        job_uid = request.POST.get('job_uid', '')
+        if job_uid:
+            try:
+                UploadJob.objects.filter(uid=job_uid, teacher=request.user).update(lesson=lesson)
+            except Exception:
+                pass
 
         if youtube_video_id:
             from django.utils import timezone
@@ -2254,29 +2261,138 @@ def reset_password(request):
 @login_required
 @user_passes_test(lambda u: u.user_type == 'TEACHER')
 def init_youtube_upload(request):
-    """Creates a YouTube resumable upload session. Browser uploads the file directly."""
+    """Creates a YouTube resumable upload session + UploadJob. Browser uploads the file directly."""
     import json
     from django.http import JsonResponse
-    from django.views.decorators.csrf import csrf_exempt
+    from django.utils import timezone
 
     if request.method != 'POST':
-        return JsonResponse({'error': 'POST required'}, status=405)
+        return JsonResponse({'error': 'Invalid request'}, status=405)
 
     try:
         data = json.loads(request.body)
         title = data.get('title', '')
         description = data.get('description', '')
         file_size = data.get('file_size')
+        file_name = data.get('file_name', 'video.mp4')
 
         from .utils.youtube_uploader import create_resumable_upload_url
         upload_url = create_resumable_upload_url(title, description, file_size)
 
-        if upload_url:
-            return JsonResponse({'upload_url': upload_url})
-        return JsonResponse({'error': 'Failed to create upload session'}, status=500)
+        if not upload_url:
+            return JsonResponse({'error': 'Upload failed. Please try again.'}, status=500)
+
+        job = UploadJob.objects.create(
+            teacher=request.user,
+            title=title,
+            description=description,
+            file_size=file_size or 0,
+            file_name=file_name,
+            status='UPLOADING',
+            youtube_upload_url=upload_url,
+        )
+
+        return JsonResponse({'upload_url': upload_url, 'job_uid': str(job.uid)})
     except Exception as e:
         logger.error(f"init_youtube_upload error: {e}")
+        return JsonResponse({'error': 'Upload failed. Please try again.'}, status=500)
+
+
+@login_required
+@user_passes_test(lambda u: u.user_type == 'TEACHER')
+def update_upload_progress(request, job_uid):
+    """Teacher browser periodically reports upload progress to persist across refresh."""
+    from django.http import JsonResponse
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    job = get_object_or_404(UploadJob, uid=job_uid, teacher=request.user)
+
+    try:
+        data = json.loads(request.body)
+        pct = data.get('progress_percentage', 0)
+        job.progress_percentage = min(int(pct), 100)
+        if job.status == 'PENDING':
+            job.status = 'UPLOADING'
+        job.save(update_fields=['progress_percentage', 'status'])
+        return JsonResponse({'ok': True, 'progress_percentage': job.progress_percentage})
+    except Exception as e:
+        logger.error(f"update_upload_progress error: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(lambda u: u.user_type == 'TEACHER')
+def complete_youtube_upload(request, job_uid):
+    """Called after browser finishes uploading to YouTube. Verifies and finalizes."""
+    from django.http import JsonResponse
+    from django.utils import timezone
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    job = get_object_or_404(UploadJob, uid=job_uid, teacher=request.user)
+
+    try:
+        data = json.loads(request.body)
+        youtube_video_id = data.get('youtube_video_id', '').strip()
+        youtube_url = data.get('youtube_url', '').strip()
+
+        if not youtube_video_id:
+            job.status = 'FAILED'
+            job.error_message = 'Upload failed. Please try again.'
+            job.save(update_fields=['status', 'error_message'])
+            return JsonResponse({'error': 'Upload failed. Please try again.'}, status=400)
+
+        from .utils.youtube_uploader import verify_youtube_video
+        verified = verify_youtube_video(youtube_video_id)
+
+        if not verified:
+            job.status = 'FAILED'
+            job.error_message = 'Upload failed. Please try again.'
+            job.save(update_fields=['status', 'error_message'])
+            return JsonResponse({'error': 'Upload failed. Please try again.'}, status=400)
+
+        job.youtube_video_id = youtube_video_id
+        job.youtube_url = youtube_url or f'https://www.youtube.com/watch?v={youtube_video_id}'
+        job.status = 'COMPLETED'
+        job.progress_percentage = 100
+        job.completed_at = timezone.now()
+        job.save(update_fields=['youtube_video_id', 'youtube_url', 'status', 'progress_percentage', 'completed_at'])
+
+        return JsonResponse({
+            'ok': True,
+            'youtube_video_id': youtube_video_id,
+            'youtube_url': job.youtube_url,
+        })
+    except Exception as e:
+        logger.error(f"complete_youtube_upload error: {e}")
+        job.status = 'FAILED'
+        job.error_message = str(e)
+        job.save(update_fields=['status', 'error_message'])
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+@user_passes_test(lambda u: u.user_type == 'TEACHER')
+def get_upload_status(request, job_uid):
+    """Poll current upload status (for page refresh persistence)."""
+    from django.http import JsonResponse
+
+    job = get_object_or_404(UploadJob, uid=job_uid, teacher=request.user)
+    return JsonResponse({
+        'job_uid': str(job.uid),
+        'status': job.status,
+        'progress_percentage': job.progress_percentage,
+        'error_message': job.error_message,
+        'youtube_video_id': job.youtube_video_id,
+        'youtube_url': job.youtube_url,
+        'created_at': job.created_at.isoformat() if job.created_at else None,
+        'completed_at': job.completed_at.isoformat() if job.completed_at else None,
+    })
 
 
 from django.views.decorators.csrf import csrf_exempt

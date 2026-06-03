@@ -59,6 +59,9 @@
       }
     </script>
     <script>
+        var currentJobUid = null;
+        var progressPollTimer = null;
+
         function toggleVideoInput(mode) {
             const fileGroup = document.getElementById('fileUploadGroup');
             const urlGroup = document.getElementById('urlUploadGroup');
@@ -75,6 +78,45 @@
         }
         function getCSRFToken() {
             return document.querySelector('[name=csrfmiddlewaretoken]').value;
+        }
+        function reportProgress(jobUid, pct) {
+            fetch('/api/youtube/upload/' + jobUid + '/progress/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({ progress_percentage: pct })
+            }).catch(function() {});
+        }
+        function verifyAndComplete(jobUid, videoId) {
+            var youtubeUrl = 'https://www.youtube.com/watch?v=' + videoId;
+            return fetch('/api/youtube/upload/' + jobUid + '/complete/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify({
+                    youtube_video_id: videoId,
+                    youtube_url: youtubeUrl
+                })
+            }).then(function(r) { return r.json(); });
+        }
+        function startProgressPolling(jobUid) {
+            if (progressPollTimer) clearInterval(progressPollTimer);
+            progressPollTimer = setInterval(function() {
+                fetch('/api/youtube/upload/' + jobUid + '/status/')
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.status === 'FAILED') {
+                            document.getElementById('uploadStatus').textContent = 'Upload failed. Please try again.';
+                            document.getElementById('uploadStatus').style.color = '#ef4444';
+                            clearInterval(progressPollTimer);
+                            progressPollTimer = null;
+                        }
+                    }).catch(function() {});
+            }, 3000);
         }
         window.addEventListener('DOMContentLoaded', function() {
             var hasUrl = '{{ lesson.video_url|default:"" }}'.length > 0;
@@ -100,6 +142,8 @@
 
                 progressDiv.style.display = 'block';
                 progressText.textContent = 'Creating upload session...';
+                uploadStatus.textContent = '';
+                uploadStatus.style.color = '#94a3b8';
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Uploading to YouTube...';
 
@@ -112,58 +156,105 @@
                     body: JSON.stringify({
                         title: title,
                         description: 'Lesson: ' + title,
-                        file_size: file.size
+                        file_size: file.size,
+                        file_name: file.name
                     })
                 })
-                .then(r => r.json())
-                .then(data => {
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
                     if (!data.upload_url) {
-                        throw new Error(data.error || 'Failed to create upload session');
+                        throw new Error(data.error || 'Upload failed. Please try again.');
                     }
+                    currentJobUid = data.job_uid;
+                    document.getElementById('job_uid').value = currentJobUid;
+                    startProgressPolling(currentJobUid);
                     progressText.textContent = 'Uploading to YouTube...';
+                    var lastReportedPct = 0;
+                    var progressThrottle = 0;
                     const xhr = new XMLHttpRequest();
                     xhr.open('PUT', data.upload_url, true);
                     xhr.setRequestHeader('Content-Type', 'video/*');
                     xhr.upload.addEventListener('progress', function(ev) {
                         if (ev.lengthComputable) {
-                            const pct = Math.round(ev.loaded / ev.total * 100);
+                            var pct = Math.round(ev.loaded / ev.total * 100);
                             progressBar.style.width = pct + '%';
                             progressPercent.textContent = pct + '%';
+                            progressThrottle++;
+                            if (progressThrottle % 5 === 0 || pct >= 100) {
+                                lastReportedPct = pct;
+                                reportProgress(currentJobUid, pct);
+                            }
                         }
                     });
                     xhr.onload = function() {
                         if (xhr.status >= 200 && xhr.status < 300) {
+                            progressText.textContent = 'Verifying upload...';
+                            var result;
                             try {
-                                const result = JSON.parse(xhr.responseText);
-                                const videoId = result.id;
-                                document.getElementById('video_url').value = 'https://www.youtube.com/watch?v=' + videoId;
-                                document.getElementById('fileUploadGroup').style.display = 'none';
-                                document.querySelector('input[name="video_source"][value="url"]').checked = true;
-                                progressText.textContent = 'Upload complete!';
-                                progressBar.style.width = '100%';
-                                progressPercent.textContent = '100%';
-                                submitBtn.textContent = 'Saving lesson...';
-                                document.querySelector('form').submit();
+                                result = JSON.parse(xhr.responseText);
                             } catch(e) {
-                                uploadStatus.textContent = 'Error: Invalid response from YouTube';
+                                uploadStatus.textContent = 'Upload failed. Please try again.';
+                                uploadStatus.style.color = '#ef4444';
                                 submitBtn.disabled = false;
                                 submitBtn.textContent = 'Try Again';
+                                if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
+                                return;
                             }
+                            var videoId = result.id;
+                            if (!videoId) {
+                                uploadStatus.textContent = 'Upload failed. Please try again.';
+                                uploadStatus.style.color = '#ef4444';
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Try Again';
+                                if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
+                                return;
+                            }
+                            verifyAndComplete(currentJobUid, videoId).then(function(verifyResult) {
+                                if (verifyResult.ok) {
+                                    document.getElementById('video_url').value = verifyResult.youtube_url;
+                                    document.getElementById('fileUploadGroup').style.display = 'none';
+                                    document.querySelector('input[name="video_source"][value="url"]').checked = true;
+                                    progressText.textContent = 'Video uploaded successfully! Awaiting admin approval...';
+                                    progressBar.style.width = '100%';
+                                    progressPercent.textContent = '100%';
+                                    uploadStatus.textContent = '';
+                                    submitBtn.textContent = 'Saving lesson...';
+                                    if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
+                                    document.querySelector('form').submit();
+                                } else {
+                                    uploadStatus.textContent = 'Upload failed. Please try again.';
+                                    uploadStatus.style.color = '#ef4444';
+                                    submitBtn.disabled = false;
+                                    submitBtn.textContent = 'Try Again';
+                                    if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
+                                }
+                            }).catch(function() {
+                                uploadStatus.textContent = 'Upload failed. Please try again.';
+                                uploadStatus.style.color = '#ef4444';
+                                submitBtn.disabled = false;
+                                submitBtn.textContent = 'Try Again';
+                                if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
+                            });
                         } else {
-                            uploadStatus.textContent = 'Upload failed (HTTP ' + xhr.status + ')';
+                            uploadStatus.textContent = 'Upload failed. Please try again.';
+                            uploadStatus.style.color = '#ef4444';
                             submitBtn.disabled = false;
                             submitBtn.textContent = 'Try Again';
+                            if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
                         }
                     };
                     xhr.onerror = function() {
-                        uploadStatus.textContent = 'Network error during upload';
+                        uploadStatus.textContent = 'Upload failed. Please try again.';
+                        uploadStatus.style.color = '#ef4444';
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Try Again';
+                        if (progressPollTimer) { clearInterval(progressPollTimer); progressPollTimer = null; }
                     };
                     xhr.send(file);
                 })
-                .catch(err => {
-                    uploadStatus.textContent = 'Error: ' + err.message;
+                .catch(function() {
+                    uploadStatus.textContent = 'Upload failed. Please try again.';
+                    uploadStatus.style.color = '#ef4444';
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Try Again';
                 });
@@ -191,6 +282,7 @@
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="video_url" id="video_url" value="">
+                    <input type="hidden" name="job_uid" id="job_uid" value="">
                     <div class="input-group">
                         <label for="title">Lesson Title</label>
                         <input type="text" name="title" id="title" value="{{ lesson.title }}" required>
