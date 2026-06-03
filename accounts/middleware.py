@@ -195,11 +195,11 @@ class EnterpriseHardeningMiddleware:
 
     def __call__(self, request):
         # 1. PRE-PROCESS: Advanced Malware Scanning
-        if request.method == 'POST' and request.FILES:
+        # Signup area is exempt — view handles size (200KB) + file type per device checks.
+        if request.method == 'POST' and request.FILES and request.path not in ('/signup/', '/teacher/signup/'):
             for file_key in request.FILES:
                 uploaded_file = request.FILES[file_key]
-                is_signup = request.path in ('/signup/', '/teacher/signup/')
-                is_infected, reason = scanner.scan_file(uploaded_file, strict_pdf=is_signup)
+                is_infected, reason = scanner.scan_file(uploaded_file)
                 
                 if is_infected:
                     from django.shortcuts import redirect
@@ -234,17 +234,6 @@ class EnterpriseHardeningMiddleware:
                         'UNAUTHORIZED_EXTENSION': 'This file type is not allowed. Please upload a PDF, image, or document file.',
                         'HIGH_ENTROPY_ANOMALY': 'This file appears to be corrupted or obfuscated. Please upload a clean file.',
                         'MALFORMED_PDF_SIGNATURE': 'This PDF file appears to be corrupted. Please upload a valid PDF document.',
-                        'MALFORMED_PDF_STRUCTURE': 'This PDF is malformed or corrupted. Please upload a clean scanned document.',
-                        'PDF_TOO_MANY_PAGES': 'This PDF has too many pages. Identity proofs should be 1-2 pages only.',
-                        'PDF_CONTAINS_JAVASCRIPT': 'This PDF contains embedded scripts and is not allowed for security reasons.',
-                        'PDF_CONTAINS_LAUNCH_ACTION': 'This PDF contains launch actions and is not allowed.',
-                        'PDF_CONTAINS_OPEN_ACTION': 'This PDF contains auto-execute actions and is not allowed.',
-                        'PDF_CONTAINS_EMBEDDED_FILES': 'This PDF contains embedded attachments and is not allowed.',
-                        'PDF_CONTAINS_RICH_MEDIA': 'This PDF contains embedded media and is not allowed.',
-                        'PDF_CONTAINS_URI_ACTION': 'This PDF contains embedded links and is not allowed for security reasons.',
-                        'PDF_CONTAINS_TEXT_CONTENT': 'This PDF contains text content. Only scanned image documents (no selectable text) are accepted.',
-                        'PDF_NO_IMAGES_FOUND': 'This PDF does not contain any images. Please upload a scanned image document.',
-                        'PDF_SCAN_FAILED': 'This PDF could not be scanned for security. Please try a different file.',
                     }
                     msg = friendly_messages.get(reason, f'This file was rejected by security scanning. Please try a different file.')
                     messages.error(request, msg)
