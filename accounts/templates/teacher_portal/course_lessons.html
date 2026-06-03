@@ -50,7 +50,7 @@
     }
     
     .action-btn { background: none; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 700; padding: 0; }
-    .action-group { display: flex; gap: 1rem; padding-top: 0.75rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem; }
+    .action-group { display: flex; gap: 1rem; flex-wrap: wrap; padding-top: 0.75rem; border-top: 1px dashed #e2e8f0; margin-top: 0.5rem; }
 </style>
 
 {% if course.status == 'DRAFT' or course.status == 'REJECTED' or has_pending_content %}
