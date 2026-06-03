@@ -7,7 +7,8 @@ def pending_counts(request):
         if not request.user.is_authenticated:
             return {}
 
-        cache_key = f"pending_counts_{request.user.id}_{request.user.user_type}"
+        user = request.user
+        cache_key = f"pending_counts_{user.id}_{user.user_type}"
         try:
             cached_context = cache.get(cache_key)
             if cached_context:
@@ -19,10 +20,9 @@ def pending_counts(request):
             'is_admin_preview': request.session.get('student_view_unlocked', False)
         }
 
-        # Notification data — use user.id directly (no extra user lookup)
-        from accounts.utils.notification_helper import _get_user, get_notifications, get_unread_count
-        context['notifications'] = get_notifications(str(request.user.uid))[:10]
-        context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
+        from accounts.utils.notification_helper import get_notifications, get_unread_count
+        context['notifications'] = get_notifications(user_obj=user)[:10]
+        context['unread_notifications_count'] = get_unread_count(user_obj=user)
 
         if request.user.user_type == 'ADMIN':
             from accounts.models import CustomUser, Course, DeletionRequest

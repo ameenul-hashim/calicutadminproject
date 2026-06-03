@@ -62,6 +62,7 @@ class CustomUser(AbstractUser):
         indexes = [
             models.Index(fields=['user_type', 'status']),
             models.Index(fields=['phone_number', 'user_type']),
+            models.Index(fields=['status', 'user_type', '-date_joined']),
         ]
 
 class Course(models.Model):
@@ -113,6 +114,12 @@ class Course(models.Model):
             except ValueError:
                 pass
         return None
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['status', 'is_approved', '-created_at']),
+            models.Index(fields=['teacher', 'status', '-created_at']),
+        ]
 
     def __str__(self):
         return self.title
@@ -316,6 +323,9 @@ class EmailOTP(models.Model):
         ordering = ['-created_at']
         verbose_name = "Email OTP"
         verbose_name_plural = "Email OTPs"
+        indexes = [
+            models.Index(fields=['user', 'purpose', 'is_used']),
+        ]
 
     def is_expired(self):
         return timezone.now() > self.expires_at
@@ -339,6 +349,9 @@ class DeletionRequest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+        ]
 
     def __str__(self):
         return f"{self.item_type} deletion request by {self.teacher.username}"
