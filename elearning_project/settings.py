@@ -64,7 +64,7 @@ INSTALLED_APPS = [
     'custom_admin',
     'cloudinary_storage',
     'cloudinary',
-    'axes',  # Brute-force protection
+    # 'axes',  # Brute-force protection (add back in production)
 ]
 
 MIDDLEWARE = [
@@ -81,22 +81,13 @@ MIDDLEWARE = [
 ]
 
 MIDDLEWARE += [
-    'axes.middleware.AxesMiddleware',
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
 ]
 
 AUTHENTICATION_BACKENDS = [
-    'axes.backends.AxesBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
-
-# Axes Configuration (testing mode: 1-min lockout)
-AXES_FAILURE_LIMIT = 5
-AXES_LOCK_OUT_AT_FAILURE = True
-AXES_COOLOFF_TIME = 0.01667  # ~1 minute (in hours)
-AXES_LOCKOUT_TEMPLATE = 'accounts/lockout.html'
-AXES_RESET_ON_SUCCESS = True
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760  # 10MB
