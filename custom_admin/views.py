@@ -704,9 +704,8 @@ def analytics_view(request):
         context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
         
         return render(request, 'custom_admin/analytics.html', context)
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load analytics: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
@@ -733,9 +732,8 @@ def content_management_view(request):
             'page_obj': page_obj,
             'status_filter': status_filter
         })
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load content management: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
@@ -1149,9 +1147,8 @@ def pending_resources(request):
         from accounts.models import CourseResource
         resources = CourseResource.objects.filter(status='PENDING').select_related('course__teacher').order_by('-created_at')
         return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load pending resources: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
@@ -1181,9 +1178,8 @@ def admin_view_course_content(request, course_uid):
             'notifications': notifications,
             'unread_notifications_count': unread_count,
         })
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load course content: {str(e)}")
-        return redirect('admin_content')
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def storage_dashboard(request):
@@ -1213,11 +1209,8 @@ def storage_dashboard(request):
             'notifications': notifications,
             'unread_notifications_count': unread_count,
         })
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load storage dashboard: {str(e)}")
-        return redirect('admin_dashboard')
-
-
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_course_secure(request, course_uid):
@@ -1436,9 +1429,8 @@ def manage_deletion_requests(request):
             'notifications': notifications,
             'unread_notifications_count': unread_notifications_count
         })
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load deletion requests: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def verify_deletion_request(request, request_uid):
@@ -1563,9 +1555,8 @@ def deleted_courses_view(request):
             'notifications': notifications,
             'unread_notifications_count': unread_notifications_count
         })
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load deleted courses: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_permanent_delete_course_secure(request, course_uid):
@@ -1688,44 +1679,10 @@ def enterprise_monitor(request):
             'unread_notifications_count': get_unread_count(str(request.user.uid)),
         }
         return render(request, 'custom_admin/enterprise_monitor.html', context)
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load enterprise monitor: {str(e)}")
-        return redirect('admin_dashboard')
-
-@user_passes_test(is_admin, login_url='admin_login')
-def proxy_pdf_access(request, user_uid):
-    """Logs access and redirects to the signed PDF URL."""
-    target_user = get_object_or_404(CustomUser, uid=user_uid)
-
-    try:
-        pdf_url = target_user.proof_pdf_url
     except Exception:
-        pdf_url = None
-
-    if pdf_url:
-        # Log the access
-        try:
-            pdf_path = (
-                getattr(target_user, 'pdf_path', None)
-                or getattr(target_user, 'pdf_url', None)
-                or str(getattr(target_user, 'proof_pdf', None))
-                or "Legacy Path"
-            )
-            PDFAccessLog.objects.create(
-                user=request.user,
-                pdf_path=pdf_path,
-                ip_address=request.META.get('REMOTE_ADDR'),
-                user_agent=request.META.get('HTTP_USER_AGENT', '')
-            )
-        except Exception:
-            pass  # Never crash on log failure
-        return redirect(pdf_url)
-
-    messages.error(request, "PDF document not found or not yet uploaded.")
-    return redirect(request.META.get('HTTP_REFERER') or 'admin_dashboard')
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
-@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def system_audit_view(request):
     try:
         from django.conf import settings
@@ -1868,9 +1825,8 @@ def system_audit_view(request):
             'notifications': get_notifications(str(request.user.uid))[:10],
             'unread_notifications_count': get_unread_count(str(request.user.uid)),
         })
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load system audit: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1980,9 +1936,8 @@ def master_audit_summary_view(request):
         context['firebase_events_24h'] = fb_events[:20]
 
         return render(request, 'custom_admin/master_audit_summary.html', context)
-    except Exception as e:
-        messages.error(request, f"⚠️ Could not load audit summary: {str(e)}")
-        return redirect('admin_dashboard')
+    except Exception:
+        raise
 
 def generate_invoice_pdf_response(request, title, user_obj, items, balance, yesterday_balance, invoice_number, invoice_date, user_type_label):
     from reportlab.lib.pagesizes import A4
