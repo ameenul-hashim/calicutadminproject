@@ -210,7 +210,7 @@ class CourseResource(models.Model):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ['order', '-created_at']
+        ordering = ['-created_at']
 
 
     def __str__(self):
