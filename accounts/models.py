@@ -207,9 +207,11 @@ class CourseResource(models.Model):
     pending_file_extension = models.CharField(max_length=10, null=True, blank=True)
     pending_original_size = models.PositiveIntegerField(default=0)
     pending_compressed_size = models.PositiveIntegerField(default=0)
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['order', '-created_at']
+
 
     def __str__(self):
         return f"{self.title} - {self.get_category_display()}"
