@@ -63,6 +63,36 @@ def admin_login_view(request):
         password = request.POST.get('password')
         otp_code = request.POST.get('otp_code')
 
+        # 1. Check user existence
+        user_candidate = CustomUser.objects.filter(username=username).first()
+        if not user_candidate:
+            messages.error(request, "Account not found. Please check your username.")
+            return render(request, 'custom_admin/login.html')
+
+        # 2. Check if user is admin/staff
+        if user_candidate.user_type != 'ADMIN' and not user_candidate.is_superuser:
+            messages.error(request, "This login area is strictly for Administrators. Teachers and Students must use their respective portals.")
+            return render(request, 'custom_admin/login.html')
+
+        # 3. Check account status
+        if user_candidate.status == 'PENDING':
+            messages.warning(request, "Your account is PENDING approval. Super admin approval is required.")
+            return render(request, 'custom_admin/login.html')
+        elif user_candidate.status == 'REJECTED':
+            messages.error(request, "Your admin access was REJECTED. Contact super admin.")
+            return render(request, 'custom_admin/login.html')
+        elif user_candidate.status == 'BLOCKED':
+            messages.error(request, "Your admin account has been BLOCKED. Contact super admin.")
+            return render(request, 'custom_admin/login.html')
+
+        # 4. Check password
+        if not user_candidate.check_password(password):
+            from accounts.views import log_login_attempt as log_attempt
+            log_attempt(request, user_candidate, status='FAILED')
+            messages.error(request, "Incorrect password. Please try again.")
+            return render(request, 'custom_admin/login.html')
+
+        # 5. Authenticate
         user = authenticate(request, username=username, password=password)
         
         if user is not None and user.is_staff:
@@ -72,30 +102,24 @@ def admin_login_view(request):
                     from accounts.utils.totp_service import totp_service
                     if totp_service.verify_totp(user.totp_secret, otp_code):
                         login(request, user)
-                        request.session.set_expiry(0)  # Instantly expire session on browser close
+                        request.session.set_expiry(0)
                         log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated with 2FA")
                         return redirect('admin_dashboard')
                     else:
                         messages.error(request, "Invalid security code. Please try again.")
                         return render(request, 'custom_admin/login.html', {'otp_required': True, 'username': username, 'password': password})
                 else:
-                    # Trigger 2FA Step
                     return render(request, 'custom_admin/login.html', {'otp_required': True, 'username': username, 'password': password})
             else:
-                # No 2FA configured for this admin yet
                 login(request, user)
-                request.session.set_expiry(0)  # Instantly expire session on browser close
+                request.session.set_expiry(0)
                 log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated without 2FA (Legacy)")
                 return redirect('admin_dashboard')
         else:
-            try:
-                user_candidate = CustomUser.objects.filter(username=username).first()
-                if user_candidate:
-                    from accounts.views import log_login_attempt as log_attempt
-                    log_attempt(request, user_candidate, status='FAILED')
-            except Exception:
-                pass
-            messages.error(request, "Invalid admin credentials.")
+            from accounts.views import log_login_attempt as log_attempt
+            if user_candidate:
+                log_attempt(request, user_candidate, status='FAILED')
+            messages.error(request, "Authentication failed. Please check your credentials.")
             
     return render(request, 'custom_admin/login.html')
 
@@ -987,14 +1011,17 @@ def approve_resource(request, resource_uid):
     # 1. OPTIONAL: Compression Step on Approval
     if resource.resource_type == 'PDF' and teacher_original_path:
         try:
-            from accounts.utils.storage_manager import supabase as res_supabase
+            from accounts.utils.supabase_storage import get_client as get_res_client
             from accounts.utils.pdf_processor import process_pdf
             
             # Download original
             parts = teacher_original_path.split('/', 1)
             bucket_name = parts[0]
             p_in_b = parts[1] if len(parts) > 1 else teacher_original_path
-            original_bytes = res_supabase.storage.from_(bucket_name).download(p_in_b)
+            res_client = get_res_client(use_resource_project=True)
+            if not res_client:
+                raise Exception("Supabase resource client not available")
+            original_bytes = res_client.storage.from_(bucket_name).download(p_in_b)
             
             if original_bytes:
                 comp_bytes, _ = process_pdf(original_bytes)

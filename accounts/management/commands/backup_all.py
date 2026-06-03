@@ -246,7 +246,8 @@ class Command(BaseCommand):
             'generated_at': datetime.datetime.utcnow().isoformat(),
         }
 
-        from accounts.utils.supabase_storage import supabase as client1
+        from accounts.utils.supabase_storage import get_client
+        client1 = get_client(use_resource_project=False)
         bucket = os.getenv('SUPABASE_BUCKET', 'calicutadminpanelpdf')
         if client1:
             try:
@@ -260,7 +261,7 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stdout.write(self.style.WARNING(f"  Could not list proof PDFs: {e}"))
 
-        from accounts.utils.storage_manager import supabase as client2
+        client2 = get_client(use_resource_project=True)
         if client2:
             try:
                 files = client2.storage.from_('resources').list()
@@ -297,7 +298,8 @@ class Command(BaseCommand):
         self.stdout.write(f"  Manifest: {manifest_path}")
 
     def _backup_proof_pdfs(self, run_dir):
-        from accounts.utils.supabase_storage import supabase as client1
+        from accounts.utils.supabase_storage import get_client
+        client1 = get_client(use_resource_project=False)
         bucket = os.getenv('SUPABASE_BUCKET', 'calicutadminpanelpdf')
         if not client1:
             return
@@ -326,7 +328,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f"  Proof PDF backup failed: {e}"))
 
     def _backup_course_resources(self, run_dir):
-        from accounts.utils.storage_manager import supabase as client2
+        from accounts.utils.supabase_storage import get_client
+        client2 = get_client(use_resource_project=True)
         if not client2:
             return
         res_dir = os.path.join(run_dir, 'course_resources')
