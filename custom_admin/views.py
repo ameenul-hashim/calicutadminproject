@@ -5,23 +5,23 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils import timezone
-
-logger = logging.getLogger(__name__)
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
-from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
+from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, LoginHistory, AdminActivityLog
+from django.conf import settings
 from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
+from accounts.utils.supabase_storage import upload_pdf, get_signed_url as get_pdf_url
+
+logger = logging.getLogger(__name__)
 
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions."""
     try:
-        from accounts.models import AdminActivityLog
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
-        
         AdminActivityLog.objects.create(
             admin=request.user,
             action=action,
@@ -47,10 +47,6 @@ def admin_student_view_auth(request):
     request.session.modified = True
     messages.success(request, "Switched to Student View. You are now previewing the platform as a student.")
     return redirect('dashboard')
-
-
-
-
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_login_view(request):
