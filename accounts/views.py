@@ -107,9 +107,30 @@ def signup_view(request):
         else:
             print("[WARN] NO FILE")
 
-        # 1. Validation Logic
-        if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields are required. Please fill in every field to proceed.")
+        # Per-field validation with specific error messages
+        if not username:
+            messages.error(request, "Username is required.")
+            return render(request, 'accounts/signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not email:
+            messages.error(request, "Email address is required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+        if not fullname:
+            messages.error(request, "Full name is required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'phone_number': phone_number})
+        if not phone_number:
+            messages.error(request, "Contact number is required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+        if not password and not confirm_password:
+            messages.error(request, "Both password fields are required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not password:
+            messages.error(request, "Password field is required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not confirm_password:
+            messages.error(request, "Confirm password field is required.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not proof_file:
+            messages.error(request, "Please upload a verification document (PDF or Image).")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # Email format check
@@ -149,8 +170,19 @@ def signup_view(request):
         # File validation
         allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
         file_ext = os.path.splitext(proof_file.name.lower())[1]
+
+        # Laptop (non-mobile): only PDF allowed
+        if not is_mobile and file_ext != '.pdf':
+            messages.error(request, "On laptop, only PDF documents are allowed. Please use a mobile device for image uploads, or upload a PDF file.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
         if file_ext not in allowed_exts:
             messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
+            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        # PDF size check
+        if file_ext == '.pdf' and proof_file.size > 200 * 1024:
+            messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
@@ -169,11 +201,6 @@ def signup_view(request):
             from accounts.utils.supabase_storage import upload_user_proof
 
             if file_ext == '.pdf':
-                if proof_file.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
-                    return redirect('login')
-
                 print("[PDF] Uploading directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
@@ -233,9 +260,30 @@ def teacher_signup_view(request):
         else:
             print("[WARN] NO FILE")
 
-        # 1. Validation Logic
-        if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
-            messages.error(request, "All fields are required. Please fill in every field to proceed.")
+        # Per-field validation with specific error messages
+        if not username:
+            messages.error(request, "Username is required.")
+            return render(request, 'accounts/teacher_signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not email:
+            messages.error(request, "Email address is required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+        if not fullname:
+            messages.error(request, "Full name is required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'phone_number': phone_number})
+        if not phone_number:
+            messages.error(request, "Contact number is required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+        if not password and not confirm_password:
+            messages.error(request, "Both password fields are required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not password:
+            messages.error(request, "Password field is required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not confirm_password:
+            messages.error(request, "Confirm password field is required.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+        if not proof_file:
+            messages.error(request, "Please upload a qualification proof document (PDF or Image).")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # Email format check
@@ -275,8 +323,19 @@ def teacher_signup_view(request):
         # File validation
         allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
         file_ext = os.path.splitext(proof_file.name.lower())[1]
+
+        # Laptop (non-mobile): only PDF allowed
+        if not is_mobile and file_ext != '.pdf':
+            messages.error(request, "On laptop, only PDF documents are allowed. Please use a mobile device for image uploads, or upload a PDF file.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
         if file_ext not in allowed_exts:
             messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
+            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+
+        # PDF size check
+        if file_ext == '.pdf' and proof_file.size > 200 * 1024:
+            messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
@@ -295,11 +354,6 @@ def teacher_signup_view(request):
             from accounts.utils.supabase_storage import upload_user_proof
 
             if file_ext == '.pdf':
-                if proof_file.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
-                    return redirect('teacher_login')
-
                 print("[PDF] Uploading directly to Supabase...")
                 if not upload_user_proof(user, proof_file):
                     user.delete()
@@ -409,8 +463,14 @@ def login_view(request):
         username = request.POST.get('username')
         password = request.POST.get('password')
 
-        if not username or not password:
-            messages.error(request, "Please enter your username and password.")
+        if not username and not password:
+            messages.error(request, "Both username and password are required.")
+            return render(request, 'accounts/login.html')
+        if not username:
+            messages.error(request, "Username is required.")
+            return render(request, 'accounts/login.html')
+        if not password:
+            messages.error(request, "Password is required.")
             return render(request, 'accounts/login.html')
 
         # 1. Check if user exists
@@ -548,6 +608,16 @@ def teacher_login_view(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         password = request.POST.get('password')
+
+        if not username and not password:
+            messages.error(request, "Both username and password are required.")
+            return render(request, 'accounts/teacher_login.html')
+        if not username:
+            messages.error(request, "Username is required.")
+            return render(request, 'accounts/teacher_login.html')
+        if not password:
+            messages.error(request, "Password is required.")
+            return render(request, 'accounts/teacher_login.html')
 
         # Check for inactive/pending users FIRST because authenticate() returns None for them
         user_candidate = CustomUser.objects.filter(username=username).first()
@@ -1813,12 +1883,13 @@ def access_resource(request, resource_uid):
     
     # Fallback: stream file bytes directly from Supabase
     try:
-        from accounts.utils.storage_manager import supabase as res_supabase
-        if res_supabase and resource.firebase_file_path:
+        from accounts.utils.supabase_storage import get_client as get_res_client
+        res_client = get_res_client(use_resource_project=True)
+        if res_client and resource.firebase_file_path:
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
-            file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
+            file_bytes = res_client.storage.from_(bucket).download(path_in_bucket)
             if file_bytes:
                 ext = resource.file_extension or 'pdf'
                 response = HttpResponse(file_bytes, content_type=resource.mime_type or 'application/octet-stream')
@@ -1890,13 +1961,14 @@ def download_resource(request, resource_uid):
     
     # Fallback: stream file bytes through server (in-memory, for when signed URL fails)
     try:
-        from accounts.utils.storage_manager import StorageManager, supabase as res_supabase
-        if res_supabase and resource.firebase_file_path:
+        from accounts.utils.supabase_storage import get_client as get_res_client
+        res_client = get_res_client(use_resource_project=True)
+        if res_client and resource.firebase_file_path:
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
             
-            file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
+            file_bytes = res_client.storage.from_(bucket).download(path_in_bucket)
             if file_bytes:
                 content_type = resource.mime_type or 'application/octet-stream'
                 response = HttpResponse(file_bytes, content_type=content_type)
@@ -1972,6 +2044,17 @@ def forgot_password(request):
     if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
+
+        # Both fields required
+        if not username and not email:
+            messages.error(request, "Both username and email are required.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        if not username:
+            messages.error(request, "Username is required.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        if not email:
+            messages.error(request, "Email address is required.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
         
         # Security: Verify both username and email belong to the same user
         user = None
@@ -2081,6 +2164,16 @@ def reset_password(request):
     if request.method == 'POST':
         new_password = request.POST.get('new_password')
         confirm_password = request.POST.get('confirm_password')
+
+        if not new_password and not confirm_password:
+            messages.error(request, "Both password fields are required.")
+            return render(request, 'accounts/reset_password.html', {'user': user})
+        if not new_password:
+            messages.error(request, "New password is required.")
+            return render(request, 'accounts/reset_password.html', {'user': user})
+        if not confirm_password:
+            messages.error(request, "Confirm password is required.")
+            return render(request, 'accounts/reset_password.html', {'user': user})
         
         if new_password != confirm_password:
             messages.error(request, "Passwords do not match.")
