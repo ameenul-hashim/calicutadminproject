@@ -99,20 +99,16 @@ def upload_pdf(destination_path_or_file, file_content=None, filename=None):
             client.storage.from_(bucket_name).upload(
                 path=destination_path,
                 file=file_content,
-                file_options={
-                    "content-type": "application/pdf",
-                    "upsert": True # Boolean for better compatibility
-                }
+                file_options={"content-type": "application/pdf", "upsert": "true"}
             )
         except Exception as e:
-            # Fallback to resource client if main fails and it's a different project
+            logger.error(f"Main client upload failed: {e}")
             r_client = get_client(use_resource_project=True)
             if r_client and r_client != client:
                 logger.info("Main client upload failed. Retrying with Resource client...")
                 r_client.storage.from_("resources").upload(
-                    path=destination_path,
-                    file=file_content,
-                    file_options={"content-type": "application/pdf", "upsert": True}
+                    path=destination_path, file=file_content,
+                    file_options={"content-type": "application/pdf", "upsert": "true"}
                 )
                 return f"resources/{destination_path}"
             raise e
@@ -213,12 +209,22 @@ def upload_user_proof(instance, pdf_file):
         role_folder = instance.user_type.lower()
         destination_path = f"documents/{role_folder}/user_{instance.id}_{instance.uid}.pdf"
 
+        print(f"[UPLOAD] Destination: {destination_path}, Content size: {len(content)} bytes")
+        client = get_client()
+        print(f"[UPLOAD] Supabase client initialized: {client is not None}")
+        print(f"[UPLOAD] Bucket name: {bucket_name}")
+
         path = upload_pdf(destination_path, content, destination_path)
         if not path:
+            print(f"[UPLOAD] upload_pdf returned None for {instance.username}")
             logger.error(f"Supabase Upload Failed for user {instance.username}. Path returned None.")
             return None
 
+        print(f"[UPLOAD] Success for {instance.username}: {path}")
         return path
     except Exception as e:
+        import traceback
+        print(f"[UPLOAD] Error in upload_user_proof for {instance.username}: {e}")
+        print(traceback.format_exc())
         logger.error(f"Error in upload_user_proof for user {instance.username}: {str(e)}")
         return None
