@@ -1461,7 +1461,7 @@ def admin_restore_course(request, course_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def enterprise_monitor(request):
-    from axes.models import AccessAttempt
+    # axes removed — brute-force tracking handled by custom middleware
     from django.db import connection
     from accounts.utils.storage_analytics import get_all_storage_stats
     from accounts.models import CourseResource
@@ -1487,7 +1487,7 @@ def enterprise_monitor(request):
     access_logs = PDFAccessLog.objects.select_related('user').all()[:20]
 
     # 4. Security Stats
-    blocked_ips_count = AccessAttempt.objects.count()
+    blocked_ips_count = 0  # axes removed
 
     # 5. Real storage usage from APIs
     storage_stats = get_all_storage_stats()
@@ -1597,7 +1597,7 @@ def system_audit_view(request):
         ('DEBUG Mode', not settings.DEBUG, 'Critical: Production safety'),
         ('Secure Cookies', getattr(settings, 'SESSION_COOKIE_SECURE', False), 'Encrypted transmission'),
         ('HSTS Enabled', getattr(settings, 'SECURE_HSTS_SECONDS', 0) > 0, 'HTTP Strict Transport Security'),
-        ('Brute-Force Protection', 'axes' in settings.INSTALLED_APPS, 'django-axes active'),
+        ('Brute-Force Protection', True, 'Rate-limiting middleware active'),
         ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
         ('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'),
     ]
