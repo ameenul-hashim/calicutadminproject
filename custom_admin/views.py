@@ -1147,7 +1147,7 @@ def admin_view_course_content(request, course_uid):
         course = get_object_or_404(Course, uid=course_uid)
         
         active_lessons = course.lessons.exclude(status='REJECTED').order_by('order')
-        rejected_lessons = course.lessons.filter(status='REJECTED').order_by('-updated_at')
+        rejected_lessons = course.lessons.filter(status='REJECTED').order_by('-created_at')
         
         from accounts.models import CourseResource
         
