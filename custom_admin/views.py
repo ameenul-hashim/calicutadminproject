@@ -557,177 +557,185 @@ def create_teacher_admin(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def analytics_view(request):
-    from django.core.cache import cache
-    
-    # Try to get cached stats
-    cache_key = 'admin_analytics_stats'
-    context = cache.get(cache_key)
-    
-    if not context:
-        # Stats Cards: Show only active/approved platform content
-        total_students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE').count()
-        total_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
-        total_courses = Course.objects.filter(status='PUBLISHED').count()
-        total_lessons = Lesson.objects.filter(is_approved=True).count()
-
-        # Month-wise Data
-        def get_monthly_data(queryset, date_field='created_at'):
-            data = [0] * 12
-            counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=Count('id'))
-            for entry in counts:
-                if entry['month']:
-                    data[entry['month']-1] = entry['count']
-            return data
-
-        student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE'), 'date_joined')
-        teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE'), 'date_joined')
-        course_data = get_monthly_data(Course.objects.filter(status='PUBLISHED'))
-
-        # Approval Stats
-        approval_stats = {
-            'approved': Course.objects.filter(status='PUBLISHED').count(),
-            'rejected': Course.objects.filter(status='REJECTED').count(),
-            'pending': Course.objects.filter(status='PENDING').count(),
-        }
+    try:
+        from django.core.cache import cache
         
-        # Teacher Performance
-        top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
-        teacher_performance_labels = [t.username for t in top_teachers]
-        teacher_performance_data = [t.num_courses for t in top_teachers]
+        # Try to get cached stats
+        cache_key = 'admin_analytics_stats'
+        context = cache.get(cache_key)
         
-        # Course Enrollments
-        top_courses = Course.objects.annotate(
-            enrollment_count=Count('enrollments'),
-            lesson_count=Count('lessons')
-        ).select_related('teacher').order_by('-enrollment_count')[:5]
+        if not context:
+            # Stats Cards: Show only active/approved platform content
+            total_students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE').count()
+            total_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
+            total_courses = Course.objects.filter(status='PUBLISHED').count()
+            total_lessons = Lesson.objects.filter(is_approved=True).count()
 
-        # Top Educators (by total approved content uploaded)
-        top_educators = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
-            total_content=Count('courses__lessons', filter=Q(courses__lessons__is_approved=True)),
-            total_courses=Count('courses', filter=Q(courses__status='PUBLISHED'), distinct=True)
-        ).order_by('-total_content')[:5]
+            # Month-wise Data
+            def get_monthly_data(queryset, date_field='created_at'):
+                data = [0] * 12
+                counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=Count('id'))
+                for entry in counts:
+                    if entry['month']:
+                        data[entry['month']-1] = entry['count']
+                return data
 
-        pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
-        pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
+            student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE'), 'date_joined')
+            teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE'), 'date_joined')
+            course_data = get_monthly_data(Course.objects.filter(status='PUBLISHED'))
 
-        context = {
-            'total_students': total_students,
-            'total_teachers': total_teachers,
-            'total_courses': total_courses,
-            'total_lessons': total_lessons,
-            'student_data': student_data,
-            'teacher_data': teacher_data,
-            'course_data': course_data,
-            'approval_stats': approval_stats,
-            'teacher_perf_labels': teacher_performance_labels,
-            'teacher_perf_data': teacher_performance_data,
-            'top_courses': top_courses,
-            'top_educators': top_educators,
-            'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            'pending_students_count': pending_students_count,
-            'pending_teachers_count': pending_teachers_count,
+            # Approval Stats
+            approval_stats = {
+                'approved': Course.objects.filter(status='PUBLISHED').count(),
+                'rejected': Course.objects.filter(status='REJECTED').count(),
+                'pending': Course.objects.filter(status='PENDING').count(),
+            }
+            
+            # Teacher Performance
+            top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
+            teacher_performance_labels = [t.username for t in top_teachers]
+            teacher_performance_data = [t.num_courses for t in top_teachers]
+            
+            # Course Enrollments
+            top_courses = Course.objects.annotate(
+                enrollment_count=Count('enrollments'),
+                lesson_count=Count('lessons')
+            ).select_related('teacher').order_by('-enrollment_count')[:5]
+
+            # Top Educators (by total approved content uploaded)
+            top_educators = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
+                total_content=Count('courses__lessons', filter=Q(courses__lessons__is_approved=True)),
+                total_courses=Count('courses', filter=Q(courses__status='PUBLISHED'), distinct=True)
+            ).order_by('-total_content')[:5]
+
+            pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
+            pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
+
+            context = {
+                'total_students': total_students,
+                'total_teachers': total_teachers,
+                'total_courses': total_courses,
+                'total_lessons': total_lessons,
+                'student_data': student_data,
+                'teacher_data': teacher_data,
+                'course_data': course_data,
+                'approval_stats': approval_stats,
+                'teacher_perf_labels': teacher_performance_labels,
+                'teacher_perf_data': teacher_performance_data,
+                'top_courses': top_courses,
+                'top_educators': top_educators,
+                'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                'pending_students_count': pending_students_count,
+                'pending_teachers_count': pending_teachers_count,
+            }
+
+            # Cache for 15 minutes (900 seconds)
+            cache.set(cache_key, context, 900)
+
+        # Real-time user status counts (from database, not cached)
+        all_users = CustomUser.objects.all()
+        context['user_status'] = {
+            'active': all_users.filter(status='ACTIVE').count(),
+            'blocked': all_users.filter(status='BLOCKED').count(),
+            'rejected': all_users.filter(status='REJECTED').count(),
+            'pending': all_users.filter(status='PENDING').count(),
         }
 
-        # Cache for 15 minutes (900 seconds)
-        cache.set(cache_key, context, 900)
+        # --- Daily User Entries from LoginHistory ---
+        from django.db.models.functions import TruncDate
+        from datetime import timedelta
+        today = timezone.now().date()
+        yesterday = today - timedelta(days=1)
 
-    # Real-time user status counts (from database, not cached)
-    all_users = CustomUser.objects.all()
-    context['user_status'] = {
-        'active': all_users.filter(status='ACTIVE').count(),
-        'blocked': all_users.filter(status='BLOCKED').count(),
-        'rejected': all_users.filter(status='REJECTED').count(),
-        'pending': all_users.filter(status='PENDING').count(),
-    }
+        # Today / Yesterday quick stats
+        context['today_entries'] = LoginHistory.objects.filter(
+            timestamp__date=today, status='SUCCESS'
+        ).values('user').distinct().count()
+        context['yesterday_entries'] = LoginHistory.objects.filter(
+            timestamp__date=yesterday, status='SUCCESS'
+        ).values('user').distinct().count()
 
-    # --- Daily User Entries from LoginHistory ---
-    from django.db.models.functions import TruncDate
-    from datetime import timedelta
-    today = timezone.now().date()
-    yesterday = today - timedelta(days=1)
+        # This Week (last 7 days)
+        week_ago = today - timedelta(days=6)
+        week_logins = LoginHistory.objects.filter(
+            timestamp__date__gte=week_ago, status='SUCCESS'
+        ).annotate(
+            login_date=TruncDate('timestamp')
+        ).values('login_date').annotate(
+            count=Count('user', distinct=True)
+        ).order_by('login_date')
+        week_counts = {r['login_date']: r['count'] for r in week_logins}
+        week_labels = []
+        week_data = []
+        for i in range(7):
+            d = week_ago + timedelta(days=i)
+            week_labels.append(d.strftime('%a'))
+            week_data.append(week_counts.get(d, 0))
+        context['week_daily_labels'] = week_labels
+        context['week_daily_data'] = week_data
 
-    # Today / Yesterday quick stats
-    context['today_entries'] = LoginHistory.objects.filter(
-        timestamp__date=today, status='SUCCESS'
-    ).values('user').distinct().count()
-    context['yesterday_entries'] = LoginHistory.objects.filter(
-        timestamp__date=yesterday, status='SUCCESS'
-    ).values('user').distinct().count()
+        # Last 30 Days
+        month_ago = today - timedelta(days=29)
+        month_logins = LoginHistory.objects.filter(
+            timestamp__date__gte=month_ago, status='SUCCESS'
+        ).annotate(
+            login_date=TruncDate('timestamp')
+        ).values('login_date').annotate(
+            count=Count('user', distinct=True)
+        ).order_by('login_date')
+        month_counts = {r['login_date']: r['count'] for r in month_logins}
+        month_labels = []
+        month_data = []
+        for i in range(30):
+            d = month_ago + timedelta(days=i)
+            month_labels.append(d.strftime('%d %b'))
+            month_data.append(month_counts.get(d, 0))
+        context['daily_visit_labels'] = month_labels
+        context['daily_visit_data'] = month_data
 
-    # This Week (last 7 days)
-    week_ago = today - timedelta(days=6)
-    week_logins = LoginHistory.objects.filter(
-        timestamp__date__gte=week_ago, status='SUCCESS'
-    ).annotate(
-        login_date=TruncDate('timestamp')
-    ).values('login_date').annotate(
-        count=Count('user', distinct=True)
-    ).order_by('login_date')
-    week_counts = {r['login_date']: r['count'] for r in week_logins}
-    week_labels = []
-    week_data = []
-    for i in range(7):
-        d = week_ago + timedelta(days=i)
-        week_labels.append(d.strftime('%a'))
-        week_data.append(week_counts.get(d, 0))
-    context['week_daily_labels'] = week_labels
-    context['week_daily_data'] = week_data
+        # Cleanup: delete LoginHistory records older than 30 days
+        cutoff = today - timedelta(days=30)
+        deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
+        if deleted_count[0]:
+            logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
 
-    # Last 30 Days
-    month_ago = today - timedelta(days=29)
-    month_logins = LoginHistory.objects.filter(
-        timestamp__date__gte=month_ago, status='SUCCESS'
-    ).annotate(
-        login_date=TruncDate('timestamp')
-    ).values('login_date').annotate(
-        count=Count('user', distinct=True)
-    ).order_by('login_date')
-    month_counts = {r['login_date']: r['count'] for r in month_logins}
-    month_labels = []
-    month_data = []
-    for i in range(30):
-        d = month_ago + timedelta(days=i)
-        month_labels.append(d.strftime('%d %b'))
-        month_data.append(month_counts.get(d, 0))
-    context['daily_visit_labels'] = month_labels
-    context['daily_visit_data'] = month_data
-
-    # Cleanup: delete LoginHistory records older than 30 days
-    cutoff = today - timedelta(days=30)
-    deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
-    if deleted_count[0]:
-        logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
-
-    # These shouldn't be cached as they are user-specific/time-sensitive
-    context['notifications'] = get_notifications(str(request.user.uid))[:10]
-    context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
-    
-    return render(request, 'custom_admin/analytics.html', context)
+        # These shouldn't be cached as they are user-specific/time-sensitive
+        context['notifications'] = get_notifications(str(request.user.uid))[:10]
+        context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
+        
+        return render(request, 'custom_admin/analytics.html', context)
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load analytics: {str(e)}")
+        return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def content_management_view(request):
-    status_filter = request.GET.get('status', 'PUBLISHED')
-    # Never show REJECTED in default/ALL view — they are permanently deleted on rejection now
-    courses = Course.objects.exclude(status='REJECTED').annotate(
-        total_lessons_count=Count('lessons'),
-        approved_lessons_count=Count('lessons', filter=Q(lessons__is_approved=True))
-    ).select_related('teacher').prefetch_related('lessons')
-    
-    if status_filter != 'ALL':
-        courses = courses.filter(status=status_filter)
-    
-    courses = courses.order_by('-created_at')
+    try:
+        status_filter = request.GET.get('status', 'PUBLISHED')
+        # Never show REJECTED in default/ALL view — they are permanently deleted on rejection now
+        courses = Course.objects.exclude(status='REJECTED').annotate(
+            total_lessons_count=Count('lessons'),
+            approved_lessons_count=Count('lessons', filter=Q(lessons__is_approved=True))
+        ).select_related('teacher').prefetch_related('lessons')
+        
+        if status_filter != 'ALL':
+            courses = courses.filter(status=status_filter)
+        
+        courses = courses.order_by('-created_at')
 
-    # Pagination
-    from django.core.paginator import Paginator
-    paginator = Paginator(courses, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    return render(request, 'custom_admin/content_management.html', {
-        'courses': page_obj,
-        'page_obj': page_obj,
-        'status_filter': status_filter
-    })
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(courses, 20)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        return render(request, 'custom_admin/content_management.html', {
+            'courses': page_obj,
+            'page_obj': page_obj,
+            'status_filter': status_filter
+        })
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load content management: {str(e)}")
+        return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
@@ -1137,9 +1145,13 @@ def reject_resource(request, resource_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_resources(request):
-    from accounts.models import CourseResource
-    resources = CourseResource.objects.filter(status='PENDING').select_related('course__teacher').order_by('-created_at')
-    return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
+    try:
+        from accounts.models import CourseResource
+        resources = CourseResource.objects.filter(status='PENDING').select_related('course__teacher').order_by('-created_at')
+        return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load pending resources: {str(e)}")
+        return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
@@ -1175,31 +1187,35 @@ def admin_view_course_content(request, course_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def storage_dashboard(request):
-    from accounts.utils.storage_analytics import get_all_storage_stats
-    from accounts.models import CourseResource
+    try:
+        from accounts.utils.storage_analytics import get_all_storage_stats
+        from accounts.models import CourseResource
 
-    stats = get_all_storage_stats()
-    sr = stats.get('supabase_resources', {})
-    resources = CourseResource.objects.filter(is_deleted=False)
-    total_mb = (sr.get('usage_mb', 0) or 0)
-    total_count = sr.get('total_files', 0)
-    max_mb = 1000
-    usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
-    avg_bytes = (sr.get('usage_bytes', 0) / total_count) if total_count else 0
+        stats = get_all_storage_stats()
+        sr = stats.get('supabase_resources', {})
+        resources = CourseResource.objects.filter(is_deleted=False)
+        total_mb = (sr.get('usage_mb', 0) or 0)
+        total_count = sr.get('total_files', 0)
+        max_mb = 1000
+        usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
+        avg_bytes = (sr.get('usage_bytes', 0) / total_count) if total_count else 0
 
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_count = get_unread_count(str(request.user.uid))
-    
-    return render(request, 'custom_admin/storage_dashboard.html', {
-        'stats': stats,
-        'resources': resources.order_by('-created_at')[:50],
-        'total_mb': round(total_mb, 2),
-        'total_count': total_count,
-        'avg_bytes': round(avg_bytes),
-        'usage_percent': round(usage_percent, 1),
-        'notifications': notifications,
-        'unread_notifications_count': unread_count,
-    })
+        notifications = get_notifications(str(request.user.uid))[:10]
+        unread_count = get_unread_count(str(request.user.uid))
+        
+        return render(request, 'custom_admin/storage_dashboard.html', {
+            'stats': stats,
+            'resources': resources.order_by('-created_at')[:50],
+            'total_mb': round(total_mb, 2),
+            'total_count': total_count,
+            'avg_bytes': round(avg_bytes),
+            'usage_percent': round(usage_percent, 1),
+            'notifications': notifications,
+            'unread_notifications_count': unread_count,
+        })
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load storage dashboard: {str(e)}")
+        return redirect('admin_dashboard')
 
 
 
@@ -1407,18 +1423,22 @@ def admin_logout(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
-    # Show ALL pending requests (Lesson, Course, and Resource types)
-    pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
-    # Also show recently processed requests for admin reference
-    history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_notifications_count = get_unread_count(str(request.user.uid))
-    return render(request, 'custom_admin/manage_deletion_requests.html', {
-        'requests': pending_requests,
-        'history_requests': history_requests,
-        'notifications': notifications,
-        'unread_notifications_count': unread_notifications_count
-    })
+    try:
+        # Show ALL pending requests (Lesson, Course, and Resource types)
+        pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
+        # Also show recently processed requests for admin reference
+        history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
+        notifications = get_notifications(str(request.user.uid))[:10]
+        unread_notifications_count = get_unread_count(str(request.user.uid))
+        return render(request, 'custom_admin/manage_deletion_requests.html', {
+            'requests': pending_requests,
+            'history_requests': history_requests,
+            'notifications': notifications,
+            'unread_notifications_count': unread_notifications_count
+        })
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load deletion requests: {str(e)}")
+        return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def verify_deletion_request(request, request_uid):
@@ -1525,23 +1545,27 @@ def reject_deletion_request(request, request_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def deleted_courses_view(request):
-    courses = Course.objects.filter(status='DELETED').select_related('teacher').order_by('-created_at')
-    
-    # Pagination
-    from django.core.paginator import Paginator
-    paginator = Paginator(courses, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    notifications = get_notifications(str(request.user.uid))[:10]
-    unread_notifications_count = get_unread_count(str(request.user.uid))
-    
-    return render(request, 'custom_admin/deleted_courses.html', {
-        'courses': page_obj,
-        'page_obj': page_obj,
-        'notifications': notifications,
-        'unread_notifications_count': unread_notifications_count
-    })
+    try:
+        courses = Course.objects.filter(status='DELETED').select_related('teacher').order_by('-created_at')
+        
+        # Pagination
+        from django.core.paginator import Paginator
+        paginator = Paginator(courses, 20)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+        
+        notifications = get_notifications(str(request.user.uid))[:10]
+        unread_notifications_count = get_unread_count(str(request.user.uid))
+        
+        return render(request, 'custom_admin/deleted_courses.html', {
+            'courses': page_obj,
+            'page_obj': page_obj,
+            'notifications': notifications,
+            'unread_notifications_count': unread_notifications_count
+        })
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load deleted courses: {str(e)}")
+        return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_permanent_delete_course_secure(request, course_uid):
@@ -1593,77 +1617,80 @@ def admin_restore_course(request, course_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def enterprise_monitor(request):
-    # axes removed — brute-force tracking handled by custom middleware
-    from django.db import connection
-    from accounts.utils.storage_analytics import get_all_storage_stats
-    from accounts.models import CourseResource
-    import time
-
-    # 1. Real backup status
-    last_backup_time = "Never"
-    last_backup_status = "STALE"
-    success_file = os.path.join(settings.BASE_DIR, "last_success.txt")
-    if os.path.exists(success_file):
-        with open(success_file, "r") as f:
-            last_backup_time = f.read().strip()
-            last_backup_status = "HEALTHY"
-
-    # Check if Google Drive is configured
-    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
-        os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'utils', 'token.json'))
-
-    # 2. Failed backups count
-    failed_backups = CourseResource.objects.filter(backup_status='FAILED').count()
-
-    # 3. Access Logs
-    access_logs = PDFAccessLog.objects.select_related('user').all()[:20]
-
-    # 4. Security Stats
-    blocked_ips_count = 0  # axes removed
-
-    # 5. Real storage usage from APIs
-    storage_stats = get_all_storage_stats()
-    ss = storage_stats.get('supabase_signup', {})
-    sr = storage_stats.get('supabase_resources', {})
-    cl = storage_stats.get('cloudinary', {})
-    db_stats = storage_stats.get('database', {})
-    real_storage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0) + cl.get('storage_used_mb', 0) + db_stats.get('usage_mb', 0)
-    supabase_limit_mb = ss.get('limit_mb', 1024) + sr.get('limit_mb', 1024)
-
-    # 6. Real DB latency
-    db_latency = 0
     try:
-        start = time.time()
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT 1")
-        db_latency = round((time.time() - start) * 1000, 1)
-    except Exception:
+        from django.db import connection
+        from accounts.utils.storage_analytics import get_all_storage_stats
+        from accounts.models import CourseResource
+        import time
+
+        # 1. Real backup status
+        last_backup_time = "Never"
+        last_backup_status = "STALE"
+        success_file = os.path.join(settings.BASE_DIR, "last_success.txt")
+        if os.path.exists(success_file):
+            with open(success_file, "r") as f:
+                last_backup_time = f.read().strip()
+                last_backup_status = "HEALTHY"
+
+        # Check if Google Drive is configured
+        drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
+            os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'utils', 'token.json'))
+
+        # 2. Failed backups count
+        failed_backups = CourseResource.objects.filter(backup_status='FAILED').count()
+
+        # 3. Access Logs
+        access_logs = PDFAccessLog.objects.select_related('user').all()[:20]
+
+        # 4. Security Stats
+        blocked_ips_count = 0  # axes removed
+
+        # 5. Real storage usage from APIs
+        storage_stats = get_all_storage_stats()
+        ss = storage_stats.get('supabase_signup', {})
+        sr = storage_stats.get('supabase_resources', {})
+        cl = storage_stats.get('cloudinary', {})
+        db_stats = storage_stats.get('database', {})
+        real_storage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0) + cl.get('storage_used_mb', 0) + db_stats.get('usage_mb', 0)
+        supabase_limit_mb = ss.get('limit_mb', 1024) + sr.get('limit_mb', 1024)
+
+        # 6. Real DB latency
         db_latency = 0
+        try:
+            start = time.time()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT 1")
+            db_latency = round((time.time() - start) * 1000, 1)
+        except Exception:
+            db_latency = 0
 
-    # 7. Real stats
-    student_count = CustomUser.objects.filter(user_type='STUDENT').count()
-    teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
-    course_count = Course.objects.count()
+        # 7. Real stats
+        student_count = CustomUser.objects.filter(user_type='STUDENT').count()
+        teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
+        course_count = Course.objects.count()
 
-    context = {
-        'last_backup_time': last_backup_time,
-        'last_backup_status': last_backup_status,
-        'drive_configured': drive_configured,
-        'failed_backups': failed_backups,
-        'access_logs': access_logs,
-        'blocked_ips_count': blocked_ips_count,
-        'avg_response_time': db_latency,
-        'storage_usage': round(real_storage_mb, 1),
-        'supabase_limit_mb': supabase_limit_mb,
-        'student_count': student_count,
-        'teacher_count': teacher_count,
-        'course_count': course_count,
-        'supabase_files': ss.get('total_files', 0) + sr.get('total_files', 0),
-        'cloudinary_files': cl.get('total_files', 0),
-        'notifications': get_notifications(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count(str(request.user.uid)),
-    }
-    return render(request, 'custom_admin/enterprise_monitor.html', context)
+        context = {
+            'last_backup_time': last_backup_time,
+            'last_backup_status': last_backup_status,
+            'drive_configured': drive_configured,
+            'failed_backups': failed_backups,
+            'access_logs': access_logs,
+            'blocked_ips_count': blocked_ips_count,
+            'avg_response_time': db_latency,
+            'storage_usage': round(real_storage_mb, 1),
+            'supabase_limit_mb': supabase_limit_mb,
+            'student_count': student_count,
+            'teacher_count': teacher_count,
+            'course_count': course_count,
+            'supabase_files': ss.get('total_files', 0) + sr.get('total_files', 0),
+            'cloudinary_files': cl.get('total_files', 0),
+            'notifications': get_notifications(str(request.user.uid))[:10],
+            'unread_notifications_count': get_unread_count(str(request.user.uid)),
+        }
+        return render(request, 'custom_admin/enterprise_monitor.html', context)
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load enterprise monitor: {str(e)}")
+        return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def proxy_pdf_access(request, user_uid):
@@ -1700,256 +1727,262 @@ def proxy_pdf_access(request, user_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def system_audit_view(request):
-    """Real-time system audit with dynamic capacity analysis (no Firebase dependency)."""
-    from django.conf import settings
-    from django.db import connection
-    import time
-
-    # 1. Real-time DB size
-    db_bytes = 0
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT pg_database_size(current_database())")
-            db_bytes = cursor.fetchone()[0] or 0
-    except Exception:
+        from django.conf import settings
+        from django.db import connection
+        import time
+
+        # 1. Real-time DB size
         db_bytes = 0
-    db_total_mb = round(db_bytes / (1024 * 1024), 2)
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_database_size(current_database())")
+                db_bytes = cursor.fetchone()[0] or 0
+        except Exception:
+            db_bytes = 0
+        db_total_mb = round(db_bytes / (1024 * 1024), 2)
 
-    # 2. Real storage stats from Supabase + Cloudinary APIs
-    from accounts.utils.storage_analytics import get_all_storage_stats
-    storage_stats = get_all_storage_stats()
+        # 2. Real storage stats from Supabase + Cloudinary APIs
+        from accounts.utils.storage_analytics import get_all_storage_stats
+        storage_stats = get_all_storage_stats()
 
-    # 3. Base Stats from DB
-    student_count = CustomUser.objects.filter(user_type='STUDENT').count()
-    teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
-    course_count = Course.objects.count()
+        # 3. Base Stats from DB
+        student_count = CustomUser.objects.filter(user_type='STUDENT').count()
+        teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
+        course_count = Course.objects.count()
 
-    # 4. Security Configuration Audit (real checks)
-    sec_checks = [
-        ('DEBUG Mode', not settings.DEBUG, 'Critical: Production safety'),
-        ('Secure Cookies', getattr(settings, 'SESSION_COOKIE_SECURE', False), 'Encrypted transmission'),
-        ('HSTS Enabled', getattr(settings, 'SECURE_HSTS_SECONDS', 0) > 0, 'HTTP Strict Transport Security'),
-        ('Brute-Force Protection', True, 'Rate-limiting middleware active'),
-        ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
-        ('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'),
-    ]
-    security_checks = []
-    for name, passed, desc in sec_checks:
-        security_checks.append({'name': name, 'status': 'PASS' if passed else 'FAIL', 'description': desc})
+        # 4. Security Configuration Audit (real checks)
+        sec_checks = [
+            ('DEBUG Mode', not settings.DEBUG, 'Critical: Production safety'),
+            ('Secure Cookies', getattr(settings, 'SESSION_COOKIE_SECURE', False), 'Encrypted transmission'),
+            ('HSTS Enabled', getattr(settings, 'SECURE_HSTS_SECONDS', 0) > 0, 'HTTP Strict Transport Security'),
+            ('Brute-Force Protection', True, 'Rate-limiting middleware active'),
+            ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
+            ('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'),
+        ]
+        security_checks = []
+        for name, passed, desc in sec_checks:
+            security_checks.append({'name': name, 'status': 'PASS' if passed else 'FAIL', 'description': desc})
 
-    # 5. Infrastructure status from real data
-    infra_list = []
-    # PostgreSQL
-    pg_status = 'ONLINE' if db_total_mb > 0 or student_count > 0 else 'OFFLINE'
-    infra_list.append({'service': 'PostgreSQL', 'status': pg_status, 'detail': f'{db_total_mb} MB used'})
-    # Supabase Signup
-    ss = storage_stats.get('supabase_signup', {})
-    sb_status = 'ONLINE' if ss.get('status') == 'connected' else 'OFFLINE'
-    infra_list.append({'service': 'Supabase (Proof PDFs)', 'status': sb_status, 'detail': f"{ss.get('total_files', 0)} files, {ss.get('usage_mb', 0)} MB"})
-    # Supabase Resources
-    sr = storage_stats.get('supabase_resources', {})
-    sr_status = 'ONLINE' if sr.get('status') == 'connected' else 'OFFLINE'
-    infra_list.append({'service': 'Supabase (Resources)', 'status': sr_status, 'detail': f"{sr.get('total_files', 0)} files, {sr.get('usage_mb', 0)} MB"})
-    # Cloudinary
-    cl = storage_stats.get('cloudinary', {})
-    cl_status = 'ONLINE' if cl.get('status') == 'connected' else 'OFFLINE'
-    infra_list.append({'service': 'Cloudinary', 'status': cl_status, 'detail': f"{cl.get('total_files', 0)} images, {cl.get('storage_used_mb', 0)} MB"})
-    # Backup
-    backup_file = os.path.join(settings.BASE_DIR, 'last_success.txt')
-    bk_status = 'ONLINE' if os.path.exists(backup_file) else 'STALE'
-    bk_last = 'Never'
-    if os.path.exists(backup_file):
-        with open(backup_file) as f:
-            bk_last = f.read().strip()
-    infra_list.append({'service': 'Backup', 'status': bk_status, 'detail': f'Last: {bk_last}'})
+        # 5. Infrastructure status from real data
+        infra_list = []
+        # PostgreSQL
+        pg_status = 'ONLINE' if db_total_mb > 0 or student_count > 0 else 'OFFLINE'
+        infra_list.append({'service': 'PostgreSQL', 'status': pg_status, 'detail': f'{db_total_mb} MB used'})
+        # Supabase Signup
+        ss = storage_stats.get('supabase_signup', {})
+        sb_status = 'ONLINE' if ss.get('status') == 'connected' else 'OFFLINE'
+        infra_list.append({'service': 'Supabase (Proof PDFs)', 'status': sb_status, 'detail': f"{ss.get('total_files', 0)} files, {ss.get('usage_mb', 0)} MB"})
+        # Supabase Resources
+        sr = storage_stats.get('supabase_resources', {})
+        sr_status = 'ONLINE' if sr.get('status') == 'connected' else 'OFFLINE'
+        infra_list.append({'service': 'Supabase (Resources)', 'status': sr_status, 'detail': f"{sr.get('total_files', 0)} files, {sr.get('usage_mb', 0)} MB"})
+        # Cloudinary
+        cl = storage_stats.get('cloudinary', {})
+        cl_status = 'ONLINE' if cl.get('status') == 'connected' else 'OFFLINE'
+        infra_list.append({'service': 'Cloudinary', 'status': cl_status, 'detail': f"{cl.get('total_files', 0)} images, {cl.get('storage_used_mb', 0)} MB"})
+        # Backup
+        backup_file = os.path.join(settings.BASE_DIR, 'last_success.txt')
+        bk_status = 'ONLINE' if os.path.exists(backup_file) else 'STALE'
+        bk_last = 'Never'
+        if os.path.exists(backup_file):
+            with open(backup_file) as f:
+                bk_last = f.read().strip()
+        infra_list.append({'service': 'Backup', 'status': bk_status, 'detail': f'Last: {bk_last}'})
 
-    # 6. DB forensic logs
-    from accounts.models import AdminActivityLog, LoginHistory
-    admin_logs = AdminActivityLog.objects.all().select_related('admin')[:5]
-    login_logs = LoginHistory.objects.all().select_related('user')[:5]
-    combined_logs = []
-    for log in admin_logs:
-        combined_logs.append({'username': log.admin.username if log.admin else 'SYSTEM', 'action': log.action, 'time': log.timestamp})
-    for log in login_logs:
-        combined_logs.append({'username': log.user.username, 'action': f"Login {log.status}", 'time': log.timestamp})
-    combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:10]
+        # 6. DB forensic logs
+        from accounts.models import AdminActivityLog, LoginHistory
+        admin_logs = AdminActivityLog.objects.all().select_related('admin')[:5]
+        login_logs = LoginHistory.objects.all().select_related('user')[:5]
+        combined_logs = []
+        for log in admin_logs:
+            combined_logs.append({'username': log.admin.username if log.admin else 'SYSTEM', 'action': log.action, 'time': log.timestamp})
+        for log in login_logs:
+            combined_logs.append({'username': log.user.username, 'action': f"Login {log.status}", 'time': log.timestamp})
+        combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:10]
 
-    # 7. Compute real scores
-    all_online = all(s.get('status') == 'ONLINE' for s in infra_list)
-    security_score = sum(1 for c in sec_checks if c[1]) * 100 // len(sec_checks)
-    infra_score = 100 if all_online else max(round(sum(100 for s in infra_list if s['status'] == 'ONLINE') / len(infra_list)), 50)
-    storage_score = min(100, max(0, round(100 - (cl.get('storage_percent', 0) + ss.get('percent', 0)) / 2)))
-    backup_score = 100 if bk_status == 'ONLINE' else 50
-    supabase_total_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
+        # 7. Compute real scores
+        all_online = all(s.get('status') == 'ONLINE' for s in infra_list)
+        security_score = sum(1 for c in sec_checks if c[1]) * 100 // len(sec_checks)
+        infra_score = 100 if all_online else max(round(sum(100 for s in infra_list if s['status'] == 'ONLINE') / len(infra_list)), 50)
+        storage_score = min(100, max(0, round(100 - (cl.get('storage_percent', 0) + ss.get('percent', 0)) / 2)))
+        backup_score = 100 if bk_status == 'ONLINE' else 50
+        supabase_total_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
 
-    # --- Check backup config ---
-    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
-        os.path.exists(os.path.join(settings.BASE_DIR, 'accounts', 'utils', 'token.json'))
-    from accounts.models import CourseResource
-    failed_backup_count = CourseResource.objects.filter(backup_status='FAILED').count()
-    supabase_usage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
-    supabase_limit_mb = ss.get('limit_mb', 1024)
-    supabase_near_capacity = supabase_usage_mb > (supabase_limit_mb * 0.8)
+        # --- Check backup config ---
+        drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
+            os.path.exists(os.path.join(settings.BASE_DIR, 'accounts', 'utils', 'token.json'))
+        from accounts.models import CourseResource
+        failed_backup_count = CourseResource.objects.filter(backup_status='FAILED').count()
+        supabase_usage_mb = ss.get('usage_mb', 0) + sr.get('usage_mb', 0)
+        supabase_limit_mb = ss.get('limit_mb', 1024)
+        supabase_near_capacity = supabase_usage_mb > (supabase_limit_mb * 0.8)
 
-    # --- Free-tier cleanup: auto-purge old records ---
-    from datetime import timedelta
-    cutoff_90 = timezone.now() - timedelta(days=90)
-    cutoff_30 = timezone.now() - timedelta(days=30)
-    try:
-        deleted_login = LoginHistory.objects.filter(timestamp__lt=cutoff_30).delete()
-        deleted_adminlog = AdminActivityLog.objects.filter(timestamp__lt=cutoff_90).delete()
-        if deleted_login[0] or deleted_adminlog[0]:
-            logger.info(f"Cleanup: {deleted_login[0]} LoginHistory, {deleted_adminlog[0]} AdminActivityLog")
-    except Exception:
-        pass
+        # --- Free-tier cleanup: auto-purge old records ---
+        from datetime import timedelta
+        cutoff_90 = timezone.now() - timedelta(days=90)
+        cutoff_30 = timezone.now() - timedelta(days=30)
+        try:
+            deleted_login = LoginHistory.objects.filter(timestamp__lt=cutoff_30).delete()
+            deleted_adminlog = AdminActivityLog.objects.filter(timestamp__lt=cutoff_90).delete()
+            if deleted_login[0] or deleted_adminlog[0]:
+                logger.info(f"Cleanup: {deleted_login[0]} LoginHistory, {deleted_adminlog[0]} AdminActivityLog")
+        except Exception:
+            pass
 
-    audit_results = {
-        'timestamp': timezone.now(),
-        'security_checks': security_checks,
-        'infrastructure': infra_list,
-        'storage_metrics': {
-            'total_students': student_count,
-            'total_teachers': teacher_count,
-            'total_courses': course_count,
-            'db_total_mb': db_total_mb,
-            'supabase_total_mb': round(supabase_total_mb, 2),
-            'supabase_limit_mb': ss.get('limit_mb', 1024),
-            'cloudinary_images': cl.get('total_files', 0),
-            'cloudinary_mb': cl.get('storage_used_mb', 0),
-            'pdf_cap': '200KB (Enforced)',
-        },
-        'scores': {
-            'security': security_score,
-            'infrastructure': infra_score,
-            'storage': storage_score,
-            'backup': backup_score,
-        },
-        'overall_status': 'SECURE' if security_score >= 80 else 'ELEVATED',
-        'firebase_events_24h': 0,
-        'firebase_counters': {},
-        'firebase_events': [],
-        'drive_configured': drive_configured,
-        'failed_backup_count': failed_backup_count,
-        'supabase_near_capacity': supabase_near_capacity,
-        'supabase_usage_mb': round(supabase_usage_mb, 2),
-        'supabase_limit_mb': supabase_limit_mb,
-    }
+        audit_results = {
+            'timestamp': timezone.now(),
+            'security_checks': security_checks,
+            'infrastructure': infra_list,
+            'storage_metrics': {
+                'total_students': student_count,
+                'total_teachers': teacher_count,
+                'total_courses': course_count,
+                'db_total_mb': db_total_mb,
+                'supabase_total_mb': round(supabase_total_mb, 2),
+                'supabase_limit_mb': ss.get('limit_mb', 1024),
+                'cloudinary_images': cl.get('total_files', 0),
+                'cloudinary_mb': cl.get('storage_used_mb', 0),
+                'pdf_cap': '200KB (Enforced)',
+            },
+            'scores': {
+                'security': security_score,
+                'infrastructure': infra_score,
+                'storage': storage_score,
+                'backup': backup_score,
+            },
+            'overall_status': 'SECURE' if security_score >= 80 else 'ELEVATED',
+            'firebase_events_24h': 0,
+            'firebase_counters': {},
+            'firebase_events': [],
+            'drive_configured': drive_configured,
+            'failed_backup_count': failed_backup_count,
+            'supabase_near_capacity': supabase_near_capacity,
+            'supabase_usage_mb': round(supabase_usage_mb, 2),
+            'supabase_limit_mb': supabase_limit_mb,
+        }
 
-    return render(request, 'custom_admin/system_audit_hub.html', {
-        'audit': audit_results,
-        'audit_logs': combined_logs,
-        'notifications': get_notifications(str(request.user.uid))[:10],
-        'unread_notifications_count': get_unread_count(str(request.user.uid)),
-    })
+        return render(request, 'custom_admin/system_audit_hub.html', {
+            'audit': audit_results,
+            'audit_logs': combined_logs,
+            'notifications': get_notifications(str(request.user.uid))[:10],
+            'unread_notifications_count': get_unread_count(str(request.user.uid)),
+        })
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load system audit: {str(e)}")
+        return redirect('admin_dashboard')
 
 
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def master_audit_summary_view(request):
-    """Executive SOC, SIEM & Observability Dashboard — powered by Firebase RTDB."""
-    from django.conf import settings
-    from django.db import connection
-    from accounts.utils.firebase_audit import run_infrastructure_check, get_security_counters, get_recent_events
-    import time
+    try:
+        from django.conf import settings
+        from django.db import connection
+        from accounts.utils.firebase_audit import run_infrastructure_check, get_security_counters, get_recent_events
+        import time
 
-    # 1. Base Executive Metrics (DB, lightweight)
-    student_count = CustomUser.objects.filter(user_type='STUDENT').count()
-    teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
-    course_count = Course.objects.filter(status='PUBLISHED').count()
+        # 1. Base Executive Metrics (DB, lightweight)
+        student_count = CustomUser.objects.filter(user_type='STUDENT').count()
+        teacher_count = CustomUser.objects.filter(user_type='TEACHER').count()
+        course_count = Course.objects.filter(status='PUBLISHED').count()
 
-    # 2. SIEM counters from Firebase (real-time)
-    fb_counters = get_security_counters()
-    fb_events = get_recent_events(hours=24)
-    malware_blocked = fb_counters.get('malware_blocked', 0)
-    travel_anomalies = fb_counters.get('travel_anomalies', 0)
-    failed_logins = fb_counters.get('failed_login', 0)
+        # 2. SIEM counters from Firebase (real-time)
+        fb_counters = get_security_counters()
+        fb_events = get_recent_events(hours=24)
+        malware_blocked = fb_counters.get('malware_blocked', 0)
+        travel_anomalies = fb_counters.get('travel_anomalies', 0)
+        failed_logins = fb_counters.get('failed_login', 0)
 
-    # 3. Infrastructure Observability (live heartbeat from Firebase)
-    infra = run_infrastructure_check()
-    pg_latency = infra.get('postgres', {}).get('latency', 'N/A')
+        # 3. Infrastructure Observability (live heartbeat from Firebase)
+        infra = run_infrastructure_check()
+        pg_latency = infra.get('postgres', {}).get('latency', 'N/A')
 
-    # 4. Threat level based on real Firebase counters
-    threat_score = malware_blocked * 3 + travel_anomalies * 2 + failed_logins * 0.5
-    if threat_score >= 20:
-        threat_level = 'ELEVATED'
-    elif threat_score >= 10:
-        threat_level = 'MODERATE'
-    else:
-        threat_level = 'LOW'
+        # 4. Threat level based on real Firebase counters
+        threat_score = malware_blocked * 3 + travel_anomalies * 2 + failed_logins * 0.5
+        if threat_score >= 20:
+            threat_level = 'ELEVATED'
+        elif threat_score >= 10:
+            threat_level = 'MODERATE'
+        else:
+            threat_level = 'LOW'
 
-    # 5. Storage & Capacity (real stats)
-    from accounts.utils.storage_analytics import get_all_storage_stats
-    real_stats = get_all_storage_stats()
-    db_size_mb = real_stats.get('database', {}).get('usage_mb', 0)
-    supabase_total_mb = real_stats.get('supabase_signup', {}).get('usage_mb', 0) + real_stats.get('supabase_resources', {}).get('usage_mb', 0)
-    cloudinary_images = real_stats.get('cloudinary', {}).get('total_files', 0)
-    cloudinary_mb = real_stats.get('cloudinary', {}).get('storage_used_mb', 0)
+        # 5. Storage & Capacity (real stats)
+        from accounts.utils.storage_analytics import get_all_storage_stats
+        real_stats = get_all_storage_stats()
+        db_size_mb = real_stats.get('database', {}).get('usage_mb', 0)
+        supabase_total_mb = real_stats.get('supabase_signup', {}).get('usage_mb', 0) + real_stats.get('supabase_resources', {}).get('usage_mb', 0)
+        cloudinary_images = real_stats.get('cloudinary', {}).get('total_files', 0)
+        cloudinary_mb = real_stats.get('cloudinary', {}).get('storage_used_mb', 0)
 
-    # 6. Billing Safety Audit
-    from accounts.utils.billing_safety import billing_guard
-    billing_status = billing_guard.get_billing_status()
+        # 6. Billing Safety Audit
+        from accounts.utils.billing_safety import billing_guard
+        billing_status = billing_guard.get_billing_status()
 
-    # 7. Dynamic scores
-    sec_score = max(round(100 - threat_score), 60)
-    overall = round((sec_score + 98 + 98 + 100) / 4)
+        # 7. Dynamic scores
+        sec_score = max(round(100 - threat_score), 60)
+        overall = round((sec_score + 98 + 98 + 100) / 4)
 
-    context = {
-        'timestamp': timezone.now(),
-        'scores': {
-            'security': sec_score,
-            'scalability': 98,
-            'recovery': 98,
-            'billing_safety': 100,
-            'overall': overall,
-        },
-        'billing': billing_status,
-        'siem': {
-            'total_malware_blocked': malware_blocked,
-            'travel_anomalies': travel_anomalies,
-            'brute_force_attempts': failed_logins,
-            'active_threat_level': threat_level,
-            'firebase_events_24h': len(fb_events),
-            'waf_status': 'HARDENED',
-            'ips_status': 'ENFORCED',
-        },
-        'observability': {
-            'db_latency': f"{pg_latency}ms",
-            'redis_status': 'SYNCED',
-            'worker_queue': 'IDLE',
-            'request_tracing': 'ACTIVE',
-            'error_rate': '0.01%',
-            'uptime': '99.99%',
-        },
-        'cdn_analytics': {
-            'video_optimization': 'f_auto,q_auto',
-            'signed_urls': 'ENFORCED',
-            'cache_hit_rate': '94.2%',
-            'bandwidth_saved': '65%',
-        },
-        'capacity': {
-            'db_growth_mb': f"{db_size_mb} MB",
-            'supabase_volume': f"{supabase_total_mb} MB",
-            'cloudinary_images': cloudinary_images,
-            'cloudinary_mb': cloudinary_mb,
-            'max_students_capacity': 50000,
-            'worker_saturation': '12%',
-        },
-        'recovery': {
-            'restore_readiness': '100%',
-            'last_sync_integrity': 'VERIFIED (MD5)',
-            'rto': '10 Minutes',
-            'rpo': '24 Hours',
-        },
-        'verdict': 'ULTIMATE ENTERPRISE CERTIFIED',
-    }
+        context = {
+            'timestamp': timezone.now(),
+            'scores': {
+                'security': sec_score,
+                'scalability': 98,
+                'recovery': 98,
+                'billing_safety': 100,
+                'overall': overall,
+            },
+            'billing': billing_status,
+            'siem': {
+                'total_malware_blocked': malware_blocked,
+                'travel_anomalies': travel_anomalies,
+                'brute_force_attempts': failed_logins,
+                'active_threat_level': threat_level,
+                'firebase_events_24h': len(fb_events),
+                'waf_status': 'HARDENED',
+                'ips_status': 'ENFORCED',
+            },
+            'observability': {
+                'db_latency': f"{pg_latency}ms",
+                'redis_status': 'SYNCED',
+                'worker_queue': 'IDLE',
+                'request_tracing': 'ACTIVE',
+                'error_rate': '0.01%',
+                'uptime': '99.99%',
+            },
+            'cdn_analytics': {
+                'video_optimization': 'f_auto,q_auto',
+                'signed_urls': 'ENFORCED',
+                'cache_hit_rate': '94.2%',
+                'bandwidth_saved': '65%',
+            },
+            'capacity': {
+                'db_growth_mb': f"{db_size_mb} MB",
+                'supabase_volume': f"{supabase_total_mb} MB",
+                'cloudinary_images': cloudinary_images,
+                'cloudinary_mb': cloudinary_mb,
+                'max_students_capacity': 50000,
+                'worker_saturation': '12%',
+            },
+            'recovery': {
+                'restore_readiness': '100%',
+                'last_sync_integrity': 'VERIFIED (MD5)',
+                'rto': '10 Minutes',
+                'rpo': '24 Hours',
+            },
+            'verdict': 'ULTIMATE ENTERPRISE CERTIFIED',
+        }
 
-    # 8. Attack Timeline from DB (source of truth) + Firebase events
-    from accounts.models import AdminActivityLog, LoginHistory
-    context['audit_logs'] = AdminActivityLog.objects.all().select_related('admin', 'target_user').order_by('-timestamp')[:15]
-    context['login_logs'] = LoginHistory.objects.all().select_related('user').order_by('-timestamp')[:15]
-    context['firebase_events_24h'] = fb_events[:20]
+        # 8. Attack Timeline from DB (source of truth) + Firebase events
+        from accounts.models import AdminActivityLog, LoginHistory
+        context['audit_logs'] = AdminActivityLog.objects.all().select_related('admin', 'target_user').order_by('-timestamp')[:15]
+        context['login_logs'] = LoginHistory.objects.all().select_related('user').order_by('-timestamp')[:15]
+        context['firebase_events_24h'] = fb_events[:20]
 
-    return render(request, 'custom_admin/master_audit_summary.html', context)
+        return render(request, 'custom_admin/master_audit_summary.html', context)
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not load audit summary: {str(e)}")
+        return redirect('admin_dashboard')
 
 def generate_invoice_pdf_response(request, title, user_obj, items, balance, yesterday_balance, invoice_number, invoice_date, user_type_label):
     from reportlab.lib.pagesizes import A4
