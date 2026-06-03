@@ -203,16 +203,18 @@ def upload_user_proof(instance, pdf_file):
     """
     High-level helper to upload a user's verification PDF to Supabase.
     Updates the model instance with the path and sets status to PENDING.
+    Saves under teacher/ or student/ subfolder based on user_type.
     """
     try:
         # 1. Read and validate content
         content = pdf_file.read()
         pdf_file.seek(0)
         
-        # 2. Define destination path
-        destination_path = f"documents/user_{instance.id}_{instance.uid}.pdf"
+        # 2. Define destination path with role-based subfolder
+        role_folder = instance.user_type.lower()  # 'teacher' or 'student'
+        destination_path = f"documents/{role_folder}/user_{instance.id}_{instance.uid}.pdf"
         
-        # 3. Perform upload
+        # 3. Perform upload (uses main Supabase client — the first account)
         path = upload_pdf(destination_path, content, destination_path)
         if not path:
             logger.error(f"❌ Supabase Upload Failed for user {instance.username}. Path returned None.")
