@@ -13,13 +13,32 @@ url: str = os.getenv("SUPABASE_URL")
 key: str = os.getenv("SUPABASE_KEY")
 bucket_name: str = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
 
-# Initialize client
-supabase: Client = None
+# Initialize clients
+supabase: Client = None # Main Project (User Proofs, Photos)
+resource_supabase: Client = None # Dedicated Project (Course Resources)
+
+# 1. Main Client Init
 if url and key:
     try:
         supabase = create_client(url, key)
     except Exception as e:
-        logger.error(f"Supabase Client Init Error: {e}")
+        logger.error(f"Supabase Main Client Init Error: {e}")
+
+# 2. Resource Client Init (Optional fallback/dedicated)
+res_url = os.getenv("RESOURCE_SUPABASE_URL")
+res_key = os.getenv("RESOURCE_SUPABASE_SERVICE_ROLE_KEY") or os.getenv("RESOURCE_SUPABASE_ANON_KEY")
+
+if res_url and res_key:
+    try:
+        resource_supabase = create_client(res_url, res_key)
+    except Exception as e:
+        logger.error(f"Supabase Resource Client Init Error: {e}")
+
+def get_client(use_resource_project=False):
+    """Returns the appropriate Supabase client with smart fallback."""
+    if use_resource_project and resource_supabase:
+        return resource_supabase
+    return supabase or resource_supabase
 
 def validate_pdf(file_content, filename=None):
     """
@@ -44,8 +63,9 @@ def upload_pdf(destination_path_or_file, file_content=None, filename=None):
     1. upload_pdf(file_obj) -> For legacy compatibility
     2. upload_pdf(path, content, filename) -> For explicit control
     """
-    if not supabase:
-        logger.error("Supabase client not initialized")
+    client = get_client()
+    if not client:
+        logger.error("No Supabase client initialized (both Main and Resource projects failed)")
         return None
 
     try:
@@ -75,14 +95,28 @@ def upload_pdf(destination_path_or_file, file_content=None, filename=None):
             destination_path = destination_path[1:]
 
         # Upload attempt
-        supabase.storage.from_(bucket_name).upload(
-            path=destination_path,
-            file=file_content,
-            file_options={
-                "content-type": "application/pdf",
-                "upsert": "true"
-            }
-        )
+        try:
+            client.storage.from_(bucket_name).upload(
+                path=destination_path,
+                file=file_content,
+                file_options={
+                    "content-type": "application/pdf",
+                    "upsert": True # Boolean for better compatibility
+                }
+            )
+        except Exception as e:
+            # Fallback to resource client if main fails and it's a different project
+            r_client = get_client(use_resource_project=True)
+            if r_client and r_client != client:
+                logger.info("Main client upload failed. Retrying with Resource client...")
+                r_client.storage.from_("resources").upload(
+                    path=destination_path,
+                    file=file_content,
+                    file_options={"content-type": "application/pdf", "upsert": True}
+                )
+                return f"resources/{destination_path}"
+            raise e
+
         return destination_path
     except Exception as e:
         logger.error(f"Supabase Upload Error: {e}")
@@ -93,8 +127,9 @@ def get_signed_url(file_path: str, expires_in: int = 3600):
     Generates a signed URL for a private file.
     Default expiry is 1 hour.
     """
-    if not supabase or not file_path:
-        return file_path # Return as is if it's a legacy URL
+    client = get_client()
+    if not client or not file_path:
+        return file_path
 
     # If it's already a full URL (legacy), return it
     if str(file_path).startswith('http'):
@@ -104,8 +139,15 @@ def get_signed_url(file_path: str, expires_in: int = 3600):
         if file_path.startswith("/"):
             file_path = file_path[1:]
 
-        res = supabase.storage.from_(bucket_name).create_signed_url(file_path, expires_in)
-        # Handle different response formats from supabase-py
+        # Determine which bucket to use based on path prefix
+        b_name = bucket_name
+        p_in_b = file_path
+        if file_path.startswith("resources/"):
+            b_name = "resources"
+            p_in_b = file_path.replace("resources/", "", 1)
+            client = get_client(use_resource_project=True)
+
+        res = client.storage.from_(b_name).create_signed_url(p_in_b, expires_in)
         if isinstance(res, dict) and "signedURL" in res:
             return res["signedURL"]
         return res
@@ -115,14 +157,22 @@ def get_signed_url(file_path: str, expires_in: int = 3600):
 
 def delete_pdf(file_path: str):
     """Deletes a file from Supabase Storage."""
-    if not supabase or not file_path:
+    client = get_client()
+    if not client or not file_path:
         return False
 
     try:
         if file_path.startswith("/"):
             file_path = file_path[1:]
             
-        supabase.storage.from_(bucket_name).remove([file_path])
+        b_name = bucket_name
+        p_in_b = file_path
+        if file_path.startswith("resources/"):
+            b_name = "resources"
+            p_in_b = file_path.replace("resources/", "", 1)
+            client = get_client(use_resource_project=True)
+
+        client.storage.from_(b_name).remove([p_in_b])
         return True
     except Exception as e:
         logger.error(f"Supabase Deletion Error: {e}")
@@ -130,8 +180,8 @@ def delete_pdf(file_path: str):
 
 def upload_video_to_supabase(video_file, lesson_uid):
     """Uploads an MP4 video to Supabase Storage and returns the storage path."""
-    if not supabase:
-        logger.error("Supabase client not initialized")
+    client = get_client()
+    if not client:
         return None
     try:
         content = video_file.read()
@@ -139,10 +189,10 @@ def upload_video_to_supabase(video_file, lesson_uid):
         destination_path = f"videos/lesson_{lesson_uid}.mp4"
         if destination_path.startswith("/"):
             destination_path = destination_path[1:]
-        supabase.storage.from_(bucket_name).upload(
+        client.storage.from_(bucket_name).upload(
             path=destination_path,
             file=content,
-            file_options={"content-type": "video/mp4", "upsert": "true"}
+            file_options={"content-type": "video/mp4", "upsert": True}
         )
         return destination_path
     except Exception as e:
@@ -160,7 +210,6 @@ def upload_user_proof(instance, pdf_file):
         pdf_file.seek(0)
         
         # 2. Define destination path
-        # Using a consistent naming convention: documents/user_<id>_<uid>.pdf
         destination_path = f"documents/user_{instance.id}_{instance.uid}.pdf"
         
         # 3. Perform upload
@@ -180,5 +229,3 @@ def upload_user_proof(instance, pdf_file):
     except Exception as e:
         logger.error(f"❌ Error in upload_user_proof for user {instance.username}: {str(e)}")
         return False
-
-

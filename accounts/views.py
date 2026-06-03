@@ -201,7 +201,10 @@ def signup_view(request):
             import traceback
             print(f"[ERROR] SIGNUP: {str(e)}")
             print(traceback.format_exc())
-            if 'user' in locals() and user: user.delete()
+            # Safe deletion logic
+            if 'user' in locals() and user and user.id:
+                try: user.delete()
+                except Exception as del_err: print(f'[ERROR] Could not delete: {del_err}')
             messages.error(request, f"Registration failed: {str(e)}")
             return redirect('login')
 
@@ -324,7 +327,10 @@ def teacher_signup_view(request):
             import traceback
             print(f"[ERROR] TEACHER SIGNUP: {str(e)}")
             print(traceback.format_exc())
-            if 'user' in locals() and user: user.delete()
+            # Safe deletion logic
+            if 'user' in locals() and user and user.id:
+                try: user.delete()
+                except Exception as del_err: print(f'[ERROR] Could not delete: {del_err}')
             messages.error(request, f"Registration failed: {str(e)}")
             return redirect('teacher_login')
 
