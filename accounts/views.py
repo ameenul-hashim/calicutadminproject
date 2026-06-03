@@ -755,7 +755,7 @@ def teacher_dashboard(request):
     context = {
         'total_courses': courses.count(),
         'published_courses': courses.filter(status='PUBLISHED').count(),
-        'pending_courses': courses.filter(Q(status='PENDING') | Q(pending_lessons__gt=0)).distinct().count(),
+        'pending_courses': courses.filter(Q(status='PENDING') | Q(id__in=Course.objects.filter(teacher=request.user, lessons__status='PENDING').values('id'))).distinct().count(),
         'total_students': total_students,
         'pending_deletions': DeletionRequest.objects.filter(teacher=request.user, status='PENDING').count(),
         'recent_courses': recent_courses,
@@ -1525,9 +1525,9 @@ def edit_profile(request):
 
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
-            MAX_SIZE = 2 * 1024 * 1024 * 1024
+            MAX_SIZE = 5 * 1024 * 1024
             if profile_photo.size > MAX_SIZE:
-                return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 2GB allowed).'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 5MB allowed).'}, status=400)
             
             from .utils.cloudinary_helpers import update_image
             if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):

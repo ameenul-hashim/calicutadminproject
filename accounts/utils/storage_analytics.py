@@ -71,7 +71,7 @@ def get_supabase_signup_stats():
         'limit_mb': SUPABASE_LIMIT_MB,
         'percent': round(percent, 1),
         'remaining_mb': round(max(SUPABASE_LIMIT_MB - usage_mb, 0), 2),
-        'files': sorted(files, key=lambda f: f.get('created_at', ''), reverse=True)[:20],
+        'files': sorted([f for f in files if isinstance(f, dict)], key=lambda f: f.get('created_at', '') or '', reverse=True)[:20],
         'emoji': '📄',
         'color': '#6366f1',
         'description': 'Teacher verification PDFs uploaded during signup',
@@ -96,15 +96,30 @@ def get_supabase_resource_stats():
             'files': [],
         }
 
-    from accounts.models import CourseResource
-    resources = CourseResource.objects.filter(is_deleted=False)
-    total_files = resources.count()
+    # Real-time from Supabase Resource bucket
+    files = _list_all_files(client, "resources")
+    if not files:
+        # Fallback to DB
+        from accounts.models import CourseResource
+        resources = CourseResource.objects.filter(is_deleted=False)
+        total_files = resources.count()
+        total_compressed = resources.aggregate(total_size=models.Sum('compressed_size'))['total_size'] or 0
+        usage_mb = total_compressed / (1024 * 1024)
+        recent = resources.select_related('course').order_by('-created_at')[:20]
+    else:
+        total_files = len(files)
+        total_size = sum(
+            int(f.get('metadata', {}).get('size', 0))
+            for f in files if isinstance(f, dict) and f.get('metadata')
+        )
+        usage_mb = total_size / (1024 * 1024)
+        recent = sorted(
+            [f for f in files if isinstance(f, dict)],
+            key=lambda f: f.get('created_at', '') or '',
+            reverse=True
+        )[:20]
 
-    total_compressed = resources.aggregate(total_size=models.Sum('compressed_size'))['total_size'] or 0
-    usage_mb = total_compressed / (1024 * 1024)
     percent = min((usage_mb / SUPABASE_LIMIT_MB) * 100, 100) if SUPABASE_LIMIT_MB else 0
-
-    recent = resources.select_related('course').order_by('-created_at')[:20]
 
     return {
         'label': 'Course Resources',

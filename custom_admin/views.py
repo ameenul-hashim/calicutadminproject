@@ -941,7 +941,7 @@ def approve_lesson(request, lesson_uid):
         lesson.has_pending_edits = False
 
     # If lesson has a YouTube video, change visibility from PRIVATE to UNLISTED
-    if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED' and not lesson.video_url.startswith('supabase://'):
+    if lesson.youtube_video_id and lesson.youtube_upload_status == 'UPLOADED' and lesson.video_url and not lesson.video_url.startswith('supabase://'):
         try:
             from accounts.utils.youtube_uploader import change_video_visibility
             change_video_visibility(lesson.youtube_video_id, 'unlisted')
@@ -1117,7 +1117,7 @@ def reject_resource(request, resource_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_resources(request):
     from accounts.models import CourseResource
-    resources = CourseResource.objects.filter(is_approved=False).select_related('course__teacher').order_by('-created_at')
+    resources = CourseResource.objects.filter(status='PENDING').select_related('course__teacher').order_by('-created_at')
     return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1213,7 +1213,7 @@ def admin_delete_course_secure(request, course_uid):
             course.delete()
             
             messages.success(request, f"✅ '{course_title}' and all associated storage files have been permanently purged.")
-            return redirect('admin_deleted_courses')
+            return redirect('deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
