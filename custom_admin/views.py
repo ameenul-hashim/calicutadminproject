@@ -1123,26 +1123,24 @@ def pending_resources(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
-    # Hide REJECTED content from admin view until it's resubmitted (PENDING)
-    lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+    
+    # Active items (Pending, Approved)
+    active_lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+    rejected_lessons = course.lessons.filter(status='REJECTED').order_by('-updated_at')
     
     from accounts.models import CourseResource
-    # Show all non-deleted resources — admin must be able to see REJECTED ones to re-approve after teacher fixes
-    resources = course.resources.exclude(is_deleted=True).order_by('-created_at')
+    
+    active_resources = course.resources.exclude(status='REJECTED').exclude(is_deleted=True).order_by('order', '-created_at')
+    rejected_resources = course.resources.filter(status='REJECTED', is_deleted=False).order_by('-updated_at')
     
     notifications = get_notifications(str(request.user.uid))[:10]
     unread_count = get_unread_count(str(request.user.uid))
     
-    pending_resources = resources.filter(status__in=['PENDING', 'DELETION_PENDING'])
-    approved_resources = resources.filter(status='APPROVED')
-    rejected_resources = resources.filter(status='REJECTED')
-    
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
-        'lessons': lessons,
-        'resources': resources,
-        'pending_resources': pending_resources,
-        'approved_resources': approved_resources,
+        'active_lessons': active_lessons,
+        'rejected_lessons': rejected_lessons,
+        'active_resources': active_resources,
         'rejected_resources': rejected_resources,
         'notifications': notifications,
         'unread_notifications_count': unread_count,
@@ -1251,6 +1249,71 @@ def admin_delete_lesson_secure(request, lesson_uid):
             return redirect('admin_view_course_content', course_uid=course_uid)
         else:
             messages.error(request, "Action not allowed. Please verify administrator credentials.")
+            
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_delete_resource_secure(request, resource_uid):
+    from accounts.models import CourseResource
+    
+    if request.method == 'POST':
+        username = request.POST.get('admin_username', '').strip()
+        password = request.POST.get('admin_password', '')
+        
+        # Robust verification
+        admin_user = request.user
+        is_identity_match = (
+            username.lower() == admin_user.username.lower() or 
+            username.lower() == admin_user.email.lower()
+        )
+        
+        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+            resource = get_object_or_404(CourseResource, uid=resource_uid)
+            resource_title = resource.title
+            course_uid = resource.course.uid
+            
+            # Wipe from Supabase
+            if resource.firebase_file_path:
+                try:
+                    from accounts.utils.storage_manager import StorageManager
+                    manager = StorageManager()
+                    manager.delete_supabase_file(resource.firebase_file_path)
+                except Exception as e:
+                    print(f"Error wiping Supabase file: {e}")
+                    
+            resource.delete()
+            messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
+            return redirect('admin_view_course_content', course_uid=course_uid)
+        else:
+            messages.error(request, "Action not allowed. Please verify administrator credentials.")
+            
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_update_order(request, item_type, uid):
+    if request.method == 'POST':
+        new_order = request.POST.get('order', 0)
+        try:
+            new_order = int(new_order)
+            if item_type == 'lesson':
+                item = get_object_or_404(Lesson, uid=uid)
+                item.order = new_order
+                item.save(update_fields=['order'])
+                course_uid = item.course.uid
+            elif item_type == 'resource':
+                from accounts.models import CourseResource
+                item = get_object_or_404(CourseResource, uid=uid)
+                item.order = new_order
+                item.save(update_fields=['order'])
+                course_uid = item.course.uid
+            else:
+                return redirect('admin_content')
+            
+            messages.success(request, f"Order updated successfully.")
+            return redirect('admin_view_course_content', course_uid=course_uid)
+        except Exception:
+            messages.error(request, "Invalid order value.")
             
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
