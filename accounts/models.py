@@ -55,6 +55,11 @@ class CustomUser(AbstractUser):
         from .utils.supabase_storage import get_signed_url
         return get_signed_url(self.pdf_path)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['user_type', 'status']),
+        ]
+
     def __str__(self):
         return f"{self.username} ({self.user_type})"
 
@@ -107,6 +112,12 @@ class Course(models.Model):
             except ValueError:
                 pass
         return None
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['status', 'is_approved', '-created_at']),
+            models.Index(fields=['teacher', 'status', '-created_at']),
+        ]
 
     def __str__(self):
         return self.title
@@ -328,6 +339,9 @@ class DeletionRequest(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', '-created_at']),
+        ]
 
     def __str__(self):
         return f"{self.item_type} deletion request by {self.teacher.username}"

@@ -4,9 +4,12 @@ from datetime import timedelta
 RETENTION_DAYS = 7
 
 
-def get_notifications(user_uid, limit=50):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+def get_notifications(user_uid=None, limit=50, user_obj=None):
+    from accounts.models import Notification
+    user = user_obj
+    if user is None and user_uid:
+        from accounts.models import CustomUser
+        user = CustomUser.objects.filter(uid=user_uid).only('id').first()
     if not user:
         return []
     cutoff = timezone.now() - timedelta(days=RETENTION_DAYS)
@@ -19,9 +22,12 @@ def get_notifications(user_uid, limit=50):
     } for n in qs]
 
 
-def get_unread_count(user_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+def get_unread_count(user_uid=None, user_obj=None):
+    from accounts.models import Notification
+    user = user_obj
+    if user is None and user_uid:
+        from accounts.models import CustomUser
+        user = CustomUser.objects.filter(uid=user_uid).only('id').first()
     if not user:
         return 0
     cutoff = timezone.now() - timedelta(days=RETENTION_DAYS)
@@ -29,27 +35,27 @@ def get_unread_count(user_uid):
 
 
 def mark_read(user_uid, notif_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification as N, CustomUser
+    user = CustomUser.objects.filter(uid=user_uid).only('id').first()
     if not user:
         return
-    Notification.objects.filter(user=user, uid=notif_uid).update(is_read=True)
+    N.objects.filter(user=user, uid=notif_uid).update(is_read=True)
 
 
 def mark_all_read(user_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification as N, CustomUser
+    user = CustomUser.objects.filter(uid=user_uid).only('id').first()
     if not user:
         return
-    Notification.objects.filter(user=user, is_read=False).update(is_read=True)
+    N.objects.filter(user=user, is_read=False).update(is_read=True)
 
 
 def delete_notification(user_uid, notif_uid):
-    from accounts.models import Notification, CustomUser
-    user = CustomUser.objects.filter(uid=user_uid).first()
+    from accounts.models import Notification as N, CustomUser
+    user = CustomUser.objects.filter(uid=user_uid).only('id').first()
     if not user:
         return
-    Notification.objects.filter(user=user, uid=notif_uid).delete()
+    N.objects.filter(user=user, uid=notif_uid).delete()
 
 
 def cleanup_old_notifications():
