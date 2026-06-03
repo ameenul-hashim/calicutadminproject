@@ -1,5 +1,6 @@
 import os
 import logging
+import time as _time
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -554,9 +555,9 @@ def analytics_view(request):
         teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE'), 'date_joined')
         course_data = get_monthly_data(Course.objects.filter(status='PUBLISHED'))
 
-        # Approval Stats
+        # Approval Stats (reuse total_courses from above)
         approval_stats = {
-            'approved': Course.objects.filter(status='PUBLISHED').count(),
+            'approved': total_courses,
             'rejected': Course.objects.filter(status='REJECTED').count(),
             'pending': Course.objects.filter(status='PENDING').count(),
         }
@@ -602,14 +603,13 @@ def analytics_view(request):
         # Cache for 15 minutes (900 seconds)
         cache.set(cache_key, context, 900)
 
-    # Real-time user status counts (from database, not cached)
-    all_users = CustomUser.objects.all()
-    context['user_status'] = {
-        'active': all_users.filter(status='ACTIVE').count(),
-        'blocked': all_users.filter(status='BLOCKED').count(),
-        'rejected': all_users.filter(status='REJECTED').count(),
-        'pending': all_users.filter(status='PENDING').count(),
-    }
+    # Real-time user status counts — single aggregate query
+    from django.db.models import Count as AggCount
+    user_status_qs = CustomUser.objects.values('status').annotate(cnt=AggCount('id'))
+    user_status = {'active': 0, 'blocked': 0, 'rejected': 0, 'pending': 0}
+    for entry in user_status_qs:
+        user_status[entry['status'].lower()] = entry['cnt']
+    context['user_status'] = user_status
 
     # --- Daily User Entries from LoginHistory ---
     from django.db.models.functions import TruncDate
@@ -663,11 +663,15 @@ def analytics_view(request):
     context['daily_visit_labels'] = month_labels
     context['daily_visit_data'] = month_data
 
-    # Cleanup: delete LoginHistory records older than 30 days
-    cutoff = today - timedelta(days=30)
-    deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
-    if deleted_count[0]:
-        logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
+    # Cleanup: delete LoginHistory records older than 30 days (max once per hour)
+    cleanup_cache_key = 'analytics_login_cleanup_last_run'
+    last_cleanup = cache.get(cleanup_cache_key, 0)
+    if _time.time() - last_cleanup > 3600:
+        cutoff = today - timedelta(days=30)
+        deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
+        if deleted_count[0]:
+            logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
+        cache.set(cleanup_cache_key, _time.time(), 7200)
 
     # Notifications now provided by context processor — no duplicate query needed
     
@@ -680,7 +684,7 @@ def content_management_view(request):
     courses = Course.objects.exclude(status='REJECTED').annotate(
         total_lessons_count=Count('lessons'),
         approved_lessons_count=Count('lessons', filter=Q(lessons__is_approved=True))
-    ).select_related('teacher')
+    ).select_related('teacher').prefetch_related('lessons')
     
     if status_filter != 'ALL':
         courses = courses.filter(status=status_filter)
@@ -706,7 +710,7 @@ def pending_courses_view(request):
         Q(has_pending_edits=True) |
         Q(lessons__is_approved=False) |
         Q(lessons__has_pending_edits=True)
-    ).prefetch_related('lessons').distinct().order_by('-created_at')
+    ).select_related('teacher').prefetch_related('lessons').distinct().order_by('-created_at')
     return render(request, 'custom_admin/pending_courses.html', {
         'courses': courses,
     })
@@ -1083,7 +1087,7 @@ def reject_resource(request, resource_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_resources(request):
     from accounts.models import CourseResource
-    resources = CourseResource.objects.filter(is_approved=False).order_by('-created_at')
+    resources = CourseResource.objects.filter(is_approved=False).select_related('course__teacher').order_by('-created_at')
     return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1116,7 +1120,7 @@ def storage_dashboard(request):
 
     stats = get_all_storage_stats()
     sr = stats.get('supabase_resources', {})
-    resources = CourseResource.objects.filter(is_deleted=False)
+    resources = CourseResource.objects.filter(is_deleted=False).select_related('course')
     total_mb = (sr.get('usage_mb', 0) or 0)
     total_count = sr.get('total_files', 0)
     max_mb = 1000
