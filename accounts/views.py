@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse
+from django.db import models
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest
@@ -1868,31 +1870,62 @@ def mark_all_notifications_read(request):
 @xframe_options_exempt
 @login_required(login_url='login')
 def access_resource(request, resource_uid):
+    """
+    Issues a short-lived signed token and redirects to stream_resource.
+    The Supabase URL is NEVER exposed to the browser.
+    """
     from accounts.models import CourseResource, Enrollment
-    from django.shortcuts import get_object_or_404, redirect
-    from django.http import HttpResponseForbidden, Http404, HttpResponse
-    
+    from django.http import HttpResponseForbidden, Http404
+    from accounts.utils.resource_token import generate_resource_token
+
     resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
-    
+
     is_teacher = (request.user.user_type == 'TEACHER' and resource.course.teacher == request.user)
     is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
-    
+
     if not (is_teacher or is_admin):
         if resource.status != 'APPROVED':
             raise Http404("Resource not found or not approved.")
         has_enrollment = Enrollment.objects.filter(user=request.user, course=resource.course).exists()
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
-    
-    # Redirect to signed URL (works on all devices natively)
-    url = resource.get_signed_url()
-    if url:
-        return redirect(url)
-    
-    # Fallback: stream file bytes directly from Supabase
+
+    # Generate a 1-hour signed token — Supabase URL stays server-side
+    token = generate_resource_token(str(resource.uid), request.user.id, ttl_seconds=3600)
+    return redirect('stream_resource', resource_uid=resource_uid, token=token)
+
+
+@xframe_options_exempt
+@login_required(login_url='login')
+def stream_resource(request, resource_uid, token):
+    """
+    Verifies the signed token then proxies the file bytes from Supabase.
+    The browser only ever sees: /resource/<uid>/stream/<token>/
+    Supabase URL is never exposed — not in the address bar, not in DevTools.
+    """
+    from accounts.models import CourseResource
+    from django.http import HttpResponseForbidden, Http404, StreamingHttpResponse, HttpResponse
+    from accounts.utils.resource_token import verify_resource_token
+
+    resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
+
+    if not verify_resource_token(str(resource.uid), request.user.id, token):
+        return HttpResponseForbidden("Access token is invalid or has expired. Please reload the page to get a fresh link.")
+
+    # Increment view count
+    try:
+        resource.view_count = models.F('view_count') + 1
+        resource.save(update_fields=['view_count'])
+    except Exception:
+        pass
+
+    # Stream file from Supabase (server-side only)
     try:
         from accounts.utils.supabase_storage import get_client as get_res_client
         res_client = get_res_client(use_resource_project=True)
+        if not res_client:
+            res_client = get_res_client()  # Fallback to main client
+
         if res_client and resource.firebase_file_path:
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
@@ -1900,21 +1933,32 @@ def access_resource(request, resource_uid):
             file_bytes = res_client.storage.from_(bucket).download(path_in_bucket)
             if file_bytes:
                 ext = resource.file_extension or 'pdf'
-                response = HttpResponse(file_bytes, content_type=resource.mime_type or 'application/octet-stream')
-                response['Content-Disposition'] = 'inline; filename="' + resource.title + '.' + ext + '"'
+                content_type = resource.mime_type or 'application/pdf'
+                response = HttpResponse(file_bytes, content_type=content_type)
+                # inline = display in browser; no Supabase URL visible
+                safe_title = resource.title.replace('"', '')
+                response['Content-Disposition'] = f'inline; filename="{safe_title}.{ext}"'
+                response['Content-Length'] = len(file_bytes)
+                # Security headers
+                response['X-Content-Type-Options'] = 'nosniff'
+                response['Cache-Control'] = 'private, no-store'
                 return response
     except Exception as e:
-        logger.error(f"Resource stream failed for {resource_uid}: {e}")
-        
+        logger.error(f"stream_resource failed for {resource_uid}: {e}")
+
     return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
 
 @xframe_options_exempt
 @login_required(login_url='login')
 def pdf_viewer(request, resource_uid):
+    """
+    Renders the PDF viewer page with a short-lived proxy stream URL.
+    The Supabase signed URL is never passed to the template.
+    """
     from accounts.models import CourseResource, Enrollment
-    from django.shortcuts import get_object_or_404, redirect, render
     from django.http import Http404, HttpResponseForbidden
+    from accounts.utils.resource_token import generate_resource_token
 
     resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
 
@@ -1928,12 +1972,12 @@ def pdf_viewer(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
 
-    signed_url = resource.get_signed_url()
-    if not signed_url:
-        return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
+    # Generate a 1-hour token — iframe src points to our stream URL, never Supabase
+    token = generate_resource_token(str(resource.uid), request.user.id, ttl_seconds=3600)
+    stream_url = reverse('stream_resource', kwargs={'resource_uid': resource_uid, 'token': token})
 
     return render(request, 'accounts/pdf_viewer.html', {
-        'signed_url': signed_url,
+        'stream_url': stream_url,   # This is /resource/<uid>/stream/<token>/ — no Supabase URL
         'title': resource.title,
         'uid': resource.uid,
     })
@@ -1941,53 +1985,56 @@ def pdf_viewer(request, resource_uid):
 
 @login_required(login_url='login')
 def download_resource(request, resource_uid):
-    """Downloads a resource file with Content-Disposition: attachment for actual file download."""
+    """Proxies the file through Django as a download — Supabase URL never exposed."""
     from accounts.models import CourseResource, Enrollment
-    from django.shortcuts import get_object_or_404, redirect
     from django.http import HttpResponseForbidden, Http404, HttpResponse
-    
+    from accounts.utils.resource_token import generate_resource_token
+
     resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
-    
+
     is_teacher = (request.user.user_type == 'TEACHER' and resource.course.teacher == request.user)
     is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
-    
+
     if not (is_teacher or is_admin):
         if resource.status != 'APPROVED':
             raise Http404("Resource not found or not approved.")
-        
         has_enrollment = Enrollment.objects.filter(user=request.user, course=resource.course).exists()
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
-        
-        resource.download_count += 1
-        resource.save(update_fields=['download_count'])
-        
-    # Primary: redirect to Supabase signed URL (zero server RAM, works on all devices)
-    url = resource.get_signed_url()
-    if url:
-        return redirect(url)
-    
-    # Fallback: stream file bytes through server (in-memory, for when signed URL fails)
+        try:
+            resource.download_count += 1
+            resource.save(update_fields=['download_count'])
+        except Exception:
+            pass
+
+    # Proxy stream with attachment disposition — no Supabase URL ever in browser
     try:
         from accounts.utils.supabase_storage import get_client as get_res_client
         res_client = get_res_client(use_resource_project=True)
+        if not res_client:
+            res_client = get_res_client()
+
         if res_client and resource.firebase_file_path:
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
-            
             file_bytes = res_client.storage.from_(bucket).download(path_in_bucket)
             if file_bytes:
                 content_type = resource.mime_type or 'application/octet-stream'
+                safe_title = resource.title.replace('"', '')
+                filename = f"{safe_title}.{resource.file_extension or 'pdf'}"
                 response = HttpResponse(file_bytes, content_type=content_type)
-                filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
                 response['Content-Disposition'] = f'attachment; filename="{filename}"'
                 response['Content-Length'] = len(file_bytes)
+                response['X-Content-Type-Options'] = 'nosniff'
+                response['Cache-Control'] = 'private, no-store'
                 return response
     except Exception as e:
-        logger.error(f"Resource proxy download failed for {resource_uid}: {e}")
-    
+        logger.error(f"download_resource proxy failed for {resource_uid}: {e}")
+
     return HttpResponseForbidden("Failed to download resource. Please contact administrator.")
+
+
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
