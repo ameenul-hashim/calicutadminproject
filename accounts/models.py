@@ -428,4 +428,31 @@ def cleanup_lesson_video(sender, instance, **kwargs):
         except Exception:
             pass
 
+@receiver(pre_delete, sender=CourseResource)
+def cleanup_courseresource_files(sender, instance, **kwargs):
+    """Clean up Supabase storage files and Cloudinary thumbnail when a resource is deleted."""
+    from accounts.utils.storage_manager import StorageManager
+    from accounts.utils.cloudinary_helpers import delete_temp_image
+
+    # 1. Delete primary file from Supabase
+    if instance.firebase_file_path:
+        try:
+            StorageManager.delete_from_supabase_storage(instance.firebase_file_path)
+        except Exception:
+            pass
+
+    # 2. Delete pending file from Supabase (if resubmission was in progress)
+    if hasattr(instance, 'pending_firebase_file_path') and instance.pending_firebase_file_path:
+        try:
+            StorageManager.delete_from_supabase_storage(instance.pending_firebase_file_path)
+        except Exception:
+            pass
+
+    # 3. Delete Cloudinary thumbnail
+    if instance.thumbnail_public_id:
+        try:
+            delete_temp_image(instance.thumbnail_public_id)
+        except Exception:
+            pass
+
 
