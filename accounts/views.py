@@ -1156,7 +1156,9 @@ def add_resource(request, course_uid):
             safe_course = re.sub(r'_+', '_', safe_course)
             safe_title = re.sub(r'_+', '_', safe_title)
             
-            dest_path = f"resources/{safe_course}/{safe_title}_v{uuid.uuid4().hex[:6]}.{ext}"
+            safe_category = re.sub(r'[^a-zA-Z0-9]', '_', category).strip('_').upper()
+            safe_category = re.sub(r'_+', '_', safe_category)
+            dest_path = f"resources/{safe_course}/{safe_category}/{safe_title}_v{uuid.uuid4().hex[:6]}.{ext}"
             fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
             
             thumb_path = None
@@ -1247,7 +1249,9 @@ def edit_resource(request, resource_uid):
                 safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
                 safe_course = re.sub(r'_+', '_', safe_course)
                 safe_title = re.sub(r'_+', '_', safe_title)
-                dest_path = f"resources/{safe_course}/{safe_title}_v{uuid.uuid4().hex[:6]}.{new_ext}"
+                safe_category = re.sub(r'[^a-zA-Z0-9]', '_', category).strip('_').upper()
+                safe_category = re.sub(r'_+', '_', safe_category)
+                dest_path = f"resources/{safe_course}/{safe_category}/{safe_title}_v{uuid.uuid4().hex[:6]}.{new_ext}"
                 new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
                 
                 if thumbnail_bytes:
