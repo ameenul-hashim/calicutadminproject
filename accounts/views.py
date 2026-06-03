@@ -231,17 +231,11 @@ def signup_view(request):
             return redirect('login')
 
         except Exception as e:
-            # Rollback: delete the user since Supabase upload failed
             try:
                 user.delete()
             except Exception:
                 pass
-            
-            error_msg = str(e)
-            if "Supabase" in error_msg or "storage" in error_msg.lower():
-                error_msg = "We couldn't save your verification document to the cloud. Please check your internet connection or try a smaller file, then submit again."
-            
-            messages.error(request, f"Registration failed: {error_msg}")
+            messages.error(request, f"Registration failed. Please try again.")
             return render(request, 'accounts/signup.html', {
                 'username': username, 'email': email,
                 'fullname': fullname, 'phone_number': phone_number
@@ -393,17 +387,11 @@ def teacher_signup_view(request):
             return redirect('teacher_login')
 
         except Exception as e:
-            # Rollback: delete the user since Supabase upload failed
             try:
                 user.delete()
             except Exception:
                 pass
-            
-            error_msg = str(e)
-            if "Supabase" in error_msg or "storage" in error_msg.lower():
-                error_msg = "We couldn't save your verification document to the cloud. Please check your internet connection or try a smaller file, then submit again."
-                
-            messages.error(request, f"Registration failed: {error_msg}")
+            messages.error(request, f"Registration failed. Please try again.")
             return render(request, 'accounts/teacher_signup.html', {
                 'username': username, 'email': email,
                 'fullname': fullname, 'phone_number': phone_number
