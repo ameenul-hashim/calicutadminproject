@@ -36,6 +36,7 @@ urlpatterns = [
     path('resource/<uuid:resource_uid>/access/', views.access_resource, name='access_resource'),
     path('resource/<uuid:resource_uid>/view/', views.pdf_viewer, name='pdf_viewer'),
     path('resource/<uuid:resource_uid>/download/', views.download_resource, name='download_resource'),
+    path('resource/<uuid:resource_uid>/stream/<str:token>/', views.stream_resource, name='stream_resource'),
     path('dashboard/', views.dashboard_view, name='dashboard'),
     path('student/explore/', views.student_explore, name='student_explore'),
     path('profile/', views.profile_view, name='profile'),
