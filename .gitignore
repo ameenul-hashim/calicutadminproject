@@ -46,3 +46,6 @@ test_youtube.py
 
 # Scratch / temp scripts
 scratch/
+
+# Local backups (Neon snapshots)
+local_backups/
