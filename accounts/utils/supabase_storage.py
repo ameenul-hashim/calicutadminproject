@@ -40,6 +40,20 @@ def get_client(use_resource_project=False):
         return resource_supabase
     return supabase or resource_supabase
 
+def _do_upload(client, bucket, path, file, content_type="application/pdf"):
+    """Version-agnostic upload helper — supports supabase-py v1.x (content_type/upsert kwargs)
+    and v2.x (file_options dict) for compatibility across dev and Render."""
+    try:
+        client.storage.from_(bucket).upload(
+            path=path, file=file,
+            file_options={"content-type": content_type, "upsert": "true"}
+        )
+    except TypeError:
+        client.storage.from_(bucket).upload(
+            path=path, file=file,
+            content_type=content_type, upsert=True
+        )
+
 def validate_pdf(file_content, filename=None):
     """
     Validates that the content is a PDF.
@@ -94,22 +108,17 @@ def upload_pdf(destination_path_or_file, file_content=None, filename=None):
         if destination_path.startswith("/"):
             destination_path = destination_path[1:]
 
-        # Upload attempt
         try:
-            client.storage.from_(bucket_name).upload(
-                path=destination_path,
-                file=file_content,
-                file_options={"content-type": "application/pdf", "upsert": "true"}
-            )
+            _do_upload(client, bucket_name, destination_path, file_content)
         except Exception as e:
             logger.error(f"Main client upload failed: {e}")
             r_client = get_client(use_resource_project=True)
             if r_client and r_client != client:
                 logger.info("Main client upload failed. Retrying with Resource client...")
-                r_client.storage.from_("resources").upload(
-                    path=destination_path, file=file_content,
-                    file_options={"content-type": "application/pdf", "upsert": "true"}
-                )
+                try:
+                    _do_upload(r_client, "resources", destination_path, file_content)
+                except Exception:
+                    raise e
                 return f"resources/{destination_path}"
             raise e
 
@@ -185,11 +194,7 @@ def upload_video_to_supabase(video_file, lesson_uid):
         destination_path = f"videos/lesson_{lesson_uid}.mp4"
         if destination_path.startswith("/"):
             destination_path = destination_path[1:]
-        client.storage.from_(bucket_name).upload(
-            path=destination_path,
-            file=content,
-            file_options={"content-type": "video/mp4", "upsert": True}
-        )
+        _do_upload(client, bucket_name, destination_path, content, content_type="video/mp4")
         return destination_path
     except Exception as e:
         logger.error(f"Supabase Video Upload Error: {e}")
