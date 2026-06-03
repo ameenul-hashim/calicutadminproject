@@ -13,13 +13,22 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
   display:flex; align-items:center; padding:0 8px; gap:6px; flex-shrink:0; 
   -webkit-user-select:none; user-select:none;
 }
-#toolbar button, #toolbar a {
+#toolbar button, #toolbar .icon-btn {
   background:#334155; border:none; color:#e2e8f0; width:38px; height:38px;
   border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center;
   font-size:1.1rem; text-decoration:none; transition:background 0.15s; flex-shrink:0;
 }
-#toolbar button:hover, #toolbar a:hover { background:#475569; }
+#toolbar button:hover, #toolbar .icon-btn:hover { background:#475569; }
 #toolbar button:active { background:#0ea5e9; }
+.btn-download {
+  background: #10b981; color: white; padding: 0 16px; height: 36px; border-radius: 8px;
+  text-decoration: none; display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+  transition: all 0.2s; margin-left: 8px;
+}
+.btn-download:hover { background: #059669; transform: translateY(-1px); }
+.btn-download:active { transform: translateY(1px); }
+
 #page-info {
   flex:1; text-align:center; font-size:0.85rem; font-weight:600; color:#94a3b8;
   display:flex; align-items:center; justify-content:center; gap:6px;
@@ -61,7 +70,8 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
 #body-wrap { display:flex; flex-direction:column; height:100%; }
 @media (max-width:480px) {
   #toolbar { height:48px; padding:0 6px; gap:4px; }
-  #toolbar button, #toolbar a { width:34px; height:34px; font-size:1rem; }
+  #toolbar button, #toolbar .icon-btn { width:34px; height:34px; font-size:1rem; }
+  .btn-download { padding: 0 10px; font-size: 0.8rem; }
   #page-info { font-size:0.78rem; }
   #page-input { width:40px; font-size:0.78rem; }
 }
@@ -70,15 +80,17 @@ html, body { height:100%; overflow:hidden; font-family:-apple-system,BlinkMacSys
 <body>
 <div id="body-wrap">
   <div id="toolbar">
-    <button onclick="goBack()" title="Back">←</button>
-    <a id="download-btn" href="#" download title="Download">⬇</a>
+    <button onclick="goBack()" title="Back" class="icon-btn">←</button>
     <div id="page-info">
+      <button onclick="prevPage()" title="Previous Page" class="icon-btn">‹</button>
       <input id="page-input" type="number" min="1" value="1" onchange="goToPage(this.value)">
       <span id="page-total">/ 0</span>
+      <button onclick="nextPage()" title="Next Page" class="icon-btn">›</button>
     </div>
-    <button onclick="zoomOut()" title="Zoom Out">−</button>
+    <button onclick="zoomOut()" title="Zoom Out" class="icon-btn">−</button>
     <span id="zoom-level">100%</span>
-    <button onclick="zoomIn()" title="Zoom In">+</button>
+    <button onclick="zoomIn()" title="Zoom In" class="icon-btn">+</button>
+    <a id="download-btn" href="#" download class="btn-download">Download</a>
   </div>
   <div id="main-area">
     <canvas id="pdf-canvas"></canvas>
