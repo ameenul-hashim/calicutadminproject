@@ -80,7 +80,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-AXES_ENABLED = os.getenv('DISABLE_AXES', 'False') != 'True'
+AXES_ENABLED = False  # Temporarily disabled for setup
 
 if AXES_ENABLED:
     MIDDLEWARE.append('axes.middleware.AxesMiddleware')
