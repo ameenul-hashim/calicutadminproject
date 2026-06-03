@@ -1380,8 +1380,15 @@ def check_username(request):
     username = request.GET.get('username', '').strip()
     if not username or len(username) < 3:
         return JsonResponse({'available': False, 'error': 'Username must be at least 3 characters.'})
-    exclude_id = request.user.id if request.user.is_authenticated else None
-    exists = CustomUser.objects.filter(username__iexact=username).exclude(id=exclude_id).exists()
+    exclude_uid = request.GET.get('exclude', '')
+    qs = CustomUser.objects.filter(username__iexact=username)
+    if exclude_uid:
+        qs = qs.exclude(uid=exclude_uid)
+    else:
+        exclude_id = request.user.id if request.user.is_authenticated else None
+        if exclude_id:
+            qs = qs.exclude(id=exclude_id)
+    exists = qs.exists()
     return JsonResponse({'available': not exists})
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
