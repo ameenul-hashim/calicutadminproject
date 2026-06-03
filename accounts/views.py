@@ -186,52 +186,54 @@ def signup_view(request):
             return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
+        from django.db import transaction
+        from accounts.utils.supabase_storage import upload_user_proof
+        from accounts.utils.pdf_helpers import convert_image_to_pdf
+
+        # Step A: Create user in its own transaction (we need user.id for the upload path)
         try:
-            from accounts.utils.supabase_storage import upload_user_proof
-            
-            # create User First
-            user = CustomUser.objects.create_user(
-                username=username, email=email, password=password,
-                full_name=fullname, phone_number=phone_number,
-                is_active=False, status='PENDING', user_type='STUDENT',
-            )
+            with transaction.atomic():
+                user = CustomUser.objects.create_user(
+                    username=username, email=email, password=password,
+                    full_name=fullname, phone_number=phone_number,
+                    is_active=False, status='PENDING', user_type='STUDENT',
+                )
+        except Exception as e:
+            messages.error(request, f"Registration failed: {str(e)}")
+            return render(request, 'accounts/signup.html', {
+                'username': username, 'email': email,
+                'fullname': fullname, 'phone_number': phone_number
+            })
 
-            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
-            from accounts.utils.pdf_helpers import convert_image_to_pdf
-            from accounts.utils.supabase_storage import upload_user_proof
-
+        # Step B: Upload PDF to Supabase (external service — outside transaction)
+        try:
             if file_ext == '.pdf':
-                print("[PDF] Uploading directly to Supabase...")
-                if not upload_user_proof(user, proof_file):
-                    user.delete()
-                    raise Exception("Supabase storage failure.")
+                storage_path = upload_user_proof(user, proof_file)
             else:
-                print(f"[IMG] Processing image ({file_ext}) directly from memory...")
-                # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
-                
                 if not optimized_pdf:
-                    user.delete()
                     raise Exception("PDF conversion failed. File may be corrupted.")
+                storage_path = upload_user_proof(user, optimized_pdf)
 
-                if not upload_user_proof(user, optimized_pdf):
-                    user.delete()
-                    raise Exception("Supabase upload failed.")
-                
-                print(f"[OK] Fast-track student registration complete for {username}")
+            if not storage_path:
+                raise Exception("Supabase storage upload failed.")
+
+            # Step C: Save the storage path on the user record
+            with transaction.atomic():
+                user.pdf_path = storage_path
+                user.status = 'PENDING'
+                user.save()
 
             messages.success(request, "Registration successful! Admin approval pending.")
             notify_admins(f"New student: {username}.")
             return redirect('login')
 
         except Exception as e:
-            import traceback
-            print(f"[ERROR] SIGNUP: {str(e)}")
-            print(traceback.format_exc())
-            # Safe deletion logic
-            if 'user' in locals() and user and user.id:
-                try: user.delete()
-                except Exception as del_err: print(f'[ERROR] Could not delete: {del_err}')
+            # Rollback: delete the user since Supabase upload failed
+            try:
+                user.delete()
+            except Exception:
+                pass
             messages.error(request, f"Registration failed: {str(e)}")
             return redirect('login')
 
@@ -339,52 +341,54 @@ def teacher_signup_view(request):
             return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
 
         # 4. Processing File Uploads
+        from django.db import transaction
+        from accounts.utils.supabase_storage import upload_user_proof
+        from accounts.utils.pdf_helpers import convert_image_to_pdf
+
+        # Step A: Create user in its own transaction (we need user.id for the upload path)
         try:
-            from accounts.utils.supabase_storage import upload_user_proof
-            
-            # create User First
-            user = CustomUser.objects.create_user(
-                username=username, email=email, password=password,
-                full_name=fullname, phone_number=phone_number,
-                is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
-            )
+            with transaction.atomic():
+                user = CustomUser.objects.create_user(
+                    username=username, email=email, password=password,
+                    full_name=fullname, phone_number=phone_number,
+                    is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
+                )
+        except Exception as e:
+            messages.error(request, f"Registration failed: {str(e)}")
+            return render(request, 'accounts/teacher_signup.html', {
+                'username': username, 'email': email,
+                'fullname': fullname, 'phone_number': phone_number
+            })
 
-            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
-            from accounts.utils.pdf_helpers import convert_image_to_pdf
-            from accounts.utils.supabase_storage import upload_user_proof
-
+        # Step B: Upload PDF to Supabase (external service — outside transaction)
+        try:
             if file_ext == '.pdf':
-                print("[PDF] Uploading directly to Supabase...")
-                if not upload_user_proof(user, proof_file):
-                    user.delete()
-                    raise Exception("Supabase storage failure.")
+                storage_path = upload_user_proof(user, proof_file)
             else:
-                print(f"[IMG] Processing teacher image ({file_ext}) directly from memory...")
-                # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
-                
                 if not optimized_pdf:
-                    user.delete()
                     raise Exception("PDF conversion failed. File may be corrupted.")
+                storage_path = upload_user_proof(user, optimized_pdf)
 
-                if not upload_user_proof(user, optimized_pdf):
-                    user.delete()
-                    raise Exception("Supabase upload failed.")
-                
-                print(f"[OK] Fast-track teacher registration complete for {username}")
+            if not storage_path:
+                raise Exception("Supabase storage upload failed.")
+
+            # Step C: Save the storage path on the user record
+            with transaction.atomic():
+                user.pdf_path = storage_path
+                user.status = 'PENDING'
+                user.save()
 
             messages.success(request, "Teacher registration successful! Admin review pending.")
             notify_admins(f"New teacher: {username}.")
             return redirect('teacher_login')
 
         except Exception as e:
-            import traceback
-            print(f"[ERROR] TEACHER SIGNUP: {str(e)}")
-            print(traceback.format_exc())
-            # Safe deletion logic
-            if 'user' in locals() and user and user.id:
-                try: user.delete()
-                except Exception as del_err: print(f'[ERROR] Could not delete: {del_err}')
+            # Rollback: delete the user since Supabase upload failed
+            try:
+                user.delete()
+            except Exception:
+                pass
             messages.error(request, f"Registration failed: {str(e)}")
             return redirect('teacher_login')
 

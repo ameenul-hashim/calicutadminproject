@@ -201,33 +201,24 @@ def upload_video_to_supabase(video_file, lesson_uid):
 
 def upload_user_proof(instance, pdf_file):
     """
-    High-level helper to upload a user's verification PDF to Supabase.
-    Updates the model instance with the path and sets status to PENDING.
+    Uploads a user's verification PDF to Supabase Storage.
     Saves under teacher/ or student/ subfolder based on user_type.
+    Returns the storage path string on success, or None on failure.
+    Does NOT save the instance — the caller is responsible for that.
     """
     try:
-        # 1. Read and validate content
         content = pdf_file.read()
         pdf_file.seek(0)
-        
-        # 2. Define destination path with role-based subfolder
-        role_folder = instance.user_type.lower()  # 'teacher' or 'student'
+
+        role_folder = instance.user_type.lower()
         destination_path = f"documents/{role_folder}/user_{instance.id}_{instance.uid}.pdf"
-        
-        # 3. Perform upload (uses main Supabase client — the first account)
+
         path = upload_pdf(destination_path, content, destination_path)
         if not path:
-            logger.error(f"❌ Supabase Upload Failed for user {instance.username}. Path returned None.")
-            return False
-            
-        # 4. Update instance
-        from django.db import transaction
-        with transaction.atomic():
-            instance.pdf_path = path
-            instance.status = "PENDING"
-            instance.save()
-            
-        return True
+            logger.error(f"Supabase Upload Failed for user {instance.username}. Path returned None.")
+            return None
+
+        return path
     except Exception as e:
-        logger.error(f"❌ Error in upload_user_proof for user {instance.username}: {str(e)}")
-        return False
+        logger.error(f"Error in upload_user_proof for user {instance.username}: {str(e)}")
+        return None
