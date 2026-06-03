@@ -11,8 +11,8 @@ from googleapiclient.http import MediaIoBaseUpload
 
 logger = logging.getLogger(__name__)
 
-# Use the shared Supabase clients from supabase_storage (single source of truth)
-from accounts.utils.supabase_storage import get_client
+# Use the shared Supabase clients and helpers from supabase_storage (single source of truth)
+from accounts.utils.supabase_storage import get_client, _do_upload
 
 class StorageManager:
     @staticmethod
@@ -28,11 +28,7 @@ class StorageManager:
             bucket_name = parts[0]
             file_path = parts[1] if len(parts) > 1 else destination_path
             
-            client.storage.from_(bucket_name).upload(
-                path=file_path,
-                file=file_bytes,
-                file_options={"content-type": content_type}
-            )
+            _do_upload(client, bucket_name, file_path, file_bytes, content_type=content_type)
             return destination_path
         except Exception as e:
             logger.error(f"Supabase Upload Error: {e}")
