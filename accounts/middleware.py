@@ -201,7 +201,7 @@ class EnterpriseHardeningMiddleware:
                 is_infected, reason = scanner.scan_file(uploaded_file)
                 
                 if is_infected:
-                    from django.http import HttpResponseForbidden
+                    from django.shortcuts import redirect
                     try:
                         from accounts.models import AdminActivityLog
                         from accounts.models import CustomUser
@@ -219,7 +219,24 @@ class EnterpriseHardeningMiddleware:
                         log_security_event('MALWARE_BLOCK', f"Blocked: {uploaded_file.name} ({reason})", ip=request.META.get('REMOTE_ADDR'))
                     except Exception:
                         pass
-                    return HttpResponseForbidden(f"Security Alert: {reason}. Upload blocked by Enterprise SOC.")
+                    from django.contrib import messages
+                    friendly_messages = {
+                        'FILE_SIZE_EXCEEDED': 'File is too large. Maximum size is 10MB.',
+                        'MALICIOUS_SIGNATURE_EXECUTABLE_WINDOWS': 'This file appears to be an executable (.exe) and is not allowed. Please upload a PDF document or image.',
+                        'MALICIOUS_SIGNATURE_EXECUTABLE_LINUX': 'This file type is not allowed. Please upload a PDF document or image.',
+                        'MALICIOUS_SIGNATURE_PHP_SCRIPT': 'This file contains script code and is not allowed.',
+                        'MALICIOUS_SIGNATURE_JAVA_CLASS': 'This file type is not allowed.',
+                        'MALICIOUS_SIGNATURE_JAVASCRIPT_EVAL': 'This file contains blocked script patterns.',
+                        'MALICIOUS_SIGNATURE_SHELL_SCRIPT': 'This file type is not allowed.',
+                        'MALICIOUS_SIGNATURE_BASE64_PAYLOAD': 'This file contains encoded payloads and is not allowed.',
+                        'MALICIOUS_SIGNATURE_POWERSHELL': 'This file contains blocked script content.',
+                        'UNAUTHORIZED_EXTENSION': 'This file type is not allowed. Please upload a PDF, image, or document file.',
+                        'HIGH_ENTROPY_ANOMALY': 'This file appears to be corrupted or obfuscated. Please upload a clean file.',
+                        'MALFORMED_PDF_SIGNATURE': 'This PDF file appears to be corrupted. Please upload a valid PDF document.',
+                    }
+                    msg = friendly_messages.get(reason, f'This file was rejected by security scanning. Please try a different file.')
+                    messages.error(request, msg)
+                    return redirect(request.META.get('HTTP_REFERER', '/'))
 
         # 2. PRE-PROCESS: Impossible Travel Detection (Simulated)
         if request.user.is_authenticated:
