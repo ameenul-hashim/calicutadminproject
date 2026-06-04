@@ -433,9 +433,6 @@
                             <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_courses_total }}</span>
                             {% endif %}
                         </a>
-                        <a href="{% url 'pending_resources' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_resources' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
-                            Resource Requests
-                        </a>
                     </div>
                 </div>
 

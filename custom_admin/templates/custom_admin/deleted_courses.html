@@ -26,6 +26,7 @@
                     <th style="padding: 1rem 1.5rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Course</th>
                     <th style="padding: 1rem 1.5rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Teacher</th>
                     <th style="padding: 1rem 1.5rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Deleted On</th>
+                    <th style="padding: 1rem 1.5rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Content</th>
                     <th style="padding: 1rem 1.5rem; font-size: 0.8rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; text-align: right;">Action</th>
                 </tr>
             </thead>
@@ -48,6 +49,12 @@
                     <td style="padding: 1rem 1.5rem; color: #64748b; font-size: 0.9rem;">
                         {{ course.created_at|date:"M d, Y" }}
                     </td>
+                    <td style="padding: 1rem 1.5rem;">
+                        <div style="display: flex; gap: 0.75rem; align-items: center;">
+                            <span style="padding: 0.25rem 0.6rem; background: #e0f2fe; color: #0369a1; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">📺 {{ course.lessons_count }} Lessons</span>
+                            <span style="padding: 0.25rem 0.6rem; background: #fef3c7; color: #92400e; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">📄 {{ course.resources_count }} Resources</span>
+                        </div>
+                    </td>
                     <td style="padding: 1rem 1.5rem; text-align: right;">
                         <div style="display: flex; justify-content: flex-end; gap: 0.75rem; align-items: center;">
                             <!-- Restore / Retrieve Button -->
@@ -69,7 +76,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" style="padding: 3rem 1.5rem; text-align: center; color: #64748b;">
+                    <td colspan="5" style="padding: 3rem 1.5rem; text-align: center; color: #64748b;">
                         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin: 0 auto 1rem auto; opacity: 0.5;"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
                         <p style="margin: 0; font-size: 1.1rem; font-weight: 500;">Recycle Bin is Empty</p>
                         <p style="margin: 0.25rem 0 0 0; font-size: 0.9rem;">No courses have been deleted.</p>

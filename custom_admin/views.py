@@ -1400,10 +1400,14 @@ def approve_deletion_request(request, request_uid):
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
+            # Cascade soft-delete: mark all lessons and resources as deleted
+            course.lessons.all().update(status='REJECTED', is_approved=False)
+            from accounts.models import CourseResource
+            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True)
             course.status = 'DELETED'
             course.is_approved = False
             course.save()
-            success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
+            success_msg = f"Course '{del_request.item_name}' and all its content moved to Deleted Courses area."
         else:
             messages.warning(request, "Item already gone.")
     elif del_request.item_type == 'Resource':
@@ -1477,7 +1481,11 @@ def reject_deletion_request(request, request_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def deleted_courses_view(request):
-    courses = Course.objects.filter(status='DELETED').select_related('teacher').order_by('-created_at')
+    from django.db.models import Count
+    courses = Course.objects.filter(status='DELETED').select_related('teacher').annotate(
+        lessons_count=Count('lessons'),
+        resources_count=Count('courseresource'),
+    ).order_by('-created_at')
     
     # Pagination
     from django.core.paginator import Paginator
@@ -1525,14 +1533,18 @@ def admin_restore_course(request, course_uid):
         course.is_approved = True
         course.save()
         
-        # Restore/Approve all lessons of this course so they are visible and playable
-        course.lessons.filter(status='PENDING').update(is_approved=True, status='APPROVED')
+        # Restore all lessons — set back to APPROVED
+        course.lessons.all().update(is_approved=True, status='APPROVED')
         
-        # Restore any deletion requests that were associated with this course
+        # Restore all resources — set back to APPROVED
+        from accounts.models import CourseResource
+        CourseResource.objects.filter(course=course).update(status='APPROVED', is_deleted=False)
+        
+        # Remove any deletion requests that were associated with this course
         DeletionRequest.objects.filter(item_type='Course', item_id=course.id).delete()
         
-        create_notification(course.teacher, f"Your course '{course_title}' has been successfully restored from the Recycle Bin and is now active!")
-        messages.success(request, f"✅ Course '{course_title}' has been successfully restored from the Recycle Bin.")
+        create_notification(course.teacher, f"Your course '{course_title}' and all its content (lessons, resources) have been restored from the Recycle Bin and are now active!")
+        messages.success(request, f"✅ Course '{course_title}' and all content restored successfully.")
         
     return redirect('deleted_courses')
 
