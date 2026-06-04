@@ -5,13 +5,16 @@ from datetime import timedelta
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.conf import settings
+from accounts.models import EmailOTP
 import logging
 
 logger = logging.getLogger(__name__)
 
+OTP_EXPIRY_MINUTES = 5
+
 class OTPEngine:
     """
-    OTP engine using Firebase RTDB for storage. 10-minute TTL auto-cleanup.
+    OTP engine using PostgreSQL (EmailOTP model) with 5-minute TTL and auto-cleanup.
     """
 
     @staticmethod
@@ -28,15 +31,13 @@ class OTPEngine:
         day_ago = now - timedelta(days=1)
         hour_ago = now - timedelta(hours=1)
 
-        from .firebase_db import otp_get_user_daily_count, otp_get_ip_hourly_count
-
-        user_daily_count = otp_get_user_daily_count(str(user.uid))
+        user_daily_count = EmailOTP.objects.filter(user=user, created_at__gte=day_ago).count()
         if user_daily_count >= 5:
             logger.warning(f"[SECURITY/QUOTA] User {user.email} exceeded daily OTP quota ({user_daily_count} requests).")
             return False, "You have exceeded the maximum number of verification requests for today. Please try again tomorrow."
 
         if ip:
-            ip_hourly_count = otp_get_ip_hourly_count(ip)
+            ip_hourly_count = EmailOTP.objects.filter(ip_address=ip, created_at__gte=hour_ago).count()
             if ip_hourly_count >= 10:
                 logger.critical(f"[SECURITY/ABUSE] IP {ip} triggered rate limiting ({ip_hourly_count} requests in 1hr).")
                 return False, "Too many requests from your network. Please wait an hour before trying again."
@@ -56,18 +57,23 @@ class OTPEngine:
         if not allowed:
             return None, msg
 
-        from .firebase_db import otp_invalidate_all
-
-        otp_invalidate_all(str(user.uid), purpose)
+        EmailOTP.objects.filter(user=user, purpose=purpose, is_used=False).update(is_used=True)
 
         raw_otp = cls.generate_otp()
         hashed_otp = cls.hash_otp(raw_otp)
         ua = request.META.get('HTTP_USER_AGENT', '') if request else None
 
-        from .firebase_db import otp_create
-        otp_create(str(user.uid), purpose, hashed_otp, ip or '', ua or '')
+        otp_obj = EmailOTP.objects.create(
+            user=user,
+            user_type=user.user_type,
+            purpose=purpose,
+            otp_hash=hashed_otp,
+            expires_at=timezone.now() + timedelta(minutes=OTP_EXPIRY_MINUTES),
+            ip_address=ip,
+            user_agent=ua
+        )
 
-        return raw_otp, None
+        return raw_otp, otp_obj
 
     @classmethod
     def send_otp_email(cls, user, raw_otp, purpose):
@@ -86,12 +92,12 @@ class OTPEngine:
             'user': user,
             'otp': raw_otp,
             'purpose': purpose.replace('_', ' ').title(),
-            'expiry': '2 minutes',
+            'expiry': f'{OTP_EXPIRY_MINUTES} minutes',
             'year': timezone.now().year
         }
 
         html_content = render_to_string('emails/otp_email.html', context)
-        text_content = f"Your Neo Learner verification code is: {raw_otp}. Valid for 2 minutes."
+        text_content = f"Your Neo Learner verification code is: {raw_otp}. Valid for {OTP_EXPIRY_MINUTES} minutes."
 
         msg = EmailMultiAlternatives(subject, text_content, from_email, [to_email])
         msg.attach_alternative(html_content, "text/html")
@@ -111,32 +117,33 @@ class OTPEngine:
 
         hashed_input = cls.hash_otp(raw_otp)
 
-        from .firebase_db import otp_get_active, otp_mark_used, otp_increment_attempt
+        otp_obj = EmailOTP.objects.filter(user=user, purpose=purpose, is_used=False).first()
 
-        otp_data = otp_get_active(str(user.uid), purpose)
-
-        if not otp_data:
+        if not otp_obj:
             return False, "No active verification code found. Please request a new one."
 
-        expires_at = otp_data.get('expires_at', 0)
-        if timezone.now().timestamp() * 1000 > expires_at:
-            otp_mark_used(str(user.uid), purpose)
+        if otp_obj.is_expired():
+            otp_obj.is_used = True
+            otp_obj.save()
             return False, "This code has expired. Please request a new one."
 
-        attempt_count = otp_data.get('attempt_count', 0)
-        if attempt_count >= 5:
-            otp_mark_used(str(user.uid), purpose)
+        if otp_obj.attempt_count >= 5:
+            otp_obj.is_used = True
+            otp_obj.save()
             return False, "Too many failed attempts. Please request a new code."
 
-        if otp_data.get('otp_hash') == hashed_input:
-            otp_mark_used(str(user.uid), purpose)
+        if otp_obj.otp_hash == hashed_input:
+            otp_obj.is_used = True
+            otp_obj.save()
             return True, "Verification successful."
         else:
-            otp_increment_attempt(str(user.uid), purpose)
-            remaining = 5 - (attempt_count + 1)
+            otp_obj.attempt_count += 1
+            otp_obj.save()
+            remaining = 5 - otp_obj.attempt_count
             return False, f"Invalid code. {remaining} attempts remaining."
 
     @staticmethod
     def cleanup_old_otps():
-        from .firebase_db import otp_cleanup
-        otp_cleanup(10)
+        now = timezone.now()
+        EmailOTP.objects.filter(expires_at__lt=now).delete()
+        EmailOTP.objects.filter(is_used=True, created_at__lt=now - timedelta(hours=24)).delete()
