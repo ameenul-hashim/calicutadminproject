@@ -213,7 +213,7 @@ def get_unread_count(user_uid):
     return total
 
 
-def cleanup_old_messages(days=30):
+def cleanup_old_messages(days=7):
     app = _get_app()
     if app is None:
         return 0

@@ -15,7 +15,7 @@ def get_user_by_uid(uid):
 
 
 @sync_to_async
-def create_chat_message(sender, receiver_uid, message_text):
+def create_chat_message(sender, receiver_uid, message_text, sender_name=''):
     try:
         receiver = CustomUser.objects.get(uid=receiver_uid)
     except CustomUser.DoesNotExist:
@@ -26,11 +26,16 @@ def create_chat_message(sender, receiver_uid, message_text):
         message=message_text,
         uid=uuid.uuid4()
     )
-    # Auto-cleanup: delete messages older than 7 days
     from django.utils import timezone
     from datetime import timedelta
     cutoff = timezone.now() - timedelta(days=7)
     ChatMessage.objects.filter(timestamp__lt=cutoff).delete()
+    # Dual-write to Firebase RTDB
+    try:
+        from accounts.utils.firebase_chat import send_message as fb_send
+        fb_send(sender, receiver_uid, message_text, sender_name)
+    except Exception:
+        pass
     return msg
 
 
@@ -41,6 +46,11 @@ def edit_chat_message(sender_uid, msg_uid, new_message):
         msg.message = new_message
         msg.is_edited = True
         msg.save(update_fields=['message', 'is_edited'])
+        try:
+            from accounts.utils.firebase_chat import edit_message as fb_edit
+            fb_edit(sender_uid, msg_uid, new_message)
+        except Exception:
+            pass
         return True
     except ChatMessage.DoesNotExist:
         return False
@@ -52,6 +62,11 @@ def delete_chat_message(sender_uid, msg_uid):
         msg = ChatMessage.objects.get(uid=msg_uid, sender__uid=sender_uid, is_deleted=False)
         msg.is_deleted = True
         msg.save(update_fields=['is_deleted'])
+        try:
+            from accounts.utils.firebase_chat import delete_message as fb_del
+            fb_del(sender_uid, msg_uid)
+        except Exception:
+            pass
         return True
     except ChatMessage.DoesNotExist:
         return False
@@ -87,7 +102,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 sender.full_name or sender.username
             )
 
-            msg = await create_chat_message(sender, receiver_uid, message)
+            msg = await create_chat_message(sender, receiver_uid, message, sender_name)
             if msg:
                 msg_uid = str(msg.uid)
                 now_ms = int(msg.timestamp.timestamp() * 1000)
