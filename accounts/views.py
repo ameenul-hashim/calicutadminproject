@@ -941,39 +941,6 @@ def course_lessons(request, course_uid):
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def teacher_lesson_play(request, lesson_uid):
-    lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
-    course = lesson.course
-
-    # Resolve Supabase video URL to signed URL for playback
-    if lesson.video_url and lesson.video_url.startswith('supabase://'):
-        if lesson.upload_status not in ('READY', 'NOT_UPLOADED'):
-            lesson.video_url = ''
-        else:
-            storage_path = lesson.video_url.replace('supabase://', '', 1)
-            try:
-                from .utils.supabase_storage import supabase as vid_supabase
-                parts = storage_path.split('/', 1)
-                if len(parts) == 2 and '-' in parts[0]:
-                    v_bucket, v_path = parts[0], parts[1]
-                else:
-                    from .utils.supabase_storage import video_bucket as v_bucket
-                    v_path = storage_path
-                res = vid_supabase.storage.from_(v_bucket).create_signed_url(v_path, 86400)
-                signed = res.get("signedURL") if isinstance(res, dict) else res
-                lesson.video_url = signed if signed else ''
-            except Exception:
-                lesson.video_url = ''
-
-    # Collect all lessons in same course (for chapter context)
-    course_lessons = course.lessons.all().order_by('chapter', 'order')
-
-    return render(request, 'teacher_portal/lesson_play.html', {
-        'lesson': lesson,
-        'course': course,
-        'course_lessons': course_lessons,
-    })
-
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def add_lesson(request, course_uid):
     """

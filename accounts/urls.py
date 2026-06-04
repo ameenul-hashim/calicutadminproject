@@ -24,7 +24,7 @@ urlpatterns = [
     path('teacher/courses/<uuid:course_uid>/lessons/add/', views.add_lesson, name='add_lesson'),
     path('teacher/lessons/<uuid:lesson_uid>/edit/', views.edit_lesson, name='edit_lesson'),
     path('teacher/lessons/<uuid:lesson_uid>/delete/', views.delete_lesson, name='delete_lesson'),
-    path('teacher/lessons/<uuid:lesson_uid>/play/', views.teacher_lesson_play, name='teacher_lesson_play'),
+
     path('course/<uuid:course_uid>/resource/add/', views.add_resource, name='add_resource'),
     path('resource/<uuid:resource_uid>/edit/', views.edit_resource, name='edit_resource'),
     path('resource/<uuid:resource_uid>/delete/', views.delete_resource, name='delete_resource'),
