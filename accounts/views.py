@@ -996,6 +996,8 @@ def course_lessons(request, course_uid):
         'chapters': chapters_data,
         'has_pending_content': has_pending_content,
         'any_lesson_rejected': any_lesson_rejected,
+        'total_lessons': len(lessons_list),
+        'total_resources': len(resources_list),
     })
 
 

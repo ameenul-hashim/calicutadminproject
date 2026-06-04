@@ -13,7 +13,11 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">{{ course.title }}</h1>
-            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Content organized in chapter folders.</p>
+            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">
+                {{ chapters|length }} chapter{% if chapters|length != 1 %}s{% endif %}
+                &middot; {{ total_lessons }} lesson{% if total_lessons != 1 %}s{% endif %}
+                &middot; {{ total_resources }} resource{% if total_resources != 1 %}s{% endif %}
+            </p>
         </div>
     </div>
 </div>
