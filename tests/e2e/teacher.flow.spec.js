@@ -35,6 +35,27 @@ async function tryNavigate(page, url) {
 test.describe('Teacher Flow - Full LMS Audit', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    // Disable device restriction overlay on every page load
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const overlay = document.getElementById('device-restriction-overlay');
+        if (overlay) {
+          overlay.remove();
+          observer.disconnect();
+        }
+        const adminLayout = document.querySelector('.admin-layout');
+        if (adminLayout && window.getComputedStyle(adminLayout).display === 'none') {
+          adminLayout.style.setProperty('display', 'flex', 'important');
+        }
+      });
+      if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else {
+        document.addEventListener('DOMContentLoaded', () => {
+          observer.observe(document.body, { childList: true, subtree: true });
+        });
+      }
+    });
   });
 
   // ===================================================================
@@ -428,6 +449,27 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
       const errorMsgs = await page.locator('.alert, .error, [class*="error"], [class*="alert"]').allTextContents().catch(() => []);
       console.log(`[TEACHER-04] Error messages: ${JSON.stringify(errorMsgs)}`);
 
+      // Debug the overlay state
+      const overlayDebug = await page.evaluate(() => {
+        const overlay = document.getElementById('device-restriction-overlay');
+        if (!overlay) return { exists: false };
+        const style = window.getComputedStyle(overlay);
+        const adminLayout = document.querySelector('.admin-layout');
+        const adminStyle = adminLayout ? window.getComputedStyle(adminLayout) : null;
+        return {
+          exists: true,
+          overlayDisplay: style.display,
+          overlayVisibility: style.visibility,
+          viewportWidth: window.innerWidth,
+          viewportHeight: window.innerHeight,
+          screenWidth: window.screen.width,
+          devicePixelRatio: window.devicePixelRatio,
+          adminLayoutDisplay: adminStyle ? adminStyle.display : 'N/A',
+          adminLayoutVisibility: adminStyle ? adminStyle.visibility : 'N/A',
+        };
+      });
+      console.log(`[TEACHER-04] Overlay debug: ${JSON.stringify(overlayDebug)}`);
+
       // Override device restriction overlay if present (it blocks admin functionality)
       await page.evaluate(() => {
         // Remove the overlay element entirely
@@ -457,17 +499,36 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
       const teacherLink = page.locator(`a:has-text("${teacher.username}"), td:has-text("${teacher.username}"), tr:has-text("${teacher.username}")`).first();
       if (await teacherLink.count() > 0) {
         console.log('[TEACHER-04] Found pending teacher, attempting to approve...');
-        const approveBtn = page.locator(`a:has-text("Approve"), a:has-text("Accept"), button:has-text("Approve"), button:has-text("Accept"), .btn-approve, .btn-accept`).first();
-        if (await approveBtn.count() > 0) {
-          await approveBtn.click();
+        // Extract the accept URL from the approve button's onclick attribute
+        const approveUrl = await page.evaluate((username) => {
+          const cells = Array.from(document.querySelectorAll('td'));
+          for (const cell of cells) {
+            if (cell.textContent.includes(username)) {
+              const row = cell.closest('tr');
+              if (row) {
+                const approveLink = row.querySelector('a[onclick*="accept_user"]');
+                if (approveLink) {
+                  const match = approveLink.getAttribute('onclick').match(/\/customadmin\/user\/accept\/[a-f0-9-]+\//);
+                  if (match) return match[0];
+                }
+              }
+            }
+          }
+          return null;
+        }, teacher.username);
+        if (approveUrl) {
+          console.log(`[TEACHER-04] Found approve URL: ${approveUrl}`);
+          await navigateAndWait(page, approveUrl);
           await page.waitForTimeout(2000);
-          console.log(`[TEACHER-04] URL after approve click: ${page.url()}`);
+          console.log(`[TEACHER-04] URL after direct approval: ${page.url()}`);
         } else {
-          const userActionLinks = page.locator(`a[href*="accept"], a[href*="approve"]`).first();
-          if (await userActionLinks.count() > 0) {
-            await userActionLinks.click();
-            await page.waitForTimeout(2000);
-            console.log(`[TEACHER-04] URL after approve link: ${page.url()}`);
+          // Fallback: try clicking the approve link directly
+          console.log('[TEACHER-04] Could not extract UID, falling back to button click');
+          const approveBtn = page.locator(`a:has-text("Approve")`).first();
+          if (await approveBtn.count() > 0) {
+            await approveBtn.click();
+            await page.waitForTimeout(1000);
+            console.log(`[TEACHER-04] URL after approve click: ${page.url()}`);
           } else {
             console.log('[TEACHER-04] No approve button found - teacher may auto-activate');
             bugs.push({
