@@ -939,9 +939,14 @@ def approve_resource(request, resource_uid):
             if original_bytes:
                 comp_bytes, _ = process_pdf(original_bytes)
                 if comp_bytes and len(comp_bytes) < len(original_bytes):
-                    # Upload compressed
-                    import uuid
-                    new_dest = f"resources/{resource.course.uid}/compressed_{uuid.uuid4()}.pdf"
+                    import re, uuid
+                    course_slug = re.sub(r'[^a-zA-Z0-9]', '-', resource.course.title).strip('-').lower()
+                    course_slug = re.sub(r'-+', '-', course_slug)
+                    safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', resource.title).strip()
+                    safe_title = re.sub(r'\s+', '-', safe_title)
+                    safe_title = re.sub(r'-+', '-', safe_title).lower()[:40]
+                    cat_folder = resource.category.lower() if resource.category else 'uncategorised'
+                    new_dest = f"resources/courses/{course_slug}/{cat_folder}/{safe_title}-{uuid.uuid4().hex[:4]}.pdf"
                     StorageManager.upload_to_supabase_storage(comp_bytes, new_dest, 'application/pdf')
                     final_supabase_path = new_dest
                     resource.compressed_size = len(comp_bytes)
