@@ -419,6 +419,36 @@ class AdminActivityLog(models.Model):
     class Meta:
         ordering = ['-timestamp']
 
+class UploadJob(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('UPLOADING', 'Uploading'),
+        ('PROCESSING', 'Processing on YouTube'),
+        ('COMPLETED', 'Completed'),
+        ('FAILED', 'Failed'),
+    )
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='upload_jobs')
+    lesson = models.ForeignKey(Lesson, on_delete=models.SET_NULL, null=True, blank=True, related_name='upload_jobs')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    file_size = models.BigIntegerField(default=0)
+    file_name = models.CharField(max_length=500, blank=True, default='')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', db_index=True)
+    progress_percentage = models.PositiveIntegerField(default=0)
+    error_message = models.TextField(blank=True, null=True)
+    youtube_upload_url = models.URLField(max_length=2000, null=True, blank=True)
+    youtube_video_id = models.CharField(max_length=100, null=True, blank=True)
+    youtube_url = models.URLField(max_length=500, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"UploadJob {self.uid} - {self.title} ({self.get_status_display()})"
+
 # Signals for explicit image cleanup
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
