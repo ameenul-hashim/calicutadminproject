@@ -11,6 +11,8 @@
     @media (max-width: 1024px) {
         form[method="GET"] { flex-direction: column; width: 100% !important; min-width: 0 !important; }
         .btn-primary { width: 100%; justify-content: center; }
+        form[method="GET"] > div { flex-wrap: wrap; }
+        form[method="GET"] select { flex: 1; min-width: 120px; }
     }
         </style>
 
@@ -32,6 +34,14 @@
                         <option value="ACTIVE" {% if status_filter == 'ACTIVE' %}selected{% endif %}>Active</option>
                         <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Pending</option>
                         <option value="BLOCKED" {% if status_filter == 'BLOCKED' %}selected{% endif %}>Blocked</option>
+                        <option value="REJECTED" {% if status_filter == 'REJECTED' %}selected{% endif %}>Rejected</option>
+                    </select>
+                    <select name="sort" onchange="this.form.submit()"
+                        style="padding: 0.8rem 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.9rem; font-weight: 600; color: #1e293b; cursor: pointer;">
+                        <option value="date_desc" {% if sort == 'date_desc' %}selected{% endif %}>Newest First</option>
+                        <option value="date_asc" {% if sort == 'date_asc' %}selected{% endif %}>Oldest First</option>
+                        <option value="name_asc" {% if sort == 'name_asc' %}selected{% endif %}>A-Z</option>
+                        <option value="name_desc" {% if sort == 'name_desc' %}selected{% endif %}>Z-A</option>
                     </select>
                 </div>
                 <button type="submit" style="padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; border: none; background: #6366f1; color: white; font-size: 0.9rem;">Search</button>

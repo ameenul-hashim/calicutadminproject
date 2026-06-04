@@ -1,6 +1,6 @@
 # AGENTS.md — Neo Learner E-Learning Platform
 # Master AI Reference Document
-# Last Updated: 2026-05-31 | Branch: ongoing
+# Last Updated: 2026-06-04 | Branch: ongoing
 
 ---
 

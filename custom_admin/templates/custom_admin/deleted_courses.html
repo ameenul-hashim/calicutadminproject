@@ -88,28 +88,7 @@
     </div>
 </div>
 
-<!-- Pagination -->
-{% if page_obj.has_other_pages %}
-<div style="display: flex; justify-content: center; margin-top: 2rem;">
-    <div style="display: flex; gap: 0.5rem; background: white; padding: 0.5rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-        {% if page_obj.has_previous %}
-            <a href="?page={{ page_obj.previous_page_number }}" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">Previous</a>
-        {% endif %}
-        
-        {% for num in page_obj.paginator.page_range %}
-            {% if page_obj.number == num %}
-                <span style="padding: 0.5rem 1rem; border-radius: 0.5rem; background: #e11d48; color: white; font-weight: 600; font-size: 0.9rem;">{{ num }}</span>
-            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                <a href="?page={{ num }}" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">{{ num }}</a>
-            {% endif %}
-        {% endfor %}
 
-        {% if page_obj.has_next %}
-            <a href="?page={{ page_obj.next_page_number }}" style="padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; color: #64748b; font-weight: 500; font-size: 0.9rem; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">Next</a>
-        {% endif %}
-    </div>
-</div>
-{% endif %}
 
 <!-- Permanent Delete Modal -->
 <div id="deleteModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 1rem;">
