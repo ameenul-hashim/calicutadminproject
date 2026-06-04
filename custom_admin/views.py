@@ -123,6 +123,7 @@ def admin_dashboard(request):
 def manage_students(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
+    sort = request.GET.get('sort', 'date_desc')
     
     users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
     
@@ -136,10 +137,20 @@ def manage_students(request):
             Q(full_name__icontains=search_query)
         )
     
+    if sort == 'name_asc':
+        users = users.order_by('full_name')
+    elif sort == 'name_desc':
+        users = users.order_by('-full_name')
+    elif sort == 'date_asc':
+        users = users.order_by('date_joined')
+    else:
+        users = users.order_by('-date_joined')
+    
     return render(request, 'custom_admin/manage_students.html', {
         'users': users,
         'search_query': search_query,
         'status_filter': status_filter,
+        'sort': sort,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -168,6 +179,7 @@ def admin_student_profile(request, user_uid):
 def manage_teachers(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
+    sort = request.GET.get('sort', 'date_desc')
     
     users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses')
     
@@ -180,10 +192,21 @@ def manage_teachers(request):
             Q(email__icontains=search_query) |
             Q(full_name__icontains=search_query)
         )
+    
+    if sort == 'name_asc':
+        users = users.order_by('full_name')
+    elif sort == 'name_desc':
+        users = users.order_by('-full_name')
+    elif sort == 'date_asc':
+        users = users.order_by('date_joined')
+    else:
+        users = users.order_by('-date_joined')
+    
     return render(request, 'custom_admin/manage_teachers.html', {
         'users': users,
         'search_query': search_query,
         'status_filter': status_filter,
+        'sort': sort,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1324,12 +1347,9 @@ def admin_logout(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
-    # Show ALL pending requests (Lesson, Course, and Resource types)
-    pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
-    history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
+    pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')[:20]
     return render(request, 'custom_admin/manage_deletion_requests.html', {
         'requests': pending_requests,
-        'history_requests': history_requests,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1413,16 +1433,9 @@ def approve_deletion_request(request, request_uid):
         else:
             messages.warning(request, "Resource already gone.")
 
-    del_request.status = 'APPROVED'
-    del_request.reviewed_by = request.user
-    del_request.reviewed_at = timezone.now()
-    admin_feedback = request.POST.get('admin_feedback', '').strip()
-    if admin_feedback:
-        del_request.admin_feedback = admin_feedback
-    del_request.save()
+    # Delete the DeletionRequest — no history saved
+    del_request.delete()
     messages.success(request, f"✅ {success_msg}")
-    note = f" Admin note: {admin_feedback}" if admin_feedback else ""
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.{note}")
     return redirect('manage_deletion_requests')
 
 
@@ -1456,14 +1469,12 @@ def reject_deletion_request(request, request_uid):
             resource.save()
     
     admin_feedback = request.POST.get('admin_feedback', '').strip() or 'No reason provided.'
-    del_request.status = 'REJECTED'
-    del_request.reviewed_by = request.user
-    del_request.reviewed_at = timezone.now()
-    del_request.admin_feedback = admin_feedback
-    del_request.save()
-    
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. Reason: {admin_feedback}")
-    messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Resource restored to Approved status.")
+    # Send notification to teacher with rejection reason (via Firebase — external, not Django DB)
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(del_request.teacher.uid), f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. Reason: {admin_feedback}")
+    # Delete the DeletionRequest — no history saved
+    del_request.delete()
+    messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Teacher notified with reason.")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1472,17 +1483,10 @@ def deleted_courses_view(request):
     courses = Course.objects.filter(status='DELETED').select_related('teacher').annotate(
         lessons_count=Count('lessons'),
         resources_count=Count('courseresource'),
-    ).order_by('-created_at')
-    
-    # Pagination
-    from django.core.paginator import Paginator
-    paginator = Paginator(courses, 20)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    ).order_by('-created_at')[:20]
     
     return render(request, 'custom_admin/deleted_courses.html', {
-        'courses': page_obj,
-        'page_obj': page_obj,
+        'courses': courses,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')

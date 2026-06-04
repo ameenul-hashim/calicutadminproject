@@ -9,13 +9,39 @@
 {% endblock %}
 
 {% block content %}
+<style>
+    .del-table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .del-table-wrap table {
+        min-width: 650px;
+    }
+    .del-table-wrap table th,
+    .del-table-wrap table td {
+        white-space: nowrap;
+    }
+    .del-table-wrap table td:last-child {
+        white-space: normal;
+        min-width: 180px;
+    }
+    @media (max-width: 768px) {
+        .del-table-wrap table td:last-child {
+            min-width: 140px;
+        }
+        .del-table-wrap table td:nth-child(1) {
+            min-width: 120px;
+        }
+    }
+</style>
+
 <div class="glass-card" style="margin-bottom: 2rem;">
-    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
         <h2 style="margin: 0; font-size: 1.25rem;">⏳ Pending Deletion Requests</h2>
         <span style="background: #fef3c7; color: #92400e; padding: 0.4rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.85rem;">{{ requests.count }} Pending</span>
     </div>
 
-    <div class="table-responsive">
+    <div class="del-table-wrap">
         <table class="table">
             <thead>
                 <tr>
@@ -72,52 +98,6 @@
         </table>
     </div>
 </div>
-
-{% if history_requests %}
-<div class="glass-card">
-    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
-        <h2 style="margin: 0; font-size: 1.15rem; color: #64748b;">📋 Recently Processed (Last 20)</h2>
-    </div>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Teacher</th>
-                    <th>Item Type</th>
-                    <th>Item Name</th>
-                    <th>Status</th>
-                    <th>Processed At</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in history_requests %}
-                <tr>
-                    <td style="font-weight: 500;">{{ req.teacher.full_name|default:req.teacher.username }}</td>
-                    <td>
-                        <span style="font-size: 0.8rem; color: #64748b;">
-                            {% if req.item_type == 'Resource' %}📄{% elif req.item_type == 'Lesson' %}🎥{% else %}📚{% endif %}
-                            {{ req.item_type }}
-                        </span>
-                    </td>
-                    <td style="font-size: 0.9rem; color: #475569;">{{ req.item_name }}</td>
-                    <td>
-                        {% if req.status == 'APPROVED' %}
-                            <span style="background: #ecfdf5; color: #10b981; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">✓ Approved</span>
-                        {% else %}
-                            <span style="background: #fef2f2; color: #ef4444; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.8rem; font-weight: 600;">✗ Rejected</span>
-                        {% endif %}
-                    </td>
-                    <td style="color: #94a3b8; font-size: 0.85rem;">{{ req.reviewed_at|date:"M d, Y"|default:req.created_at|date:"M d, Y" }}</td>
-                    <td style="color: #64748b; font-size: 0.8rem; max-width: 200px;">
-                        {% if req.admin_feedback %}{{ req.admin_feedback|truncatechars:60 }}{% else %}—{% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-{% endif %}
 
 <!-- Approve Modal -->
 <div id="approveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">

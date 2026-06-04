@@ -57,8 +57,7 @@
                 <span style="font-size: 0.8rem; color: #94a3b8;">{{ dr.item_type }}</span>
             </div>
             <span class="status-pill {{ dr.status|lower }}">
-                {% if dr.status == 'PENDING' %}&#x23F3;{% elif dr.status == 'APPROVED' %}&#x2705;{% else %}&#x274C;{% endif %}
-                {{ dr.get_status_display }}
+                &#x23F3; Pending
             </span>
         </div>
         {% if dr.reason %}
@@ -67,29 +66,17 @@
             <span>{{ dr.reason }}</span>
         </div>
         {% endif %}
-        {% if dr.admin_feedback %}
-        <div class="info-row">
-            <strong>Admin Feedback:</strong>
-            <span>{{ dr.admin_feedback }}</span>
-        </div>
-        {% endif %}
         <div class="info-row">
             <strong>Requested:</strong>
             <span>{{ dr.created_at|date:"M d, Y h:i A" }}</span>
         </div>
-        {% if dr.reviewed_at %}
-        <div class="info-row">
-            <strong>Reviewed:</strong>
-            <span>{{ dr.reviewed_at|date:"M d, Y h:i A" }}</span>
-        </div>
-        {% endif %}
     </div>
     {% endfor %}
 {% else %}
 <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
-    <div style="font-size: 3rem; margin-bottom: 1rem;">&#x1F4ED;</div>
-    <h3 style="margin: 0 0 0.5rem; color: #1e293b;">No Deletion Requests</h3>
-    <p style="color: #94a3b8; margin: 0;">You haven't submitted any deletion requests yet.</p>
+    <div style="font-size: 3rem; margin-bottom: 1rem;">&#x2705;</div>
+    <h3 style="margin: 0 0 0.5rem; color: #1e293b;">All Requests Processed</h3>
+    <p style="color: #94a3b8; margin: 0;">Processed deletion request results are shown in your Notifications.</p>
 </div>
 {% endif %}
 {% endblock %}
