@@ -74,6 +74,16 @@ def delete_chat_message(sender_uid, msg_uid):
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        user = self.scope['user']
+        if not user.is_authenticated:
+            await self.close()
+            return
+        is_teacher = user.user_type == 'TEACHER'
+        is_admin = user.is_superuser or user.is_staff or user.user_type == 'ADMIN'
+        if not (is_teacher or is_admin):
+            await self.close()
+            return
+
         self.room_name = self.scope['url_route']['kwargs']['room_name']
         self.room_group_name = f'chat_{self.room_name}'
 

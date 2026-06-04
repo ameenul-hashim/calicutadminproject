@@ -1669,15 +1669,27 @@ def course_player(request, course_uid):
 @login_required
 def send_chat_message(request):
     if request.method == 'POST':
+        sender = request.user
+        is_teacher = sender.user_type == 'TEACHER'
+        is_admin = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
+        if not (is_teacher or is_admin):
+            return JsonResponse({'status': 'error', 'message': 'Access denied'}, status=403)
+        
         receiver_uid = request.POST.get('receiver_uid')
         message_text = request.POST.get('message')
-        sender_name = 'Administrator' if getattr(request.user, 'is_staff', False) else (
-            request.user.full_name or request.user.username
-        )
         
         from accounts.models import ChatMessage, CustomUser
+        sender_name = 'Support Team' if is_admin else (sender.full_name or sender.username)
+        
         try:
             receiver = CustomUser.objects.get(uid=receiver_uid)
+            receiver_is_valid = (
+                (is_teacher and (receiver.is_superuser or receiver.user_type == 'ADMIN' or receiver.is_staff)) or
+                (is_admin and receiver.user_type == 'TEACHER')
+            )
+            if not receiver_is_valid:
+                return JsonResponse({'status': 'error', 'message': 'Invalid recipient'}, status=403)
+            
             safe_message = escape(message_text)
             msg = ChatMessage.objects.create(
                 sender=request.user,
@@ -1686,7 +1698,6 @@ def send_chat_message(request):
             )
             ts_str = msg.timestamp.strftime('%I:%M %p')
             msg_uid = str(msg.uid)
-            # Dual-write to Firebase
             try:
                 from accounts.utils.firebase_chat import send_message as fb_send
                 fb_send(request.user, receiver_uid, message_text, sender_name)
@@ -1711,9 +1722,20 @@ def get_chat_messages(request, other_user_uid):
     from accounts.models import ChatMessage, CustomUser
     from django.db.models import Q
     
+    user = request.user
+    is_teacher = user.user_type == 'TEACHER'
+    is_admin = user.is_superuser or user.is_staff or user.user_type == 'ADMIN'
+    if not (is_teacher or is_admin):
+        return JsonResponse({'messages': []})
+    
     try:
         other = CustomUser.objects.get(uid=other_user_uid)
     except CustomUser.DoesNotExist:
+        return JsonResponse({'messages': []})
+    
+    # Verify valid partner
+    if not ((is_teacher and (other.is_superuser or other.user_type == 'ADMIN' or other.is_staff)) or
+            (is_admin and other.user_type == 'TEACHER')):
         return JsonResponse({'messages': []})
     
     # Primary: read from Firebase RTDB
@@ -1776,6 +1798,23 @@ def get_chat_list(request):
     
     user = request.user
     user_uid = str(user.uid)
+    is_teacher = user.user_type == 'TEACHER'
+    is_admin_user = user.is_superuser or user.is_staff or user.user_type == 'ADMIN'
+    
+    # Only teachers and admins can use chat
+    if not (is_teacher or is_admin_user):
+        from django.http import JsonResponse
+        return JsonResponse({'users': []})
+    
+    # Determine who this user can chat with
+    if is_teacher:
+        # Teachers see only admins
+        allowed_types = ['ADMIN', 'SUPERUSER']
+        chat_partner_filter = Q(is_superuser=True) | Q(user_type='ADMIN') | (Q(is_staff=True) & ~Q(user_type='TEACHER') & ~Q(user_type='STUDENT'))
+    else:
+        # Admins see only teachers
+        allowed_types = ['TEACHER']
+        chat_partner_filter = Q(user_type='TEACHER')
     
     # Primary: read chat rooms from Firebase RTDB
     fb_rooms = []
@@ -1790,52 +1829,58 @@ def get_chat_list(request):
         for r in fb_rooms:
             fb_map[r.get('other_uid')] = r
     
-    # Fallback: query from Django model
+    # Fallback: query from Django model, filter to allowed partners only
     from accounts.models import ChatMessage
     from django.db.models import Q as QQ, Max, Count, Case, When, IntegerField, Value
     
-    sent_receivers = ChatMessage.objects.filter(
-        sender=user, is_deleted=False
+    allowed_uids = set(CustomUser.objects.filter(
+        chat_partner_filter, status='ACTIVE'
+    ).exclude(uid=user.uid).values_list('uid', flat=True))
+    allowed_uids_str = {str(u) for u in allowed_uids}
+    
+    conv_map = {}
+    
+    # Firebase rooms filtered to allowed partners
+    for other_uid, r in fb_map.items():
+        if other_uid in allowed_uids_str:
+            conv_map[other_uid] = {
+                'last_message': r.get('last_message', ''),
+                '_ts': r.get('last_timestamp', 0),
+                'unread': r.get('unread_count', 0),
+                'last_sender_uid': r.get('last_sender_uid', ''),
+            }
+    
+    # Django model fallback for conversations with allowed partners
+    sent = ChatMessage.objects.filter(
+        sender=user, receiver__uid__in=list(allowed_uids_str), is_deleted=False
     ).values('receiver').annotate(
         last_time=Max('timestamp'),
         unread=Value(0, output_field=IntegerField()),
     ).distinct()
     
-    received_senders = ChatMessage.objects.filter(
-        receiver=user, is_deleted=False
+    received = ChatMessage.objects.filter(
+        receiver=user, sender__uid__in=list(allowed_uids_str), is_deleted=False
     ).values('sender').annotate(
         last_time=Max('timestamp'),
         unread=Count(Case(When(is_read=False, then=1))),
     ).distinct()
     
-    conv_map = {}
-    for r in sent_receivers:
+    for r in sent:
         uid = str(r['receiver'])
-        if uid not in conv_map or r['last_time'] > conv_map[uid]['last_time']:
-            conv_map[uid] = {'last_time': r['last_time'], 'unread': 0}
-    for r in received_senders:
+        if uid in allowed_uids_str and (uid not in conv_map or r['last_time'] > conv_map[uid].get('_ts', 0)):
+            conv_map[uid] = {'last_message': '', '_ts': r['last_time'], 'unread': 0}
+    for r in received:
         uid = str(r['sender'])
-        if uid not in conv_map or r['last_time'] > conv_map[uid]['last_time']:
-            conv_map[uid] = {'last_time': r['last_time'], 'unread': r['unread']}
-        else:
-            conv_map[uid]['unread'] = r['unread']
-    
-    # Merge Firebase rooms into conv_map (Firebase data takes priority)
-    for other_uid, r in fb_map.items():
-        ts = r.get('last_timestamp', 0)
-        if other_uid not in conv_map or ts > conv_map[other_uid].get('_ts', 0):
-            conv_map[other_uid] = {
-                'last_message': r.get('last_message', ''),
-                '_ts': ts,
-                'unread': r.get('unread_count', 0),
-                'last_sender_uid': r.get('last_sender_uid', ''),
-            }
+        if uid in allowed_uids_str:
+            if uid not in conv_map or r['last_time'] > conv_map[uid].get('_ts', 0):
+                conv_map[uid] = {'last_message': '', '_ts': r['last_time'], 'unread': r['unread']}
+            else:
+                conv_map[uid]['unread'] = r['unread']
     
     # Resolve user details
-    all_uids = list(conv_map.keys())
     users_map = {}
-    if all_uids:
-        users_qs = CustomUser.objects.filter(uid__in=all_uids).only('uid', 'full_name', 'username', 'image', 'user_type')
+    if conv_map:
+        users_qs = CustomUser.objects.filter(uid__in=list(conv_map.keys())).only('uid', 'full_name', 'username', 'image', 'user_type')
         for u in users_qs:
             users_map[str(u.uid)] = u
     
@@ -1843,21 +1888,15 @@ def get_chat_list(request):
     for other_uid_str, conv_info in conv_map.items():
         u = users_map.get(other_uid_str)
         if u:
-            name = 'Administrator' if getattr(u, 'is_staff', False) and u.user_type != 'TEACHER' else (u.full_name or u.username)
+            name = 'Support Team' if u.user_type == 'ADMIN' else (u.full_name or u.username)
             photo = u.avatar_url
         else:
-            name = other_uid_str
-            photo = ''
+            continue
         
         last_msg = conv_info.get('last_message', '')
-        unread = conv_info.get('unread', 0)
-        if '_ts' in conv_info:
-            raw_ts = conv_info.get('_ts', 0)
-        else:
-            raw_ts = 0
         
-        # Get last message text from Django model if not in Firebase
-        if not last_msg and other_uid_str in users_map:
+        # Get last message from Django model if Firebase has none
+        if not last_msg:
             try:
                 last = ChatMessage.objects.filter(
                     QQ(sender=user, receiver__uid=other_uid_str) |
@@ -1873,12 +1912,11 @@ def get_chat_list(request):
             'uid': other_uid_str,
             'name': name,
             'last_message': last_msg or 'No messages yet',
-            'unread_count': unread,
+            'unread_count': conv_info.get('unread', 0),
             'profile_photo': photo
         })
     
-    result.sort(key=lambda x: x.get('last_message', '') == 'No messages yet')
-    # Re-sort: conversations with messages first, then alphabetical
+    # Conversations with messages first, then alphabetical
     has_msgs = [r for r in result if r['last_message'] != 'No messages yet']
     no_msgs = [r for r in result if r['last_message'] == 'No messages yet']
     no_msgs.sort(key=lambda r: r['name'].lower())
@@ -1886,30 +1924,21 @@ def get_chat_list(request):
     
     existing_uids = {r['uid'] for r in result}
     
-    # Discoverability: show all ACTIVE teachers + admins to everyone
-    is_teacher = user.user_type == 'TEACHER'
-    is_admin_user = user.is_superuser or user.is_staff or user.user_type == 'ADMIN'
+    # Add discoverable users (teachers see admins, admins see teachers)
+    discoverable = CustomUser.objects.filter(
+        chat_partner_filter, status='ACTIVE'
+    ).exclude(uid=user.uid).distinct().only('uid', 'full_name', 'username', 'image', 'user_type')
     
-    # Teachers can see admins + other teachers
-    if is_teacher or is_admin_user:
-        chat_users = CustomUser.objects.filter(
-            Q(status='ACTIVE') &
-            (Q(user_type='TEACHER') |
-             Q(is_superuser=True) |
-             Q(user_type='ADMIN') |
-             (Q(is_staff=True) & ~Q(user_type='STUDENT')))
-        ).exclude(uid=user.uid).distinct().only('uid', 'full_name', 'username', 'image', 'user_type')
-        
-        for u in chat_users:
-            if str(u.uid) not in existing_uids:
-                display_name = 'Support Team' if u.user_type == 'ADMIN' else (u.full_name or u.username)
-                result.append({
-                    'uid': str(u.uid),
-                    'name': display_name,
-                    'last_message': 'No messages yet',
-                    'unread_count': 0,
-                    'profile_photo': u.avatar_url
-                })
+    for u in discoverable:
+        if str(u.uid) not in existing_uids:
+            display_name = 'Support Team' if u.user_type == 'ADMIN' else (u.full_name or u.username)
+            result.append({
+                'uid': str(u.uid),
+                'name': display_name,
+                'last_message': 'No messages yet',
+                'unread_count': 0,
+                'profile_photo': u.avatar_url
+            })
     
     from django.http import JsonResponse
     return JsonResponse({'users': result})
@@ -2201,17 +2230,19 @@ def get_unread_counts(request):
     
     notif_count = get_unread_count(str(request.user.uid))
     
-    # Chat unread: try Firebase first, fallback to Django model
+    # Chat unread: only for teachers and admins
     chat_count = 0
-    try:
-        from accounts.utils.firebase_chat import get_unread_count as fb_unread
-        chat_count = fb_unread(str(request.user.uid))
-    except Exception:
-        pass
-    if not chat_count:
-        chat_count = ChatMessage.objects.filter(
-            receiver=request.user, is_read=False, is_deleted=False
-        ).count()
+    can_chat = request.user.user_type == 'TEACHER' or request.user.is_superuser or request.user.is_staff or request.user.user_type == 'ADMIN'
+    if can_chat:
+        try:
+            from accounts.utils.firebase_chat import get_unread_count as fb_unread
+            chat_count = fb_unread(str(request.user.uid))
+        except Exception:
+            pass
+        if not chat_count:
+            chat_count = ChatMessage.objects.filter(
+                receiver=request.user, is_read=False, is_deleted=False
+            ).count()
     
     return JsonResponse({
         'notifications': notif_count,
