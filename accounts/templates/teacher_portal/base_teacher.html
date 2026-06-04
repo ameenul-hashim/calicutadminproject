@@ -259,17 +259,13 @@
                 </a>
                 <a href="{% url 'teacher_analytics' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_analytics' %}active{% endif %}">📈 Analytics</a>
                 <a href="{% url 'teacher_explore' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_explore' %}active{% endif %}">🌐 Explore Peer Courses</a>
+                <a href="{% url 'teacher_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_deletion_requests' %}active{% endif %}">🗑️ My Deletion Requests</a>
                 <a href="{% url 'student_view_auth' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
                 <a href="{% url 'teacher_edit_profile' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_edit_profile' %}active{% endif %}">👤 Edit Profile</a>
             </nav>
-            <div class="logout-section" style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
+            <!-- Logout -->
+            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
                 <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;"><span>🚪</span> Logout</a>
-            </div>
-
-            <!-- Copyright Attribution -->
-            <div style="margin-top: auto; padding: 1rem; text-align: center; background: linear-gradient(135deg,rgba(79,70,229,0.05) 0%,rgba(67,56,202,0.05) 100%); border-radius: 0.75rem; border: 1px solid rgba(79,70,229,0.1); margin-bottom: 1rem;">
-                <p style="margin: 0; font-size: 0.72rem; color: #94a3b8; font-weight: 500;">© 2026 Neo Learner · Think Beyond Learning</p>
-                <p style="margin: 0.3rem 0 0; font-size: 0.68rem; color: #64748b;">Enterprise E-Learning Platform</p>
             </div>
         </aside>
 

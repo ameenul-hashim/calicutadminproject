@@ -1,0 +1,95 @@
+{% extends 'teacher_portal/base_teacher.html' %}
+{% load static %}
+
+{% block title %}My Deletion Requests | Neo Learner{% endblock %}
+
+{% block page_header %}
+<div style="width: 100%;">
+    <div style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="{% url 'my_courses' %}" class="btn" style="background: white; color: #64748b; padding: 0.6rem 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; border: 1px solid #e2e8f0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>&larr;</span> My Courses
+        </a>
+    </div>
+    <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">My Deletion Requests</h1>
+    <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Track the status of your content deletion requests.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .dr-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 1rem;
+        transition: box-shadow 0.2s;
+    }
+    .dr-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 0.3rem 0.75rem;
+        border-radius: 1rem;
+    }
+    .status-pill.pending { background: #fef9c3; color: #a16207; }
+    .status-pill.approved { background: #dcfce7; color: #16a34a; }
+    .status-pill.rejected { background: #fee2e2; color: #dc2626; }
+    .info-row {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: #64748b;
+        margin-top: 0.4rem;
+    }
+    .info-row strong { color: #1e293b; min-width: 6rem; }
+</style>
+
+{% if deletion_requests %}
+    {% for dr in deletion_requests %}
+    <div class="dr-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+                <h3 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ dr.item_name }}</h3>
+                <span style="font-size: 0.8rem; color: #94a3b8;">{{ dr.item_type }}</span>
+            </div>
+            <span class="status-pill {{ dr.status|lower }}">
+                {% if dr.status == 'PENDING' %}&#x23F3;{% elif dr.status == 'APPROVED' %}&#x2705;{% else %}&#x274C;{% endif %}
+                {{ dr.get_status_display }}
+            </span>
+        </div>
+        {% if dr.reason %}
+        <div class="info-row">
+            <strong>Your Reason:</strong>
+            <span>{{ dr.reason }}</span>
+        </div>
+        {% endif %}
+        {% if dr.admin_feedback %}
+        <div class="info-row">
+            <strong>Admin Feedback:</strong>
+            <span>{{ dr.admin_feedback }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <strong>Requested:</strong>
+            <span>{{ dr.created_at|date:"M d, Y h:i A" }}</span>
+        </div>
+        {% if dr.reviewed_at %}
+        <div class="info-row">
+            <strong>Reviewed:</strong>
+            <span>{{ dr.reviewed_at|date:"M d, Y h:i A" }}</span>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+{% else %}
+<div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">&#x1F4ED;</div>
+    <h3 style="margin: 0 0 0.5rem; color: #1e293b;">No Deletion Requests</h3>
+    <p style="color: #94a3b8; margin: 0;">You haven't submitted any deletion requests yet.</p>
+</div>
+{% endif %}
+{% endblock %}
