@@ -79,8 +79,10 @@ def admin_login_view(request):
                     from accounts.utils.totp_service import totp_service
                     if totp_service.verify_totp(user.totp_secret, otp_code):
                         login(request, user)
-                        request.session.set_expiry(0)  # Instantly expire session on browser close
+                        request.session.set_expiry(0)
                         log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated with 2FA")
+                        from accounts.views import log_login_attempt as log_attempt
+                        log_attempt(request, user)
                         return redirect('admin_dashboard')
                     else:
                         messages.error(request, "Invalid security code. Please try again.")
@@ -91,8 +93,10 @@ def admin_login_view(request):
             else:
                 # No 2FA configured for this admin yet
                 login(request, user)
-                request.session.set_expiry(0)  # Instantly expire session on browser close
+                request.session.set_expiry(0)
                 log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated without 2FA (Legacy)")
+                from accounts.views import log_login_attempt as log_attempt
+                log_attempt(request, user)
                 return redirect('admin_dashboard')
         else:
             try:
@@ -644,10 +648,10 @@ def analytics_view(request):
     context['week_daily_labels'] = week_labels
     context['week_daily_data'] = week_data
 
-    # Last 30 Days
-    month_ago = today - timedelta(days=29)
+    # Last 7 Days (retention window)
+    week_ago_7 = today - timedelta(days=6)
     month_logins = LoginHistory.objects.filter(
-        timestamp__date__gte=month_ago, status='SUCCESS'
+        timestamp__date__gte=week_ago_7, status='SUCCESS'
     ).annotate(
         login_date=TruncDate('timestamp')
     ).values('login_date').annotate(
@@ -656,18 +660,18 @@ def analytics_view(request):
     month_counts = {r['login_date']: r['count'] for r in month_logins}
     month_labels = []
     month_data = []
-    for i in range(30):
-        d = month_ago + timedelta(days=i)
+    for i in range(7):
+        d = week_ago_7 + timedelta(days=i)
         month_labels.append(d.strftime('%d %b'))
         month_data.append(month_counts.get(d, 0))
     context['daily_visit_labels'] = month_labels
     context['daily_visit_data'] = month_data
 
-    # Cleanup: delete LoginHistory records older than 30 days (max once per hour)
+    # Cleanup: delete LoginHistory records older than 7 days (max once per hour)
     cleanup_cache_key = 'analytics_login_cleanup_last_run'
     last_cleanup = cache.get(cleanup_cache_key, 0)
     if _time.time() - last_cleanup > 3600:
-        cutoff = today - timedelta(days=30)
+        cutoff = today - timedelta(days=7)
         deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
         if deleted_count[0]:
             logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
@@ -1661,10 +1665,9 @@ def system_audit_view(request):
     supabase_limit_mb_val = ss.get('limit_mb', 1024)
 
     try:
-        cutoff_30 = timezone.now() - timedelta(days=30)
-        cutoff_90 = timezone.now() - timedelta(days=90)
-        LoginHistory.objects.filter(timestamp__lt=cutoff_30).delete()
-        AdminActivityLog.objects.filter(timestamp__lt=cutoff_90).delete()
+        cutoff_7 = timezone.now() - timedelta(days=7)
+        LoginHistory.objects.filter(timestamp__lt=cutoff_7).delete()
+        AdminActivityLog.objects.filter(timestamp__lt=cutoff_7).delete()
     except Exception:
         pass
 
