@@ -1,4 +1,5 @@
 import os
+import re
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import logging
@@ -216,8 +217,9 @@ def upload_user_proof(instance, pdf_file):
 
         user_type = instance.user_type.lower()
         folder = "students" if user_type == "student" else "teachers"
-        # Consistent naming: documents/{folder}/{uid}.pdf
-        destination_path = f"documents/{folder}/{instance.uid}.pdf"
+        safe_username = re.sub(r'[^a-zA-Z0-9._-]', '_', instance.username)
+        role_tag = "student" if user_type == "student" else "teacher"
+        destination_path = f"documents/{folder}/{safe_username}-{role_tag}-signup.pdf"
 
         path = upload_pdf(destination_path, content, destination_path)
         if not path:
