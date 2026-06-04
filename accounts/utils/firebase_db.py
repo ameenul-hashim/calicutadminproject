@@ -173,22 +173,42 @@ def chat_send(sender_uid, receiver_uid, message_text, sender_name=''):
         'last_timestamp': now_ms,
         'last_sender_uid': str(sender_uid),
     })
+    # Index for O(1) edit/delete lookup
+    db.reference(f'/msg_index/{msg_uid}', app=app).set({'room': room})
     return msg_uid, now_ms
+
+
+def _chat_find_room(app, sender_uid, msg_uid):
+    """Look up room by msg_index; fallback to scanning all rooms for legacy messages."""
+    idx = db.reference(f'/msg_index/{msg_uid}/room', app=app).get()
+    if idx:
+        return idx
+    # Fallback: scan all rooms (legacy messages without index)
+    rooms = db.reference('/chat_rooms', app=app).get(shallow=True)
+    if not rooms:
+        return None
+    for room in rooms:
+        mref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}', app=app)
+        mdata = mref.get()
+        if mdata and mdata.get('sender_uid') == str(sender_uid):
+            return room
+    return None
 
 
 def chat_edit(sender_uid, msg_uid, new_message):
     app = _get_app()
     if app is None:
         return False
-    rooms = db.reference('/chat_rooms', app=app).get(shallow=True)
-    if not rooms:
+    room = _chat_find_room(app, sender_uid, msg_uid)
+    if not room:
         return False
-    for room in rooms:
-        mref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}', app=app)
-        mdata = mref.get()
-        if mdata and mdata.get('sender_uid') == str(sender_uid):
-            mref.update({'message': new_message, 'is_edited': True})
-            return True
+    mref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}', app=app)
+    mdata = mref.get()
+    if mdata and mdata.get('sender_uid') == str(sender_uid):
+        mref.update({'message': new_message, 'is_edited': True})
+        if not db.reference(f'/msg_index/{msg_uid}/room', app=app).get():
+            db.reference(f'/msg_index/{msg_uid}', app=app).set({'room': room})
+        return True
     return False
 
 
@@ -196,15 +216,16 @@ def chat_delete(sender_uid, msg_uid):
     app = _get_app()
     if app is None:
         return False
-    rooms = db.reference('/chat_rooms', app=app).get(shallow=True)
-    if not rooms:
+    room = _chat_find_room(app, sender_uid, msg_uid)
+    if not room:
         return False
-    for room in rooms:
-        mref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}', app=app)
-        mdata = mref.get()
-        if mdata and mdata.get('sender_uid') == str(sender_uid):
-            mref.update({'is_deleted': True})
-            return True
+    mref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}', app=app)
+    mdata = mref.get()
+    if mdata and mdata.get('sender_uid') == str(sender_uid):
+        mref.update({'is_deleted': True})
+        if not db.reference(f'/msg_index/{msg_uid}/room', app=app).get():
+            db.reference(f'/msg_index/{msg_uid}', app=app).set({'room': room})
+        return True
     return False
 
 
@@ -319,6 +340,7 @@ def chat_cleanup(days=7):
         for mid, mdata in msgs.items():
             if mdata.get('timestamp', 0) < cutoff:
                 db.reference(f'/chat_rooms/{room}/messages/{mid}', app=app).delete()
+                db.reference(f'/msg_index/{mid}', app=app).delete()
                 deleted += 1
     return deleted
 
