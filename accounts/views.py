@@ -2026,18 +2026,18 @@ def send_chat_message(request):
 
         sender_name = 'Support Team' if is_admin else (sender.full_name or sender.username)
 
-        msg = ChatMessage.objects.create(
-            sender=sender,
-            receiver=receiver,
-            message=message_text,
-        )
-        now_ms = int(msg.timestamp.timestamp() * 1000)
+        from accounts.utils.firebase_chat import send_message as fb_send
+        result = fb_send(sender, receiver_uid, message_text, sender_name)
+        if result is None:
+            return JsonResponse({'status': 'error', 'message': 'Message delivery failed'}, status=500)
+
+        msg_uid, now_ms = result
         from datetime import datetime
         ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
 
         return JsonResponse({
             'status': 'success',
-            'message_uid': str(msg.uid),
+            'message_uid': msg_uid,
             'message': message_text,
             'timestamp': ts_str,
             'sender': sender_name
@@ -2062,31 +2062,26 @@ def get_chat_messages(request, other_user_uid):
             (is_admin and other.user_type == 'TEACHER')):
         return JsonResponse({'messages': []})
 
-    from django.db.models import Q
-    msgs = ChatMessage.objects.filter(
-        Q(sender=user, receiver=other) | Q(sender=other, receiver=user),
-        is_deleted=False,
-    ).order_by('timestamp')
+    from accounts.utils.firebase_chat import get_messages, mark_read
+    fb_msgs = get_messages(str(user.uid), str(other_user_uid))
 
-    ChatMessage.objects.filter(
-        sender=other, receiver=user, is_read=False, is_deleted=False,
-    ).update(is_read=True)
+    mark_read(str(user.uid), str(other_user_uid))
 
     data = []
-    from datetime import datetime
-    for m in msgs:
-        is_me = m.sender == user
-        ts = int(m.timestamp.timestamp() * 1000)
-        ts_str = datetime.fromtimestamp(ts / 1000).strftime('%I:%M %p') if ts else ''
+    from datetime import datetime as dt_mod
+    for m in fb_msgs:
+        is_me = str(m['sender_uid']) == str(user.uid)
+        raw_ts = m.get('timestamp', 0)
+        ts_str = dt_mod.fromtimestamp(raw_ts / 1000).strftime('%I:%M %p') if raw_ts else ''
         data.append({
-            'message_uid': str(m.uid),
-            'sender_uid': str(m.sender.uid),
-            'sender_name': 'Administrator' if m.sender.user_type == 'ADMIN' else (m.sender.full_name or m.sender.username),
-            'message': m.message,
+            'message_uid': m['uid'],
+            'sender_uid': m['sender_uid'],
+            'sender_name': m.get('sender_name', ''),
+            'message': m['message'],
             'timestamp': ts_str,
-            'raw_ts': ts,
+            'raw_ts': raw_ts,
             'is_me': is_me,
-            'is_edited': m.is_edited,
+            'is_edited': m.get('is_edited', False),
         })
 
     return JsonResponse({'messages': data})
@@ -2113,35 +2108,16 @@ def get_chat_list(request):
 
     partner_map = {str(u.uid): u for u in all_partners}
 
-    from django.db.models import Count
-    my_msgs = ChatMessage.objects.filter(
-        Q(sender=user) | Q(receiver=user),
-        is_deleted=False,
-    ).order_by('-timestamp').select_related('sender', 'receiver')
-
-    partner_data = {}
-    for msg in my_msgs:
-        other = msg.receiver if msg.sender == user else msg.sender
-        other_uid = str(other.uid)
-        if other_uid not in partner_data:
-            partner_data[other_uid] = {
-                'last_message': msg.message,
-                'last_timestamp': int(msg.timestamp.timestamp() * 1000),
-            }
-
-    unread_counts = dict(
-        ChatMessage.objects.filter(
-            receiver=user, is_read=False, is_deleted=False,
-        ).values('sender__uid').annotate(
-            cnt=Count('id')
-        ).values_list('sender__uid', 'cnt')
-    )
-    unread_counts = {str(k): v for k, v in unread_counts.items()}
+    from accounts.utils.firebase_chat import get_chat_list as fb_get_chat_list, get_unread_count
+    fb_rooms = fb_get_chat_list(str(user.uid))
+    fb_data = {r['other_uid']: r for r in fb_rooms}
+    fb_unread = get_unread_count(str(user.uid))
 
     result = []
     seen = set()
 
-    for other_uid, pdata in sorted(partner_data.items(), key=lambda x: x[1].get('last_timestamp', 0), reverse=True):
+    for room in fb_rooms:
+        other_uid = room['other_uid']
         if other_uid not in partner_map:
             continue
         u = partner_map[other_uid]
@@ -2149,8 +2125,8 @@ def get_chat_list(request):
         result.append({
             'uid': other_uid,
             'name': display_name,
-            'last_message': pdata.get('last_message', '') or 'No messages yet',
-            'unread_count': unread_counts.get(other_uid, 0),
+            'last_message': room.get('last_message', '') or 'No messages yet',
+            'unread_count': room.get('unread_count', 0),
             'profile_photo': u.avatar_url,
         })
         seen.add(other_uid)
@@ -2164,7 +2140,7 @@ def get_chat_list(request):
             'uid': uid_str,
             'name': display_name,
             'last_message': 'No messages yet',
-            'unread_count': unread_counts.get(uid_str, 0),
+            'unread_count': 0,
             'profile_photo': u.avatar_url,
         })
 
@@ -2448,17 +2424,17 @@ def all_notifications(request):
 def get_unread_counts(request):
     from django.http import JsonResponse
     from .utils.notification_helper import cleanup_old_notifications
+    from accounts.utils.firebase_chat import cleanup_old_messages, get_unread_count as fb_get_unread_count
 
     cleanup_old_notifications()
+    cleanup_old_messages(7)
 
     notif_count = get_unread_count(str(request.user.uid))
 
     chat_count = 0
     can_chat = request.user.user_type == 'TEACHER' or request.user.is_superuser or request.user.is_staff or request.user.user_type == 'ADMIN'
     if can_chat:
-        chat_count = ChatMessage.objects.filter(
-            receiver=request.user, is_read=False, is_deleted=False,
-        ).count()
+        chat_count = fb_get_unread_count(str(request.user.uid))
 
     return JsonResponse({
         'notifications': notif_count,

@@ -11,7 +11,7 @@ _firebase_app = None
 _lock = threading.Lock()
 
 
-def _get_app(name='neodb'):
+def _get_app():
     global _firebase_app
     if _firebase_app is not None:
         return _firebase_app
@@ -34,7 +34,7 @@ def _get_app(name='neodb'):
         else:
             return None
         _firebase_app = firebase_admin.initialize_app(
-            cred, {'databaseURL': db_url}, name=name
+            cred, {'databaseURL': db_url}
         )
     return _firebase_app
 

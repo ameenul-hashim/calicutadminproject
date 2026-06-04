@@ -2,52 +2,7 @@ import json
 from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
-from accounts.models import CustomUser, ChatMessage
-
-
-@sync_to_async
-def get_user_by_uid(uid):
-    try:
-        return CustomUser.objects.get(uid=uid)
-    except CustomUser.DoesNotExist:
-        return None
-
-
-@sync_to_async
-def _orm_save_message(sender, receiver_uid, message_text, sender_name):
-    try:
-        receiver = CustomUser.objects.get(uid=receiver_uid)
-        msg = ChatMessage.objects.create(
-            sender=sender,
-            receiver=receiver,
-            message=message_text,
-        )
-        return str(msg.uid), int(msg.timestamp.timestamp() * 1000)
-    except CustomUser.DoesNotExist:
-        return None, 0
-
-
-@sync_to_async
-def _orm_edit_message(sender, msg_uid, new_message):
-    try:
-        msg = ChatMessage.objects.get(uid=msg_uid, sender=sender, is_deleted=False)
-        msg.message = new_message
-        msg.is_edited = True
-        msg.save(update_fields=['message', 'is_edited'])
-        return True
-    except ChatMessage.DoesNotExist:
-        return False
-
-
-@sync_to_async
-def _orm_delete_message(sender, msg_uid):
-    try:
-        msg = ChatMessage.objects.get(uid=msg_uid, sender=sender, is_deleted=False)
-        msg.is_deleted = True
-        msg.save(update_fields=['is_deleted'])
-        return True
-    except ChatMessage.DoesNotExist:
-        return False
+from accounts.utils.firebase_chat import send_message, edit_message, delete_message
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -82,37 +37,36 @@ class ChatConsumer(AsyncWebsocketConsumer):
         data = json.loads(text_data)
         action = data.get('action', 'send')
         sender = self.scope['user']
+        is_admin_user = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
 
         if action == 'send':
             message = data['message']
             receiver_uid = data['receiver_uid']
-            sender_name = 'Administrator' if getattr(sender, 'is_staff', False) else (
-                sender.full_name or sender.username
-            )
+            sender_name = 'Support Team' if is_admin_user else (sender.full_name or sender.username)
 
-            msg_uid, now_ms = await _orm_save_message(
-                sender, receiver_uid, message, sender_name
-            )
-            if msg_uid and now_ms:
-                ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
+            result = await sync_to_async(send_message)(sender, receiver_uid, message, sender_name)
+            if result is None:
+                return
+            msg_uid, now_ms = result
+            ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
 
-                await self.channel_layer.group_send(
-                    self.room_group_name,
-                    {
-                        'type': 'chat_message',
-                        'action': 'send',
-                        'message_uid': msg_uid,
-                        'message': message,
-                        'sender_uid': str(sender.uid),
-                        'sender_name': sender_name,
-                        'timestamp': ts_str,
-                        'raw_ts': now_ms,
-                    }
-                )
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'action': 'send',
+                    'message_uid': msg_uid,
+                    'message': message,
+                    'sender_uid': str(sender.uid),
+                    'sender_name': sender_name,
+                    'timestamp': ts_str,
+                    'raw_ts': now_ms,
+                }
+            )
         elif action == 'edit':
             message_uid = data['message_uid']
             new_message = data['message']
-            success = await _orm_edit_message(sender, message_uid, new_message)
+            success = await sync_to_async(edit_message)(str(sender.uid), message_uid, new_message)
             if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -125,7 +79,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
         elif action == 'delete':
             message_uid = data['message_uid']
-            success = await _orm_delete_message(sender, message_uid)
+            success = await sync_to_async(delete_message)(str(sender.uid), message_uid)
             if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
