@@ -55,7 +55,7 @@
                     <td>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                             <a href="{% url 'verify_deletion_request' req.uid %}" class="view-btn" style="background: #eef2ff; color: #4f46e5; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">View Content</a>
-                            <a href="javascript:void(0)" class="view-btn" onclick="Toast.confirm('Are you sure you want to PERMANENTLY DELETE this {{ req.item_type }}? This action is destructive and irreversible.', () => { window.location.href = '{% url 'approve_deletion_request' req.uid %}'; })" style="background: #10b981; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Approve Delete</a>
+                            <button onclick="openApproveModal('{{ req.uid }}', '{{ req.item_type }}', '{{ req.item_name|escapejs }}')" class="view-btn" style="background: #10b981; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer;">Approve Delete</button>
                             <a href="{% url 'reject_deletion_request' req.uid %}" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">Reject</a>
                         </div>
                     </td>
@@ -115,4 +115,56 @@
     </div>
 </div>
 {% endif %}
+
+<!-- Secure Approve Deletion Modal -->
+<div id="approveDeleteModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 1.5rem; width: 100%; max-width: 420px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: #dc2626; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #fee2e2; color: #ef4444;">🗑️</span>
+                Approve Deletion
+            </h3>
+            <button onclick="closeApproveModal()" style="background: none; border: none; font-size: 1.5rem; color: #94a3b8; cursor: pointer; padding: 0; line-height: 1;">&times;</button>
+        </div>
+        <div style="padding: 1.5rem;">
+            <p style="margin: 0 0 0.25rem; color: #475569; font-size: 0.95rem;">
+                You are approving the deletion of <strong id="approveItemName" style="color: #dc2626;"></strong>
+            </p>
+            <p style="margin: 0 0 1.5rem; color: #94a3b8; font-size: 0.85rem;">
+                Type: <span id="approveItemType"></span>
+            </p>
+            <form id="approveDeleteForm" method="POST" action="">
+                {% csrf_token %}
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Admin Username/Email</label>
+                    <input type="text" name="admin_username" required style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; font-size: 0.95rem; outline: none; box-sizing: border-box;">
+                </div>
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.4rem; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Admin Password</label>
+                    <input type="password" name="admin_password" required style="width: 100%; padding: 0.7rem 1rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; font-size: 0.95rem; outline: none; box-sizing: border-box;">
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" onclick="closeApproveModal()" style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; background: white; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button type="submit" style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; background: #dc2626; color: white; font-weight: 700; cursor: pointer;">Approve & Delete</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openApproveModal(reqUid, itemType, itemName) {
+        document.getElementById('approveItemName').textContent = itemName;
+        document.getElementById('approveItemType').textContent = itemType;
+        document.getElementById('approveDeleteForm').action = '/customadmin/deletion-requests/' + reqUid + '/approve/';
+        document.getElementById('approveDeleteModal').style.display = 'flex';
+    }
+    function closeApproveModal() {
+        document.getElementById('approveDeleteModal').style.display = 'none';
+        document.getElementById('approveDeleteForm').reset();
+    }
+    document.getElementById('approveDeleteModal').addEventListener('click', function(e) {
+        if (e.target === this) closeApproveModal();
+    });
+</script>
 {% endblock %}

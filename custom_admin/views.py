@@ -1266,54 +1266,72 @@ def verify_deletion_request(request, request_uid):
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def approve_deletion_request(request, request_uid):
-    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    
-    if del_request.status != 'PENDING':
-        messages.error(request, "This request has already been processed.")
+    if request.method == 'POST':
+        username = request.POST.get('admin_username', '').strip()
+        password = request.POST.get('admin_password', '')
+
+        admin_user = request.user
+        is_identity_match = (
+            username.lower() == admin_user.username.lower() or 
+            username.lower() == admin_user.email.lower()
+        )
+
+        if not (is_identity_match and admin_user.check_password(password) and admin_user.is_staff):
+            messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
+            return redirect('manage_deletion_requests')
+
+        del_request = get_object_or_404(DeletionRequest, uid=request_uid)
+
+        if del_request.status != 'PENDING':
+            messages.error(request, "This request has already been processed.")
+            return redirect('manage_deletion_requests')
+
+        success_msg = f"{del_request.item_type} '{del_request.item_name}' deleted successfully."
+
+        if del_request.item_type == 'Lesson':
+            lesson = Lesson.objects.filter(id=del_request.item_id).first()
+            if lesson:
+                lesson.delete()
+            else:
+                messages.warning(request, "Item already gone.")
+        elif del_request.item_type == 'Course':
+            course = Course.objects.filter(id=del_request.item_id).first()
+            if course:
+                course.status = 'DELETED'
+                course.is_approved = False
+                course.save()
+                success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
+            else:
+                messages.warning(request, "Item already gone.")
+        elif del_request.item_type == 'Resource':
+            from accounts.models import CourseResource
+            resource = CourseResource.objects.filter(id=del_request.item_id).first()
+            if resource:
+                from accounts.utils.storage_manager import StorageManager
+                from accounts.utils.cloudinary_helpers import delete_temp_image
+                try:
+                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                    if resource.thumbnail_public_id:
+                        delete_temp_image(resource.thumbnail_public_id)
+                except Exception:
+                    pass
+                resource.is_deleted = True
+                resource.save()
+            else:
+                messages.warning(request, "Resource already gone.")
+
+        del_request.status = 'APPROVED'
+        del_request.reviewed_by = request.user
+        del_request.reviewed_at = timezone.now()
+        del_request.save()
+        log_admin_activity(request, f"Approved deletion request for {del_request.item_type} '{del_request.item_name}'", target_user=del_request.teacher)
+        messages.success(request, f"✅ {success_msg}")
+        create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
         return redirect('manage_deletion_requests')
 
-    success_msg = f"{del_request.item_type} '{del_request.item_name}' deleted successfully."
-    
-    if del_request.item_type == 'Lesson':
-        lesson = Lesson.objects.filter(id=del_request.item_id).first()
-        if lesson:
-            lesson.delete()
-        else:
-            messages.warning(request, "Item already gone.")
-    elif del_request.item_type == 'Course':
-        course = Course.objects.filter(id=del_request.item_id).first()
-        if course:
-            course.status = 'DELETED'
-            course.is_approved = False
-            course.save()
-            success_msg = f"Course '{del_request.item_name}' moved to Deleted Courses area."
-        else:
-            messages.warning(request, "Item already gone.")
-    elif del_request.item_type == 'Resource':
-        from accounts.models import CourseResource
-        resource = CourseResource.objects.filter(id=del_request.item_id).first()
-        if resource:
-            from accounts.utils.storage_manager import StorageManager
-            from accounts.utils.cloudinary_helpers import delete_temp_image
-            try:
-                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                if resource.thumbnail_public_id:
-                    delete_temp_image(resource.thumbnail_public_id)
-            except Exception:
-                pass
-            resource.is_deleted = True
-            resource.save()
-        else:
-            messages.warning(request, "Resource already gone.")
-
-    del_request.status = 'APPROVED'
-    del_request.reviewed_by = request.user
-    del_request.reviewed_at = timezone.now()
-    del_request.save()
-    log_admin_activity(request, f"Approved deletion request for {del_request.item_type} '{del_request.item_name}'", target_user=del_request.teacher)
-    messages.success(request, f"✅ {success_msg}")
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
     return redirect('manage_deletion_requests')
 
 
