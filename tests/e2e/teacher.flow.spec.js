@@ -501,12 +501,13 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
         console.log('[TEACHER-04] Found pending teacher, attempting to approve...');
         // Extract the accept URL from the approve button's onclick attribute
         const approveUrl = await page.evaluate((username) => {
-          const cells = Array.from(document.querySelectorAll('td'));
-          for (const cell of cells) {
-            if (cell.textContent.includes(username)) {
-              const row = cell.closest('tr');
-              if (row) {
-                const approveLink = row.querySelector('a');
+          const rows = document.querySelectorAll('tr');
+          for (const row of rows) {
+            if (row.textContent.includes('@' + username)) {
+              // Find the approve link in the last td (actions column)
+              const lastTd = row.querySelector('td:last-child');
+              if (lastTd) {
+                const approveLink = lastTd.querySelector('a');
                 if (approveLink && approveLink.textContent.includes('Approve')) {
                   const onclick = approveLink.getAttribute('onclick') || '';
                   const match = onclick.match(/\/customadmin\/user\/accept\/[a-f0-9-]+\//);
@@ -522,6 +523,9 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
           await navigateAndWait(page, approveUrl);
           await page.waitForTimeout(2000);
           console.log(`[TEACHER-04] URL after direct approval: ${page.url()}`);
+          // Verify approval took effect
+          const approvalMsgs = await page.locator('.toast-message, .alert-success, .messages .success').allTextContents().catch(() => []);
+          console.log(`[TEACHER-04] Approval messages: ${JSON.stringify(approvalMsgs)}`);
         } else {
           // Fallback: try clicking the approve link directly
           console.log('[TEACHER-04] Could not extract UID, falling back to button click');
@@ -574,6 +578,15 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
 
       const currentUrl = page.url();
       console.log(`[TEACHER-04b] URL after login: ${currentUrl}`);
+
+      // Diagnose login failure
+      const loginDebug = await page.evaluate(() => {
+        const msgs = document.querySelectorAll('.toast-message, .alert, .error, [class*="message"]');
+        return Array.from(msgs).map(m => m.textContent.trim()).filter(Boolean);
+      });
+      console.log(`[TEACHER-04b] Page messages: ${JSON.stringify(loginDebug)}`);
+      const pageTitle = await page.locator('h1, h2, .card-title').first().textContent().catch(() => '');
+      console.log(`[TEACHER-04b] Page heading: ${pageTitle}`);
 
       const loggedIn = currentUrl.includes('/dashboard/') || currentUrl.includes('/teacher/dashboard/');
       if (loggedIn) {
