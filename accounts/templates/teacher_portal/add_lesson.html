@@ -221,6 +221,7 @@
                         body: JSON.stringify({
                             course_uid: '{{ course.uid }}',
                             title: document.getElementById('title').value,
+                            chapter: document.getElementById('chapter').value,
                             order: document.getElementById('order').value,
                         })
                     });
@@ -374,6 +375,11 @@
                     <div class="input-group">
                         <label for="title">Lesson Title</label>
                         <input type="text" name="title" id="title" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="chapter">Chapter (optional)</label>
+                        <input type="text" name="chapter" id="chapter" placeholder="e.g. Chapter 1, Unit 2, etc.">
+                        <p class="helper-text" style="font-size:0.75rem;color:#94a3b8;margin-top:0.3rem;">Group lessons under a chapter name. Lessons in the same chapter will be grouped together.</p>
                     </div>
                     <div class="input-group">
                         <label>Video Source</label>

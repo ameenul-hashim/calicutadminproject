@@ -1,0 +1,179 @@
+{% extends 'teacher_portal/base_teacher.html' %}
+{% load static %}
+
+{% block title %}{{ lesson.title }} | Neo Learner{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+<style>
+    .plyr { border-radius: 0.75rem; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+    .chapter-group { margin-bottom: 0.5rem; }
+    .chapter-group:last-child { margin-bottom: 0; }
+    .chapter-title { font-size: 0.8rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.35rem; padding: 0.3rem 0.5rem; background: #eef2ff; border-radius: 0.4rem; }
+    .lesson-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.5rem; border-radius: 0.4rem; color: #475569; text-decoration: none; font-size: 0.8rem; font-weight: 500; transition: all 0.15s; }
+    .lesson-link:hover { background: #f1f5f9; color: #6366f1; }
+    .lesson-link.active { background: #eef2ff; color: #6366f1; font-weight: 700; }
+    .lesson-link .order-badge { width: 20px; height: 20px; border-radius: 4px; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-weight: 700; flex-shrink: 0; }
+    .lesson-link.active .order-badge { background: #6366f1; color: white; }
+    @media (max-width: 1024px) {
+        .play-layout { flex-direction: column !important; }
+        .sidebar-nav { max-height: 200px !important; overflow-y: auto !important; }
+    }
+</style>
+{% endblock %}
+
+{% block page_header %}
+<div style="display: flex; align-items: center; gap: 1rem; width: 100%;">
+    <a href="{% url 'course_lessons' course.uid %}" style="display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: white; border: 1px solid #e2e8f0; border-radius: 50%; color: #64748b; text-decoration: none; font-size: 1.2rem; transition: all 0.2s;">←</a>
+    <div>
+        <h1 style="margin: 0; font-size: 1.4rem; color: #1e293b;">{{ course.title }}</h1>
+        <p style="margin: 0.15rem 0 0; color: #64748b; font-size: 0.85rem;">Lesson {{ lesson.order }}{% if lesson.chapter %} · {{ lesson.chapter }}{% endif %}</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="play-layout" style="display: flex; gap: 2rem; align-items: flex-start;">
+    <!-- Main: Video Player -->
+    <div style="flex: 1; min-width: 0;">
+        <div style="background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+            <!-- Lesson Header -->
+            <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+                <div>
+                    <span style="font-size: 0.75rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.05em;">Lesson {{ lesson.order }}</span>
+                    <h2 style="margin: 0.25rem 0 0; font-size: 1.3rem; color: #1e293b; font-weight: 800;">{{ lesson.title }}</h2>
+                    {% if lesson.chapter %}
+                    <span style="font-size: 0.8rem; color: #64748b;">📁 {{ lesson.chapter }}</span>
+                    {% endif %}
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    <span class="status-badge" style="font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 2rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.025em; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        {% if lesson.status == 'APPROVED' %}background: #10b981; color: white;
+                        {% elif lesson.status == 'REJECTED' %}background: #ef4444; color: white;
+                        {% else %}background: #f59e0b; color: white;{% endif %}">
+                        {{ lesson.status }}
+                    </span>
+                    <a href="{% url 'edit_lesson' lesson.uid %}" style="background: #4f46e5; color: white; padding: 0.5rem 1rem; border-radius: 0.6rem; text-decoration: none; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);">✏️ Edit</a>
+                    <a href="javascript:void(0)" onclick="Toast.confirm('Delete this lesson permanently?', function() { window.location.href = '{% url 'delete_lesson' lesson.uid %}'; })" style="background: #ef4444; color: white; padding: 0.5rem 1rem; border-radius: 0.6rem; text-decoration: none; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 0.4rem; box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.2);">🗑️ Delete</a>
+                </div>
+            </div>
+
+            <!-- Video Player -->
+            <div style="padding: 1.5rem;">
+                {% if lesson.video_file %}
+                <div style="width: 100%; border-radius: 0.75rem; overflow: hidden; aspect-ratio: 16/9; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);">
+                    <video class="plyr-player" playsinline controls preload="auto" style="width: 100%; height: 100%;">
+                        <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                    </video>
+                </div>
+
+                {% elif lesson.video_url %}
+                <div id="yt-player" style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);"></div>
+                <script>
+                (function() {
+                    var url = "{{ lesson.video_url|escapejs }}";
+                    var container = document.getElementById('yt-player');
+                    function getYouTubeId(url) {
+                        if (!url) return null;
+                        var m = url.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/);
+                        return (m && m[2].length === 11) ? m[2] : null;
+                    }
+                    var vid = getYouTubeId(url);
+                    if (vid) {
+                        container.innerHTML = '<div data-plyr-provider="youtube" data-plyr-embed-id="' + vid + '"></div>';
+                        var p = new Plyr('[data-plyr-provider="youtube"]', {
+                            youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+                        });
+                    } else {
+                        var isDirect = url.toLowerCase().indexOf('.mp4') > -1 || url.toLowerCase().indexOf('.webm') > -1 || url.toLowerCase().indexOf('cloudinary.com') > -1;
+                        if (isDirect) {
+                            var src = url;
+                            if (src.indexOf('cloudinary.com') > -1 && src.indexOf('f_auto') === -1)
+                                src = src.replace('/upload/', '/upload/f_auto,q_auto,vc_h264/');
+                            container.innerHTML = '<video class="plyr-player" playsinline controls preload="auto" style="width:100%;height:100%;"><source src="' + src + '" type="video/mp4"></video>';
+                            new Plyr(container.querySelector('.plyr-player'));
+                        } else {
+                            container.innerHTML = '<iframe src="' + url + '" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>';
+                        }
+                    }
+                })();
+                </script>
+                {% else %}
+                <div style="width: 100%; aspect-ratio: 16/9; background: #f1f5f9; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center;">
+                    <div style="text-align: center; color: #94a3b8;">
+                        <div style="font-size: 3rem; margin-bottom: 0.5rem;">📽️</div>
+                        <p style="font-weight: 600;">No video uploaded for this lesson</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if lesson.has_pending_edits %}
+                <div style="margin-top: 1rem; background: #fef3c7; border: 1px solid #fde68a; border-radius: 0.75rem; padding: 1rem;">
+                    <p style="margin: 0; font-size: 0.85rem; color: #92400e;">
+                        <strong style="display: block; margin-bottom: 0.25rem;">🔄 Pending Edits Awaiting Approval</strong>
+                        <span style="font-size: 0.8rem;">Changes submitted for admin review. Students still see the current version.</span>
+                        {% if lesson.pending_title or lesson.pending_video_url or lesson.pending_order or lesson.pending_chapter %}
+                        <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem; font-size: 0.8rem;">
+                            {% if lesson.pending_title %}<li><strong>Title:</strong> {{ lesson.pending_title }}</li>{% endif %}
+                            {% if lesson.pending_chapter %}<li><strong>Chapter:</strong> {{ lesson.pending_chapter }}</li>{% endif %}
+                        </ul>
+                        {% endif %}
+                    </p>
+                </div>
+                {% endif %}
+
+                {% if lesson.status == 'REJECTED' and lesson.rejection_reason %}
+                <div style="margin-top: 1rem; background: #fff1f2; border: 1px solid #fecdd3; border-radius: 0.75rem; padding: 1rem;">
+                    <p style="margin: 0; font-size: 0.85rem; color: #9f1239;">
+                        <strong style="display: block; margin-bottom: 0.25rem;">Rejection Reason:</strong>
+                        {{ lesson.rejection_reason }}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Course Lessons Navigation -->
+    <div style="width: 280px; flex-shrink: 0; background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); position: sticky; top: 1rem;">
+        <div style="padding: 1rem 1.25rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+            <h3 style="margin: 0; font-size: 0.95rem; color: #1e293b; font-weight: 700;">Course Content</h3>
+            <p style="margin: 0.15rem 0 0; font-size: 0.75rem; color: #64748b;">{{ course_lessons|length }} lessons</p>
+        </div>
+        <div class="sidebar-nav" style="padding: 0.75rem; max-height: 500px; overflow-y: auto;">
+            {% regroup course_lessons by chapter as chapter_list %}
+            {% for chapter_group in chapter_list %}
+            <div class="chapter-group">
+                <div class="chapter-title">📁 {% if chapter_group.grouper %}{{ chapter_group.grouper }}{% else %}Lessons{% endif %}</div>
+                {% for clesson in chapter_group.list %}
+                <a href="{% url 'teacher_lesson_play' clesson.uid %}" class="lesson-link {% if clesson.uid == lesson.uid %}active{% endif %}">
+                    <span class="order-badge">{{ clesson.order }}</span>
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ clesson.title }}</span>
+                    <span style="font-size: 0.65rem; padding: 0.1rem 0.4rem; border-radius: 0.3rem; font-weight: 600;
+                        {% if clesson.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;
+                        {% elif clesson.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;
+                        {% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
+                        {{ clesson.status|slice:":4" }}
+                    </span>
+                </a>
+                {% endfor %}
+            </div>
+            {% empty %}
+            <p style="text-align: center; color: #94a3b8; font-size: 0.8rem; padding: 1rem 0;">No other lessons</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.plyr-player').forEach(function(el) {
+        new Plyr(el, {
+            controls: ['play-large', 'restart', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
+            settings: ['quality', 'speed', 'loop']
+        });
+    });
+});
+</script>
+{% endblock %}

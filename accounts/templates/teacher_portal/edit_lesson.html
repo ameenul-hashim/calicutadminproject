@@ -323,6 +323,11 @@
                         <label for="title">Lesson Title</label>
                         <input type="text" name="title" id="title" value="{{ lesson.title }}" required>
                     </div>
+                    <div class="input-group">
+                        <label for="chapter">Chapter (optional)</label>
+                        <input type="text" name="chapter" id="chapter" value="{{ lesson.chapter|default:'' }}" placeholder="e.g. Chapter 1, Unit 2, etc.">
+                        <p class="helper-text">Group lessons under a chapter name.</p>
+                    </div>
                     {% if lesson.video_url %}
                     <div class="input-group">
                         <label>Current Video</label>

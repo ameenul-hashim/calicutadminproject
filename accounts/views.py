@@ -904,7 +904,7 @@ def edit_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
-    lessons = course.lessons.all().order_by('order')
+    lessons = course.lessons.all().order_by('chapter', 'order')
     from .models import CourseResource
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved').order_by('-created_at')
 
@@ -941,6 +941,40 @@ def course_lessons(request, course_uid):
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def teacher_lesson_play(request, lesson_uid):
+    lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
+    course = lesson.course
+
+    # Resolve Supabase video URL to signed URL for playback
+    if lesson.video_url and lesson.video_url.startswith('supabase://'):
+        if lesson.upload_status not in ('READY', 'NOT_UPLOADED'):
+            lesson.video_url = ''
+        else:
+            storage_path = lesson.video_url.replace('supabase://', '', 1)
+            try:
+                from .utils.supabase_storage import supabase as vid_supabase
+                parts = storage_path.split('/', 1)
+                if len(parts) == 2 and '-' in parts[0]:
+                    v_bucket, v_path = parts[0], parts[1]
+                else:
+                    from .utils.supabase_storage import video_bucket as v_bucket
+                    v_path = storage_path
+                res = vid_supabase.storage.from_(v_bucket).create_signed_url(v_path, 86400)
+                signed = res.get("signedURL") if isinstance(res, dict) else res
+                lesson.video_url = signed if signed else ''
+            except Exception:
+                lesson.video_url = ''
+
+    # Collect all lessons in same course (for chapter context)
+    course_lessons = course.lessons.all().order_by('chapter', 'order')
+
+    return render(request, 'teacher_portal/lesson_play.html', {
+        'lesson': lesson,
+        'course': course,
+        'course_lessons': course_lessons,
+    })
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def add_lesson(request, course_uid):
     """
     Handles YouTube URL lesson creation (form POST).
@@ -972,6 +1006,7 @@ def add_lesson(request, course_uid):
             title=title,
             video_url=video_url,
             video_file=None,
+            chapter=request.POST.get('chapter', '') or None,
             order=request.POST.get('order', course.lessons.count() + 1),
             status='PENDING',
             is_approved=False,
@@ -1008,6 +1043,7 @@ def edit_lesson(request, lesson_uid):
         video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
         order = request.POST.get('order', 1)
+        chapter = request.POST.get('chapter', '') or None
 
         # MP4 file uploads should use the AJAX endpoint
         if video_source == 'file' and video_file:
@@ -1026,6 +1062,7 @@ def edit_lesson(request, lesson_uid):
             lesson.pending_title = title
             lesson.pending_video_url = video_url
             lesson.pending_order = order
+            lesson.pending_chapter = chapter
             lesson.has_pending_edits = True
             lesson.save()
 
@@ -1039,6 +1076,7 @@ def edit_lesson(request, lesson_uid):
                 lesson.youtube_uploaded_at = timezone.now()
             lesson.video_url = video_url
             lesson.order = order
+            lesson.chapter = chapter
             lesson.is_approved = False
             lesson.status = 'PENDING'
             lesson.save()
@@ -2406,6 +2444,7 @@ def init_video_upload(request):
         course_uid = data.get('course_uid')
         title = data.get('title', '').strip()
         order = data.get('order', 1)
+        chapter = data.get('chapter', '') or None
 
         if not title:
             return JsonResponse({'error': 'Title is required'}, status=400)
@@ -2415,6 +2454,7 @@ def init_video_upload(request):
         lesson = Lesson.objects.create(
             course=course,
             title=title,
+            chapter=chapter,
             order=order,
             status='PENDING',
             is_approved=False,

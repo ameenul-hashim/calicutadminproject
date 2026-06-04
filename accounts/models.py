@@ -129,6 +129,7 @@ class Lesson(models.Model):
     title = models.CharField(max_length=255)
     video_url = models.URLField(max_length=500, null=True, blank=True, help_text="YouTube or other video link")
     video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
+    chapter = models.CharField(max_length=255, blank=True, null=True, help_text="Chapter grouping name (e.g. Chapter 1)")
     order = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
@@ -139,6 +140,7 @@ class Lesson(models.Model):
     pending_video_url = models.URLField(max_length=500, blank=True, null=True)
     pending_video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
     pending_order = models.PositiveIntegerField(null=True, blank=True)
+    pending_chapter = models.CharField(max_length=255, blank=True, null=True)
     has_pending_edits = models.BooleanField(default=False, db_index=True)
 
     youtube_video_id = models.CharField(max_length=100, null=True, blank=True, help_text="YouTube video ID from upload")
@@ -156,8 +158,18 @@ class Lesson(models.Model):
     upload_status = models.CharField(max_length=20, choices=UPLOAD_STATUS_CHOICES, default='NOT_UPLOADED', db_index=True)
     file_size = models.PositiveBigIntegerField(default=0, help_text="Video file size in bytes")
 
+    def get_thumbnail_url(self):
+        if self.youtube_video_id:
+            return f"https://img.youtube.com/vi/{self.youtube_video_id}/hqdefault.jpg"
+        if self.video_url:
+            import re
+            match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', self.video_url)
+            if match:
+                return f"https://img.youtube.com/vi/{match.group(1)}/hqdefault.jpg"
+        return None
+
     class Meta:
-        ordering = ['order']
+        ordering = ['chapter', 'order']
         indexes = [
             models.Index(fields=['course', 'status']),
         ]
