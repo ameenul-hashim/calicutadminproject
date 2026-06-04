@@ -61,6 +61,20 @@
         .upload-phase { font-size: 0.8rem; color: #64748b; margin-top: 0.3rem; font-weight: 500; }
         .upload-phase.complete { color: #16a34a; }
         .upload-phase.error { color: #dc2626; }
+        .upload-phase.processing { color: #6366f1; }
+        .upload-phase.processing::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-left: 6px;
+            border: 2px solid #6366f1;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Upload error message */
         .upload-error { display: none; margin-top: 1rem; padding: 0.8rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; color: #dc2626; font-size: 0.85rem; }
@@ -212,6 +226,8 @@
 
                 try {
                     // Step 1: Create lesson + get YouTube upload URL
+                    setProgress(0, 'Initializing upload...');
+                    setPhase('Connecting to YouTube...');
                     const initResp = await fetch('/api/video/init-youtube/', {
                         method: 'POST',
                         headers: {
@@ -243,7 +259,11 @@
                     // Step 2: PUT file directly to YouTube (browser → YouTube, zero Django RAM)
                     const videoId = await uploadToYouTube(uploadUrl, file, fileSize, accessToken);
 
-                    // Step 3: Tell Django the video_id
+                    // Step 3: Upload complete — show 100% and verify
+                    setProgress(100, 'Upload complete');
+                    setPhase('Verifying video on YouTube...', 'processing');
+                    document.getElementById('progressDetail').textContent = 'Upload finished. Verifying video...';
+
                     const completeResp = await fetch('/api/video/youtube-complete/', {
                         method: 'POST',
                         headers: {
@@ -261,20 +281,29 @@
                         throw new Error(err.error || 'Failed to save video info');
                     }
 
-                    // Step 4: Success — redirect to lessons page
-                    setProgress(100, '✅ Upload complete!');
-                    setPhase('✅ Video uploaded successfully! Processing on YouTube...', 'complete');
-                    document.getElementById('progressDetail').textContent = '';
+                    const completeData = await completeResp.json();
+
+                    // Step 4: Full success — show final message based on verify result
                     document.getElementById('progressBar').classList.add('complete');
+                    document.getElementById('progressDetail').textContent = '';
+
+                    const verifyMsg = completeData.verify ? completeData.verify.message || '' : '';
+                    setPhase('✅ Video uploaded successfully! ' + verifyMsg, 'complete');
+
+                    setProgress(100, '✅ All done!');
 
                     setTimeout(function() {
                         window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                    }, 1500);
+                    }, 2500);
 
                 } catch (err) {
                     console.error('Upload error:', err);
                     setProgress(0, 'Upload failed');
-                    const errorMsg = err.message || 'Upload failed. Please try again.';
+                    let errorMsg = err.message || 'Upload failed. Please try again.';
+                    // Clean up common prefixes for cleaner display
+                    if (errorMsg.startsWith('Error: ')) {
+                        errorMsg = errorMsg.substring(7);
+                    }
                     setPhase('❌ ' + errorMsg, 'error');
                     setError(errorMsg);
                     setButtonLoading(false);
@@ -313,6 +342,7 @@
 
                     xhr.addEventListener('load', function() {
                         if (xhr.status >= 200 && xhr.status < 300) {
+                            // YouTube upload succeeded — the response body is the video resource JSON
                             try {
                                 const resp = JSON.parse(xhr.responseText);
                                 if (resp.id) {
@@ -324,22 +354,56 @@
                                 reject(new Error('Invalid response from YouTube'));
                             }
                         } else {
+                            // YouTube returned an error — extract the real reason
                             try {
                                 const resp = JSON.parse(xhr.responseText);
-                                const msg = resp.error && resp.error.message ? resp.error.message : 'Upload failed';
-                                reject(new Error(msg + ' (HTTP ' + xhr.status + ')'));
+                                const errorInfo = resp.error;
+                                let reason = '';
+                                let message = 'Upload failed';
+
+                                if (errorInfo && errorInfo.errors && errorInfo.errors.length) {
+                                    const firstErr = errorInfo.errors[0];
+                                    reason = firstErr.reason || '';
+                                    message = firstErr.message || message;
+                                } else if (errorInfo) {
+                                    message = errorInfo.message || message;
+                                }
+
+                                // Map common YouTube reasons to user-friendly messages
+                                const reasonMap = {
+                                    'quotaExceeded': 'YouTube upload quota exceeded. The daily limit has been reached. Try again tomorrow or contact admin.',
+                                    'videoTooLarge': 'Video file is too large for YouTube. Maximum size is 256 GB or 12 hours runtime.',
+                                    'uploadLimitExceeded': 'YouTube upload limit exceeded. Please wait before uploading more videos.',
+                                    'invalidVideoMetadata': 'Invalid video metadata. Try reducing the title length.',
+                                    'videoFileSizeIsSpecificRequired': 'YouTube requires a specific file format. Ensure your MP4 is properly encoded.',
+                                    'insufficientPermissions': 'YouTube permission issue. Contact admin to re-authenticate the app.',
+                                    'backendError': 'YouTube server error. Please try uploading again.',
+                                };
+
+                                const friendlyMsg = reasonMap[reason] || (message + (reason ? ' (Reason: ' + reason + ')' : ''));
+                                reject(new Error(friendlyMsg));
                             } catch(e) {
-                                reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
+                                // Try to get text response if JSON parsing failed
+                                try {
+                                    const textResp = xhr.responseText;
+                                    if (textResp && textResp.length < 500) {
+                                        reject(new Error(textResp));
+                                    } else {
+                                        reject(new Error('Upload failed (HTTP ' + xhr.status + '). Check your connection and try again.'));
+                                    }
+                                } catch(e2) {
+                                    reject(new Error('Upload failed (HTTP ' + xhr.status + '). Check your connection and try again.'));
+                                }
                             }
                         }
                     });
 
                     xhr.addEventListener('error', function() {
-                        reject(new Error('Network error during upload. Please check your connection.'));
+                        reject(new Error('Network error: Connection lost during upload. Check your internet connection and try again.'));
                     });
 
                     xhr.addEventListener('abort', function() {
-                        reject(new Error('Upload was cancelled.'));
+                        reject(new Error('Upload cancelled.'));
                     });
 
                     // PUT binary file directly to YouTube — MP4 never touches Django

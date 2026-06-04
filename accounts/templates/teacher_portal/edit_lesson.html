@@ -44,6 +44,20 @@
         .upload-phase { font-size: 0.8rem; color: #64748b; margin-top: 0.3rem; font-weight: 500; }
         .upload-phase.complete { color: #16a34a; }
         .upload-phase.error { color: #dc2626; }
+        .upload-phase.processing { color: #6366f1; }
+        .upload-phase.processing::after {
+            content: '';
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            margin-left: 6px;
+            border: 2px solid #6366f1;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .upload-error { display: none; margin-top: 1rem; padding: 0.8rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; color: #dc2626; font-size: 0.85rem; }
         .upload-error.active { display: block; }
     </style>
@@ -176,6 +190,12 @@
 
                 try {
                     // Step 1: Get YouTube upload URL for this lesson
+                    progressBar.style.width = '0%';
+                    progressPercent.textContent = '0%';
+                    progressText.textContent = 'Initializing upload...';
+                    uploadPhase.textContent = 'Connecting to YouTube...';
+                    progressDetail.textContent = '';
+
                     const initResp = await fetch('/api/video/init-youtube-edit/', {
                         method: 'POST',
                         headers: {
@@ -235,16 +255,36 @@
                                     else reject(new Error('No video ID returned from YouTube'));
                                 } catch(ex) { reject(new Error('Invalid response from YouTube')); }
                             } else {
+                                // Extract real YouTube error reason
                                 try {
                                     const resp = JSON.parse(xhr.responseText);
-                                    const msg = resp.error && resp.error.message ? resp.error.message : 'Upload failed';
-                                    reject(new Error(msg + ' (HTTP ' + xhr.status + ')'));
-                                } catch(ex) { reject(new Error('Upload failed (HTTP ' + xhr.status + ')')); }
+                                    const errorInfo = resp.error;
+                                    let reason = '';
+                                    let message = 'Upload failed';
+
+                                    if (errorInfo && errorInfo.errors && errorInfo.errors.length) {
+                                        const firstErr = errorInfo.errors[0];
+                                        reason = firstErr.reason || '';
+                                        message = firstErr.message || message;
+                                    } else if (errorInfo) {
+                                        message = errorInfo.message || message;
+                                    }
+
+                                    const reasonMap = {
+                                        'quotaExceeded': 'YouTube upload quota exceeded. The daily limit has been reached. Try again tomorrow or contact admin.',
+                                        'videoTooLarge': 'Video file is too large for YouTube. Maximum size is 256 GB or 12 hours runtime.',
+                                        'uploadLimitExceeded': 'YouTube upload limit exceeded. Please wait before uploading more videos.',
+                                        'invalidVideoMetadata': 'Invalid video metadata. Try reducing the title length.',
+                                        'backendError': 'YouTube server error. Please try uploading again.',
+                                    };
+                                    const friendlyMsg = reasonMap[reason] || (message + (reason ? ' (Reason: ' + reason + ')' : ''));
+                                    reject(new Error(friendlyMsg));
+                                } catch(ex) { reject(new Error('Upload failed (HTTP ' + xhr.status + '). Check your connection and try again.')); }
                             }
                         });
 
-                        xhr.addEventListener('error', function() { reject(new Error('Network error')); });
-                        xhr.addEventListener('abort', function() { reject(new Error('Cancelled')); });
+                        xhr.addEventListener('error', function() { reject(new Error('Network error: Connection lost during upload. Check your internet connection and try again.')); });
+                        xhr.addEventListener('abort', function() { reject(new Error('Upload cancelled.')); });
 
                         // PUT binary file directly to YouTube — MP4 never touches Django
                         xhr.open('PUT', uploadUrl);
@@ -253,7 +293,14 @@
                         xhr.send(file);
                     });
 
-                    // Step 3: Tell Django the video_id
+                    // Step 3: Upload done — show 100% and verify
+                    progressBar.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    progressText.textContent = 'Upload complete';
+                    uploadPhase.textContent = 'Verifying video on YouTube...';
+                    uploadPhase.className = 'upload-phase processing';
+                    progressDetail.textContent = 'Upload finished. Verifying video...';
+
                     const completeResp = await fetch('/api/video/youtube-edit-complete/', {
                         method: 'POST',
                         headers: {
@@ -271,24 +318,29 @@
                         throw new Error(err.error || 'Failed to save video info');
                     }
 
-                    // Success
-                    progressBar.style.width = '100%';
+                    const completeData = await completeResp.json();
+
+                    // Step 4: Full success
                     progressBar.classList.add('complete');
                     progressPercent.textContent = '100%';
-                    progressText.textContent = '✅ Upload complete!';
-                    uploadPhase.textContent = '✅ Video uploaded successfully! Processing on YouTube...';
-                    uploadPhase.classList.add('complete');
+                    progressText.textContent = '✅ All done!';
+                    const verifyMsg = completeData.verify ? completeData.verify.message || '' : '';
+                    uploadPhase.textContent = '✅ Video updated successfully! ' + verifyMsg;
+                    uploadPhase.className = 'upload-phase complete';
                     progressDetail.textContent = '';
 
                     setTimeout(function() {
                         window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                    }, 1500);
+                    }, 2500);
 
                 } catch(err) {
                     progressBar.classList.add('error');
-                    const errorMsg = err.message || 'Upload failed. Please try again.';
+                    let errorMsg = err.message || 'Upload failed. Please try again.';
+                    if (errorMsg.startsWith('Error: ')) {
+                        errorMsg = errorMsg.substring(7);
+                    }
                     uploadPhase.textContent = '❌ ' + errorMsg;
-                    uploadPhase.classList.add('error');
+                    uploadPhase.className = 'upload-phase error';
                     uploadError.textContent = errorMsg;
                     uploadError.classList.add('active');
                     submitBtn.disabled = false;

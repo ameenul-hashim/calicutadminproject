@@ -1054,6 +1054,12 @@ def add_lesson(request, course_uid):
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         youtube_video_id = youtube_match.group(1) if youtube_match else None
 
+        if youtube_video_id:
+            from .utils.youtube_uploader import verify_youtube_video
+            verify_result = verify_youtube_video(youtube_video_id)
+            if verify_result.get('error'):
+                messages.warning(request, f"Warning: The YouTube video exists but could not be verified: {verify_result['error']}. It may not play within the application.")
+
         lesson = Lesson.objects.create(
             course=course,
             title=title,
@@ -1110,6 +1116,12 @@ def edit_lesson(request, lesson_uid):
 
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         new_youtube_video_id = youtube_match.group(1) if youtube_match else None
+
+        if new_youtube_video_id and video_source == 'url':
+            from .utils.youtube_uploader import verify_youtube_video
+            verify_result = verify_youtube_video(new_youtube_video_id)
+            if verify_result.get('error'):
+                messages.warning(request, f"Warning: The YouTube video exists but could not be verified: {verify_result['error']}. It may not play within the application.")
 
         if lesson.is_approved:
             lesson.pending_title = title
@@ -2574,7 +2586,7 @@ def init_video_upload(request):
 def youtube_upload_complete(request):
     """
     Phase 2: Browser has finished uploading MP4 directly to YouTube.
-    Receives video_id from browser, saves to lesson.
+    Receives video_id from browser, saves to lesson, verifies video on YouTube.
     MP4 bytes never touched Django.
     """
     from django.utils import timezone as tz
@@ -2601,11 +2613,28 @@ def youtube_upload_complete(request):
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
+    from .utils.youtube_uploader import verify_youtube_video
+    verify_result = verify_youtube_video(video_id)
+
     lesson.youtube_video_id = video_id
-    lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
     lesson.upload_status = 'PROCESSING'
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
+
+    if verify_result.get('error'):
+        lesson.youtube_upload_status = 'FAILED'
+        lesson.save(update_fields=[
+            'youtube_video_id', 'youtube_uploaded_at', 'upload_status',
+            'video_url', 'youtube_upload_status',
+        ])
+        return JsonResponse({
+            'success': False,
+            'message': verify_result['error'],
+            'upload_status': 'FAILED',
+            'video_id': video_id,
+        }, status=500)
+
+    lesson.youtube_upload_status = 'UPLOADED'
     lesson.save(update_fields=[
         'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
         'upload_status', 'video_url',
@@ -2613,9 +2642,10 @@ def youtube_upload_complete(request):
 
     return JsonResponse({
         'success': True,
-        'message': 'Video uploaded to YouTube successfully!',
-        'upload_status': 'PROCESSING',
+        'message': verify_result.get('message', 'Video uploaded to YouTube successfully!'),
+        'upload_status': lesson.upload_status,
         'video_id': video_id,
+        'verify': verify_result,
     })
 
 
@@ -2624,10 +2654,29 @@ def video_upload_status(request, lesson_uid):
     """Phase 3: Poll upload status for progress tracking."""
     try:
         lesson = Lesson.objects.get(uid=lesson_uid, course__teacher=request.user)
-        return JsonResponse({
+        data = {
             'upload_status': lesson.upload_status,
+            'youtube_upload_status': lesson.youtube_upload_status,
             'file_size': lesson.file_size,
-        })
+            'youtube_video_id': lesson.youtube_video_id,
+        }
+        # If the video_id exists, verify it on YouTube
+        if lesson.youtube_video_id and lesson.upload_status == 'PROCESSING':
+            try:
+                from .utils.youtube_uploader import verify_youtube_video
+                verify_result = verify_youtube_video(lesson.youtube_video_id)
+                if verify_result.get('status') == 'verified':
+                    lesson.upload_status = 'READY'
+                    lesson.save(update_fields=['upload_status'])
+                    data['upload_status'] = 'READY'
+                    data['verify_message'] = 'Video processing complete and verified.'
+                elif verify_result.get('status') == 'processing':
+                    data['verify_message'] = 'Video still processing on YouTube. Please wait...'
+                elif verify_result.get('error'):
+                    data['verify_message'] = verify_result['error']
+            except Exception as e:
+                logger.error(f"Video status verify error: {e}")
+        return JsonResponse(data)
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found'}, status=404)
 
@@ -2713,7 +2762,20 @@ def youtube_edit_complete(request):
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
+    from .utils.youtube_uploader import verify_youtube_video
+    verify_result = verify_youtube_video(video_id)
+
     new_youtube_url = f'https://www.youtube.com/watch?v={video_id}'
+
+    if verify_result.get('error'):
+        lesson.youtube_upload_status = 'FAILED'
+        lesson.save(update_fields=['youtube_upload_status'])
+        return JsonResponse({
+            'success': False,
+            'message': verify_result['error'],
+            'upload_status': 'FAILED',
+            'video_id': video_id,
+        }, status=500)
 
     if lesson.is_approved:
         lesson.pending_video_url = new_youtube_url
@@ -2740,9 +2802,10 @@ def youtube_edit_complete(request):
 
     return JsonResponse({
         'success': True,
-        'message': 'Video uploaded to YouTube successfully!',
+        'message': verify_result.get('message', 'Video uploaded to YouTube successfully!'),
         'upload_status': 'PROCESSING',
         'video_id': video_id,
+        'verify': verify_result,
     })
 
 

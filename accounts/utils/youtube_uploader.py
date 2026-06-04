@@ -134,6 +134,78 @@ def delete_youtube_video(video_id):
         raise
 
 
+def verify_youtube_video(video_id):
+    """
+    Verify a YouTube video exists, is embeddable, and is unlisted.
+    If not unlisted/embeddable, updates visibility.
+    Returns dict with {status, privacyStatus, embeddable} or {error}.
+    """
+    youtube = get_authenticated_service()
+    if not youtube:
+        return {'error': 'YouTube service not available. Cannot verify video.'}
+
+    try:
+        response = youtube.videos().list(
+            part='status,player',
+            id=video_id
+        ).execute()
+
+        items = response.get('items', [])
+        if not items:
+            return {'error': 'Video not found on YouTube. It may have been rejected or deleted during processing.'}
+
+        video = items[0]
+        status = video.get('status', {})
+        privacy = status.get('privacyStatus', 'private')
+        embeddable = status.get('embeddable', False)
+        upload_status = status.get('uploadStatus', 'unknown')
+
+        # If still processing, report that
+        if upload_status == 'uploaded':
+            return {
+                'status': 'processing',
+                'privacyStatus': privacy,
+                'embeddable': embeddable,
+                'uploadStatus': upload_status,
+                'message': 'Video uploaded to YouTube but still processing. It will be available shortly.',
+            }
+
+        # Ensure unlisted + embeddable
+        needs_update = False
+        if privacy != 'unlisted':
+            privacy = 'unlisted'
+            needs_update = True
+        if not embeddable:
+            embeddable = True
+            needs_update = True
+
+        if needs_update:
+            try:
+                change_video_visibility(video_id, 'unlisted')
+                logger.info(f"YouTube video {video_id} visibility corrected to unlisted + embeddable")
+            except Exception as e:
+                logger.error(f"Failed to update visibility for {video_id}: {e}")
+                return {
+                    'status': 'warning',
+                    'privacyStatus': privacy,
+                    'embeddable': embeddable,
+                    'uploadStatus': upload_status,
+                    'message': f'Video uploaded but could not set visibility: {e}. It may not play within the app.',
+                }
+
+        return {
+            'status': 'verified',
+            'privacyStatus': 'unlisted',
+            'embeddable': True,
+            'uploadStatus': upload_status,
+            'message': 'Video verified: unlisted, embeddable, and ready.',
+        }
+
+    except Exception as e:
+        logger.error(f"YouTube verify error for {video_id}: {e}")
+        return {'error': f'Failed to verify video on YouTube: {str(e)}'}
+
+
 def create_resumable_upload_url(title, description, file_size=None):
     """
     Creates a YouTube resumable upload session and returns the upload URL.
