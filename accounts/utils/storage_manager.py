@@ -11,25 +11,15 @@ from googleapiclient.http import MediaIoBaseUpload
 
 logger = logging.getLogger(__name__)
 
-# Initialize Secondary Supabase for Resources
-RESOURCE_SUPABASE_URL = os.getenv("RESOURCE_SUPABASE_URL")
-RESOURCE_SUPABASE_KEY = os.getenv("RESOURCE_SUPABASE_SERVICE_ROLE_KEY")
-
-supabase = None
-if RESOURCE_SUPABASE_URL and RESOURCE_SUPABASE_KEY:
-    try:
-        from supabase import create_client
-        supabase = create_client(RESOURCE_SUPABASE_URL, RESOURCE_SUPABASE_KEY)
-    except ImportError:
-        logger.warning("supabase package not installed. Secondary storage disabled.")
-    except Exception as e:
-        logger.error(f"Failed to init Secondary Supabase: {e}")
+# Use the shared Supabase clients and helpers from supabase_storage (single source of truth)
+from accounts.utils.supabase_storage import get_client, _do_upload
 
 class StorageManager:
     @staticmethod
     def upload_to_supabase_storage(file_bytes, destination_path, content_type):
         """Uploads a file to the dedicated Supabase Storage project"""
-        if not supabase:
+        client = get_client(use_resource_project=True)
+        if not client:
             logger.warning("Resource Supabase not configured. Bypassing upload.")
             return destination_path
             
@@ -38,11 +28,7 @@ class StorageManager:
             bucket_name = parts[0]
             file_path = parts[1] if len(parts) > 1 else destination_path
             
-            supabase.storage.from_(bucket_name).upload(
-                path=file_path,
-                file=file_bytes,
-                file_options={"content-type": content_type}
-            )
+            _do_upload(client, bucket_name, file_path, file_bytes, content_type=content_type)
             return destination_path
         except Exception as e:
             logger.error(f"Supabase Upload Error: {e}")
@@ -103,14 +89,15 @@ class StorageManager:
         from accounts.models import CourseResource
         try:
             resource = CourseResource.objects.get(id=resource_id)
-            if not supabase: return
+            client = get_client(use_resource_project=True)
+            if not client: return
             
             # 1. Download original
             supabase_parts = original_supabase_path.split('/', 1)
             bucket_name = supabase_parts[0]
             p_in_b = supabase_parts[1] if len(supabase_parts) > 1 else original_supabase_path
             
-            file_bytes = supabase.storage.from_(bucket_name).download(p_in_b)
+            file_bytes = client.storage.from_(bucket_name).download(p_in_b)
             if not file_bytes:
                 raise ValueError(f"Could not download original file from Supabase: {original_supabase_path}")
 
@@ -149,7 +136,7 @@ class StorageManager:
                 # 3. CLEANUP SUPABASE (Delete original)
                 try:
                     if resource.firebase_file_path != original_supabase_path:
-                        supabase.storage.from_(bucket_name).remove([p_in_b])
+                        client.storage.from_(bucket_name).remove([p_in_b])
                         logger.info(f"Purged original file from Supabase after Drive backup: {original_supabase_path}")
                 except Exception as e:
                     logger.error(f"Cleanup of original Supabase file failed for {resource.id}: {e}")
@@ -175,20 +162,22 @@ class StorageManager:
     @staticmethod
     def delete_from_supabase_storage(file_path):
         """Permanently delete file from Supabase Storage"""
-        if not supabase or not file_path:
+        client = get_client(use_resource_project=True)
+        if not client or not file_path:
             return
         try:
             parts = file_path.split('/', 1)
             bucket_name = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else file_path
-            supabase.storage.from_(bucket_name).remove([path_in_bucket])
+            client.storage.from_(bucket_name).remove([path_in_bucket])
         except Exception as e:
             logger.error(f"Supabase Delete Error for {file_path}: {e}")
 
     @staticmethod
     def generate_supabase_signed_url(file_path, expiration=None):
         """Generates a short-lived temporary streaming URL."""
-        if not supabase or not file_path: return None
+        client = get_client(use_resource_project=True)
+        if not client or not file_path: return None
         try:
             parts = file_path.split('/', 1)
             bucket_name = parts[0]
@@ -198,7 +187,7 @@ class StorageManager:
             elif isinstance(expiration, timedelta): expires_in = int(expiration.total_seconds())
             else: expires_in = int(expiration) * 60
                 
-            res = supabase.storage.from_(bucket_name).create_signed_url(p_in_b, expires_in)
+            res = client.storage.from_(bucket_name).create_signed_url(p_in_b, expires_in)
             if isinstance(res, dict) and 'signedURL' in res: return res['signedURL']
             elif isinstance(res, str): return res
             return None
