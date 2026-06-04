@@ -76,7 +76,7 @@ def validate_avatar_url(url):
         return False
 
 def log_login_attempt(request, user, status='SUCCESS'):
-    """Audit helper for enterprise login tracking — Firebase logging is async to avoid blocking login."""
+    """Audit helper for login tracking. Failed → LoginHistory + Firebase audit. Success → Firebase analytics."""
     import threading
     try:
         from .models import LoginHistory
@@ -107,6 +107,14 @@ def log_login_attempt(request, user, status='SUCCESS'):
                 except Exception:
                     pass
             threading.Thread(target=_async_firebase_log, daemon=True).start()
+        else:
+            def _async_analytics():
+                try:
+                    from .utils.firebase_analytics import log_visit
+                    log_visit(user)
+                except Exception:
+                    pass
+            threading.Thread(target=_async_analytics, daemon=True).start()
     except Exception:
         pass
 
@@ -115,12 +123,17 @@ def create_notification(user, message):
     if user.user_type == 'STUDENT':
         return
     Notification.objects.create(user=user, message=message)
+    from .utils.firebase_notifications import create_notification_firebase
+    create_notification_firebase(str(user.uid), message)
 
 def notify_admins(message):
     from .models import CustomUser, Notification
     admins = CustomUser.objects.filter(user_type='ADMIN')
     notifs = [Notification(user=admin, message=message) for admin in admins]
     Notification.objects.bulk_create(notifs)
+    from .utils.firebase_notifications import create_notification_firebase
+    for admin in admins:
+        create_notification_firebase(str(admin.uid), message)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def signup_view(request):
@@ -454,12 +467,13 @@ def login_view(request):
                 
                 login(request, user)
                 request.session.set_expiry(0)
-                
+
                 if not request.session.session_key:
                     request.session.save()
                 user.current_session_key = request.session.session_key
                 user.save(update_fields=['current_session_key'])
                 
+                log_login_attempt(request, user, status='SUCCESS')
                 messages.success(request, f"Welcome back, {user.full_name}!")
                 return redirect('dashboard')
             else:
@@ -572,6 +586,7 @@ def teacher_login_view(request):
             if user.status == 'ACTIVE':
                 login(request, user)
                 request.session.set_expiry(0)
+                log_login_attempt(request, user, status='SUCCESS')
                 messages.success(request, f"Welcome, {user.full_name}!")
                 return redirect('teacher_dashboard')
         else:
