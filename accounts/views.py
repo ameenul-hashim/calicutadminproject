@@ -110,8 +110,6 @@ def log_login_attempt(request, user, status='SUCCESS'):
         pass
 
 def create_notification(user, message):
-    if user.user_type == 'STUDENT':
-        return
     from .utils.firebase_db import notif_create
     notif_create(str(user.uid), message)
 

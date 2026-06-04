@@ -410,7 +410,7 @@
             </div>
             <div class="stat-row">
                 <span class="stat-label">Engine</span>
-                <span class="stat-value">PostgreSQL (Neon)</span>
+                <span class="stat-value">PostgreSQL (Render)</span>
             </div>
             <div class="stat-row">
                 <span class="stat-label">Description</span>
@@ -574,7 +574,7 @@
     new Chart(document.getElementById('storageBarChart'), {
         type: 'bar',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Neon DB', 'Firebase RTDB'],
+            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Render DB', 'Firebase RTDB'],
             datasets: [{
                 label: 'MB Used',
                 data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage],
@@ -610,7 +610,7 @@
     new Chart(document.getElementById('storageDoughnut'), {
         type: 'doughnut',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Neon DB', 'Firebase RTDB'],
+            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Render DB', 'Firebase RTDB'],
             datasets: [{
                 data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage],
                 backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444'],

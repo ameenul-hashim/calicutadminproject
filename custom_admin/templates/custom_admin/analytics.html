@@ -9,41 +9,31 @@
 
 {% block content %}
 <style>
-    /* Premium Dashboard Styles */
-    .dashboard-layout {
+    .dashboard-layout { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+    .stats-grid {
         display: grid;
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-    
-    /* Stat Cards - more compact */
-    .premium-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
-    @media (max-width: 1024px) {
-        .premium-stats-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    @media (max-width: 640px) {
-        .premium-stats-grid { grid-template-columns: 1fr; }
-    }
-    
-    .premium-stat-card {
+    @media (max-width: 1024px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (max-width: 640px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
         border-radius: 1rem;
         padding: 1.25rem 1rem;
         text-align: center;
-        transition: transform 0.3s ease;
         background: white;
         border: 1px solid #f1f5f9;
+        transition: transform 0.2s;
     }
-    
-    .stat-icon-hex {
-        width: 45px;
-        height: 45px;
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+
+    .stat-icon {
+        width: 44px;
+        height: 44px;
         margin: 0 auto 0.75rem;
-        clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -51,27 +41,64 @@
         color: white;
     }
 
-    .premium-stat-card h3 {
+    .stat-card h3 {
         margin: 0 0 0.25rem 0;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         color: #64748b;
         font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
-    
-    .premium-stat-card .value {
+    .stat-card .value {
         font-size: 1.8rem;
         font-weight: 800;
         color: #1e293b;
         margin: 0;
     }
 
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+
+    .panel {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.25rem;
+        border: 1px solid #f1f5f9;
+    }
+    .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    .panel-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0;
+    }
+    .chart-container {
+        height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .premium-table { width: 100%; border-collapse: collapse; }
     .premium-table th {
         text-align: left;
         padding: 0.75rem;
-        font-size: 0.8rem;
-        font-weight: 600;
+        font-size: 0.75rem;
+        font-weight: 700;
         color: #64748b;
-        border-bottom: 1px solid #f1f5f9;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-bottom: 2px solid #f1f5f9;
     }
     .premium-table td {
         padding: 0.75rem;
@@ -80,189 +107,137 @@
         border-bottom: 1px solid #f1f5f9;
     }
 
-    /* Charts Section - more compact */
-    .premium-charts-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    @media (max-width: 900px) {
-        .premium-charts-grid { grid-template-columns: 1fr; }
-    }
-    
-    .premium-panel {
-        background: white;
-        border-radius: 1rem;
-        padding: 1.25rem;
-        border: 1px solid #f1f5f9;
-    }
-    
-    .premium-panel-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1rem;
-    }
-    .premium-panel-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0;
+    .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
     }
 
-        /* RESPONSIVE INJECTIONS */
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
-            /* Forms */
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
-        }
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
-        /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
-        /* Django Messages Toast */
-        .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
-        }
-        </style>
-
+    @media (max-width: 1024px) {
+        .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
+        .sidebar.active { transform: translateX(0); }
+        .main-content { margin-left: 0 !important; padding: 1rem !important; }
+    }
+    @media (max-width: 640px) {
+        .messages { max-width: 90vw; }
+    }
+</style>
 
 <div class="dashboard-layout">
     <div class="full-width-content">
-        <!-- 4 Stat Cards -->
-        <div class="premium-stats-grid">
-            <div class="premium-stat-card card-purple">
-                <div class="stat-icon-hex">🎓</div>
-                <h3>Total Students</h3>
-                <p class="value">{{ total_students }}</p>
+
+        <!-- ===== CARD ROW (5 Cards) ===== -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #6366f1, #818cf8);">👥</div>
+                <h3>Active Users</h3>
+                <p class="value">{{ active_users }}</p>
             </div>
-            <div class="premium-stat-card card-pink">
-                <div class="stat-icon-hex">👨‍🏫</div>
-                <h3>Total Teachers</h3>
-                <p class="value">{{ total_teachers }}</p>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #059669, #10b981);">👨‍🏫</div>
+                <h3>Active Teachers</h3>
+                <p class="value">{{ active_teachers }}</p>
             </div>
-            <div class="premium-stat-card card-blue">
-                <div class="stat-icon-hex">📚</div>
-                <h3>Total Courses</h3>
-                <p class="value">{{ total_courses }}</p>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">📄</div>
+                <h3>PDF Sessions</h3>
+                <p class="value">{{ pdf_sessions }}</p>
             </div>
-            <div class="premium-stat-card card-yellow">
-                <div class="stat-icon-hex">📝</div>
-                <h3>Course Lessons</h3>
-                <p class="value">{{ total_lessons }}</p>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #d97706, #f59e0b);">📚</div>
+                <h3>Enrolled Courses</h3>
+                <p class="value">{{ enrolled_courses }}</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">🏆</div>
+                <h3>Top Educators</h3>
+                <p class="value">{{ top_educators|length }}</p>
             </div>
         </div>
 
-        <!-- Today / Yesterday Quick Stats -->
-        <div class="premium-stats-grid" style="margin-bottom: 1.5rem;">
-            <div class="premium-stat-card card-green" style="background: linear-gradient(135deg, #059669, #10b981);">
-                <div class="stat-icon-hex">👤</div>
-                <h3>Today — Users Entered</h3>
-                <p class="value">{{ today_entries }}</p>
-            </div>
-            <div class="premium-stat-card card-blue" style="background: linear-gradient(135deg, #2563eb, #3b82f6);">
-                <div class="stat-icon-hex">👥</div>
-                <h3>Yesterday — Users Entered</h3>
-                <p class="value">{{ yesterday_entries }}</p>
-            </div>
-            <div class="premium-stat-card card-purple">
-                <div class="stat-icon-hex">📊</div>
-                <h3>7-Day Avg (Unique/Day)</h3>
-                <p class="value">{{ week_daily_data|length|yesno:"—,0" }}</p>
-            </div>
-            <div class="premium-stat-card card-yellow">
-                <div class="stat-icon-hex">📈</div>
-                <h3>30-Day Avg (Unique/Day)</h3>
-                <p class="value">{{ daily_visit_data|length|yesno:"—,0" }}</p>
-            </div>
-        </div>
-
-        <!-- User Status & Daily Active Users -->
-        <script>
-            // Compute averages after data loads
-            document.addEventListener('DOMContentLoaded', function() {
-                const weekData = {{ week_daily_data|safe }};
-                const monthData = {{ daily_visit_data|safe }};
-                if (weekData.length) {
-                    const weekAvg = Math.round(weekData.reduce((a,b)=>a+b,0) / weekData.filter(v=>v>0).length || 1);
-                    document.querySelector('.card-purple .value').textContent = weekAvg;
-                }
-                if (monthData.length) {
-                    const monthAvg = Math.round(monthData.reduce((a,b)=>a+b,0) / monthData.filter(v=>v>0).length || 1);
-                    document.querySelector('.card-yellow .value').textContent = monthAvg;
-                }
-            });
-        </script>
-        <div class="premium-charts-grid">
-            <div class="premium-panel">
-                <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">👥 User Status Overview</h2>
-                    <span class="status-badge ok" style="font-size:0.7rem;">Live</span>
+        <!-- ===== ROW 1: User Status + Teacher Status (doughnuts) ===== -->
+        <div class="charts-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">👥 User Status Overview</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;"><span class="pulse-dot" style="background:#10b981;"></span>Real-time</span>
                 </div>
-                <div style="height: 250px; display: flex; align-items: center; justify-content: center;">
+                <div class="chart-container">
                     <canvas id="userStatusChart"></canvas>
                 </div>
             </div>
-
-            <div class="premium-panel">
-                <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">📈 Daily Active Users (Last 30 Days)</h2>
-                    <span class="status-badge ok" style="font-size:0.7rem;">DB</span>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">👨‍🏫 Teacher Status</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;"><span class="pulse-dot" style="background:#10b981;"></span>Real-time</span>
                 </div>
-                <div style="height: 250px;">
-                    <canvas id="dailyActiveChart"></canvas>
+                <div class="chart-container">
+                    <canvas id="teacherStatusChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- This Week Daily Entries & Course Approval -->
-        <div class="premium-charts-grid">
-            <div class="premium-panel">
-                <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">📊 Daily User Entries — This Week</h2>
-                    <span class="status-badge ok" style="font-size:0.7rem;">LoginHistory</span>
+        <!-- ===== ROW 2: Daily Active Users + Daily Entries ===== -->
+        <div class="charts-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📈 Daily Active Users — Last 7 Days</h2>
+                    <span style="display:flex;gap:0.75rem;font-size:0.75rem;color:#64748b;">
+                        <span>Today: <strong style="color:#059669;">{{ today_entries }}</strong></span>
+                        <span>Yesterday: <strong style="color:#2563eb;">{{ yesterday_entries }}</strong></span>
+                    </span>
                 </div>
-                <div style="height: 250px;">
+                <div class="chart-container">
+                    <canvas id="dailyActiveChart"></canvas>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📊 Daily User Entries — This Week</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;"><span class="pulse-dot" style="background:#10b981;"></span>Firebase</span>
+                </div>
+                <div class="chart-container">
                     <canvas id="weekDailyChart"></canvas>
                 </div>
             </div>
-            
-            <div class="premium-panel">
-                <div class="premium-panel-header">
-                    <h2 class="premium-panel-title">📋 Course Approval</h2>
+        </div>
+
+        <!-- ===== ROW 3: Per-Teacher Uploads + Course Approval ===== -->
+        <div class="charts-grid">
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📦 Per-Teacher Uploads (PDF + Video)</h2>
+                    <span class="status-badge ok" style="font-size:0.7rem;"><span class="pulse-dot" style="background:#10b981;"></span>Real-time</span>
                 </div>
-                <div style="height: 250px; display: flex; align-items: center; justify-content: center;">
+                <div class="chart-container">
+                    <canvas id="teacherUploadChart"></canvas>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">📋 Course Approval Status</h2>
+                </div>
+                <div class="chart-container">
                     <canvas id="approvalChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <!-- Database Table (Top Courses) -->
-        <div class="premium-panel">
-            <div class="premium-panel-header">
-                <h2 class="premium-panel-title">Top Enrolled Courses</h2>
+        <!-- ===== TABLE: Top Courses ===== -->
+        <div class="panel">
+            <div class="panel-header">
+                <h2 class="panel-title">📚 Top Enrolled Courses</h2>
             </div>
             <div class="table-responsive">
-                <table class="table">
+                <table class="premium-table">
                     <thead>
                         <tr>
                             <th>Course Name</th>
                             <th>Students</th>
                             <th>Teacher</th>
-                            <th>Contents</th>
+                            <th>Lessons</th>
                             <th>Category</th>
                         </tr>
                     </thead>
@@ -272,130 +247,170 @@
                                 <td style="font-weight: 600;">{{ course.title }}</td>
                                 <td>{{ course.enrollment_count }}</td>
                                 <td>{{ course.teacher.full_name|default:course.teacher.username }}</td>
-                                <td style="font-weight: 700; color: #6366f1;">{{ course.lesson_count }} Items</td>
+                                <td style="font-weight: 700; color: #6366f1;">{{ course.lesson_count }}</td>
                                 <td><span class="status-pill status-pass">{{ course.category }}</span></td>
                             </tr>
                         {% empty %}
-                            <tr>
-                                <td colspan="4" style="text-align: center; color: #94a3b8; padding: 2rem;">No courses available</td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        <!-- Top Educators Section -->
-        <div class="premium-panel" style="margin-top: 1.5rem;">
-            <div class="premium-panel-header">
-                <h2 class="premium-panel-title">Top Educators (By Content Contribution)</h2>
-            </div>
-            <div class="table-responsive">
-                <table class="table">
-                    <thead>
-                        <tr>
-                            <th>Educator</th>
-                            <th>Total Courses</th>
-                            <th>Total Contents Uploaded</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for teacher in top_educators %}
-                            <tr>
-                                <td style="display: flex; align-items: center; gap: 0.75rem;">
-                                    <div style="width: 32px; height: 32px; border-radius: 50%; background: #f1f5f9; overflow: hidden; display: flex; align-items: center; justify-content: center; font-size: 0.8rem;">
-                                        {% if teacher.avatar_url %}
-                                            <img src="{{ teacher.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover;">
-                                        {% else %}
-                                            👤
-                                        {% endif %}
-                                    </div>
-                                    <span style="font-weight: 600;">{{ teacher.full_name|default:teacher.username }}</span>
-                                </td>
-                                <td>{{ teacher.total_courses }}</td>
-                                <td style="font-weight: 700; color: #10b981;">{{ teacher.total_content }} Lessons</td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="3" style="text-align: center; color: #94a3b8; padding: 2rem;">No educator data available</td>
-                            </tr>
+                            <tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:2rem;">No courses available</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+
+        <!-- ===== TABLE: Top Educators ===== -->
+        <div class="panel" style="margin-top:1.5rem;">
+            <div class="panel-header">
+                <h2 class="panel-title">🏆 Top Educators (By Content Contribution)</h2>
+            </div>
+            <div class="table-responsive">
+                <table class="premium-table">
+                    <thead>
+                        <tr>
+                            <th>Educator</th>
+                            <th>Courses</th>
+                            <th>Lessons Uploaded</th>
+                            <th>PDFs Uploaded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for teacher in top_educators %}
+                            <tr>
+                                <td style="display:flex;align-items:center;gap:0.75rem;">
+                                    <div style="width:32px;height:32px;border-radius:50%;background:#f1f5f9;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:0.8rem;">
+                                        {% if teacher.avatar_url %}
+                                            <img src="{{ teacher.avatar_url }}" style="width:100%;height:100%;object-fit:cover;">
+                                        {% else %}
+                                            👤
+                                        {% endif %}
+                                    </div>
+                                    <span style="font-weight:600;">{{ teacher.full_name|default:teacher.username }}</span>
+                                </td>
+                                <td>{{ teacher.total_courses_cnt }}</td>
+                                <td style="font-weight:700;color:#6366f1;">{{ teacher.total_content }}</td>
+                                <td>—</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="4" style="text-align:center;color:#94a3b8;padding:2rem;">No educator data</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    const months = {{ months|safe }};
+    // ===== CHART COLORS =====
+    const colors = {
+        green: '#10b981',
+        red: '#ef4444',
+        amber: '#f59e0b',
+        slate: '#94a3b8',
+        blue: '#3b82f6',
+        indigo: '#6366f1',
+        purple: '#8b5cf6',
+        pink: '#ec4899',
+        teal: '#14b8a6',
+        cyan: '#06b6d4',
+        orange: '#f97316',
+    };
 
-    // User Status Doughnut (Active / Blocked / Rejected / Pending)
+    // ===== 1. USER STATUS DOUGHNUT =====
     new Chart(document.getElementById('userStatusChart'), {
         type: 'doughnut',
         data: {
-            labels: ['Active', 'Blocked', 'Rejected', 'Pending'],
+            labels: {{ user_status_labels|safe }},
             datasets: [{
-                data: [{{ user_status.active }}, {{ user_status.blocked }}, {{ user_status.rejected }}, {{ user_status.pending }}],
-                backgroundColor: ['#10b981', '#ef4444', '#f59e0b', '#94a3b8'],
+                data: [{{ user_status_data|join:"," }}],
+                backgroundColor: [colors.green, colors.red, colors.amber, colors.slate],
                 borderWidth: 0,
-                cutout: '65%'
+                cutout: '62%'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } }
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } }
             }
         }
     });
 
-    // Daily Active Users Line Chart (LoginHistory, last 30 days)
+    // ===== 2. TEACHER STATUS DOUGHNUT =====
+    new Chart(document.getElementById('teacherStatusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: {{ user_status_labels|safe }},
+            datasets: [{
+                data: [{{ teacher_status_data|join:"," }}],
+                backgroundColor: [colors.blue, colors.red, colors.amber, colors.slate],
+                borderWidth: 0,
+                cutout: '62%'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } }
+            }
+        }
+    });
+
+    // ===== 3. DAILY ACTIVE USERS LINE (7-day) =====
     new Chart(document.getElementById('dailyActiveChart'), {
         type: 'line',
         data: {
-            labels: {{ daily_visit_labels|safe }},
+            labels: {{ week_labels|safe }},
             datasets: [{
-                label: 'Visits',
-                data: {{ daily_visit_data|safe }},
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderColor: '#10b981',
-                borderWidth: 2,
+                label: 'Active Users',
+                data: {{ week_data|safe }},
+                backgroundColor: 'rgba(99,102,241,0.08)',
+                borderColor: colors.indigo,
+                borderWidth: 2.5,
                 fill: true,
-                tension: 0.3,
-                pointRadius: 3,
-                pointBackgroundColor: '#10b981'
+                tension: 0.35,
+                pointRadius: 4,
+                pointBackgroundColor: colors.indigo,
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { display: false }, ticks: { maxTicksLimit: 7, font: { size: 10 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
                 y: { beginAtZero: true, border: { display: false }, ticks: { stepSize: 1, font: { size: 10 } } }
             },
             plugins: { legend: { display: false } }
         }
     });
 
-    // Daily User Entries — This Week (bar chart from LoginHistory)
+    // ===== 4. DAILY ENTRIES BAR (7-day) =====
     new Chart(document.getElementById('weekDailyChart'), {
         type: 'bar',
         data: {
-            labels: {{ week_daily_labels|safe }},
+            labels: {{ week_labels|safe }},
             datasets: [{
-                label: 'Unique Users',
-                data: {{ week_daily_data|safe }},
-                backgroundColor: ['#3b82f6','#3b82f6','#3b82f6','#3b82f6','#3b82f6','#10b981','#f59e0b'],
+                label: 'Users',
+                data: {{ week_data|safe }},
+                backgroundColor: [
+                    colors.blue, colors.blue, colors.blue, colors.blue,
+                    colors.blue, colors.green, colors.amber
+                ],
                 borderRadius: 4,
-                barPercentage: 0.65
+                barPercentage: 0.6
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                x: { grid: { display: false }, ticks: { font: { size: 10 } } },
                 y: { beginAtZero: true, border: { display: false }, ticks: { stepSize: 1, font: { size: 10 } } }
             },
             plugins: {
@@ -411,24 +426,58 @@
         }
     });
 
-    // Course Approval Doughnut
+    // ===== 5. PER-TEACHER UPLOADS STACKED BAR =====
+    new Chart(document.getElementById('teacherUploadChart'), {
+        type: 'bar',
+        data: {
+            labels: {{ teacher_upload_labels|safe }},
+            datasets: [
+                {
+                    label: 'PDFs',
+                    data: {{ teacher_upload_pdf_data|safe }},
+                    backgroundColor: colors.indigo,
+                    borderRadius: 2
+                },
+                {
+                    label: 'Videos',
+                    data: {{ teacher_upload_video_data|safe }},
+                    backgroundColor: colors.teal,
+                    borderRadius: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                y: { beginAtZero: true, border: { display: false }, ticks: { stepSize: 1, font: { size: 10 } } }
+            },
+            plugins: {
+                legend: { position: 'top', labels: { boxWidth: 12, padding: 8, font: { size: 10 } } }
+            }
+        }
+    });
+
+    // ===== 6. COURSE APPROVAL DOUGHNUT =====
     new Chart(document.getElementById('approvalChart'), {
         type: 'doughnut',
         data: {
             labels: ['Approved', 'Pending', 'Rejected'],
             datasets: [{
                 data: [{{ approval_stats.approved }}, {{ approval_stats.pending }}, {{ approval_stats.rejected }}],
-                backgroundColor: ['#3b82f6', '#e2e8f0', '#ef4444'],
+                backgroundColor: [colors.blue, colors.slate, colors.red],
                 borderWidth: 0,
-                cutout: '75%'
+                cutout: '68%'
             }]
         },
         options: {
             responsive: true,
-            plugins: { legend: { position: 'bottom' } }
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } }
+            }
         }
     });
 </script>
 {% endblock %}
-
-

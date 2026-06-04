@@ -533,119 +533,91 @@ def create_teacher_admin(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def analytics_view(request):
-    from django.core.cache import cache
-    
-    # Try to get cached stats
-    cache_key = 'admin_analytics_stats'
-    context = cache.get(cache_key)
-    
-    if not context:
-        # Stats Cards: Show only active/approved platform content
-        total_students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE').count()
-        total_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
-        total_courses = Course.objects.filter(status='PUBLISHED').count()
-        total_lessons = Lesson.objects.filter(is_approved=True).count()
+    from django.db.models import Count, Q, Sum
 
-        # Month-wise Data
-        def get_monthly_data(queryset, date_field='created_at'):
-            data = [0] * 12
-            counts = queryset.annotate(month=ExtractMonth(date_field)).values('month').annotate(count=Count('id'))
-            for entry in counts:
-                if entry['month']:
-                    data[entry['month']-1] = entry['count']
-            return data
+    # ===== CARD METRICS =====
+    active_users = CustomUser.objects.filter(status='ACTIVE').count()
+    active_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
+    pdf_sessions = CourseResource.objects.filter(status='APPROVED', is_deleted=False).count()
+    enrolled_courses = Enrollment.objects.count()
+    top_educators_qs = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
+        total_content=Count('courses__lessons', filter=Q(courses__lessons__is_approved=True)),
+        total_courses_cnt=Count('courses', filter=Q(courses__status='PUBLISHED'), distinct=True)
+    ).order_by('-total_content')[:5]
 
-        student_data = get_monthly_data(CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE'), 'date_joined')
-        teacher_data = get_monthly_data(CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE'), 'date_joined')
-        course_data = get_monthly_data(Course.objects.filter(status='PUBLISHED'))
+    # ===== USER STATUS BREAKDOWN =====
+    status_vals = ['ACTIVE', 'BLOCKED', 'REJECTED', 'PENDING']
+    user_status_counts = {s.lower(): CustomUser.objects.filter(status=s).count() for s in status_vals}
+    teacher_status_counts = {s.lower(): CustomUser.objects.filter(user_type='TEACHER', status=s).count() for s in status_vals}
+    user_status_labels = ['Active', 'Blocked', 'Rejected', 'Pending']
+    user_status_data = [user_status_counts[s.lower()] for s in status_vals]
+    teacher_status_data = [teacher_status_counts[s.lower()] for s in status_vals]
 
-        # Approval Stats (reuse total_courses from above)
-        approval_stats = {
-            'approved': total_courses,
-            'rejected': Course.objects.filter(status='REJECTED').count(),
-            'pending': Course.objects.filter(status='PENDING').count(),
-        }
-        
-        # Teacher Performance
-        top_teachers = CustomUser.objects.filter(user_type='TEACHER').annotate(num_courses=Count('courses')).order_by('-num_courses')[:5]
-        teacher_performance_labels = [t.username for t in top_teachers]
-        teacher_performance_data = [t.num_courses for t in top_teachers]
-        
-        # Course Enrollments
-        top_courses = Course.objects.annotate(
-            enrollment_count=Count('enrollments'),
-            lesson_count=Count('lessons')
-        ).select_related('teacher').order_by('-enrollment_count')[:5]
-
-        # Top Educators (by total approved content uploaded)
-        top_educators = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
-            total_content=Count('courses__lessons', filter=Q(courses__lessons__is_approved=True)),
-            total_courses=Count('courses', filter=Q(courses__status='PUBLISHED'), distinct=True)
-        ).order_by('-total_content')[:5]
-
-        pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
-        pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
-
-        context = {
-            'total_students': total_students,
-            'total_teachers': total_teachers,
-            'total_courses': total_courses,
-            'total_lessons': total_lessons,
-            'student_data': student_data,
-            'teacher_data': teacher_data,
-            'course_data': course_data,
-            'approval_stats': approval_stats,
-            'teacher_perf_labels': teacher_performance_labels,
-            'teacher_perf_data': teacher_performance_data,
-            'top_courses': top_courses,
-            'top_educators': top_educators,
-            'months': ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            'pending_students_count': pending_students_count,
-            'pending_teachers_count': pending_teachers_count,
-        }
-
-        # Cache for 15 minutes (900 seconds)
-        cache.set(cache_key, context, 900)
-
-    # Real-time user status counts — single aggregate query
-    from django.db.models import Count as AggCount
-    user_status_qs = CustomUser.objects.values('status').annotate(cnt=AggCount('id'))
-    user_status = {'active': 0, 'blocked': 0, 'rejected': 0, 'pending': 0}
-    for entry in user_status_qs:
-        user_status[entry['status'].lower()] = entry['cnt']
-    context['user_status'] = user_status
-
-    # --- Daily User Entries from Firebase LoginHistory ---
-    from datetime import timedelta
+    # ===== DAILY ACTIVE USERS (from Firebase LoginHistory, 7 days) =====
+    from datetime import timedelta, date as dt_date
     today = timezone.now().date()
-    yesterday = today - timedelta(days=1)
-
     from accounts.utils.firebase_db import login_history_get_daily_unique
-    daily_counts_7 = login_history_get_daily_unique(days=7, status='SUCCESS')
-
-    context['today_entries'] = daily_counts_7.get(today.strftime('%Y-%m-%d'), 0)
-    context['yesterday_entries'] = daily_counts_7.get(yesterday.strftime('%Y-%m-%d'), 0)
-
-    week_ago = today - timedelta(days=6)
+    daily_counts = login_history_get_daily_unique(days=7, status='SUCCESS')
     week_labels = []
     week_data = []
-    month_labels = []
-    month_data = []
+    week_ago = today - timedelta(days=6)
     for i in range(7):
         d = week_ago + timedelta(days=i)
         key = d.strftime('%Y-%m-%d')
-        c = daily_counts_7.get(key, 0)
         week_labels.append(d.strftime('%a'))
-        week_data.append(c)
-        month_labels.append(d.strftime('%d %b'))
-        month_data.append(c)
-    context['week_daily_labels'] = week_labels
-    context['week_daily_data'] = week_data
-    context['daily_visit_labels'] = month_labels
-    context['daily_visit_data'] = month_data
+        week_data.append(daily_counts.get(key, 0))
 
-    # Notifications now provided by context processor — no duplicate query needed
-    
+    today_entries = daily_counts.get(today.strftime('%Y-%m-%d'), 0)
+    yesterday_entries = daily_counts.get((today - timedelta(days=1)).strftime('%Y-%m-%d'), 0)
+
+    # ===== PER-TEACHER UPLOADS (PDF + video count) =====
+    teacher_upload_qs = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
+        pdf_count=Count('courses__resources', filter=Q(courses__resources__is_deleted=False, courses__resources__status='APPROVED')),
+        video_count=Count('courses__lessons', filter=Q(courses__lessons__is_approved=True)),
+        course_count=Count('courses', filter=Q(courses__status='PUBLISHED'), distinct=True)
+    ).order_by('-pdf_count')[:10]
+    teacher_upload_labels = [t.full_name or t.username for t in teacher_upload_qs]
+    teacher_upload_pdf_data = [t.pdf_count for t in teacher_upload_qs]
+    teacher_upload_video_data = [t.video_count for t in teacher_upload_qs]
+
+    # ===== TOP COURSES (by enrollment) =====
+    top_courses = Course.objects.annotate(
+        enrollment_count=Count('enrollments'),
+        lesson_count=Count('lessons')
+    ).select_related('teacher').order_by('-enrollment_count')[:5]
+
+    # ===== COURSE APPROVAL STATUS =====
+    approval_stats = {
+        'approved': Course.objects.filter(status='PUBLISHED').count(),
+        'rejected': Course.objects.filter(status='REJECTED').count(),
+        'pending': Course.objects.filter(status='PENDING').count(),
+    }
+
+    # ===== PENDING COUNTS =====
+    pending_students_count = CustomUser.objects.filter(user_type='STUDENT', status='PENDING').count()
+    pending_teachers_count = CustomUser.objects.filter(user_type='TEACHER', status='PENDING').count()
+
+    context = {
+        'active_users': active_users,
+        'active_teachers': active_teachers,
+        'pdf_sessions': pdf_sessions,
+        'enrolled_courses': enrolled_courses,
+        'top_educators': top_educators_qs,
+        'user_status_labels': user_status_labels,
+        'user_status_data': user_status_data,
+        'teacher_status_data': teacher_status_data,
+        'week_labels': week_labels,
+        'week_data': week_data,
+        'today_entries': today_entries,
+        'yesterday_entries': yesterday_entries,
+        'teacher_upload_labels': teacher_upload_labels,
+        'teacher_upload_pdf_data': teacher_upload_pdf_data,
+        'teacher_upload_video_data': teacher_upload_video_data,
+        'top_courses': top_courses,
+        'approval_stats': approval_stats,
+        'pending_students_count': pending_students_count,
+        'pending_teachers_count': pending_teachers_count,
+    }
     return render(request, 'custom_admin/analytics.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')
