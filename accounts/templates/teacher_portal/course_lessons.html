@@ -145,6 +145,10 @@
         <span class="toggle-icon" id="icon-{{ forloop.counter }}">&#x25B6;</span>
         <span style="font-size: 1.3rem;">&#x1F4C1;</span>
         <h3>{{ chapter.name }}</h3>
+        <span style="margin-left: 0.75rem; display: flex; gap: 0.3rem;">
+            <button onclick="event.stopPropagation(); openRenameModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #6366f1; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Rename chapter">&#x270F;&#xFE0F;</button>
+            <button onclick="event.stopPropagation(); openDeleteChapterModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Delete chapter">&#x1F5D1;&#xFE0F;</button>
+        </span>
         <span style="margin-left: auto; font-size: 0.8rem; color: #64748b;">
             {{ chapter.videos_count }} vid{% if chapter.videos_count != 1 %}s{% endif %} &middot;
             {{ chapter.cat_counts.ENGLISH.total }} Eng &middot;
@@ -346,6 +350,47 @@
     </div>
 </div>
 
+<!-- Rename Chapter Modal -->
+<div id="renameChapterModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 2rem; border-radius: 1.25rem; width: 100%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <h3 style="margin: 0 0 0.5rem; color: #1e293b;">Rename Chapter</h3>
+        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Rename: <strong id="renameChapterCurrent"></strong>
+        </p>
+        <form id="renameChapterForm" method="POST" action="">
+            {% csrf_token %}
+            <input type="hidden" name="old_name" id="renameChapterOldName">
+            <div style="margin-bottom: 1.5rem;">
+                <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">New Name</label>
+                <input type="text" name="new_name" id="renameChapterNewName" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; font-size: 1rem; box-sizing: border-box;">
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" style="flex: 1; background: #6366f1; color: white; border: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer;">Rename</button>
+                <button type="button" onclick="closeRenameModal()" style="flex: 1; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Delete Chapter Modal -->
+<div id="deleteChapterModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+    <div style="background: white; padding: 2rem; border-radius: 1.25rem; width: 100%; max-width: 420px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);">
+        <h3 style="margin: 0 0 0.5rem; color: #ef4444;">Delete Chapter</h3>
+        <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Delete chapter: <strong id="deleteChapterName"></strong><br>
+            <span style="color: #ef4444; font-weight: 600;">Lessons and resources in this chapter will be moved to Uncategorized.</span>
+        </p>
+        <form id="deleteChapterForm" method="POST" action="">
+            {% csrf_token %}
+            <input type="hidden" name="chapter_name" id="deleteChapterInput">
+            <div style="display: flex; gap: 1rem;">
+                <button type="submit" style="flex: 1; background: #ef4444; color: white; border: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer;">Delete Chapter</button>
+                <button type="button" onclick="closeDeleteChapterModal()" style="flex: 1; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; cursor: pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 function toggleChapter(header) {
     var body = header.nextElementSibling;
@@ -370,5 +415,21 @@ function openResourceDeleteModal(uid, title) {
     document.getElementById('resourceDeleteModal').style.display = 'flex';
 }
 function closeResourceDeleteModal() { document.getElementById('resourceDeleteModal').style.display = 'none'; }
+function openRenameModal(courseUid, chapterName) {
+    document.getElementById('renameChapterCurrent').textContent = chapterName;
+    document.getElementById('renameChapterOldName').value = chapterName;
+    document.getElementById('renameChapterNewName').value = chapterName;
+    document.getElementById('renameChapterForm').action = '/teacher/courses/' + courseUid + '/chapters/rename/';
+    document.getElementById('renameChapterModal').style.display = 'flex';
+    setTimeout(function() { document.getElementById('renameChapterNewName').focus(); document.getElementById('renameChapterNewName').select(); }, 100);
+}
+function closeRenameModal() { document.getElementById('renameChapterModal').style.display = 'none'; }
+function openDeleteChapterModal(courseUid, chapterName) {
+    document.getElementById('deleteChapterName').textContent = chapterName;
+    document.getElementById('deleteChapterInput').value = chapterName;
+    document.getElementById('deleteChapterForm').action = '/teacher/courses/' + courseUid + '/chapters/delete/';
+    document.getElementById('deleteChapterModal').style.display = 'flex';
+}
+function closeDeleteChapterModal() { document.getElementById('deleteChapterModal').style.display = 'none'; }
 </script>
 {% endblock %}
