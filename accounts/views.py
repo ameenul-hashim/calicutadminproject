@@ -5,7 +5,7 @@ from django.contrib import messages
 from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, PasswordResetOTP
 import uuid
 from django.contrib.auth.decorators import user_passes_test, login_required
-from django.views.decorators.cache import cache_control
+from django.views.decorators.cache import cache_control, never_cache
 import re
 import logging
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
@@ -1697,6 +1697,7 @@ def send_chat_message(request):
     return JsonResponse({'status': 'error'}, status=400)
 
 @login_required
+@never_cache
 def get_chat_messages(request, other_user_uid):
     from accounts.models import CustomUser
     
