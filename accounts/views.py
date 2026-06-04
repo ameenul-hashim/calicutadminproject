@@ -1203,7 +1203,14 @@ def delete_lesson(request, lesson_uid):
         return redirect('teacher_dashboard')
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     course_uid = lesson.course.uid
-    
+
+    # Teacher password confirmation
+    teacher = request.user
+    t_password = request.POST.get('teacher_password', '')
+    if not teacher.check_password(t_password):
+        messages.error(request, "Incorrect password. Please enter your account password to confirm deletion.")
+        return redirect('course_lessons', course_uid=course_uid)
+
     from .models import DeletionRequest
     
     # For PENDING/REJECTED lessons (not yet approved), delete immediately
@@ -1526,6 +1533,13 @@ def delete_resource(request, resource_uid):
         return redirect('teacher_dashboard')
     from .models import CourseResource, DeletionRequest
     resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
+
+    # Teacher password confirmation
+    teacher = request.user
+    t_password = request.POST.get('teacher_password', '')
+    if not teacher.check_password(t_password):
+        messages.error(request, "Incorrect password. Please enter your account password to confirm deletion.")
+        return redirect('course_lessons', course_uid=resource.course.uid)
 
     # If still PENDING / REJECTED (not yet approved), allow immediate deletion
     if resource.status in ('PENDING', 'REJECTED'):
