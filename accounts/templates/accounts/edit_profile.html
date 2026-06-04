@@ -133,6 +133,7 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
+            {% if user.image or user.profile_photo %}
             <!-- ════ Manage Credentials Toggle ════ -->
             <button type="button" onclick="toggleCredSection()" id="credToggleBtn" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 1rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; margin-bottom: 1.5rem;">
                 🔐 Manage Credentials
@@ -201,6 +202,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
 
             <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
             {% if user.image or user.profile_photo %}
@@ -341,7 +343,7 @@
                 if (data.status === 'success') {
                     showToast(data.message, 'success');
                     setTimeout(() => {
-                        window.location.href = "{% url 'profile' %}";
+                        window.location.href = "{% if user.image or user.profile_photo %}{% url 'profile' %}{% else %}{% url 'dashboard' %}{% endif %}";
                     }, 1500);
                 } else {
                     showToast(data.message || 'Update failed', 'error');
