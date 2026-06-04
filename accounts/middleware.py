@@ -109,7 +109,8 @@ class PortalSecurityMiddleware:
                 cache.set(f"last_activity_{request.user.id}", int(_time.time()), 1800)
 
             # --- Cached status check (avoids DB hit per request) ---
-            if not request.user.is_superuser:
+            # Staff users (admins) and superusers are exempt from status-based session flushing
+            if not request.user.is_superuser and not request.user.is_staff:
                 status_cache_key = f"user_status_{request.user.id}"
                 cached_status = cache.get(status_cache_key)
                 if cached_status is None:

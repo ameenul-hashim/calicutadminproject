@@ -1539,6 +1539,7 @@ def admin_restore_course(request, course_uid):
         course_title = course.title
         course.status = 'PUBLISHED'
         course.is_approved = True
+        course.rejection_reason = None
         course.save()
         
         # Restore all lessons — set back to APPROVED

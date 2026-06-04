@@ -480,7 +480,7 @@ def cleanup_course_image(sender, instance, **kwargs):
 
 @receiver(pre_delete, sender=Lesson)
 def cleanup_lesson_video(sender, instance, **kwargs):
-    """Clean up uploaded video file when lesson is deleted."""
+    """Clean up uploaded video file and YouTube video when lesson is deleted."""
     if instance.video_file:
         try:
             instance.video_file.delete(save=False)
@@ -489,6 +489,13 @@ def cleanup_lesson_video(sender, instance, **kwargs):
     if hasattr(instance, 'pending_video_file') and instance.pending_video_file:
         try:
             instance.pending_video_file.delete(save=False)
+        except Exception:
+            pass
+    # Clean up YouTube video if present
+    if instance.youtube_video_id:
+        try:
+            from accounts.utils.youtube_uploader import delete_youtube_video
+            delete_youtube_video(instance.youtube_video_id)
         except Exception:
             pass
 

@@ -1,0 +1,246 @@
+﻿
+Running 1 test using 1 worker
+
+
+===== [STEP 1] =====
+STAGE: Student Signup Started
+URL: about:blank
+TITLE: 
+[NAV] -> https://neolearner.onrender.com/signup/
+
+===== [STEP 2] =====
+STAGE: Student Signup Page Loaded
+URL: https://neolearner.onrender.com/signup/
+TITLE: Signup | E-Learning
+[INFO] Student PDF file chosen
+[NAV] -> https://neolearner.onrender.com/login/
+
+===== [STEP 3] =====
+STAGE: Student Signup Submitted
+URL: https://neolearner.onrender.com/login/
+TITLE: Login | Neo Learner
+
+===== [STEP 4] =====
+STAGE: Student Signup Processing Done
+URL: https://neolearner.onrender.com/login/
+TITLE: Login | Neo Learner
+
+===== [STEP 5] =====
+STAGE: Student Signup SUCCESS ΓÇö Redirected to Login
+URL: https://neolearner.onrender.com/login/
+TITLE: Login | Neo Learner
+
+===== [STEP 6] =====
+STAGE: Teacher Signup Started
+URL: https://neolearner.onrender.com/login/
+TITLE: Login | Neo Learner
+[NAV] -> https://neolearner.onrender.com/teacher/signup/
+
+===== [STEP 7] =====
+STAGE: Teacher Signup Page Loaded
+URL: https://neolearner.onrender.com/teacher/signup/
+TITLE: Teacher Signup | E-Learning
+[INFO] Teacher PDF file chosen
+[NAV] -> https://neolearner.onrender.com/teacher/login/
+
+===== [STEP 8] =====
+STAGE: Teacher Signup Submitted
+URL: https://neolearner.onrender.com/teacher/login/
+TITLE: Teacher Login | Neo Learner
+
+===== [STEP 9] =====
+STAGE: Teacher Signup Processing Done
+URL: https://neolearner.onrender.com/teacher/login/
+TITLE: Teacher Login | Neo Learner
+
+===== [STEP 10] =====
+STAGE: Teacher Signup SUCCESS ΓÇö Redirected to Login
+URL: https://neolearner.onrender.com/teacher/login/
+TITLE: Teacher Login | Neo Learner
+
+===== [STEP 11] =====
+STAGE: Admin Login Started
+URL: https://neolearner.onrender.com/teacher/login/
+TITLE: Teacher Login | Neo Learner
+[NAV] -> https://neolearner.onrender.com/customadmin/portal-secure-access/
+
+===== [STEP 12] =====
+STAGE: Admin Login Page Loaded
+URL: https://neolearner.onrender.com/customadmin/portal-secure-access/
+TITLE: Admin Login | E-Learning
+[NAV] -> https://neolearner.onrender.com/customadmin/students/
+
+===== [STEP 13] =====
+STAGE: Admin Login SUCCESS
+URL: https://neolearner.onrender.com/customadmin/students/
+TITLE: Manage Students | Admin
+[NAV] -> https://neolearner.onrender.com/customadmin/pending/
+
+===== [STEP 14] =====
+STAGE: Pending Students Page Loaded
+URL: https://neolearner.onrender.com/customadmin/pending/
+TITLE: Student Approvals | Admin
+[INFO] Student row found: true
+[INFO] Student approve onclick: Toast.confirm('Approve student Student 1780587462040? They will be granted immediate access.', () => { window.location.href = '/customadmin/user/accept/d6de1b47-43f8-498d-a7b4-d9ba553dfcc0/'; })
+[INFO] Navigating to student approval URL: /customadmin/user/accept/d6de1b47-43f8-498d-a7b4-d9ba553dfcc0/
+[NAV] -> https://neolearner.onrender.com/customadmin/pending/
+
+===== [STEP 17] =====
+STAGE: Student Approved Successfully
+URL: https://neolearner.onrender.com/customadmin/pending/
+TITLE: Student Approvals | Admin
+[NAV] -> https://neolearner.onrender.com/customadmin/pending/teachers/
+
+===== [STEP 18] =====
+STAGE: Pending Teachers Page Loaded
+URL: https://neolearner.onrender.com/customadmin/pending/teachers/
+TITLE: Teacher Approvals | Admin
+[INFO] Teacher row found: true
+[INFO] Teacher approve onclick: Toast.confirm('Approve teacher Teacher 1780587462040? They will be able to create and manage courses.', () => { window.location.href = '/customadmin/user/accept/02480c69-4b7a-48de-99aa-363d3135cf59/'; })
+[INFO] Navigating to teacher approval URL: /customadmin/user/accept/02480c69-4b7a-48de-99aa-363d3135cf59/
+[NAV] -> https://neolearner.onrender.com/customadmin/pending/teachers/
+
+===== [STEP 21] =====
+STAGE: Teacher Approved Successfully
+URL: https://neolearner.onrender.com/customadmin/pending/teachers/
+TITLE: Teacher Approvals | Admin
+
+===== [STEP 22] =====
+STAGE: Teacher Portal Login Started
+URL: https://neolearner.onrender.com/customadmin/pending/teachers/
+TITLE: Teacher Approvals | Admin
+[NAV] -> https://neolearner.onrender.com/teacher/login/
+
+===== [STEP 23] =====
+STAGE: Teacher Login Page Loaded
+URL: https://neolearner.onrender.com/teacher/login/
+TITLE: Teacher Login | Neo Learner
+[NAV] -> https://neolearner.onrender.com/profile/edit/
+node.exe : 
+At C:\Program 
+Files\nodejs\npx.ps1:29 
+char:3
++   & $NODE_EXE $NPX_CLI_JS 
+$args
++   
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: (:String  
+  ) [], RemoteException
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+===== [FAILURE] =====
+ERROR MESSAGE: [2mexpect([2
+2m[31mpage[39m[2m).[22mto
+HaveURL[2m([22m[32mexpecte
+d[39m[2m)[22m failed
+
+Expected pattern: [32m/\/tea
+cher\/dashboard/[39m
+Received string:  [31m"https
+://neolearner.onrender.com/pr
+ofile/edit/"[39m
+Timeout: 30000ms
+
+Call log:
+[2m  - Expect "toHaveURL" 
+with timeout 30000ms[22m
+[2m    62 ├ù unexpected 
+value "https://neolearner.onr
+ender.com/profile/edit/"[22m
+
+URL AT FAILURE: https://neole
+arner.onrender.com/profile/ed
+it/
+PAGE TITLE AT FAILURE: Edit 
+Profile | Neo Learner
+
+Complete URL visit log:
+  1. https://neolearner.onren
+der.com/signup/
+  2. https://neolearner.onren
+der.com/login/
+  3. https://neolearner.onren
+der.com/teacher/signup/
+  4. https://neolearner.onren
+der.com/teacher/login/
+  5. https://neolearner.onren
+der.com/customadmin/portal-se
+cure-access/
+  6. https://neolearner.onren
+der.com/customadmin/students/
+  7. https://neolearner.onren
+der.com/customadmin/pending/
+  8. https://neolearner.onren
+der.com/customadmin/pending/
+  9. https://neolearner.onren
+der.com/customadmin/pending/t
+eachers/
+  10. https://neolearner.onre
+nder.com/customadmin/pending/
+teachers/
+  11. https://neolearner.onre
+nder.com/teacher/login/
+  12. https://neolearner.onre
+nder.com/profile/edit/
+  Γ£ÿ  1 [chromium] ΓÇ║ tests\master.spec.ts:6:7 ΓÇ║ NeoLearn LMS Master Audit ΓÇ║ LMS Workflow: Instrumented Audit (1.7m)
+
+
+  1) [chromium] ΓÇ║ tests\master.spec.ts:6:7 ΓÇ║ NeoLearn LMS Master Audit ΓÇ║ LMS Workflow: Instrumented Audit 
+
+    Error: [2mexpect([22m[31mpage[39m[2m).[22mtoHaveURL[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Expected pattern: [32m/\/teacher\/dashboard/[39m
+    Received string:  [31m"https://neolearner.onrender.com/profile/edit/"[39m
+    Timeout: 30000ms
+
+    Call log:
+    [2m  - Expect "toHaveURL" with timeout 30000ms[22m
+    [2m    62 ├ù unexpected value "https://neolearner.onrender.com/profile/edit/"[22m
+
+
+      245 |       await loginBtn.click();
+      246 |       
+    > 247 |       await expect(page).toHaveURL(/\/teacher\/dashboard/, { timeout: 30000 });
+          |                          ^
+      248 |       await LOG_STEP(24, 'Teacher Login SUCCESS');
+      249 |
+      250 |       // Create Course
+        at C:\Users\lenov\OneDrive\Desktop\degree main projects\31-copy-e-learning application\tests\e2e\tests\master.spec.ts:247:26
+
+    attachment #1: screenshot (image/png) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\master-NeoLearn-LMS-Master-f507e-Workflow-Instrumented-Audit-chromium\test-failed-1.png
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    attachment #2: console-logs (text/plain) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    [warning] cdn.tailwindcss.com should not be used in production. To use Tailwind CSS in production, install it as a PostCSS plugin or use the Tailwind CLI: https://tailwindcss.com/docs/installation
+    [verbose] [DOM] Input elements should have autocomplete attributes (suggested: "new-password"): (More i...
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    attachment #3: network-errors (text/plain) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    attachment #4: video (video/webm) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\master-NeoLearn-LMS-Master-f507e-Workflow-Instrumented-Audit-chromium\video.webm
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    Error Context: test-results\master-NeoLearn-LMS-Master-f507e-Workflow-Instrumented-Audit-chromium\error-context.md
+
+    attachment #6: trace (application/zip) ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    test-results\master-NeoLearn-LMS-Master-f507e-Workflow-Instrumented-Audit-chromium\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\master-NeoLearn-LMS-Master-f507e-Workflow-Instrumented-Audit-chromium\trace.zip
+
+    ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+  1 failed
+    [chromium] ΓÇ║ tests\master.spec.ts:6:7 ΓÇ║ NeoLearn LMS Master Audit ΓÇ║ LMS Workflow: Instrumented Audit 
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m
+

@@ -831,7 +831,15 @@
                             <iframe src="${videoUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
                         </div>`;
                 }
+            } else {
+                noVideoMsg.querySelector('h3').textContent = 'No video content available';
+                noVideoMsg.querySelector('p').textContent = 'This lesson has no video uploaded yet.';
+                noVideoMsg.style.display = 'flex';
             }
+        } else {
+            noVideoMsg.querySelector('h3').textContent = 'No video content available';
+            noVideoMsg.querySelector('p').textContent = 'This lesson has no video uploaded yet.';
+            noVideoMsg.style.display = 'flex';
         }
     }
 

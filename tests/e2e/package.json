@@ -1,0 +1,20 @@
+{
+  "name": "neolearn-e2e-tests",
+  "version": "1.0.0",
+  "description": "Master E2E Playwright Suite for NeoLearn LMS",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "test:student": "playwright test tests/student.spec.ts",
+    "test:teacher": "playwright test tests/teacher.spec.ts",
+    "test:admin": "playwright test tests/admin.spec.ts",
+    "test:security": "playwright test tests/security.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.1",
+    "@types/node": "^20.19.41",
+    "typescript": "^5.4.5"
+  }
+}

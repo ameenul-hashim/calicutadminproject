@@ -60,7 +60,7 @@
         {% include 'includes/messages.html' %}
         {% include 'includes/validation_engine.html' %}
 
-        <form method="POST" enctype="multipart/form-data" id="signupForm">
+        <form method="POST" enctype="multipart/form-data" id="signupForm" novalidate>
             {% csrf_token %}
             <input type="hidden" name="is_mobile" id="is_mobile" value="false">
             <div style="display: grid; grid-template-columns: 1fr; gap: 1.25rem;">

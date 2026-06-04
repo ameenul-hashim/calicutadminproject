@@ -34,6 +34,8 @@ if hasattr(settings, 'CLOUDINARY_STORAGE'):
         api_secret=settings.CLOUDINARY_STORAGE.get('API_SECRET'),
         secure=settings.CLOUDINARY_STORAGE.get('SECURE', True)
     )
+from django.core.validators import validate_email as django_validate_email
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 from datetime import timedelta
 from django.db.models import Count, Sum, Q
@@ -144,7 +146,9 @@ def signup_view(request):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/signup.html', ctx)
 
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        try:
+            django_validate_email(email)
+        except ValidationError:
             messages.error(request, "Please enter a valid email address.")
             return render(request, 'accounts/signup.html', ctx)
 
@@ -262,7 +266,9 @@ def teacher_signup_view(request):
             return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Email format check
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        try:
+            django_validate_email(email)
+        except ValidationError:
             messages.error(request, "Please enter a valid email address.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
@@ -578,30 +584,42 @@ def teacher_login_view(request):
         password = request.POST.get('password')
 
         user_candidate = CustomUser.objects.filter(username=username).first()
+        logger.debug("Teacher login attempt: username=%s, user_candidate=%s, is_active=%s, status=%s",
+                     username, user_candidate is not None,
+                     user_candidate.is_active if user_candidate else 'N/A',
+                     user_candidate.status if user_candidate else 'N/A')
         user = authenticate(request, username=username, password=password)
+        logger.debug("Authenticate result: user=%s", user is not None)
         
         if user is not None:
             if user.status == 'PENDING':
+                logger.debug("Login blocked: PENDING status for %s", username)
                 messages.warning(request, "Your account is PENDING approval. Please wait or contact administration.")
                 return render(request, 'accounts/teacher_login.html')
             elif user.status == 'REJECTED':
+                logger.debug("Login blocked: REJECTED status for %s", username)
                 messages.error(request, "Your account was REJECTED. Please contact admin for details.")
                 return render(request, 'accounts/teacher_login.html')
             elif user.status == 'BLOCKED':
+                logger.debug("Login blocked: BLOCKED status for %s", username)
                 messages.error(request, "Your account has been BLOCKED. Access is restricted.")
                 return render(request, 'accounts/teacher_login.html')
             
             if user.user_type != 'TEACHER':
+                logger.debug("Login blocked: user_type=%s for %s", user.user_type, username)
                 messages.error(request, "Invalid username or password. Please try again.")
                 return render(request, 'accounts/teacher_login.html')
                 
             if user.status == 'ACTIVE':
+                logger.debug("Login success for %s", username)
                 login(request, user)
                 request.session.set_expiry(0)
                 log_login_attempt(request, user, status='SUCCESS')
                 messages.success(request, f"Welcome, {user.full_name}!")
                 return redirect('teacher_dashboard')
         else:
+            reason = "user not found" if not user_candidate else "password mismatch" if not user_candidate.check_password(password) else "backend rejected"
+            logger.debug("Login FAILED for %s: %s", username, reason)
             log_login_attempt(request, user_candidate, status='FAILED')
             messages.error(request, "Invalid username or password. Please try again.")
             
@@ -755,7 +773,7 @@ def student_explore(request):
 def explore_courses(request):
     # Other teachers' courses for viewing
     other_courses_qs = Course.objects.exclude(teacher=request.user)\
-        .filter(is_approved=True)\
+        .filter(is_approved=True, status='PUBLISHED')\
         .select_related('teacher')\
         .only('id', 'uid', 'title', 'category', 'status', 'created_at', 'image', 'thumbnail', 'teacher__username', 'teacher__full_name', 'teacher__image')\
         .order_by('-created_at')
@@ -786,7 +804,7 @@ def view_other_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
     from django.db.models import Count, Q
-    courses_qs = Course.objects.filter(teacher=request.user).annotate(
+    courses_qs = Course.objects.filter(teacher=request.user).exclude(status='DELETED').annotate(
         total_lessons=Count('lessons'),
         approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
         pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING')),
@@ -862,6 +880,9 @@ def create_course(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    if course.status == 'DELETED':
+        messages.error(request, "Cannot edit a deleted course. Restore it first.")
+        return redirect('my_courses')
     if request.method == 'POST':
         title = request.POST.get('title')
         description = request.POST.get('description')
@@ -931,6 +952,9 @@ def edit_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    if course.status == 'DELETED':
+        messages.error(request, "Cannot access a deleted course.")
+        return redirect('my_courses')
     from .models import CourseResource, DeletionRequest
     from itertools import groupby
 
@@ -1127,7 +1151,11 @@ def add_lesson(request, course_uid):
     Handles YouTube URL lesson creation (form POST).
     MP4 file uploads use AJAX via /api/video/init-youtube/ + browser→YouTube PUT.
     """
+
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    if course.status == 'DELETED':
+        messages.error(request, "Cannot add lessons to a deleted course.")
+        return redirect('my_courses')
     if request.method == 'POST':
         title = request.POST.get('title')
         video_source = request.POST.get('video_source', 'file')
@@ -1304,6 +1332,9 @@ def add_resource(request, course_uid):
     from .models import CourseResource
 
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    if course.status == 'DELETED':
+        messages.error(request, "Cannot add resources to a deleted course.")
+        return redirect('my_courses')
     if request.method == 'POST':
         title = request.POST.get('title')
         category = request.POST.get('category')
@@ -1650,6 +1681,9 @@ def teacher_deletion_requests(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def submit_course_approval(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    if course.status == 'DELETED':
+        messages.error(request, "Cannot submit a deleted course for approval.")
+        return redirect('my_courses')
     lessons = course.lessons.all()
     
     if lessons.exists():
@@ -1912,6 +1946,7 @@ def teacher_edit_profile(request):
     return render(request, 'teacher_portal/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
 
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @login_required
 def course_player(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)

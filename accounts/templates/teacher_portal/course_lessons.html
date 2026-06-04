@@ -282,6 +282,49 @@
             {% endif %}
             {% endfor %}
         {% else %}
+            <div class="empty-section">No Malayalam resources.</div>
+        {% endif %}
+
+        <!-- Online Section -->
+        <div class="section-header">
+            <span class="label" style="color: #7c3aed;">&#x1F310; Online ({{ chapter.cat_counts.ONLINE.total }})</span>
+        </div>
+            {% if chapter.cat_counts.ONLINE.total %}
+            {% for res in chapter.resources %}
+            {% if res.category == 'ONLINE' %}
+            <div class="item-row">
+                <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
+                {% if res.status == 'PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
+                {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
+                {% if res.status == 'DELETION_PENDING' %}<span class="dr-badge pending">&#x23F3; Del. Pending</span>{% endif %}
+                {% if res._deletion_request and res._deletion_request.status == 'APPROVED' %}
+                    <span class="dr-badge approved">&#x2705; Del. Approved</span>
+                {% endif %}
+                {% if res._deletion_request and res._deletion_request.status == 'REJECTED' %}
+                    <span class="dr-badge rejected">&#x274C; Del. Rejected</span>
+                {% endif %}
+                {% if res.status != 'DELETION_PENDING' %}
+                    {% if not res._deletion_request or res._deletion_request.status == 'REJECTED' %}
+                        {% if res.status != 'DELETION_PENDING' %}
+                            <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                        {% endif %}
+                        {% if res.status == 'APPROVED' %}
+                            <a href="javascript:void(0)" onclick="openResourceDeleteModal('{{ res.uid }}', '{{ res.title|escapejs }}')" class="action-link" style="color: #ef4444;">Delete</a>
+                        {% elif res.status != 'DELETION_PENDING' %}
+                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently? This action cannot be undone.')">
+                                {% csrf_token %}
+                                <input type="hidden" name="teacher_password" value="" class="pw-hidden">
+                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;" onclick="var pw=prompt('Enter your password to confirm deletion:'); if(pw){this.closest('form').querySelector('.pw-hidden').value=pw;return true;}return false;">Delete</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
             <div class="empty-section">No Online resources.</div>
         {% endif %}
     </div>
