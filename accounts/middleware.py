@@ -202,14 +202,8 @@ class EnterpriseHardeningMiddleware:
                 if is_infected:
                     from django.http import HttpResponseForbidden
                     try:
-                        from accounts.models import AdminActivityLog, CustomUser
-                        admin_user = CustomUser.objects.filter(user_type='ADMIN', is_active=True).first()
-                        if admin_user:
-                            AdminActivityLog.objects.create(
-                                admin=admin_user,
-                                action="MALWARE_BLOCK",
-                                details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}"
-                            )
+                        from .utils.firebase_db import admin_log_create
+                        admin_log_create(None, 'MALWARE_BLOCK', details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}", ip_address=request.META.get('REMOTE_ADDR'))
                     except Exception:
                         pass
                     try:
@@ -235,7 +229,6 @@ class EnterpriseHardeningMiddleware:
         return response
 
     def _check_impossible_travel(self, request):
-        from accounts.models import LoginHistory
         from django.utils import timezone
         from datetime import timedelta
 
@@ -244,24 +237,24 @@ class EnterpriseHardeningMiddleware:
             return
 
         current_ip = request.META.get('REMOTE_ADDR')
-        last_login = LoginHistory.objects.filter(user=request.user, status='SUCCESS').order_by('-timestamp').first()
 
-        if last_login and last_login.ip_address != current_ip:
-            if timezone.now() - last_login.timestamp < timedelta(hours=1):
+        from .utils.firebase_db import login_history_get_last
+        last_login = login_history_get_last(str(request.user.uid))
+
+        if last_login and last_login.get('ip_address') != current_ip:
+            last_ts = last_login.get('timestamp', 0)
+            if last_ts and (timezone.now().timestamp() * 1000 - last_ts) < 3600000:
                 try:
-                    from accounts.models import AdminActivityLog
-                    AdminActivityLog.objects.create(
-                        admin=None,
-                        target_user=request.user,
-                        action="SUSPICIOUS_TRAVEL",
-                        details=f"Login from {current_ip} detected 1h after {last_login.ip_address}."
-                    )
+                    from .utils.firebase_db import admin_log_create
+                    admin_log_create(None, 'SUSPICIOUS_TRAVEL', target_user_uid=str(request.user.uid),
+                                     details=f"Login from {current_ip} detected 1h after {last_login.get('ip_address')}.",
+                                     ip_address=current_ip)
                 except Exception:
                     pass
                 def _async_suspicious():
                     try:
                         from .utils.firebase_audit import log_security_event
-                        log_security_event('SUSPICIOUS_TRAVEL', f"IP change: {last_login.ip_address} -> {current_ip}", username=request.user.username, ip=current_ip)
+                        log_security_event('SUSPICIOUS_TRAVEL', f"IP change: {last_login.get('ip_address')} -> {current_ip}", username=request.user.username, ip=current_ip)
                     except Exception:
                         pass
                 import threading
