@@ -50,6 +50,7 @@
             <div class="form-card">
                 <form method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
+                    <input type="hidden" name="chapter" value="{{ chapter }}">
                     <div class="input-group">
                         <label for="title">Resource Title</label>
                         <input type="text" name="title" id="title" required placeholder="e.g. Chapter 1 Notes">

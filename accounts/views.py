@@ -132,46 +132,49 @@ def signup_view(request):
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
+        avatar_url = request.POST.get('avatar_url', '')
         is_mobile = request.POST.get('is_mobile') == 'true'
 
         logger.debug("Student signup attempt: %s", username)
 
+        ctx = {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number, 'avatar_url': avatar_url}
+
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/signup.html', ctx)
 
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             messages.error(request, "Please enter a valid email address.")
-            return render(request, 'accounts/signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/signup.html', ctx)
 
         if (CustomUser.objects.filter(username=username).exists() or
             CustomUser.objects.filter(email=email).exists() or
             CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists()):
             messages.error(request, "This information conflicts with an existing account. Please check your details or try logging in.")
-            return render(request, 'accounts/signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/signup.html', ctx)
 
         # Phone digits check
         phone_digits = ''.join(filter(str.isdigit, phone_number))
         if len(phone_digits) != 10:
             messages.error(request, "Contact number must be exactly 10 digits.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/signup.html', ctx)
 
         # Password match & strength
         if password != confirm_password:
             messages.error(request, "Passwords do not match. Please re-enter them correctly.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/signup.html', ctx)
 
         is_strong, msg = is_strong_password(password)
         if not is_strong:
             messages.error(request, msg)
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/signup.html', ctx)
 
         # File validation
         allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
         file_ext = os.path.splitext(proof_file.name.lower())[1]
         if file_ext not in allowed_exts:
             messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
-            return render(request, 'accounts/signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/signup.html', ctx)
 
         # 4. Processing File Uploads
         try:
@@ -183,6 +186,16 @@ def signup_view(request):
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
+
+            # Avatar (optional)
+            avatar_url = request.POST.get('avatar_url', '')
+            avatar_file = request.FILES.get('avatar_upload')
+            if avatar_url and avatar_url != '__upload__':
+                user.image = avatar_url
+                user.save(update_fields=['image'])
+            elif avatar_file:
+                from accounts.utils.cloudinary_helpers import update_image
+                update_image(user, avatar_file, folder="Neo Learner/profiles")
 
             # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
             from accounts.utils.pdf_helpers import convert_image_to_pdf
@@ -237,53 +250,56 @@ def teacher_signup_view(request):
         confirm_password = request.POST.get('confirm_password')
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
+        avatar_url = request.POST.get('avatar_url', '')
         is_mobile = request.POST.get('is_mobile') == 'true'
+
+        ctx = {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number, 'avatar_url': avatar_url}
 
         # 1. Validation Logic
         if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Email format check
         if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             messages.error(request, "Please enter a valid email address.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Unique checks
         if CustomUser.objects.filter(username=username).exists():
             messages.error(request, "This username is already taken. Please try another one.")
-            return render(request, 'accounts/teacher_signup.html', {'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
         
         if CustomUser.objects.filter(email=email).exists():
             messages.error(request, "This email is already registered. If it's yours, try logging in.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
         
         if CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists():
             messages.error(request, "This phone number is already associated with an account.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Phone digits check
         phone_digits = ''.join(filter(str.isdigit, phone_number))
         if len(phone_digits) != 10:
             messages.error(request, "Contact number must be exactly 10 digits.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Password match & strength
         if password != confirm_password:
             messages.error(request, "Passwords do not match. Please re-enter them correctly.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         is_strong, msg = is_strong_password(password)
         if not is_strong:
             messages.error(request, msg)
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         # File validation
         allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
         file_ext = os.path.splitext(proof_file.name.lower())[1]
         if file_ext not in allowed_exts:
             messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
-            return render(request, 'accounts/teacher_signup.html', {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number})
+            return render(request, 'accounts/teacher_signup.html', ctx)
 
         # 4. Processing File Uploads
         try:
@@ -295,6 +311,16 @@ def teacher_signup_view(request):
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
             )
+
+            # Avatar (optional)
+            avatar_url = request.POST.get('avatar_url', '')
+            avatar_file = request.FILES.get('avatar_upload')
+            if avatar_url and avatar_url != '__upload__':
+                user.image = avatar_url
+                user.save(update_fields=['image'])
+            elif avatar_file:
+                from accounts.utils.cloudinary_helpers import update_image
+                update_image(user, avatar_file, folder="Neo Learner/profiles")
 
             # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
             from accounts.utils.pdf_helpers import convert_image_to_pdf
@@ -905,6 +931,7 @@ def edit_course(request, course_uid):
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     from .models import CourseResource
+    from itertools import groupby
 
     lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid').order_by('chapter', 'order')
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'chapter', 'rejection_reason', 'uid', 'compressed_size', 'thumbnail_path').order_by('-created_at')
@@ -913,7 +940,6 @@ def course_lessons(request, course_uid):
     any_lesson_rejected = lessons.filter(status='REJECTED').exists() or resources.filter(status='REJECTED').exists()
 
     # Group by chapter
-    from itertools import groupby
     lessons_list = list(lessons)
     resources_list = list(resources)
 
@@ -925,8 +951,16 @@ def course_lessons(request, course_uid):
     for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
         res_by_chapter[ch] = list(grp)
 
-    all_chapter_names = sorted(set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys())), key=lambda x: (x == ''), reverse=True)
-    # Remove empty chapter if there are no items in it
+    # Merge Course.chapters list with derived chapter names
+    course_chapters = list(course.chapters or [])
+    derived_chapters = set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys()))
+    all_chapter_names = []
+    seen = set()
+    for name in course_chapters + sorted(d for d in derived_chapters if d):
+        if name and name not in seen:
+            seen.add(name)
+            all_chapter_names.append(name)
+    # Remove empty chapter if no items
     if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
         all_chapter_names.remove('')
 
@@ -934,10 +968,6 @@ def course_lessons(request, course_uid):
     for ch_name in all_chapter_names:
         ch_lessons = lesson_by_chapter.get(ch_name, [])
         ch_resources = res_by_chapter.get(ch_name, [])
-
-        ch_lessons_approved = sum(1 for l in ch_lessons if l.status == 'APPROVED')
-        ch_lessons_pending = sum(1 for l in ch_lessons if l.status == 'PENDING')
-        ch_lessons_rejected = sum(1 for l in ch_lessons if l.status == 'REJECTED')
 
         cat_counts = {}
         for code in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
@@ -950,13 +980,12 @@ def course_lessons(request, course_uid):
             }
 
         chapters_data.append({
-            'name': ch_name if ch_name else 'Uncategorized',
-            'is_uncategorized': ch_name == '',
+            'name': ch_name,
             'videos': ch_lessons,
             'videos_count': len(ch_lessons),
-            'videos_approved': ch_lessons_approved,
-            'videos_pending': ch_lessons_pending,
-            'videos_rejected': ch_lessons_rejected,
+            'videos_approved': sum(1 for l in ch_lessons if l.status == 'APPROVED'),
+            'videos_pending': sum(1 for l in ch_lessons if l.status == 'PENDING'),
+            'videos_rejected': sum(1 for l in ch_lessons if l.status == 'REJECTED'),
             'resources': ch_resources,
             'resources_count': len(ch_resources),
             'cat_counts': cat_counts,
@@ -968,6 +997,25 @@ def course_lessons(request, course_uid):
         'has_pending_content': has_pending_content,
         'any_lesson_rejected': any_lesson_rejected,
     })
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+@require_POST
+def create_chapter(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    chapter_name = request.POST.get('chapter_name', '').strip()
+    if not chapter_name:
+        messages.error(request, "Chapter name is required.")
+        return redirect('course_lessons', course_uid=course.uid)
+    chapters = list(course.chapters or [])
+    if chapter_name not in chapters:
+        chapters.append(chapter_name)
+        course.chapters = chapters
+        course.save(update_fields=['chapters'])
+        messages.success(request, f"Chapter '{chapter_name}' created!")
+    else:
+        messages.warning(request, f"Chapter '{chapter_name}' already exists.")
+    return redirect('course_lessons', course_uid=course.uid)
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -1010,16 +1058,18 @@ def add_lesson(request, course_uid):
         video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
 
+        chapter = request.POST.get('chapter', '')
+
         # MP4 file uploads should use the AJAX endpoints
         if video_source == 'file' and video_file:
             messages.error(request, "MP4 uploads must use the upload button. Please try again.")
-            return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+            return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
 
         if video_source == 'url' and video_url:
             video_url = video_url.strip()
         else:
             messages.error(request, "Please provide a YouTube video link.")
-            return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+            return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
 
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         youtube_video_id = youtube_match.group(1) if youtube_match else None
@@ -1027,6 +1077,7 @@ def add_lesson(request, course_uid):
         lesson = Lesson.objects.create(
             course=course,
             title=title,
+            chapter=chapter,
             video_url=video_url,
             video_file=None,
             order=request.POST.get('order', course.lessons.count() + 1),
@@ -1050,7 +1101,8 @@ def add_lesson(request, course_uid):
 
         return redirect('course_lessons', course_uid=course.uid)
     
-    return render(request, 'teacher_portal/add_lesson.html', {'course': course})
+    chapter = request.GET.get('chapter', '')
+    return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_lesson(request, lesson_uid):
@@ -1206,9 +1258,11 @@ def add_resource(request, course_uid):
                     thumb_path = t_url
                     thumb_public_id = t_pid
             
+            chapter = request.POST.get('chapter', '')
             CourseResource.objects.create(
                 course=course,
                 title=title,
+                chapter=chapter,
                 category=category,
                 resource_type=resource_type,
                 firebase_file_path=fb_path,
@@ -1229,7 +1283,8 @@ def add_resource(request, course_uid):
             
         return redirect('course_lessons', course_uid=course.uid)
         
-    return render(request, 'teacher_portal/add_resource.html', {'course': course})
+    chapter = request.GET.get('chapter', '')
+    return render(request, 'teacher_portal/add_resource.html', {'course': course, 'chapter': chapter})
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_resource(request, resource_uid):
