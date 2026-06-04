@@ -133,6 +133,14 @@
                 <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Admin Note (optional)</label>
                 <textarea name="admin_feedback" rows="2" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Add a note for the teacher..."></textarea>
             </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Username</label>
+                <input type="text" name="admin_username" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your admin username">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Password</label>
+                <input type="password" name="admin_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
+            </div>
             <div style="display:flex; gap:1rem;">
                 <button type="submit" style="flex:1; background:#10b981; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Approve & Delete</button>
                 <button type="button" onclick="closeApproveModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
@@ -153,6 +161,14 @@
             <div style="margin-bottom:1rem;">
                 <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for Rejection</label>
                 <textarea name="admin_feedback" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this deletion request is being rejected..." required></textarea>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Username</label>
+                <input type="text" name="admin_username" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your admin username">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Password</label>
+                <input type="password" name="admin_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
             </div>
             <div style="display:flex; gap:1rem;">
                 <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Reject Request</button>

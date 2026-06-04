@@ -223,9 +223,10 @@
                         {% if res.status == 'APPROVED' %}
                             <a href="javascript:void(0)" onclick="openResourceDeleteModal('{{ res.uid }}', '{{ res.title|escapejs }}')" class="action-link" style="color: #ef4444;">Delete</a>
                         {% elif res.status != 'DELETION_PENDING' %}
-                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently?')">
+                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently? This action cannot be undone.')">
                                 {% csrf_token %}
-                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;">Delete</button>
+                                <input type="hidden" name="teacher_password" value="" class="pw-hidden">
+                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;" onclick="var pw=prompt('Enter your password to confirm deletion:'); if(pw){this.closest('form').querySelector('.pw-hidden').value=pw;return true;}return false;">Delete</button>
                             </form>
                         {% endif %}
                     {% endif %}
@@ -265,9 +266,10 @@
                         {% if res.status == 'APPROVED' %}
                             <a href="javascript:void(0)" onclick="openResourceDeleteModal('{{ res.uid }}', '{{ res.title|escapejs }}')" class="action-link" style="color: #ef4444;">Delete</a>
                         {% elif res.status != 'DELETION_PENDING' %}
-                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently?')">
+                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently? This action cannot be undone.')">
                                 {% csrf_token %}
-                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;">Delete</button>
+                                <input type="hidden" name="teacher_password" value="" class="pw-hidden">
+                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;" onclick="var pw=prompt('Enter your password to confirm deletion:'); if(pw){this.closest('form').querySelector('.pw-hidden').value=pw;return true;}return false;">Delete</button>
                             </form>
                         {% endif %}
                     {% endif %}
@@ -306,6 +308,10 @@
                 <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for deletion</label>
                 <textarea name="reason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this lesson should be deleted..."></textarea>
             </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Password</label>
+                <input type="password" name="teacher_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
+            </div>
             <div style="display:flex; gap:1rem;">
                 <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Submit Request</button>
                 <button type="button" onclick="closeLessonDeleteModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
@@ -327,6 +333,10 @@
             <div style="margin-bottom:1rem;">
                 <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for deletion</label>
                 <textarea name="reason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this resource should be deleted..."></textarea>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Password</label>
+                <input type="password" name="teacher_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
             </div>
             <div style="display:flex; gap:1rem;">
                 <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Submit Request</button>

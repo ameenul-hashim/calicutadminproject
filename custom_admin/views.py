@@ -1347,9 +1347,21 @@ def verify_deletion_request(request, request_uid):
 @require_POST
 def approve_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    
+
     if del_request.status != 'PENDING':
         messages.error(request, "This request has already been processed.")
+        return redirect('manage_deletion_requests')
+
+    # Admin password confirmation
+    username = request.POST.get('admin_username', '').strip()
+    password = request.POST.get('admin_password', '')
+    admin_user = request.user
+    is_identity_match = (
+        username.lower() == admin_user.username.lower() or
+        username.lower() == admin_user.email.lower()
+    )
+    if not (is_identity_match and admin_user.check_password(password) and admin_user.is_staff):
+        messages.error(request, "Admin credentials verification failed. Please enter your admin username and password.")
         return redirect('manage_deletion_requests')
 
     success_msg = f"{del_request.item_type} '{del_request.item_name}' deleted successfully."
@@ -1402,9 +1414,21 @@ def approve_deletion_request(request, request_uid):
 @require_POST
 def reject_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
-    
+
     if del_request.status != 'PENDING':
         messages.error(request, "This request has already been processed.")
+        return redirect('manage_deletion_requests')
+
+    # Admin password confirmation
+    username = request.POST.get('admin_username', '').strip()
+    password = request.POST.get('admin_password', '')
+    admin_user = request.user
+    is_identity_match = (
+        username.lower() == admin_user.username.lower() or
+        username.lower() == admin_user.email.lower()
+    )
+    if not (is_identity_match and admin_user.check_password(password) and admin_user.is_staff):
+        messages.error(request, "Admin credentials verification failed. Please enter your admin username and password.")
         return redirect('manage_deletion_requests')
     
     # If it's a Resource deletion request, restore the resource status to APPROVED
