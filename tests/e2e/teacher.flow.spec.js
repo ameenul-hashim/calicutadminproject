@@ -430,11 +430,14 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
 
       // Override device restriction overlay if present (it blocks admin functionality)
       await page.evaluate(() => {
+        // Remove the overlay element entirely
         const overlay = document.getElementById('device-restriction-overlay');
-        if (overlay) overlay.style.display = 'none';
-        // Also override any inline styles that might hide admin content
-        const adminLayout = document.querySelector('.admin-layout');
-        if (adminLayout) adminLayout.style.display = '';
+        if (overlay) overlay.remove();
+        // Inject global CSS override to prevent @media-based blocking
+        const s = document.createElement('style');
+        s.textContent = '.admin-layout { display: flex !important; } .sidebar { display: block !important; } .main-stage { display: block !important; } #device-restriction-overlay { display: none !important; }';
+        s.id = 'opencode-override';
+        document.head.appendChild(s);
       });
 
       await navigateAndWait(page, '/customadmin/pending/teachers/');
