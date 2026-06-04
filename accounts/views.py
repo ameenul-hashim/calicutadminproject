@@ -1094,6 +1094,11 @@ def add_lesson(request, course_uid):
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         youtube_video_id = youtube_match.group(1) if youtube_match else None
 
+        course_is_published = course.status == 'PUBLISHED' and course.is_approved
+
+        lesson_status = 'APPROVED' if course_is_published else 'PENDING'
+        lesson_approved = True if course_is_published else False
+
         lesson = Lesson.objects.create(
             course=course,
             title=title,
@@ -1101,8 +1106,8 @@ def add_lesson(request, course_uid):
             video_url=video_url,
             video_file=None,
             order=request.POST.get('order', course.lessons.count() + 1),
-            status='PENDING',
-            is_approved=False,
+            status=lesson_status,
+            is_approved=lesson_approved,
             youtube_video_id=youtube_video_id,
             youtube_upload_status='UPLOADED' if youtube_video_id else 'NOT_UPLOADED',
             upload_status='READY' if youtube_video_id else 'NOT_UPLOADED',
@@ -1112,9 +1117,8 @@ def add_lesson(request, course_uid):
             lesson.youtube_uploaded_at = timezone.now()
             lesson.save(update_fields=['youtube_uploaded_at'])
 
-        if course.status == 'PUBLISHED' or course.is_approved:
-            messages.success(request, f"Lesson '{title}' added! Video will be visible to students once approved by admin.")
-            notify_admins(f"NEW LESSON on PUBLISHED COURSE: Teacher {request.user.username} added lesson '{title}' to already-published course '{course.title}'.")
+        if course_is_published:
+            messages.success(request, f"Lesson '{title}' added and immediately available to students.")
         else:
             messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
             notify_admins(f"NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
@@ -1151,7 +1155,21 @@ def edit_lesson(request, lesson_uid):
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         new_youtube_video_id = youtube_match.group(1) if youtube_match else None
 
-        if lesson.is_approved:
+        course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
+
+        if course_is_published:
+            lesson.title = title
+            if new_youtube_video_id:
+                lesson.youtube_video_id = new_youtube_video_id
+                lesson.youtube_upload_status = 'UPLOADED'
+                lesson.youtube_uploaded_at = timezone.now()
+            lesson.video_url = video_url
+            lesson.order = order
+            lesson.is_approved = True
+            lesson.status = 'APPROVED'
+            lesson.save()
+            messages.success(request, "Lesson updated and immediately visible to students.")
+        elif lesson.is_approved:
             lesson.pending_title = title
             lesson.pending_video_url = video_url
             lesson.pending_order = order
@@ -1292,6 +1310,17 @@ def add_resource(request, course_uid):
                     thumb_public_id = t_pid
             
             chapter = request.POST.get('chapter', '')
+            course_is_published = course.status == 'PUBLISHED' and course.is_approved
+            if course_is_published:
+                resource_status = 'APPROVED'
+                resource_approved = True
+                success_msg = f"Resource '{title}' added and immediately available to students."
+            else:
+                resource_status = 'PENDING'
+                resource_approved = False
+                success_msg = f"Resource '{title}' uploaded and pending approval."
+                notify_admins(f"🆕 NEW RESOURCE: Teacher {request.user.username} uploaded a {resource_type} for course '{course.title}'.")
+
             CourseResource.objects.create(
                 course=course,
                 title=title,
@@ -1306,11 +1335,10 @@ def add_resource(request, course_uid):
                 file_extension=ext,
                 original_size=original_size,
                 compressed_size=compressed_size,
-                status='PENDING',
-                is_approved=False
+                status=resource_status,
+                is_approved=resource_approved
             )
-            messages.success(request, f"Resource '{title}' uploaded and pending approval.")
-            notify_admins(f"🆕 NEW RESOURCE: Teacher {request.user.username} uploaded a {resource_type} for course '{course.title}'.")
+            messages.success(request, success_msg)
         except Exception as e:
             messages.error(request, f"Upload failed: {str(e)}")
             
@@ -1405,8 +1433,40 @@ def edit_resource(request, resource_uid):
                 messages.error(request, f"File processing failed: {str(e)}")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
-        if is_approved:
-            # For approved resources, use pending fields
+        course_is_published = course.status == 'PUBLISHED' and course.is_approved
+
+        if course_is_published:
+            # For approved courses, save directly — no admin approval needed for edits
+            if new_fb_path and resource.firebase_file_path:
+                try:
+                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                    if resource.thumbnail_public_id:
+                        from accounts.utils.cloudinary_helpers import delete_temp_image
+                        delete_temp_image(resource.thumbnail_public_id)
+                except:
+                    pass
+
+            resource.title = title
+            resource.category = category
+            resource.resource_type = resource_type
+
+            if new_fb_path:
+                resource.firebase_file_path = new_fb_path
+                resource.thumbnail_path = new_thumb_path
+                resource.thumbnail_public_id = new_thumb_pid
+                resource.mime_type = new_mime
+                resource.file_extension = new_ext
+                resource.original_size = new_orig_size
+                resource.compressed_size = new_comp_size
+
+            resource.status = 'APPROVED'
+            resource.is_approved = True
+            resource.rejection_reason = None
+            resource.has_pending_edits = False
+            resource.save()
+            messages.success(request, f"Resource '{title}' updated and immediately available to students.")
+        elif is_approved:
+            # For approved resources in non-published courses, use pending fields
             resource.pending_title = title
             resource.pending_category = category
             resource.pending_resource_type = resource_type
@@ -1794,6 +1854,13 @@ def course_player(request, course_uid):
         course=course, status='APPROVED', is_deleted=False
     ).order_by('chapter', '-created_at')
 
+    # Category counts for resource chart
+    resource_counts = {
+        'ENGLISH': approved_resources.filter(category='ENGLISH').count(),
+        'MALAYALAM': approved_resources.filter(category='MALAYALAM').count(),
+        'ONLINE': approved_resources.filter(category='ONLINE').count(),
+    }
+
     # Resolve Supabase video URLs to signed URLs
     for lesson in lessons:
         if lesson.video_url and lesson.video_url.startswith('supabase://'):
@@ -1852,6 +1919,7 @@ def course_player(request, course_uid):
         'course': course,
         'lessons': lessons,
         'approved_resources': approved_resources,
+        'resource_counts': resource_counts,
         'chapters': chapters_data,
         'first_lesson': lessons.first() if lessons.exists() else None,
         'is_admin': getattr(request.user, 'is_staff', False),
