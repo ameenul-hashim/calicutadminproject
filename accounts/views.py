@@ -2068,10 +2068,11 @@ def all_notifications(request):
     if filter_keywords:
         notifications = [n for n in notifications if any(kw.lower() in n['message'].lower() for kw in filter_keywords)]
     
+    from datetime import datetime as dt_mod, timezone as tz_mod
     for n in notifications:
         ts = n.get('created_at')
         if ts:
-            n['created_at_display'] = ts.strftime('%b %d, %Y %I:%M %p')
+            n['created_at_display'] = dt_mod.fromtimestamp(ts / 1000, tz=tz_mod.utc).strftime('%b %d, %Y %I:%M %p')
         else:
             n['created_at_display'] = ''
     
