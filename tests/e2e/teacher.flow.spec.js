@@ -506,9 +506,10 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
             if (cell.textContent.includes(username)) {
               const row = cell.closest('tr');
               if (row) {
-                const approveLink = row.querySelector('a[onclick*="accept_user"]');
-                if (approveLink) {
-                  const match = approveLink.getAttribute('onclick').match(/\/customadmin\/user\/accept\/[a-f0-9-]+\//);
+                const approveLink = row.querySelector('a');
+                if (approveLink && approveLink.textContent.includes('Approve')) {
+                  const onclick = approveLink.getAttribute('onclick') || '';
+                  const match = onclick.match(/\/customadmin\/user\/accept\/[a-f0-9-]+\//);
                   if (match) return match[0];
                 }
               }
