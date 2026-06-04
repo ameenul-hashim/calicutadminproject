@@ -2681,6 +2681,7 @@ def init_video_upload(request):
         course_uid = data.get('course_uid')
         title = data.get('title', '').strip()
         order = data.get('order', 1)
+        chapter = data.get('chapter', '')
         file_size = data.get('file_size')
 
         if not title:
@@ -2688,12 +2689,15 @@ def init_video_upload(request):
 
         course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
 
+        course_is_published = course.status == 'PUBLISHED' and course.is_approved
+
         lesson = Lesson.objects.create(
             course=course,
             title=title,
+            chapter=chapter,
             order=order,
-            status='PENDING',
-            is_approved=False,
+            status='APPROVED' if course_is_published else 'PENDING',
+            is_approved=course_is_published,
             upload_status='PENDING',
             youtube_upload_status='PENDING',
         )
@@ -2761,15 +2765,24 @@ def youtube_upload_complete(request):
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
+    course = lesson.course
+    course_is_published = course.status == 'PUBLISHED' and course.is_approved
+
     lesson.youtube_video_id = video_id
     lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
     lesson.upload_status = 'PROCESSING'
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
-    lesson.save(update_fields=[
+    if course_is_published:
+        lesson.status = 'APPROVED'
+        lesson.is_approved = True
+    update_fields = [
         'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
         'upload_status', 'video_url',
-    ])
+    ]
+    if course_is_published:
+        update_fields.extend(['status', 'is_approved'])
+    lesson.save(update_fields=update_fields)
 
     return JsonResponse({
         'success': True,
@@ -2818,6 +2831,12 @@ def init_youtube_edit_upload(request):
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+    # If lesson is currently approved but course is published, auto-approve the edit
+    if lesson.is_approved and lesson.course.status == 'PUBLISHED' and lesson.course.is_approved:
+        lesson.has_pending_edits = False
+        lesson.pending_video_url = ''
+        lesson.save(update_fields=['has_pending_edits', 'pending_video_url'])
 
     from .utils.youtube_uploader import create_resumable_upload_url
     result = create_resumable_upload_url(
@@ -2877,8 +2896,9 @@ def youtube_edit_complete(request):
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
     new_youtube_url = f'https://www.youtube.com/watch?v={video_id}'
+    course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
 
-    if lesson.is_approved:
+    if lesson.is_approved and not course_is_published:
         lesson.pending_video_url = new_youtube_url
         lesson.has_pending_edits = True
         lesson.youtube_video_id = video_id
@@ -2890,6 +2910,18 @@ def youtube_edit_complete(request):
             'youtube_upload_status', 'youtube_uploaded_at', 'upload_status',
         ])
         notify_admins(f"LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
+    elif lesson.is_approved and course_is_published:
+        lesson.youtube_video_id = video_id
+        lesson.youtube_upload_status = 'UPLOADED'
+        lesson.youtube_uploaded_at = tz.now()
+        lesson.upload_status = 'PROCESSING'
+        lesson.video_url = new_youtube_url
+        lesson.status = 'APPROVED'
+        lesson.is_approved = True
+        lesson.save(update_fields=[
+            'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
+            'upload_status', 'video_url', 'status', 'is_approved',
+        ])
     else:
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
