@@ -904,10 +904,31 @@ def edit_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
-    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved').order_by('order')
+    lessons = course.lessons.all().order_by('order')
     from .models import CourseResource
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved').order_by('-created_at')
-    
+
+    # Resolve Supabase video URLs to signed URLs for playback
+    for lesson in lessons:
+        if lesson.video_url and lesson.video_url.startswith('supabase://'):
+            if lesson.upload_status not in ('READY', 'NOT_UPLOADED'):
+                lesson.video_url = ''
+                continue
+            storage_path = lesson.video_url.replace('supabase://', '', 1)
+            try:
+                from .utils.supabase_storage import supabase as vid_supabase
+                parts = storage_path.split('/', 1)
+                if len(parts) == 2 and '-' in parts[0]:
+                    v_bucket, v_path = parts[0], parts[1]
+                else:
+                    from .utils.supabase_storage import video_bucket as v_bucket
+                    v_path = storage_path
+                res = vid_supabase.storage.from_(v_bucket).create_signed_url(v_path, 86400)
+                signed = res.get("signedURL") if isinstance(res, dict) else res
+                lesson.video_url = signed if signed else ''
+            except Exception:
+                lesson.video_url = ''
+
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
     any_lesson_rejected = lessons.filter(status='REJECTED').exists() or resources.filter(status='REJECTED').exists()
     
