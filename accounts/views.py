@@ -1920,6 +1920,11 @@ def course_player(request, course_uid):
     for ch_name in all_chapter_names:
         ch_lessons = lesson_by_chapter.get(ch_name, [])
         ch_resources = res_by_chapter.get(ch_name, [])
+        # Per-chapter category counts for resource chart
+        cat_counts = {}
+        for code in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
+            cat_items = [r for r in ch_resources if r.category == code]
+            cat_counts[code] = len(cat_items)
         chapters_data.append({
             'name': ch_name if ch_name else 'Uncategorized',
             'is_uncategorized': ch_name == '',
@@ -1927,6 +1932,7 @@ def course_player(request, course_uid):
             'videos_count': len(ch_lessons),
             'resources': ch_resources,
             'resources_count': len(ch_resources),
+            'cat_counts': cat_counts,
         })
 
     context = {

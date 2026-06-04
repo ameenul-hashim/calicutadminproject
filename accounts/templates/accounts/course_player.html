@@ -265,10 +265,8 @@
 
                 <!-- Resources Section (Premium Glassmorphism View) -->
                 <div id="content-resources" style="display: none; height: 100%; display: flex; flex-direction: column;">
-                    
-                    <!-- View 1: Categorized Folders -->
-                    <div id="resources-categories-view" style="flex: 1; padding: 1.2rem 1rem; overflow-y: auto;">
-                        <!-- Resource Breakdown Chart -->
+                    <div style="flex: 1; padding: 1rem; overflow-y: auto;">
+
                         {% with total=resource_counts.ENGLISH|add:resource_counts.MALAYALAM|add:resource_counts.ONLINE %}
                         {% if total > 0 %}
                         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1rem;margin-bottom:1rem;">
@@ -291,57 +289,80 @@
                         {% endif %}
                         {% endwith %}
 
-                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                            <!-- English Notes Card -->
-                            <div onclick="showResourceCategory('ENGLISH')" class="glass-folder-card" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 1rem; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.3s;">
-                                <div style="width: 48px; height: 48px; background: rgba(16,185,129,0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <span style="font-size: 1.4rem; font-weight: 900; color: #10b981; letter-spacing: -1px;">EN</span>
-                                </div>
-                                <div>
-                                    <div style="font-size: 0.95rem; font-weight: 700; color: #d1fae5;">English Notes</div>
-                                    <div style="font-size: 0.75rem; color: #6ee7b7; margin-top: 0.2rem;">{{ resource_counts.ENGLISH }} resource{{ resource_counts.ENGLISH|pluralize }}</div>
-                                </div>
-                                <span style="margin-left: auto; background: rgba(16,185,129,0.2); color: #6ee7b7; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ resource_counts.ENGLISH }}</span>
+                        {% for chapter in chapters %}
+                        {% if chapter.resources_count > 0 %}
+                        <div style="margin-bottom:0.75rem;background:rgba(255,255,255,0.02);border-radius:1rem;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
+                            <div onclick="toggleResChapter(this)" style="padding:0.85rem 1rem;display:flex;align-items:center;gap:0.75rem;cursor:pointer;user-select:none;">
+                                <span class="res-toggle-icon" style="transform:rotate(90deg);transition:transform 0.25s;font-size:0.8rem;color:#94a3b8;">▶</span>
+                                <span style="font-size:0.9rem;font-weight:700;color:#f1f5f9;flex:1;">{{ chapter.name }}</span>
+                                <span style="font-size:0.7rem;color:#94a3b8;">
+                                    {% if chapter.cat_counts.ENGLISH %}<span style="color:#10b981;">{{ chapter.cat_counts.ENGLISH }}EN</span>{% endif %}
+                                    {% if chapter.cat_counts.MALAYALAM %}<span style="color:#3b82f6;"> {{ chapter.cat_counts.MALAYALAM }}മ</span>{% endif %}
+                                    {% if chapter.cat_counts.ONLINE %}<span style="color:#a855f7;"> {{ chapter.cat_counts.ONLINE }}On</span>{% endif %}
+                                </span>
                             </div>
-
-                            <!-- Malayalam Notes Card -->
-                            <div onclick="showResourceCategory('MALAYALAM')" class="glass-folder-card" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 1rem; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.3s;">
-                                <div style="width: 48px; height: 48px; background: rgba(59,130,246,0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <span style="font-size: 1.4rem; font-weight: 900; color: #3b82f6;">മ</span>
+                            <div class="res-chapter-body" style="border-top:1px solid rgba(255,255,255,0.05);">
+                                {% if chapter.cat_counts.ENGLISH %}
+                                <div style="padding:0.5rem 1rem;background:rgba(16,185,129,0.05);border-bottom:1px solid rgba(255,255,255,0.04);">
+                                    <div style="font-size:0.75rem;font-weight:700;color:#10b981;margin-bottom:0.4rem;">📄 English ({{ chapter.cat_counts.ENGLISH }})</div>
+                                    {% for res in chapter.resources %}
+                                    {% if res.category == 'ENGLISH' %}
+                                    <div onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.6rem;border-radius:0.5rem;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.1)'" onmouseout="this.style.background='transparent'">
+                                        <span style="font-size:1.1rem;">📄</span>
+                                        <div style="flex:1;min-width:0;">
+                                            <div style="font-size:0.8rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ res.title }}</div>
+                                            <div style="font-size:0.65rem;color:#10b981;">{{ res.resource_type }} • {{ res.compressed_size|filesizeformat }}</div>
+                                        </div>
+                                        <span style="font-size:0.7rem;color:#64748b;">→</span>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
                                 </div>
-                                <div>
-                                    <div style="font-size: 0.95rem; font-weight: 700; color: #dbeafe;">മലയാളം Notes</div>
-                                    <div style="font-size: 0.75rem; color: #93c5fd; margin-top: 0.2rem;">{{ resource_counts.MALAYALAM }} resource{{ resource_counts.MALAYALAM|pluralize }}</div>
+                                {% endif %}
+                                {% if chapter.cat_counts.MALAYALAM %}
+                                <div style="padding:0.5rem 1rem;background:rgba(59,130,246,0.05);border-bottom:1px solid rgba(255,255,255,0.04);">
+                                    <div style="font-size:0.75rem;font-weight:700;color:#3b82f6;margin-bottom:0.4rem;">📕 Malayalam ({{ chapter.cat_counts.MALAYALAM }})</div>
+                                    {% for res in chapter.resources %}
+                                    {% if res.category == 'MALAYALAM' %}
+                                    <div onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.6rem;border-radius:0.5rem;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.background='transparent'">
+                                        <span style="font-size:1.1rem;">📄</span>
+                                        <div style="flex:1;min-width:0;">
+                                            <div style="font-size:0.8rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ res.title }}</div>
+                                            <div style="font-size:0.65rem;color:#3b82f6;">{{ res.resource_type }} • {{ res.compressed_size|filesizeformat }}</div>
+                                        </div>
+                                        <span style="font-size:0.7rem;color:#64748b;">→</span>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
                                 </div>
-                                <span style="margin-left: auto; background: rgba(59,130,246,0.2); color: #93c5fd; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ resource_counts.MALAYALAM }}</span>
-                            </div>
-
-                            <!-- Online Notes Card -->
-                            <div onclick="showResourceCategory('ONLINE')" class="glass-folder-card" style="background: rgba(168, 85, 247, 0.1); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 1rem; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.3s;">
-                                <div style="width: 48px; height: 48px; background: rgba(168,85,247,0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <span style="font-size: 1.4rem;">💻</span>
+                                {% endif %}
+                                {% if chapter.cat_counts.ONLINE %}
+                                <div style="padding:0.5rem 1rem;background:rgba(168,85,247,0.05);">
+                                    <div style="font-size:0.75rem;font-weight:700;color:#a855f7;margin-bottom:0.4rem;">💻 Online ({{ chapter.cat_counts.ONLINE }})</div>
+                                    {% for res in chapter.resources %}
+                                    {% if res.category == 'ONLINE' %}
+                                    <div onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.6rem;border-radius:0.5rem;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(168,85,247,0.1)'" onmouseout="this.style.background='transparent'">
+                                        <span style="font-size:1.1rem;">📄</span>
+                                        <div style="flex:1;min-width:0;">
+                                            <div style="font-size:0.8rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ res.title }}</div>
+                                            <div style="font-size:0.65rem;color:#a855f7;">{{ res.resource_type }} • {{ res.compressed_size|filesizeformat }}</div>
+                                        </div>
+                                        <span style="font-size:0.7rem;color:#64748b;">→</span>
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
                                 </div>
-                                <div>
-                                    <div style="font-size: 0.95rem; font-weight: 700; color: #f3e8ff;">Online Resources</div>
-                                    <div style="font-size: 0.75rem; color: #d8b4fe; margin-top: 0.2rem;">{{ resource_counts.ONLINE }} resource{{ resource_counts.ONLINE|pluralize }}</div>
-                                </div>
-                                <span style="margin-left: auto; background: rgba(168,85,247,0.2); color: #d8b4fe; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ resource_counts.ONLINE }}</span>
+                                {% endif %}
                             </div>
                         </div>
-                    </div>
+                        {% endif %}
+                        {% empty %}
+                        <div style="text-align:center;padding:3rem 1rem;color:#64748b;">
+                            <div style="font-size:2rem;margin-bottom:0.5rem;">📂</div>
+                            No resources yet.
+                        </div>
+                        {% endfor %}
 
-                    <!-- View 2: Actual Resource Cards -->
-                    <div id="resources-list-view" style="display: none; flex: 1; flex-direction: column; height: 100%;">
-                        <!-- Breadcrumb/Back -->
-                        <div style="padding: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 0.5rem;">
-                            <button onclick="backToCategories()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 0.9rem;">← Folders</button>
-                            <span style="color: #475569;">/</span>
-                            <span id="active-category-name" style="font-size: 0.9rem; font-weight: 600; color: #f1f5f9;">Category</span>
-                        </div>
-                        
-                        <div id="category-items-container" style="padding: 1rem; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
-                            <!-- Resource Cards injected here -->
-                        </div>
                     </div>
                 </div>
 
@@ -350,6 +371,69 @@
                         transform: translateY(-4px); 
                         box-shadow: 0 0 20px rgba(16, 185, 129, 0.1); 
                         background: rgba(16, 185, 129, 0.2);
+                    }
+                    .resource-glass-card {
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 1rem;
+                        padding: 1rem;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        text-align: center;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        aspect-ratio: 1/1;
+                    }
+                    .resource-glass-card:hover {
+                        background: rgba(16, 185, 129, 0.1);
+                        border-color: rgba(16, 185, 129, 0.3);
+                        transform: translateY(-4px);
+                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+                    }
+                    .resource-glass-card.pending {
+                        background: rgba(244, 63, 94, 0.05);
+                        border-color: rgba(244, 63, 94, 0.1);
+                        cursor: not-allowed;
+                    }
+                </style>
+
+                <script>
+                    // ---------- RESOURCE CHAPTER TOGGLE ----------
+                    function toggleResChapter(header) {
+                        var body = header.nextElementSibling;
+                        var icon = header.querySelector('.res-toggle-icon');
+                        if (body.style.display === 'none') {
+                            body.style.display = 'block';
+                            icon.style.transform = 'rotate(90deg)';
+                        } else {
+                            body.style.display = 'none';
+                            icon.style.transform = 'rotate(0deg)';
+                        }
+                    }
+
+                    // ---------- TAB NAVIGATION ----------
+                    function switchTab(tab, pushHistory) {
+                        const videoTab = document.getElementById('tab-videos');
+                        const resourceTab = document.getElementById('tab-resources');
+                        const videoContent = document.getElementById('content-videos');
+                        const resourceContent = document.getElementById('content-resources');
+                        if (tab === 'videos') {
+                            videoTab.style.color = 'white';
+                            videoTab.style.borderBottom = '2px solid #6366f1';
+                            resourceTab.style.color = '#94a3b8';
+                            resourceTab.style.borderBottom = '2px solid transparent';
+                            videoContent.style.display = 'block';
+                            resourceContent.style.display = 'none';
+                        } else if (tab === 'resources') {
+                            resourceTab.style.color = 'white';
+                            resourceTab.style.borderBottom = '2px solid #10b981';
+                            videoTab.style.color = '#94a3b8';
+                            videoTab.style.borderBottom = '2px solid transparent';
+                            resourceContent.style.display = 'flex';
+                            videoContent.style.display = 'none';
+                        }
                     }
                     .resource-glass-card {
                         background: rgba(255, 255, 255, 0.03);
