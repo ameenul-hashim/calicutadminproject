@@ -18,6 +18,9 @@ function setupConsoleCapture(page) {
 }
 
 test.describe('Admin Flow - Full LMS Audit', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+  });
 
   // ===================================================================
   // ADMIN-01: ADMIN LOGIN

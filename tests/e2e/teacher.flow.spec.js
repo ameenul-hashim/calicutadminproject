@@ -33,6 +33,9 @@ async function tryNavigate(page, url) {
 }
 
 test.describe('Teacher Flow - Full LMS Audit', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+  });
 
   // ===================================================================
   // TEACHER-01: TEACHER SIGNUP
@@ -170,6 +173,9 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
       await tryFill(page, '#confirm_password', 'TestPass123!');
       await tryFill(page, '#phone_number', '9876543210');
 
+      // Ensure the form has time to register all field values before submission
+      await page.waitForTimeout(500);
+
       const pdfPath = getTestPdfPath();
       const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10000 }).catch(() => null);
       await tryClick(page, '#upload-label');
@@ -182,11 +188,10 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
 
       const submitBtn = page.locator('#signup-btn, button[type="submit"]').first();
       await submitBtn.click();
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(2000);
 
-    // Wait for either JS validation cards or server-side toast messages
-    await page.waitForTimeout(1000);
-    const allErrors = [
+      // Wait for either JS validation cards or server-side toast messages
+      const allErrors = [
       ...(await page.locator('.validation-card').allTextContents().catch(() => [])),
       ...(await page.locator('.toast-message').allTextContents().catch(() => [])),
     ];
