@@ -222,6 +222,7 @@
                             course_uid: '{{ course.uid }}',
                             title: document.getElementById('title').value,
                             order: document.getElementById('order').value,
+                            chapter: document.querySelector('[name=chapter]')?.value || '',
                             file_size: fileSize,
                         })
                     });
@@ -287,6 +288,15 @@
                     let startTime = Date.now();
                     let lastLoaded = 0;
                     let lastTime = startTime;
+                    let timedOut = false;
+
+                    // 30-minute timeout for large files
+                    const timeoutMs = 1800000;
+                    const timer = setTimeout(function() {
+                        timedOut = true;
+                        xhr.abort();
+                        reject(new Error('Upload timed out after 30 minutes. Try a smaller file or check your connection.'));
+                    }, timeoutMs);
 
                     xhr.upload.addEventListener('progress', function(e) {
                         if (e.lengthComputable) {
@@ -312,34 +322,59 @@
                     });
 
                     xhr.addEventListener('load', function() {
+                        clearTimeout(timer);
+                        if (timedOut) return;
+
+                        const text = (xhr.responseText || '').trim();
                         if (xhr.status >= 200 && xhr.status < 300) {
+                            // Try to get video ID from JSON response
                             try {
-                                const resp = JSON.parse(xhr.responseText);
+                                const resp = JSON.parse(text);
                                 if (resp.id) {
                                     resolve(resp.id);
-                                } else {
-                                    reject(new Error('No video ID returned from YouTube'));
+                                    return;
                                 }
-                            } catch(e) {
-                                reject(new Error('Invalid response from YouTube'));
+                            } catch(e) { /* fall through */ }
+
+                            // If JSON fails but response might contain the ID somewhere
+                            const idMatch = text.match(/"id"\s*:\s*"([a-zA-Z0-9_-]{11})"/);
+                            if (idMatch) {
+                                resolve(idMatch[1]);
+                                return;
                             }
+
+                            // YouTube sometimes returns the ID in Location header
+                            const location = xhr.getResponseHeader('Location') || '';
+                            const urlIdMatch = location.match(/\/([a-zA-Z0-9_-]{11})\b/);
+                            if (urlIdMatch) {
+                                resolve(urlIdMatch[1]);
+                                return;
+                            }
+
+                            reject(new Error('Upload appeared to succeed but we could not get the video ID. Please check your YouTube channel and add the URL manually.'));
                         } else {
                             try {
-                                const resp = JSON.parse(xhr.responseText);
+                                const resp = JSON.parse(text);
                                 const msg = resp.error && resp.error.message ? resp.error.message : 'Upload failed';
                                 reject(new Error(msg + ' (HTTP ' + xhr.status + ')'));
                             } catch(e) {
-                                reject(new Error('Upload failed (HTTP ' + xhr.status + ')'));
+                                reject(new Error('Upload failed (HTTP ' + xhr.status + '). Try again or use a smaller file.'));
                             }
                         }
                     });
 
                     xhr.addEventListener('error', function() {
-                        reject(new Error('Network error during upload. Please check your connection.'));
+                        clearTimeout(timer);
+                        if (!timedOut) {
+                            reject(new Error('Network error: Could not reach YouTube. Check your internet connection and try again.'));
+                        }
                     });
 
                     xhr.addEventListener('abort', function() {
-                        reject(new Error('Upload was cancelled.'));
+                        clearTimeout(timer);
+                        if (!timedOut) {
+                            reject(new Error('Upload was cancelled.'));
+                        }
                     });
 
                     // PUT binary file directly to YouTube — MP4 never touches Django
