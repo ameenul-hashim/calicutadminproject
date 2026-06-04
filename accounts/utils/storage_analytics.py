@@ -170,8 +170,8 @@ def get_cloudinary_stats():
 
 
 def get_database_stats():
-    """PostgreSQL database size — now Neon (free tier: 500MB)"""
-    NEON_LIMIT_MB = 500
+    """PostgreSQL database size — Render PostgreSQL (free tier: 1GB)"""
+    RENDER_LIMIT_MB = 1024
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT pg_database_size(current_database())")
@@ -179,28 +179,27 @@ def get_database_stats():
         usage_mb = db_size_bytes / (1024 * 1024)
     except Exception:
         try:
-            from accounts.models import CustomUser, Course, Lesson, CourseResource, ChatMessage
+            from accounts.models import CustomUser, Course, Lesson, CourseResource
             total_rows = (
                 CustomUser.objects.count() +
                 Course.objects.count() +
                 Lesson.objects.count() +
-                CourseResource.objects.count() +
-                ChatMessage.objects.count()
+                CourseResource.objects.count()
             )
             usage_mb = total_rows * 0.5
         except Exception:
             usage_mb = 0
-    percent = min((usage_mb / NEON_LIMIT_MB) * 100, 100) if NEON_LIMIT_MB else 0
+    percent = min((usage_mb / RENDER_LIMIT_MB) * 100, 100) if RENDER_LIMIT_MB else 0
     return {
-        'label': 'Neon Database',
+        'label': 'Render PostgreSQL',
         'status': 'connected',
         'usage_mb': round(usage_mb, 2),
-        'limit_mb': NEON_LIMIT_MB,
+        'limit_mb': RENDER_LIMIT_MB,
         'percent': round(percent, 1),
-        'remaining_mb': round(max(NEON_LIMIT_MB - usage_mb, 0), 2),
+        'remaining_mb': round(max(RENDER_LIMIT_MB - usage_mb, 0), 2),
         'emoji': '🐘',
         'color': '#3b82f6',
-        'description': 'PostgreSQL on Neon — users, courses, lessons, enrollments',
+        'description': 'PostgreSQL on Render — users, courses, lessons, enrollments',
     }
 
 
