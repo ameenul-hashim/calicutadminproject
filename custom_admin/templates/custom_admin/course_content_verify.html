@@ -131,6 +131,42 @@
                                 </div>
                             {% endif %}
 
+                            <div style="background: #f8fafc; border-radius: 1rem; border: 1px solid #f1f5f9; padding: 1rem; margin-bottom: 1.5rem;">
+                                {% if lesson.video_file %}
+                                    <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🎞️ Uploaded Video File</span>
+                                        <a href="{{ lesson.video_file.url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original ↗</a>
+                                    </div>
+                                    <div style="width: 100%; border-radius: 0.75rem; overflow: hidden; aspect-ratio: 16/9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                                        <video class="plyr-player" playsinline controls preload="auto" style="width: 100%; height: 100%;">
+                                            <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                                        </video>
+                                    </div>
+                                {% elif lesson.video_url %}
+                                    <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🔗 External Video URL</span>
+                                        <a href="{{ lesson.video_url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original ↗</a>
+                                    </div>
+                                    <div id="yt-preview-{{ lesson.uid }}" style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);"></div>
+                                    <script>
+                                    (function(){
+                                        var url = "{{ lesson.video_url|escapejs }}";
+                                        var c = document.getElementById('yt-preview-{{ lesson.uid }}');
+                                        function ytId(u){if(!u)return null;var m=u.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/);return(m&&m[2].length===11)?m[2]:null;}
+                                        var vid=ytId(url);
+                                        if(vid){var tu='https://img.youtube.com/vi/'+vid+'/maxresdefault.jpg';c.innerHTML='<div id="tc-{{ lesson.uid }}" style="position:relative;width:100%;height:100%;cursor:pointer;"><img src="'+tu+'" onerror="this.src=\'https://img.youtube.com/vi/'+vid+'/hqdefault.jpg\';" style="width:100%;height:100%;object-fit:cover;"><div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="width:60px;height:60px;background:rgba(255,0,0,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(0,0,0,0.3);"><div style="width:0;height:0;border-top:15px solid transparent;border-bottom:15px solid transparent;border-left:20px solid white;margin-left:5px;"></div></div></div></div>';document.getElementById('tc-{{ lesson.uid }}').addEventListener('click',function(){c.innerHTML='<div id="p-{{ lesson.uid }}" data-plyr-provider="youtube" data-plyr-embed-id="'+vid+'"></div>';var p=new Plyr('#p-{{ lesson.uid }}',{autoplay:true,youtube:{noCookie:true,rel:0,showinfo:0,iv_load_policy:3,modestbranding:1}});p.on('ready',function(){p.play();});});}else{var dv=url.toLowerCase().includes('.mp4')||url.toLowerCase().includes('.webm')||url.toLowerCase().includes('cloudinary.com');if(dv){var fs=url;if(fs.includes('cloudinary.com')&&!fs.includes('f_auto')){fs=fs.replace('/upload/','/upload/f_auto,q_auto,vc_h264/');}c.innerHTML='<video class="plyr-player" playsinline controls preload="auto" style="width:100%;height:100%;"><source src="'+fs+'" type="video/mp4"></video>';new Plyr(c.querySelector('.plyr-player'),{autoplay:true});}else{c.innerHTML='<iframe src="'+url+'" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>';}}
+                                    })();
+                                    </script>
+                                {% else %}
+                                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #f1f5f9; border-radius: 0.75rem; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                        <div style="text-align: center; color: #64748b; font-weight: 600;">
+                                            <div style="font-size: 1.5rem;">📽️</div>
+                                            <span>No video provided</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+
                             <div style="display: flex; gap: 0.5rem;">
                                 <form action="{% url 'approve_lesson' lesson.uid %}" method="post" style="flex: 1;">
                                     {% csrf_token %}
@@ -213,7 +249,42 @@
                                 <h3 style="margin: 0; font-size: 1rem; color: #1e293b;">🎬 Lesson {{ lesson.order }}: {{ lesson.title }}</h3>
                                 <button onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; font-weight: 700; cursor: pointer;">Delete</button>
                             </div>
-                            <a href="{% if lesson.video_file %}{{ lesson.video_file.url }}{% else %}{{ lesson.video_url }}{% endif %}" target="_blank" style="display: block; background: #f8fafc; padding: 0.75rem; border-radius: 0.5rem; text-align: center; color: #4f46e5; text-decoration: none; font-size: 0.85rem; font-weight: 600; border: 1px solid #f1f5f9;">View Video</a>
+
+                            <div style="background: #f8fafc; border-radius: 1rem; border: 1px solid #f1f5f9; padding: 1rem; margin-bottom: 1.5rem;">
+                                {% if lesson.video_file %}
+                                    <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🎞️ Uploaded Video File</span>
+                                        <a href="{{ lesson.video_file.url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original ↗</a>
+                                    </div>
+                                    <div style="width: 100%; border-radius: 0.75rem; overflow: hidden; aspect-ratio: 16/9; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                                        <video class="plyr-player" playsinline controls preload="auto" style="width: 100%; height: 100%;">
+                                            <source src="{{ lesson.video_file.url }}" type="video/mp4">
+                                        </video>
+                                    </div>
+                                {% elif lesson.video_url %}
+                                    <div style="margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">🔗 External Video URL</span>
+                                        <a href="{{ lesson.video_url }}" target="_blank" style="font-size: 0.75rem; color: #4f46e5; font-weight: 700; text-decoration: none;">Open Original ↗</a>
+                                    </div>
+                                    <div id="yt-preview-a-{{ lesson.uid }}" style="width: 100%; border-radius: 0.75rem; background: #000; aspect-ratio: 16/9; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);"></div>
+                                    <script>
+                                    (function(){
+                                        var url = "{{ lesson.video_url|escapejs }}";
+                                        var c = document.getElementById('yt-preview-a-{{ lesson.uid }}');
+                                        function ytId(u){if(!u)return null;var m=u.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/);return(m&&m[2].length===11)?m[2]:null;}
+                                        var vid=ytId(url);
+                                        if(vid){var tu='https://img.youtube.com/vi/'+vid+'/maxresdefault.jpg';c.innerHTML='<div id="tc-a-{{ lesson.uid }}" style="position:relative;width:100%;height:100%;cursor:pointer;"><img src="'+tu+'" onerror="this.src=\'https://img.youtube.com/vi/'+vid+'/hqdefault.jpg\';" style="width:100%;height:100%;object-fit:cover;"><div style="position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;"><div style="width:60px;height:60px;background:rgba(255,0,0,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 15px rgba(0,0,0,0.3);"><div style="width:0;height:0;border-top:15px solid transparent;border-bottom:15px solid transparent;border-left:20px solid white;margin-left:5px;"></div></div></div></div>';document.getElementById('tc-a-{{ lesson.uid }}').addEventListener('click',function(){c.innerHTML='<div id="p-a-{{ lesson.uid }}" data-plyr-provider="youtube" data-plyr-embed-id="'+vid+'"></div>';var p=new Plyr('#p-a-{{ lesson.uid }}',{autoplay:true,youtube:{noCookie:true,rel:0,showinfo:0,iv_load_policy:3,modestbranding:1}});p.on('ready',function(){p.play();});});}else{var dv=url.toLowerCase().includes('.mp4')||url.toLowerCase().includes('.webm')||url.toLowerCase().includes('cloudinary.com');if(dv){var fs=url;if(fs.includes('cloudinary.com')&&!fs.includes('f_auto')){fs=fs.replace('/upload/','/upload/f_auto,q_auto,vc_h264/');}c.innerHTML='<video class="plyr-player" playsinline controls preload="auto" style="width:100%;height:100%;"><source src="'+fs+'" type="video/mp4"></video>';new Plyr(c.querySelector('.plyr-player'),{autoplay:true});}else{c.innerHTML='<iframe src="'+url+'" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>';}}
+                                    })();
+                                    </script>
+                                {% else %}
+                                    <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: #f1f5f9; border-radius: 0.75rem; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                                        <div style="text-align: center; color: #64748b; font-weight: 600;">
+                                            <div style="font-size: 1.5rem;">📽️</div>
+                                            <span>No video provided</span>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     {% endfor %}
                 </div>
