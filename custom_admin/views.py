@@ -1172,6 +1172,17 @@ def admin_delete_lesson_secure(request, lesson_uid):
 def delete_user_admin(request, user_uid):
     target_user = get_object_or_404(CustomUser, uid=user_uid)
     
+    # Prevent deleting teacher with active courses
+    if target_user.user_type == 'TEACHER':
+        from accounts.models import Course
+        active_courses = Course.objects.filter(teacher=target_user).exclude(status='DELETED')
+        if active_courses.exists():
+            messages.error(
+                request,
+                f"Cannot delete teacher '{target_user.full_name or target_user.username}' — they have {active_courses.count()} active course(s). Delete those courses first."
+            )
+            return redirect('manage_teachers')
+    
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
         password = request.POST.get('admin_password', '')
