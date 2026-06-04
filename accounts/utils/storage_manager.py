@@ -12,7 +12,7 @@ from googleapiclient.http import MediaIoBaseUpload
 logger = logging.getLogger(__name__)
 
 # Use the shared Supabase clients and helpers from supabase_storage (single source of truth)
-from accounts.utils.supabase_storage import get_client, _do_upload
+from accounts.utils.supabase_storage import supabase, get_client, _do_upload
 
 class StorageManager:
     @staticmethod

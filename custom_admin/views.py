@@ -1337,13 +1337,14 @@ def verify_deletion_request(request, request_uid):
         from accounts.models import CourseResource
         resource = CourseResource.objects.filter(id=del_request.item_id).first()
         if resource:
-            messages.info(request, f"ℹ️ Verifying request for {resource.title}.")
-            return redirect('admin_view_course_content', course_uid=resource.course.uid)
-            
+            messages.info(request, f"ℹ️ Opening PDF for {resource.title}.")
+            return redirect('access_resource', resource_uid=resource.uid)
+
     messages.error(request, "The item could not be found or verified.")
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
+@require_POST
 def approve_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
     
@@ -1398,15 +1399,12 @@ def approve_deletion_request(request, request_uid):
 
 
 @user_passes_test(is_admin, login_url='admin_login')
+@require_POST
 def reject_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
     
     if del_request.status != 'PENDING':
         messages.error(request, "This request has already been processed.")
-        return redirect('manage_deletion_requests')
-    
-    if request.method != 'POST':
-        messages.error(request, "Invalid request method.")
         return redirect('manage_deletion_requests')
     
     # If it's a Resource deletion request, restore the resource status to APPROVED

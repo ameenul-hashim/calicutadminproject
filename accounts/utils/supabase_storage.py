@@ -205,6 +205,28 @@ def upload_video_to_supabase(video_file, lesson_uid):
     """
     return stream_video_upload(video_file, lesson_uid)
 
+# === Functions required by storage_manager.py ===
+
+def get_client(use_resource_project=True):
+    """Returns the shared Supabase client instance."""
+    if not supabase:
+        logger.warning("Supabase client not initialized")
+        return None
+    return supabase
+
+def _do_upload(client, bucket_name, file_path, file_bytes, content_type="application/octet-stream"):
+    """Internal upload helper used by StorageManager."""
+    try:
+        client.storage.from_(bucket_name).upload(
+            path=file_path,
+            file=file_bytes,
+            file_options={"content-type": content_type, "upsert": "true"}
+        )
+        return True
+    except Exception as e:
+        logger.error(f"Supabase _do_upload Error for {file_path}: {e}")
+        raise
+
 def upload_user_proof(instance, pdf_file):
     """
     High-level helper to upload a user's verification PDF to Supabase.
