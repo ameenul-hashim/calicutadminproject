@@ -12,33 +12,189 @@
     </div>
     <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
         <div>
-            <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">Manage: {{ course.title }}</h1>
-            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Content organized by chapters. Add videos and resources to each chapter.</p>
+            <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">{{ course.title }}</h1>
+            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Content organized in chapter folders — expand to manage videos & resources.</p>
         </div>
         <div style="display: flex; gap: 0.75rem;">
             <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Resource</a>
             <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Lesson</a>
         </div>
     </div>
+    <!-- Workflow Diagram -->
+    <div style="margin-top: 1.5rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; padding: 1.5rem; overflow-x: auto;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">&#x1F4CA; Content Structure</div>
+        <svg viewBox="0 0 800 220" style="width: 100%; max-width: 800px; height: auto; display: block; margin: 0 auto;">
+            <!-- Course box -->
+            <rect x="330" y="0" width="140" height="40" rx="8" fill="#6366f1" />
+            <text x="400" y="26" text-anchor="middle" fill="white" font-size="14" font-weight="700">{{ course.title|truncatechars:18 }}</text>
+
+            <!-- Arrows from course to chapters -->
+            <line x1="400" y1="40" x2="400" y2="65" stroke="#94a3b8" stroke-width="2" />
+            <line x1="400" y1="65" x2="130" y2="65" stroke="#94a3b8" stroke-width="2" />
+            <line x1="400" y1="65" x2="400" y2="65" stroke="#94a3b8" stroke-width="2" />
+            <line x1="400" y1="65" x2="670" y2="65" stroke="#94a3b8" stroke-width="2" />
+
+            <!-- Chapter 1 Folder -->
+            <rect x="30" y="65" width="200" height="36" rx="8" fill="#f59e0b" />
+            <text x="130" y="89" text-anchor="middle" fill="white" font-size="13" font-weight="700">&#x1F4C1; Chapter 1</text>
+            <line x1="130" y1="101" x2="130" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+
+            <!-- Ch1 branches -->
+            <line x1="130" y1="120" x2="45" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+            <line x1="130" y1="120" x2="130" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+            <line x1="130" y1="120" x2="215" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+
+            <rect x="10" y="125" width="70" height="30" rx="6" fill="#eef2ff" />
+            <text x="45" y="144" text-anchor="middle" fill="#4f46e5" font-size="11" font-weight="600">&#x1F3AC; Videos</text>
+
+            <rect x="95" y="125" width="70" height="30" rx="6" fill="#ecfdf5" />
+            <text x="130" y="144" text-anchor="middle" fill="#059669" font-size="11" font-weight="600">&#x1F4C4; English</text>
+
+            <rect x="180" y="125" width="70" height="30" rx="6" fill="#fffbeb" />
+            <text x="215" y="144" text-anchor="middle" fill="#d97706" font-size="11" font-weight="600">&#x1F4D5; Malayalam</text>
+
+            <!-- Chapter 2 Folder -->
+            <rect x="300" y="65" width="200" height="36" rx="8" fill="#f59e0b" />
+            <text x="400" y="89" text-anchor="middle" fill="white" font-size="13" font-weight="700">&#x1F4C1; Chapter 2</text>
+            <line x1="400" y1="101" x2="400" y2="165" stroke="#94a3b8" stroke-width="1.5" />
+
+            <rect x="365" y="170" width="70" height="30" rx="6" fill="#f0f9ff" />
+            <text x="400" y="189" text-anchor="middle" fill="#0284c7" font-size="11" font-weight="600">&#x1F4BB; Online</text>
+
+            <!-- Chapter 3 Folder -->
+            <rect x="570" y="65" width="200" height="36" rx="8" fill="#f59e0b" />
+            <text x="670" y="89" text-anchor="middle" fill="white" font-size="13" font-weight="700">&#x1F4C1; Chapter 3</text>
+            <line x1="670" y1="101" x2="670" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+
+            <line x1="670" y1="120" x2="585" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+            <line x1="670" y1="120" x2="670" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+            <line x1="670" y1="120" x2="755" y2="120" stroke="#94a3b8" stroke-width="1.5" />
+
+            <rect x="550" y="125" width="70" height="30" rx="6" fill="#eef2ff" />
+            <text x="585" y="144" text-anchor="middle" fill="#4f46e5" font-size="11" font-weight="600">&#x1F3AC; Videos</text>
+
+            <rect x="635" y="125" width="70" height="30" rx="6" fill="#fffbeb" />
+            <text x="670" y="144" text-anchor="middle" fill="#d97706" font-size="11" font-weight="600">&#x1F4D5; Malayalam</text>
+
+            <rect x="720" y="125" width="70" height="30" rx="6" fill="#f0f9ff" />
+            <text x="755" y="144" text-anchor="middle" fill="#0284c7" font-size="11" font-weight="600">&#x1F4BB; Online</text>
+        </svg>
+    </div>
 </div>
 {% endblock %}
 
 {% block content %}
 <style>
-    .chapter-card { background: white; border-radius: 1.25rem; padding: 1.5rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; transition: box-shadow 0.2s; }
-    .chapter-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .type-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; border-radius: 0.6rem; font-size: 0.78rem; font-weight: 600; }
-    .type-badge.video { background: #eef2ff; color: #4f46e5; }
-    .type-badge.malayalam { background: #fffbeb; color: #d97706; }
-    .type-badge.english { background: #ecfdf5; color: #059669; }
-    .type-badge.online { background: #f0f9ff; color: #0284c7; }
-    .stat-chip { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 0.4rem; }
-    .stat-chip.approved { background: #dcfce7; color: #16a34a; }
-    .stat-chip.pending { background: #fef9c3; color: #ca8a04; }
-    .stat-chip.rejected { background: #fee2e2; color: #dc2626; }
+    .chapter-folder {
+        background: white;
+        border-radius: 1.25rem;
+        margin-bottom: 1.25rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        transition: box-shadow 0.2s;
+    }
+    .chapter-folder:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .chapter-folder-header {
+        padding: 1.1rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background 0.15s;
+    }
+    .chapter-folder-header:hover { background: #f8fafc; }
+    .chapter-folder-header .folder-icon { font-size: 1.3rem; transition: transform 0.2s; }
+    .chapter-folder-header.open .folder-icon { transform: rotate(90deg); }
+    .chapter-folder-body {
+        display: none;
+        border-top: 1px solid #e2e8f0;
+        padding: 0.5rem 1.5rem 1rem;
+    }
+    .chapter-folder-body.open { display: block; }
+
+    .tree-branch {
+        position: relative;
+        padding-left: 2rem;
+        margin: 0.25rem 0;
+    }
+    .tree-branch::before {
+        content: '';
+        position: absolute;
+        left: 0.6rem;
+        top: 0;
+        bottom: 50%;
+        width: 1.2rem;
+        border-left: 2px solid #cbd5e1;
+        border-bottom: 2px solid #cbd5e1;
+        border-radius: 0 0 0 0.4rem;
+    }
+    .tree-branch:last-child::before {
+        bottom: 50%;
+    }
+    .tree-branch::after {
+        content: '';
+        position: absolute;
+        left: 0.6rem;
+        top: 50%;
+        bottom: 0;
+        width: 0;
+        border-left: 2px solid #cbd5e1;
+    }
+    .tree-branch:last-child::after { display: none; }
+    .tree-leaf {
+        position: relative;
+        padding-left: 2rem;
+        margin: 0.15rem 0;
+    }
+    .tree-leaf::before {
+        content: '';
+        position: absolute;
+        left: 0.6rem;
+        top: 50%;
+        width: 1.2rem;
+        border-bottom: 2px solid #cbd5e1;
+    }
+    .tree-leaf:last-child::before {
+        width: 1.2rem;
+    }
+    .tree-connector-v {
+        position: absolute;
+        left: 0.6rem;
+        top: 0;
+        bottom: 0;
+        width: 0;
+        border-left: 2px solid #cbd5e1;
+    }
+
+    .cat-label {
+        font-weight: 700;
+        font-size: 0.8rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 0.4rem;
+        display: inline-block;
+    }
+    .cat-label.video { background: #eef2ff; color: #4f46e5; }
+    .cat-label.english { background: #ecfdf5; color: #059669; }
+    .cat-label.malayalam { background: #fffbeb; color: #d97706; }
+    .cat-label.online { background: #f0f9ff; color: #0284c7; }
+
+    .item-row {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.4rem 0.75rem;
+        border-radius: 0.5rem;
+        transition: background 0.15s;
+        font-size: 0.85rem;
+    }
+    .item-row:hover { background: #f1f5f9; }
+
     @media (max-width: 768px) {
-        .chapter-card { padding: 1rem; }
-        .type-grid { grid-template-columns: 1fr !important; }
+        .chapter-folder-header { padding: 0.9rem 1rem; }
+        .chapter-folder-body { padding: 0.5rem 1rem 0.75rem; }
+        .item-row { flex-wrap: wrap; gap: 0.3rem; }
+        .tree-branch, .tree-leaf { padding-left: 1.5rem; }
     }
 </style>
 
@@ -65,95 +221,122 @@
 </div>
 {% endif %}
 
-<!-- Chapter Cards -->
-<div id="chapterContainer">
+<!-- Folder Tree -->
+<div id="chapterTree">
     {% for chapter in chapters %}
-    <div class="chapter-card">
-        <!-- Chapter Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <span style="background: #f1f5f9; width: 40px; height: 40px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">&#x1F4C1;</span>
-                <div>
-                    <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b; font-weight: 800;">{{ chapter.name }}</h3>
-                    <p style="margin: 0.15rem 0 0; font-size: 0.78rem; color: #94a3b8;">
-                        {{ chapter.videos_count }} video{% if chapter.videos_count != 1 %}s{% endif %} &bull; {{ chapter.resources_count }} resource{% if chapter.resources_count != 1 %}s{% endif %}
-                    </p>
-                </div>
-            </div>
+    <div class="chapter-folder">
+        <div class="chapter-folder-header" onclick="toggleFolder(this)">
+            <span class="folder-icon">&#x25B6;</span>
+            <span style="font-weight: 800; font-size: 1rem; color: #1e293b;">{{ chapter.name }}</span>
+            <span style="font-size: 0.78rem; color: #94a3b8; margin-left: auto;">
+                {{ chapter.videos_count }} vid{% if chapter.videos_count != 1 %}s{% endif %} &middot;
+                {{ chapter.cat_counts.ENGLISH.total }} Eng &middot;
+                {{ chapter.cat_counts.MALAYALAM.total }} Mal &middot;
+                {{ chapter.cat_counts.ONLINE.total }} On
+            </span>
+            <span style="font-size: 0.72rem; color: #64748b;">[+]</span>
         </div>
 
-        <!-- Type Cards Row -->
-        <div class="type-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
-            <!-- Video Card -->
-            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
-                    <span>&#x1F3AC;</span>
-                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Videos</span>
-                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #6366f1;">{{ chapter.videos_count }}</span>
+        <div class="chapter-folder-body">
+            <!-- Videos Branch -->
+            <div class="tree-branch">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span class="cat-label video">&#x1F3AC; Videos ({{ chapter.videos_count }})</span>
+                    <a href="{% url 'chapter_videos' course.uid chapter.name %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
                 </div>
-                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-                    {% if chapter.videos_approved %}<span class="stat-chip approved">&#x2705; {{ chapter.videos_approved }}</span>{% endif %}
-                    {% if chapter.videos_pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.videos_pending }}</span>{% endif %}
-                    {% if chapter.videos_rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.videos_rejected }}</span>{% endif %}
-                    {% if not chapter.videos_approved and not chapter.videos_pending and not chapter.videos_rejected %}
-                    <span style="font-size: 0.75rem; color: #94a3b8;">No videos</span>
-                    {% endif %}
+                {% for lesson in chapter.videos %}
+                <div class="tree-leaf">
+                    <div class="item-row">
+                        <span style="color: #64748b; width: 1.2rem; text-align: right; font-size: 0.75rem;">{{ forloop.counter }}.</span>
+                        <span style="flex: 1; font-weight: 500;">{{ lesson.title }}</span>
+                        {% if lesson.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705; Approved</span>{% endif %}
+                        {% if lesson.status == 'PENDING' %}<span class="stat-chip pending">&#x23F3; Pending</span>{% endif %}
+                        {% if lesson.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C; Rejected</span>{% endif %}
+                        <a href="{% url 'edit_lesson' lesson.uid %}" class="action-btn" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
+                        <a href="javascript:void(0)" onclick="deleteLesson('{{ lesson.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
+                    </div>
                 </div>
-                <a href="{% url 'chapter_videos' course.uid chapter.name %}" class="btn" style="display: block; text-align: center; background: #eef2ff; color: #4f46e5; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage Videos &rarr;</a>
+                {% empty %}
+                <div class="tree-leaf">
+                    <div class="item-row" style="color: #94a3b8; font-style: italic;">No videos in this chapter.</div>
+                </div>
+                {% endfor %}
             </div>
 
-            <!-- Malayalam Card -->
-            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
-                    <span>&#x1F4D5;</span>
-                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Malayalam</span>
-                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #d97706;">{{ chapter.cat_counts.MALAYALAM.total }}</span>
+            <!-- English Branch -->
+            <div class="tree-branch">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span class="cat-label english">&#x1F4C4; English ({{ chapter.cat_counts.ENGLISH.total }})</span>
+                    <a href="{% url 'chapter_resources' course.uid chapter.name 'ENGLISH' %}" style="font-size: 0.72rem; color: #059669; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
                 </div>
-                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-                    {% if chapter.cat_counts.MALAYALAM.approved %}<span class="stat-chip approved">&#x2705; {{ chapter.cat_counts.MALAYALAM.approved }}</span>{% endif %}
-                    {% if chapter.cat_counts.MALAYALAM.pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.cat_counts.MALAYALAM.pending }}</span>{% endif %}
-                    {% if chapter.cat_counts.MALAYALAM.rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.cat_counts.MALAYALAM.rejected }}</span>{% endif %}
-                    {% if not chapter.cat_counts.MALAYALAM.approved and not chapter.cat_counts.MALAYALAM.pending and not chapter.cat_counts.MALAYALAM.rejected %}
-                    <span style="font-size: 0.75rem; color: #94a3b8;">No resources</span>
-                    {% endif %}
+                {% for res in chapter.resources %}
+                {% if res.category == 'ENGLISH' %}
+                <div class="tree-leaf">
+                    <div class="item-row">
+                        <span style="font-size: 1rem;">&#x1F4C4;</span>
+                        <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                        {% if res.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705;</span>{% endif %}
+                        {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-chip pending">&#x23F3;</span>{% endif %}
+                        {% if res.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C;</span>{% endif %}
+                        <a href="{% url 'edit_resource' res.uid %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
+                        <a href="javascript:void(0)" onclick="deleteResource('{{ res.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
+                    </div>
                 </div>
-                <a href="{% url 'chapter_resources' course.uid chapter.name 'MALAYALAM' %}" class="btn" style="display: block; text-align: center; background: #fffbeb; color: #d97706; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage Malayalam &rarr;</a>
+                {% endif %}
+                {% empty %}
+                <div class="tree-leaf">
+                    <div class="item-row" style="color: #94a3b8; font-style: italic;">No English resources.</div>
+                </div>
+                {% endfor %}
             </div>
 
-            <!-- English Card -->
-            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
-                    <span>&#x1F4C4;</span>
-                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">English</span>
-                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #059669;">{{ chapter.cat_counts.ENGLISH.total }}</span>
+            <!-- Malayalam Branch -->
+            <div class="tree-branch">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span class="cat-label malayalam">&#x1F4D5; Malayalam ({{ chapter.cat_counts.MALAYALAM.total }})</span>
+                    <a href="{% url 'chapter_resources' course.uid chapter.name 'MALAYALAM' %}" style="font-size: 0.72rem; color: #d97706; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
                 </div>
-                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-                    {% if chapter.cat_counts.ENGLISH.approved %}<span class="stat-chip approved">&#x2705; {{ chapter.cat_counts.ENGLISH.approved }}</span>{% endif %}
-                    {% if chapter.cat_counts.ENGLISH.pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.cat_counts.ENGLISH.pending }}</span>{% endif %}
-                    {% if chapter.cat_counts.ENGLISH.rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.cat_counts.ENGLISH.rejected }}</span>{% endif %}
-                    {% if not chapter.cat_counts.ENGLISH.approved and not chapter.cat_counts.ENGLISH.pending and not chapter.cat_counts.ENGLISH.rejected %}
-                    <span style="font-size: 0.75rem; color: #94a3b8;">No resources</span>
-                    {% endif %}
+                {% for res in chapter.resources %}
+                {% if res.category == 'MALAYALAM' %}
+                <div class="tree-leaf">
+                    <div class="item-row">
+                        <span style="font-size: 1rem;">&#x1F4D5;</span>
+                        <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                        {% if res.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705;</span>{% endif %}
+                        {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-chip pending">&#x23F3;</span>{% endif %}
+                        {% if res.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C;</span>{% endif %}
+                        <a href="{% url 'edit_resource' res.uid %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
+                        <a href="javascript:void(0)" onclick="deleteResource('{{ res.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
+                    </div>
                 </div>
-                <a href="{% url 'chapter_resources' course.uid chapter.name 'ENGLISH' %}" class="btn" style="display: block; text-align: center; background: #ecfdf5; color: #059669; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage English &rarr;</a>
+                {% endif %}
+                {% endfor %}
             </div>
 
-            <!-- Online Card -->
-            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
-                    <span>&#x1F4BB;</span>
-                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Online</span>
-                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #0284c7;">{{ chapter.cat_counts.ONLINE.total }}</span>
+            <!-- Online Branch -->
+            <div class="tree-branch" style="margin-bottom: 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span class="cat-label online">&#x1F4BB; Online ({{ chapter.cat_counts.ONLINE.total }})</span>
+                    <a href="{% url 'chapter_resources' course.uid chapter.name 'ONLINE' %}" style="font-size: 0.72rem; color: #0284c7; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
                 </div>
-                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
-                    {% if chapter.cat_counts.ONLINE.approved %}<span class="stat-chip approved">&#x2705; {{ chapter.cat_counts.ONLINE.approved }}</span>{% endif %}
-                    {% if chapter.cat_counts.ONLINE.pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.cat_counts.ONLINE.pending }}</span>{% endif %}
-                    {% if chapter.cat_counts.ONLINE.rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.cat_counts.ONLINE.rejected }}</span>{% endif %}
-                    {% if not chapter.cat_counts.ONLINE.approved and not chapter.cat_counts.ONLINE.pending and not chapter.cat_counts.ONLINE.rejected %}
-                    <span style="font-size: 0.75rem; color: #94a3b8;">No resources</span>
-                    {% endif %}
+                {% for res in chapter.resources %}
+                {% if res.category == 'ONLINE' %}
+                <div class="tree-leaf">
+                    <div class="item-row">
+                        <span style="font-size: 1rem;">&#x1F4BB;</span>
+                        <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                        <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                        {% if res.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705;</span>{% endif %}
+                        {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-chip pending">&#x23F3;</span>{% endif %}
+                        {% if res.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C;</span>{% endif %}
+                        <a href="{% url 'edit_resource' res.uid %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
+                        <a href="javascript:void(0)" onclick="deleteResource('{{ res.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
+                    </div>
                 </div>
-                <a href="{% url 'chapter_resources' course.uid chapter.name 'ONLINE' %}" class="btn" style="display: block; text-align: center; background: #f0f9ff; color: #0284c7; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage Online &rarr;</a>
+                {% endif %}
+                {% endfor %}
             </div>
         </div>
     </div>
@@ -169,4 +352,30 @@
     </div>
     {% endfor %}
 </div>
+
+<script>
+function toggleFolder(header) {
+    header.classList.toggle('open');
+    const body = header.nextElementSibling;
+    body.classList.toggle('open');
+    const indicator = header.querySelector('span:last-child');
+    if (body.classList.contains('open')) {
+        indicator.textContent = '[-]';
+    } else {
+        indicator.textContent = '[+]';
+    }
+}
+
+function deleteLesson(uid) {
+    if (confirm('Delete this video? This action cannot be undone.')) {
+        window.location.href = "{% url 'delete_lesson' 'PLACEHOLDER' %}".replace('PLACEHOLDER', uid);
+    }
+}
+
+function deleteResource(uid) {
+    if (confirm('Request deletion of this resource? An admin must approve it.')) {
+        window.location.href = "{% url 'delete_resource' 'PLACEHOLDER' %}".replace('PLACEHOLDER', uid);
+    }
+}
+</script>
 {% endblock %}
