@@ -1236,7 +1236,7 @@ def admin_logout(request):
 def manage_deletion_requests(request):
     # Show ALL pending requests (Lesson, Course, and Resource types)
     pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
-    history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher').order_by('-created_at')[:20]
+    history_requests = DeletionRequest.objects.exclude(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')[:20]
     return render(request, 'custom_admin/manage_deletion_requests.html', {
         'requests': pending_requests,
         'history_requests': history_requests,
@@ -1260,7 +1260,7 @@ def verify_deletion_request(request, request_uid):
         resource = CourseResource.objects.filter(id=del_request.item_id).first()
         if resource:
             messages.info(request, f"ℹ️ Verifying request for {resource.title}.")
-            return redirect('admin_view_course_content', course_uid=resource.course.uid)
+            return redirect('pdf_viewer', resource_uid=resource.uid)
             
     messages.error(request, "The item could not be found or verified.")
     return redirect('manage_deletion_requests')
@@ -1302,11 +1302,16 @@ def approve_deletion_request(request, request_uid):
                     delete_temp_image(resource.thumbnail_public_id)
             except Exception:
                 pass
-            resource.delete()
+            resource.is_deleted = True
+            resource.save()
         else:
             messages.warning(request, "Resource already gone.")
 
-    del_request.delete() # Free up space after processing
+    del_request.status = 'APPROVED'
+    del_request.reviewed_by = request.user
+    del_request.reviewed_at = timezone.now()
+    del_request.save()
+    log_admin_activity(request, f"Approved deletion request for {del_request.item_type} '{del_request.item_name}'", target_user=del_request.teacher)
     messages.success(request, f"✅ {success_msg}")
     create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
     return redirect('manage_deletion_requests')
@@ -1332,7 +1337,7 @@ def reject_deletion_request(request, request_uid):
     del_request.reviewed_by = request.user
     del_request.reviewed_at = timezone.now()
     del_request.save()
-    
+    log_admin_activity(request, f"Rejected deletion request for {del_request.item_type} '{del_request.item_name}'", target_user=del_request.teacher)
     create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. The content remains live.")
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Resource restored to Approved status.")
     return redirect('manage_deletion_requests')

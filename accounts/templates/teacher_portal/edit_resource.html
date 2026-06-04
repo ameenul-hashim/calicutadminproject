@@ -94,6 +94,16 @@
                         </select>
                         </select>
                     </div>
+
+                    <div class="input-group">
+                        <label for="chapter">Chapter / Folder</label>
+                        <input type="text" name="chapter" id="chapter" value="{{ resource.chapter|default:'' }}" placeholder="e.g. Chapter 1 (leave empty for general)">
+                    </div>
+
+                    <div class="input-group">
+                        <label for="order">Part Number</label>
+                        <input type="number" name="order" id="order" value="{{ resource.order|default:'1' }}" min="1" style="width: 120px;">
+                    </div>
                     
                     <div class="input-group">
                         <label for="upload_file">Change File (Optional)</label>

@@ -223,11 +223,16 @@ class CourseResource(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
 
+    chapter = models.CharField(max_length=255, blank=True, null=True, help_text="Chapter/folder grouping for resources")
+    order = models.PositiveIntegerField(default=1, help_text="Order within chapter")
+
     # Pending Edits (Teacher resubmission workflow)
     has_pending_edits = models.BooleanField(default=False)
     pending_title = models.CharField(max_length=255, null=True, blank=True)
     pending_category = models.CharField(max_length=20, null=True, blank=True)
     pending_resource_type = models.CharField(max_length=10, null=True, blank=True)
+    pending_chapter = models.CharField(max_length=255, blank=True, null=True)
+    pending_order = models.PositiveIntegerField(null=True, blank=True)
     pending_firebase_file_path = models.CharField(max_length=1000, null=True, blank=True)
     pending_thumbnail_path = models.CharField(max_length=1000, null=True, blank=True)
     pending_thumbnail_public_id = models.CharField(max_length=500, null=True, blank=True)
@@ -237,7 +242,7 @@ class CourseResource(models.Model):
     pending_compressed_size = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ['chapter', 'order']
         indexes = [
             models.Index(fields=['course', 'status', 'is_deleted']),
             models.Index(fields=['status', 'is_deleted']),

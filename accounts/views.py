@@ -460,6 +460,8 @@ def login_view(request):
                 
                 log_login_attempt(request, user, status='SUCCESS')
                 messages.success(request, f"Welcome back, {user.full_name}!")
+                if not user.image and not user.profile_photo:
+                    return redirect('edit_profile')
                 return redirect('dashboard')
             else:
                 messages.error(request, "Invalid username or password. Please try again.")
@@ -573,6 +575,8 @@ def teacher_login_view(request):
                 request.session.set_expiry(0)
                 log_login_attempt(request, user, status='SUCCESS')
                 messages.success(request, f"Welcome, {user.full_name}!")
+                if not user.image and not user.profile_photo:
+                    return redirect('teacher_edit_profile')
                 return redirect('teacher_dashboard')
         else:
             log_login_attempt(request, user_candidate, status='FAILED')
@@ -939,7 +943,8 @@ def course_lessons(request, course_uid):
     last_lesson = lessons.latest('created_at') if lessons.exists() else None
     last_updated = last_lesson.created_at if last_lesson else course.created_at
 
-    # Build per-category resource sections
+    # Build per-category resource sections grouped by chapter
+    from itertools import groupby
     resources_list = list(resources)
     resource_sections = []
     for code, label, icon in [
@@ -948,6 +953,14 @@ def course_lessons(request, course_uid):
         ('ONLINE', 'Online Class Notes', '💻'),
     ]:
         items = [r for r in resources_list if r.category == code]
+        items.sort(key=lambda x: (x.chapter or '', x.order or 1))
+        chapters = []
+        for ch, grp in groupby(items, key=lambda x: x.chapter or ''):
+            ch_items = list(grp)
+            chapters.append({
+                'name': ch if ch else None,
+                'items': ch_items,
+            })
         approved = sum(1 for r in items if r.status == 'APPROVED')
         pending = sum(1 for r in items if r.status == 'PENDING')
         rejected = sum(1 for r in items if r.status == 'REJECTED')
@@ -956,6 +969,7 @@ def course_lessons(request, course_uid):
             'label': label,
             'icon': icon,
             'items': items,
+            'chapters': chapters,
             'total': len(items),
             'approved': approved,
             'pending': pending,
@@ -1127,7 +1141,21 @@ def edit_lesson(request, lesson_uid):
 def delete_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     course_uid = lesson.course.uid
-    
+
+    # PENDING/REJECTED lessons: immediate delete
+    if lesson.status in ('PENDING', 'REJECTED'):
+        if lesson.video_file:
+            try:
+                storage = lesson.video_file.storage
+                if storage.exists(lesson.video_file.name):
+                    storage.delete(lesson.video_file.name)
+            except Exception:
+                pass
+        lesson.delete()
+        messages.success(request, "Lesson deleted successfully.")
+        return redirect('course_lessons', course_uid=course_uid)
+
+    # APPROVED lessons: deletion request workflow
     from .models import DeletionRequest
     existing_request = DeletionRequest.objects.filter(
         teacher=request.user, item_type='Lesson', item_id=lesson.id, status='PENDING'
@@ -1159,6 +1187,8 @@ def add_resource(request, course_uid):
         category = request.POST.get('category')
         resource_type = request.POST.get('resource_type')
         upload_file = request.FILES.get('upload_file')
+        chapter = request.POST.get('chapter', '').strip()
+        order = request.POST.get('order', 1)
 
         if not upload_file:
             messages.error(request, "File upload missing.")
@@ -1235,6 +1265,8 @@ def add_resource(request, course_uid):
                 file_extension=ext,
                 original_size=original_size,
                 compressed_size=compressed_size,
+                chapter=chapter or None,
+                order=order,
                 status='PENDING',
                 is_approved=False
             )
@@ -1261,6 +1293,8 @@ def edit_resource(request, resource_uid):
         category = request.POST.get('category')
         resource_type = request.POST.get('resource_type')
         upload_file = request.FILES.get('upload_file')
+        chapter = request.POST.get('chapter', '').strip()
+        order = request.POST.get('order', 1)
 
         is_approved = resource.status == 'APPROVED'
 
@@ -1338,6 +1372,8 @@ def edit_resource(request, resource_uid):
             resource.pending_title = title
             resource.pending_category = category
             resource.pending_resource_type = resource_type
+            resource.pending_chapter = chapter or None
+            resource.pending_order = order
             
             if new_fb_path:
                 resource.pending_firebase_file_path = new_fb_path
@@ -1367,6 +1403,8 @@ def edit_resource(request, resource_uid):
             resource.title = title
             resource.category = category
             resource.resource_type = resource_type
+            resource.chapter = chapter or None
+            resource.order = order
             
             if new_fb_path:
                 resource.firebase_file_path = new_fb_path
@@ -1678,8 +1716,8 @@ def teacher_edit_profile(request):
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
 
-    avatars = [f"/static/avatars/admin_m_{i}.png" for i in range(5)] + \
-              [f"/static/avatars/admin_f_{i}.png" for i in range(5)]
+    avatars = [f"/static/avatars/teacher_m_{i}.png" for i in range(5)] + \
+              [f"/static/avatars/teacher_f_{i}.png" for i in range(5)]
     return render(request, 'teacher_portal/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
 

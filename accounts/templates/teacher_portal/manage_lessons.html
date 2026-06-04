@@ -99,7 +99,7 @@
                             </div>
 
                             {% elif lesson.video_url %}
-                            <div class="yt-plyr" data-url="{{ lesson.video_url }}" style="width: 100%; border-radius: 0.5rem; background: #000; aspect-ratio: 16/9; overflow: hidden;"></div>
+                            <div class="yt-plyr" data-url="{{ lesson.video_url|safe }}" style="width: 100%; border-radius: 0.5rem; background: #000; aspect-ratio: 16/9; overflow: hidden;"></div>
                             {% else %}
                             <div style="width: 100%; aspect-ratio: 16/9; background: #f1f5f9; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;">
                                 <div style="text-align: center; color: #94a3b8; font-weight: 600;">

@@ -186,17 +186,27 @@
         <div id="res-body-{{ section.code|lower }}" class="res-expand" style="max-height: 0; border-top: 1px solid transparent;">
             <div style="padding: 1rem 1.25rem 1.25rem; background: #f8fafc;">
                 {% if section.items %}
-                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-                    {% for r in section.items %}
-                    <div class="res-card">
-                        <div style="padding: 0.75rem 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <div style="width: 36px; height: 36px; background: #f1f5f9; border-radius: 0.6rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <span style="font-size: 0.95rem;">📄</span>
+                    {% for chapter in section.chapters %}
+                    {% if chapter.name %}
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid #e2e8f0;">
+                        <span style="font-size: 0.9rem;">📁</span>
+                        <span style="font-weight: 800; font-size: 0.9rem; color: #1e293b; text-transform: uppercase; letter-spacing: 0.03em;">{{ chapter.name }}</span>
+                        <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 600;">({{ chapter.items|length }})</span>
+                    </div>
+                    {% endif %}
+                    {% for r in chapter.items %}
+                    <div class="res-card" style="margin-top: 0.5rem;">
+                        <div style="padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.4rem;">
+                            <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                <div style="width: 32px; height: 32px; background: #f1f5f9; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <span style="font-size: 0.85rem;">📄</span>
                                 </div>
                                 <div style="flex: 1; min-width: 0;">
-                                    <h4 style="margin: 0; font-size: 0.9rem; color: #1e293b; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.title }}</h4>
-                                    <p style="margin: 0.1rem 0 0; font-size: 0.75rem; color: #64748b;">
+                                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                                        <span style="font-size: 0.65rem; font-weight: 700; color: #6366f1; text-transform: uppercase;">Part {{ r.order }}</span>
+                                        <h4 style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.title }}</h4>
+                                    </div>
+                                    <p style="margin: 0.05rem 0 0; font-size: 0.7rem; color: #64748b;">
                                         {{ r.resource_type }}{% if r.compressed_size %} · {{ r.compressed_size|filesizeformat }}{% endif %}
                                     </p>
                                 </div>
@@ -210,30 +220,30 @@
                                     <span class="status-badge" style="background: #fffbeb; color: #f59e0b;">⏳ Pending</span>
                                 {% endif %}
                             </div>
-                            <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                            <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
                                 {% if r.status == 'DELETION_PENDING' %}
-                                    <span style="font-size: 0.75rem; color: #94a3b8; font-style: italic;">Awaiting admin approval</span>
+                                    <span style="font-size: 0.7rem; color: #94a3b8; font-style: italic;">Awaiting admin approval</span>
                                 {% else %}
-                                    <a href="{% url 'edit_resource' r.uid %}" style="background: #4f46e5; color: white; border: none; padding: 0.35rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; cursor: pointer; text-decoration: none;">✏️ Edit</a>
+                                    <a href="{% url 'edit_resource' r.uid %}" style="background: #4f46e5; color: white; border: none; padding: 0.3rem 0.7rem; border-radius: 0.45rem; font-size: 0.7rem; font-weight: 700; cursor: pointer; text-decoration: none;">✏️ Edit</a>
                                     {% if r.status == 'APPROVED' %}
-                                        <button onclick="openDeleteModal('{{ r.uid }}', '{{ r.title|escapejs }}')" style="background: #ef4444; color: white; border: none; padding: 0.35rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; cursor: pointer;">🗑️ Request Deletion</button>
+                                        <button onclick="openDeleteModal('{{ r.uid }}', '{{ r.title|escapejs }}')" style="background: #ef4444; color: white; border: none; padding: 0.3rem 0.7rem; border-radius: 0.45rem; font-size: 0.7rem; font-weight: 700; cursor: pointer;">🗑️ Request Deletion</button>
                                     {% else %}
                                         <form method="POST" action="{% url 'delete_resource' r.uid %}" style="margin: 0;" onsubmit="return confirm('Delete this resource permanently?')">
                                             {% csrf_token %}
-                                            <button type="submit" style="background: #ef4444; color: white; border: none; padding: 0.35rem 0.75rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 700; cursor: pointer;">🗑️ Delete</button>
+                                            <button type="submit" style="background: #ef4444; color: white; border: none; padding: 0.3rem 0.7rem; border-radius: 0.45rem; font-size: 0.7rem; font-weight: 700; cursor: pointer;">🗑️ Delete</button>
                                         </form>
                                     {% endif %}
                                 {% endif %}
                             </div>
                             {% if r.status == 'REJECTED' and r.rejection_reason %}
-                            <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.75rem; color: #c53030;">
+                            <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.4rem; padding: 0.4rem 0.6rem; font-size: 0.7rem; color: #c53030;">
                                 <strong>Rejection:</strong> {{ r.rejection_reason }}
                             </div>
                             {% endif %}
                         </div>
                     </div>
                     {% endfor %}
-                </div>
+                    {% endfor %}
                 {% else %}
                 <div style="text-align: center; padding: 1.5rem; background: white; border-radius: 1rem; border: 1px dashed #e2e8f0; color: #94a3b8;">
                     <p style="margin: 0; font-size: 0.85rem;">No {{ section.label|lower }} added yet.</p>
