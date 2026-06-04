@@ -47,6 +47,7 @@ urlpatterns = [
     path('student/explore/', views.student_explore, name='student_explore'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
+    path('profile/skip-avatar/', views.skip_avatar, name='skip_avatar'),
     path('teacher/profile/edit/', views.teacher_edit_profile, name='teacher_edit_profile'),
     path('chat/send/', views.send_chat_message, name='send_chat_message'),
     path('chat/messages/<uuid:other_user_uid>/', views.get_chat_messages, name='get_chat_messages'),

@@ -23,6 +23,7 @@ from accounts.utils.notification_helper import get_notifications, get_unread_cou
 import random
 from django.db.models import F
 from django.conf import settings
+from django.core.cache import cache
 import cloudinary
 
 # Explicitly configure cloudinary for use in helper functions
@@ -1808,6 +1809,11 @@ def edit_profile(request):
             if password_changed:
                 update_session_auth_hash(request, request.user)
 
+            if avatar_changed:
+                request.session.pop('avatar_skipped', None)
+                photo_cache_key = f"user_has_photo_{request.user.id}"
+                cache.delete(photo_cache_key)
+
             if avatar_changed and not new_username and not new_password:
                 return JsonResponse({'status': 'success', 'message': '✅ Avatar updated successfully!'})
             
@@ -1829,6 +1835,16 @@ def edit_profile(request):
                   [f"/static/avatars/student_f_{i}.png" for i in range(5)]
 
     return render(request, 'accounts/edit_profile.html', {'user': request.user, 'avatars': avatars})
+
+@login_required
+def skip_avatar(request):
+    request.session['avatar_skipped'] = True
+    photo_cache_key = f"user_has_photo_{request.user.id}"
+    cache.delete(photo_cache_key)
+    if request.user.user_type == 'TEACHER':
+        return redirect('teacher_dashboard')
+    return redirect('dashboard')
+
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1883,6 +1899,10 @@ def teacher_edit_profile(request):
             request.user.save()
             if password_changed:
                 update_session_auth_hash(request, request.user)
+            if avatar_url:
+                request.session.pop('avatar_skipped', None)
+                photo_cache_key = f"user_has_photo_{request.user.id}"
+                cache.delete(photo_cache_key)
             return JsonResponse({'status': 'success', 'message': '✅ Profile updated successfully!'})
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)

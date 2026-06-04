@@ -125,13 +125,14 @@ class PortalSecurityMiddleware:
 
             # --- Cached profile photo constraint ---
             if not request.user.is_superuser and request.user.user_type in ['STUDENT', 'TEACHER']:
-                photo_cache_key = f"user_has_photo_{request.user.id}"
-                has_photo = cache.get(photo_cache_key)
-                if has_photo is None:
-                    has_photo = bool(request.user.image) or bool(request.user.profile_photo)
-                    cache.set(photo_cache_key, has_photo, 300)
-                if not has_photo and url_name not in ['edit_profile', 'logout', 'student_view_auth', 'teacher_view_auth']:
-                    return redirect('edit_profile')
+                if not request.session.get('avatar_skipped'):
+                    photo_cache_key = f"user_has_photo_{request.user.id}"
+                    has_photo = cache.get(photo_cache_key)
+                    if has_photo is None:
+                        has_photo = bool(request.user.image) or bool(request.user.profile_photo)
+                        cache.set(photo_cache_key, has_photo, 300)
+                    if not has_photo and url_name not in ['edit_profile', 'teacher_edit_profile', 'skip_avatar', 'logout', 'student_view_auth', 'teacher_view_auth']:
+                        return redirect('teacher_edit_profile' if request.user.user_type == 'TEACHER' else 'edit_profile')
 
             # --- Admin Isolation ---
             if path.startswith('/customadmin/') or path.startswith('/admin/'):

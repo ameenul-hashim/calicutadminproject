@@ -101,7 +101,7 @@
             {% csrf_token %}
             
             <div class="photo-preview" id="previewContainer">
-                {% if user.avatar_url %}
+                {% if user.image or user.profile_photo %}
                     <img src="{{ user.avatar_url }}" alt="Current Photo" id="previewImg">
                 {% else %}
                     <span style="font-size: 3rem;" id="previewPlaceholder">👤</span>
@@ -207,6 +207,8 @@
             <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
             {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
+            {% else %}
+            <a href="{% url 'skip_avatar' %}" class="btn-back" style="border-color: #6366f1; color: #6366f1;">Skip to Dashboard →</a>
             {% endif %}
         </form>
     </div>
@@ -291,8 +293,8 @@
             
             const usernameField = document.getElementById('new_username');
             const origUsername = '{{ user.username }}';
-            const usernameChanged = usernameField.value.trim() !== origUsername;
-            const passEntered = document.getElementById('new_password').value;
+            const usernameChanged = usernameField ? usernameField.value.trim() !== origUsername : false;
+            const passEntered = document.getElementById('new_password') ? document.getElementById('new_password').value : '';
 
             if (!avatarUrlInput.value && !document.getElementById('previewImg') && !usernameChanged && !passEntered) {
                 showToast('No changes detected.', 'error');
@@ -324,7 +326,7 @@
             submitBtn.innerText = 'Updating...';
 
             // don't send username if unchanged
-            if (!usernameChanged) {
+            if (usernameField && !usernameChanged) {
                 usernameField.value = '';
             }
 

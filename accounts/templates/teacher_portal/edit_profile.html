@@ -268,7 +268,7 @@
 <div class="profile-edit-card">
     <div class="profile-header">
         <div class="profile-avatar" id="previewContainer">
-            {% if user.avatar_url %}
+            {% if user.image or user.profile_photo %}
                 <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="previewImg">
             {% else %}
                 <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:#6366f1;font-size:2.5rem;font-weight:800;">
@@ -297,6 +297,9 @@
         <input type="hidden" name="avatar_url" id="avatarUrlInput">
         <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select an avatar above then click Update.</p>
         <button type="submit" class="btn-save" id="avatarSubmitBtn">🖼️ Update Profile Picture</button>
+        {% if not user.image and not user.profile_photo %}
+        <a href="{% url 'skip_avatar' %}" style="display:block;text-align:center;margin-top:1rem;color:#6366f1;font-weight:600;text-decoration:none;font-size:0.9rem;">Skip to Dashboard →</a>
+        {% endif %}
     </form>
 
     <!-- ════ Form 2: Credentials Update ════ -->
