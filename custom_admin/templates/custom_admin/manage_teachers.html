@@ -17,8 +17,8 @@
 {% endblock %}
 
 {% block content %}
-    <div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white;">
-        <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+    <div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white; display: flex; flex-direction: column; height: calc(100vh - 220px);">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
             <a href="{% url 'create_teacher_admin' %}" class="btn-primary" style="padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #6366f1; color: white; flex-shrink: 0; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);">
                 <span>+</span> New Teacher
             </a>
@@ -36,9 +36,9 @@
                 </div>
                 <button type="submit" style="padding: 0 1.5rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; border: none; background: #6366f1; color: white; font-size: 0.9rem;">Search</button>
             </form>
-            <a href="{% url 'manage_teachers' %}" style="padding: 0.8rem 1.5rem; background: #64748b; color: white; text-decoration: none; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem;">Refresh</a>
+            <a href="{% url 'manage_teachers' %}" style="padding: 0.8rem 1.5rem; background: #64748b; color: white; text-decoration: none; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;">Refresh</a>
         </div>
-        <div class="table-responsive">
+        <div class="table-responsive" style="flex: 1; max-height: none; border-radius: 0; border: none; margin-bottom: 0;">
                 <table class="table">
                     <thead>
                         <tr>
@@ -113,7 +113,7 @@
         </div>
                 
                 {% if users.has_other_pages %}
-                <div class="pagination" style="padding: 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 1rem; align-items: center;">
+                <div class="pagination" style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; display: flex; justify-content: center; gap: 1rem; align-items: center; flex-shrink: 0;">
                     {% if users.has_previous %}
                         <a href="?page={{ users.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}" style="padding: 0.5rem 1rem; background: #f1f5f9; border-radius: 0.5rem; text-decoration: none; color: #1e293b; font-weight: 600;">← Previous</a>
                     {% endif %}

@@ -10,7 +10,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         created = 0
 
-        for i in range(1, 15):
+        for i in range(1, 25):
             username = f'teststudent{i}'
             if CustomUser.objects.filter(username=username).exists():
                 continue
@@ -26,7 +26,7 @@ class Command(BaseCommand):
             created += 1
             self.stdout.write(f'  Created student: {username}')
 
-        for i in range(1, 5):
+        for i in range(1, 15):
             username = f'testteacher{i}'
             if CustomUser.objects.filter(username=username).exists():
                 continue
@@ -45,4 +45,4 @@ class Command(BaseCommand):
         if created == 0:
             self.stdout.write(self.style.WARNING('No new users created — they already exist.'))
         else:
-            self.stdout.write(self.style.SUCCESS(f'Created {created} test user(s). Page 2 should now show for students (14 total, 10 per page).'))
+            self.stdout.write(self.style.SUCCESS(f'Created {created} test user(s). Students: 24 (3 pages of 10), Teachers: 14 (2 pages of 10).'))
