@@ -464,10 +464,32 @@
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem;">
                         <p id="contentSubtitle">Select a lesson to begin your learning journey.</p>
                         <div id="actionArea" style="display: none; gap: 1rem; align-items: center;">
+                            <div id="qualitySelector" style="display: none; position: relative;">
+                                <button onclick="toggleQualityMenu()" id="qualityBtn" style="background: #334155; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: background 0.2s;" onmouseover="this.style.background='#475569'" onmouseout="this.style.background='#334155'">⚙️ <span id="currentQuality">Auto</span></button>
+                                <div id="qualityMenu" style="display: none; position: absolute; bottom: 100%; right: 0; background: #1e293b; border: 1px solid #475569; border-radius: 0.6rem; padding: 0.3rem; margin-bottom: 0.5rem; z-index: 200; min-width: 130px; box-shadow: 0 10px 25px rgba(0,0,0,0.4);">
+                                    <div onclick="setQuality('auto')" class="q-opt" style="padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 0.4rem; font-size: 0.82rem; color: #94a3b8; transition: all 0.15s;" onmouseover="this.style.background='#334155';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">Auto</div>
+                                    <div onclick="setQuality('hd1080')" class="q-opt" style="padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 0.4rem; font-size: 0.82rem; color: #94a3b8; transition: all 0.15s;" onmouseover="this.style.background='#334155';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">1080p (HD)</div>
+                                    <div onclick="setQuality('hd720')" class="q-opt" style="padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 0.4rem; font-size: 0.82rem; color: #94a3b8; transition: all 0.15s;" onmouseover="this.style.background='#334155';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">720p (HD)</div>
+                                    <div onclick="setQuality('large')" class="q-opt" style="padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 0.4rem; font-size: 0.82rem; color: #94a3b8; transition: all 0.15s;" onmouseover="this.style.background='#334155';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">480p</div>
+                                    <div onclick="setQuality('medium')" class="q-opt" style="padding: 0.4rem 0.8rem; cursor: pointer; border-radius: 0.4rem; font-size: 0.82rem; color: #94a3b8; transition: all 0.15s;" onmouseover="this.style.background='#334155';this.style.color='white'" onmouseout="this.style.background='transparent';this.style.color='#94a3b8'">360p</div>
+                                </div>
+                            </div>
                             <a id="downloadBtn" href="#" download class="back-btn" style="background: var(--primary-blue); color: white; font-size: 0.8rem; padding: 0.4rem 1rem; border-radius: 0.5rem; text-decoration: none;">⬇ Download</a>
                         </div>
                     </div>
                 </div>
+
+                <style>
+                    .q-opt.selected {
+                        background: #6366f1 !important;
+                        color: white !important;
+                    }
+                    #qualitySelector { user-select: none; }
+                    @media (max-width: 640px) {
+                        #qualityBtn { font-size: 0.7rem !important; padding: 0.3rem 0.6rem !important; }
+                        .q-opt { font-size: 0.75rem !important; }
+                    }
+                </style>
             </main>
         </div>
     </div>
@@ -505,6 +527,10 @@
         container.innerHTML = '<div id="player"></div>';
         container.style.display = 'none';
         
+        // Hide YouTube quality selector
+        document.getElementById('qualitySelector').style.display = 'none';
+        document.getElementById('qualityMenu').style.display = 'none';
+
         // Remove any stale iframes from previous plays
         const wrapper = document.getElementById('videoWrapper');
         const oldIframes = wrapper.querySelectorAll('iframe');
@@ -537,9 +563,13 @@
             container.innerHTML = `<div id="player" data-plyr-provider="youtube" data-plyr-embed-id="${source}"></div>`;
             player = new Plyr('#player', plyrOptions);
             
-            // YouTube specific boost (only via player API volume)
             player.on('ready', () => {
-                player.volume = 1; // Start at max
+                player.volume = 1;
+                document.getElementById('qualitySelector').style.display = 'inline-block';
+                document.getElementById('currentQuality').textContent = 'Auto';
+                document.querySelectorAll('.q-opt').forEach(el => el.classList.remove('selected'));
+                const autoOpt = document.querySelector('.q-opt');
+                if (autoOpt) autoOpt.classList.add('selected');
             });
         } else {
             // Enterprise Grade Video Delivery Optimization
@@ -663,6 +693,35 @@
             }
         }
     }
+
+    // ---------- YOUTUBE QUALITY CONTROLS ----------
+    function toggleQualityMenu() {
+        const menu = document.getElementById('qualityMenu');
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function setQuality(quality) {
+        const labels = { 'auto': 'Auto', 'highres': 'Max', 'hd1080': '1080p', 'hd720': '720p', 'large': '480p', 'medium': '360p', 'small': '240p', 'tiny': '144p' };
+        document.getElementById('currentQuality').textContent = labels[quality] || quality;
+        document.getElementById('qualityMenu').style.display = 'none';
+        document.querySelectorAll('.q-opt').forEach(el => el.classList.remove('selected'));
+        const opts = document.querySelectorAll('.q-opt');
+        const qualityNames = ['auto', 'highres', 'hd1080', 'hd720', 'large', 'medium', 'small', 'tiny'];
+        const idx = qualityNames.indexOf(quality);
+        if (idx >= 0 && opts[idx]) opts[idx].classList.add('selected');
+        if (player && player.embed && player.embed.setPlaybackQuality) {
+            try { player.embed.setPlaybackQuality(quality); } catch(e) {}
+        }
+    }
+
+    // Close quality menu on outside click
+    document.addEventListener('click', function(e) {
+        const qs = document.getElementById('qualitySelector');
+        if (qs && !qs.contains(e.target)) {
+            const menu = document.getElementById('qualityMenu');
+            if (menu) menu.style.display = 'none';
+        }
+    });
 
     window.onload = function() {
         // Seed base history state so back-button doesn't exit the app
