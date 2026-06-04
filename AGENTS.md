@@ -202,6 +202,16 @@ The most complex model — handles teacher-uploaded study materials.
 ### 15. `AdminActivityLog`
 - All admin actions logged with target user + details
 
+### 16. `UploadJob`
+- Tracks YouTube resumable upload state per teacher
+- `status`: PENDING / UPLOADING / PROCESSING / COMPLETED / FAILED
+- `progress_percentage` — server-side persistent progress (updated by browser via `POST /api/youtube/upload/<uid>/progress/`)
+- `youtube_upload_url` — the resumable upload session URL
+- `youtube_video_id` / `youtube_url` — final result after verification
+- `error_message` — specific failure reason
+- Linked to `teacher` (fk CustomUser) and optionally `lesson` (fk Lesson)
+- Created by `init_youtube_upload`, finalized by `complete_youtube_upload`
+
 ### Signals (pre_delete)
 - `CustomUser` → Cloudinary image cleanup + Supabase PDF delete
 - `Course` → Cloudinary thumbnail cleanup (including pending_image)
@@ -218,7 +228,7 @@ The most complex model — handles teacher-uploaded study materials.
 /customadmin/    → custom_admin.urls
 ```
 
-### accounts/urls.py (54 patterns — NO prefix)
+### accounts/urls.py (57 patterns — NO prefix)
 ```
 /                          → login_view (home)
 /signup/                   → signup_view
@@ -273,6 +283,12 @@ ws/chat/<uid>/            → ChatConsumer (WebSocket)
 /notification/<uid>/delete/ → delete_notification
 /notifications/read-all/  → mark_all_notifications_read
 /unread-counts/           → get_unread_counts
+
+# YouTube Upload API
+/api/youtube/init-upload/                         → init_youtube_upload (create UploadJob + session URL)
+/api/youtube/upload/<uid>/progress/               → update_upload_progress (browser reports %)
+/api/youtube/upload/<uid>/complete/               → complete_youtube_upload (verify + finalize)
+/api/youtube/upload/<uid>/status/                 → get_upload_status (poll for refresh persistence)
 
 # Auth flows
 /forgot-password/         → forgot_password
@@ -400,6 +416,11 @@ EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
 DEFAULT_FROM_EMAIL=
 
+# YouTube Data API (Teacher video upload)
+YOUTUBE_CLIENT_ID=
+YOUTUBE_CLIENT_SECRET=
+YOUTUBE_REFRESH_TOKEN=
+
 # Sentry (optional but recommended)
 SENTRY_DSN=
 
@@ -443,6 +464,22 @@ GOOGLE_DRIVE_CREDENTIALS=  # JSON credential
 ---
 
 ## 🔄 KEY WORKFLOWS
+
+### 0. YouTube Resumable Upload Flow (Teacher Video)
+```
+Teacher selects MP4 → clicks "Add Lesson"
+→ Browser POSTs /api/youtube/init-upload/ → UploadJob created (status=UPLOADING)
+→ Server creates YouTube resumable upload session → returns {upload_url, job_uid}
+→ Browser PUTs file directly to YouTube (zero server RAM/bandwidth)
+→ Every ~5% progress, browser POSTs to /api/youtube/upload/<job_uid>/progress/
+→ On upload completion, browser POSTs to /api/youtube/upload/<job_uid>/complete/
+→ complete_youtube_upload calls verify_youtube_video() using YouTube Data API
+→ If verified → UploadJob.status = COMPLETED, lesson youtube fields set
+→ If not verified → UploadJob.status = FAILED, error_message populated
+→ Form submits normally with YouTube URL → Lesson created with youtube_video_id
+→ UploadJob.lesson linked to created Lesson
+→ Refresh-safe: /api/youtube/upload/<job_uid>/status/ returns current progress
+```
 
 ### 1. Teacher Resource Upload Flow
 ```

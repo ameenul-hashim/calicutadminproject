@@ -64,7 +64,7 @@ INSTALLED_APPS = [
     'custom_admin',
     'cloudinary_storage',
     'cloudinary',
-    'axes',  # Brute-force protection
+    # 'axes',  # Brute-force protection (add back in production)
 ]
 
 MIDDLEWARE = [
@@ -80,28 +80,15 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-AXES_ENABLED = os.getenv('DISABLE_AXES', 'False') != 'True'
-
-if AXES_ENABLED:
-    MIDDLEWARE.append('axes.middleware.AxesMiddleware')
-
 MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
     'accounts.middleware.SlowQueryMonitorMiddleware',
 ]
 
-AUTHENTICATION_BACKENDS = []
-if AXES_ENABLED:
-    AUTHENTICATION_BACKENDS.append('axes.backends.AxesBackend')
-AUTHENTICATION_BACKENDS.append('django.contrib.auth.backends.ModelBackend')
-
-# Axes Configuration
-AXES_FAILURE_LIMIT = 5
-AXES_LOCK_OUT_AT_FAILURE = True
-AXES_COOLOFF_TIME = 1  # 1 hour
-AXES_LOCKOUT_TEMPLATE = 'accounts/lockout.html'
-AXES_RESET_ON_SUCCESS = True
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)
