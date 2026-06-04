@@ -115,14 +115,14 @@
             <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem;">
                 <span style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; width: 44px; height: 44px; border-radius: 0.9rem; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; box-shadow: 0 4px 8px -2px rgba(99, 102, 241, 0.4);">🎬</span>
                 <div>
-                    <h3 style="margin: 0; font-size: 1rem; color: #1e293b; font-weight: 800;">Video Lessons</h3>
-                    <p style="margin: 0.1rem 0 0; font-size: 0.75rem; color: #64748b;">{{ lessons|length }} lesson{% if lessons|length != 1 %}s{% endif %} total</p>
+                    <h3 style="margin: 0; font-size: 1rem; color: #1e293b; font-weight: 800;">Video Chapters</h3>
+                    <p style="margin: 0.1rem 0 0; font-size: 0.75rem; color: #64748b;">{{ chapter_count }} chapter{% if chapter_count != 1 %}s{% endif %} • {{ lessons|length }} lesson{% if lessons|length != 1 %}s{% endif %}</p>
                 </div>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
                 <div class="stat-item">
-                    <div class="stat-value" style="color: #6366f1;">{{ lessons|length }}</div>
-                    <div class="stat-label">Total</div>
+                    <div class="stat-value" style="color: #6366f1;">{{ chapter_count }}</div>
+                    <div class="stat-label">Chapters</div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-value" style="color: #10b981;">{{ lessons_approved_count }}</div>
@@ -140,7 +140,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.75rem; border-top: 1px solid #f1f5f9;">
                 <span style="font-size: 0.7rem; color: #94a3b8; font-weight: 500;">Updated: {{ last_updated|date:"M j, Y" }}</span>
                 <span style="background: #6366f1; color: white; padding: 0.45rem 1rem; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 0.35rem; box-shadow: 0 4px 8px -2px rgba(99, 102, 241, 0.3);">
-                    📂 Open Lessons
+                    📂 Open Chapters
                 </span>
             </div>
         </div>

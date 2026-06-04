@@ -940,6 +940,9 @@ def course_lessons(request, course_uid):
     lessons_pending_count = lessons.filter(status='PENDING').count()
     lessons_rejected_count = lessons.filter(status='REJECTED').count()
 
+    # Dynamic chapter count from distinct lesson chapters
+    chapter_count = lessons.exclude(chapter__isnull=True).exclude(chapter__exact='').values('chapter').distinct().count()
+
     last_lesson = lessons.latest('created_at') if lessons.exists() else None
     last_updated = last_lesson.created_at if last_lesson else course.created_at
 
@@ -986,6 +989,7 @@ def course_lessons(request, course_uid):
         'lessons_approved_count': lessons_approved_count,
         'lessons_pending_count': lessons_pending_count,
         'lessons_rejected_count': lessons_rejected_count,
+        'chapter_count': chapter_count,
         'last_updated': last_updated,
     })
 
