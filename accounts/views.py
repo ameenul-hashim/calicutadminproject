@@ -1106,14 +1106,13 @@ def add_resource(request, course_uid):
             compressed_size = len(compressed_bytes)
             
             import uuid
-            # Ensure safe alphanumeric strings, replacing spaces with underscores
             safe_course = re.sub(r'[^a-zA-Z0-9]', '_', course.title).strip('_')
-            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
-            # Collapse multiple underscores
             safe_course = re.sub(r'_+', '_', safe_course)
+            safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
             safe_title = re.sub(r'_+', '_', safe_title)
-            
-            dest_path = f"resources/{safe_course}/{safe_title}_v{uuid.uuid4().hex[:6]}.{ext}"
+            category_folder = category.lower() if category else 'uncategorised'
+            # Structure: resources/courses/{course_name}/{category}/{filename}.{ext}
+            dest_path = f"resources/courses/{safe_course}/{category_folder}/{safe_title}_v{uuid.uuid4().hex[:6]}.{ext}"
             fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
             
             thumb_path = None
@@ -1214,10 +1213,11 @@ def edit_resource(request, resource_uid):
                 
                 import uuid
                 safe_course = re.sub(r'[^a-zA-Z0-9]', '_', course.title).strip('_')
-                safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
                 safe_course = re.sub(r'_+', '_', safe_course)
+                safe_title = re.sub(r'[^a-zA-Z0-9]', '_', title).strip('_')
                 safe_title = re.sub(r'_+', '_', safe_title)
-                dest_path = f"resources/{safe_course}/{safe_title}_v{uuid.uuid4().hex[:6]}.{new_ext}"
+                category_folder = category.lower() if category else 'uncategorised'
+                dest_path = f"resources/courses/{safe_course}/{category_folder}/{safe_title}_v{uuid.uuid4().hex[:6]}.{new_ext}"
                 new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
                 
                 if thumbnail_bytes:

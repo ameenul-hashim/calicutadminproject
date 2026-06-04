@@ -208,32 +208,31 @@ def upload_user_proof(instance, pdf_file):
     """
     High-level helper to upload a user's verification PDF to Supabase.
     Updates the model instance with the path and sets status to PENDING.
+    Organises into students/ or teachers/ subfolder based on user type.
     """
     try:
-        # 1. Read and validate content
         content = pdf_file.read()
         pdf_file.seek(0)
-        
-        # 2. Define destination path
-        # Using a consistent naming convention: documents/user_<id>_<uid>.pdf
-        destination_path = f"documents/user_{instance.id}_{instance.uid}.pdf"
-        
-        # 3. Perform upload
+
+        user_type = instance.user_type.lower()
+        folder = "students" if user_type == "student" else "teachers"
+        # Consistent naming: documents/{folder}/{uid}.pdf
+        destination_path = f"documents/{folder}/{instance.uid}.pdf"
+
         path = upload_pdf(destination_path, content, destination_path)
         if not path:
-            logger.error(f"❌ Supabase Upload Failed for user {instance.username}. Path returned None.")
+            logger.error(f"Supabase Upload Failed for user {instance.username}. Path returned None.")
             return False
-            
-        # 4. Update instance
+
         from django.db import transaction
         with transaction.atomic():
             instance.pdf_path = path
             instance.status = "PENDING"
             instance.save()
-            
+
         return True
     except Exception as e:
-        logger.error(f"❌ Error in upload_user_proof for user {instance.username}: {str(e)}")
+        logger.error(f"Error in upload_user_proof for user {instance.username}: {str(e)}")
         return False
 
 
