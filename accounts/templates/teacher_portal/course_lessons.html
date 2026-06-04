@@ -139,34 +139,7 @@
                             </div>
 
                             {% elif lesson.video_url %}
-                            <div id="yt-ply-{{ lesson.uid }}" style="width: 100%; border-radius: 0.5rem; background: #000; aspect-ratio: 16/9; overflow: hidden;"></div>
-                            <script>
-                            (function(){
-                                var url = "{{ lesson.video_url|escapejs }}";
-                                var c = document.getElementById('yt-ply-{{ lesson.uid }}');
-                                function ytId(u){if(!u) return null;var m=u.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/);return (m&&m[2].length===11)?m[2]:null;}
-                                var id = ytId(url);
-                                if(id){
-                                    var t = 'https://img.youtube.com/vi/'+id+'/hqdefault.jpg';
-                                    c.innerHTML = '<div style="position:relative;width:100%;height:100%;cursor:pointer;background:#000;" onclick="this.innerHTML=\'<div data-plyr-provider=youtube data-plyr-embed-id='+id+'></div>\';var p=new Plyr(this.querySelector(\'[data-plyr-provider]\'),{autoplay:true,youtube:{noCookie:true,rel:0,showinfo:0,iv_load_policy:3,modestbranding:1}});p.on(\'ready\',function(){p.play();});">' +
-                                        '<img src="'+t+'" onerror="this.src=\'https://img.youtube.com/vi/'+id+'/hqdefault.jpg\';" style="width:100%;height:100%;object-fit:cover;">' +
-                                        '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.25);display:flex;align-items:center;justify-content:center;">' +
-                                            '<div style="width:48px;height:48px;background:rgba(255,0,0,0.9);border-radius:50%;display:flex;align-items:center;justify-content:center;">' +
-                                                '<div style="width:0;height:0;border-top:12px solid transparent;border-bottom:12px solid transparent;border-left:16px solid white;margin-left:4px;"></div>' +
-                                            '</div>' +
-                                        '</div>' +
-                                    '</div>';
-                                } else {
-                                    var d = url.toLowerCase().indexOf('.mp4')>-1||url.toLowerCase().indexOf('.webm')>-1||url.toLowerCase().indexOf('cloudinary.com')>-1;
-                                    if(d){
-                                        var s = url;
-                                        if(s.indexOf('cloudinary.com')>-1&&s.indexOf('f_auto')===-1) s=s.replace('/upload/','/upload/f_auto,q_auto,vc_h264/');
-                                        c.innerHTML = '<video class="plyr-player" playsinline controls preload="auto" style="width:100%;height:100%;"><source src="'+s+'" type="video/mp4"></video>';
-                                        new Plyr(c.querySelector('.plyr-player'),{autoplay:true});
-                                    } else { c.innerHTML = '<iframe src="'+url+'" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>'; }
-                                }
-                            })();
-                            </script>
+                            <div class="yt-plyr" data-url="{{ lesson.video_url }}" style="width: 100%; border-radius: 0.5rem; background: #000; aspect-ratio: 16/9; overflow: hidden;"></div>
                             {% else %}
                             <div style="width: 100%; aspect-ratio: 16/9; background: #f1f5f9; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center;">
                                 <div style="text-align: center; color: #94a3b8; font-weight: 600;">
@@ -315,6 +288,26 @@ document.addEventListener('DOMContentLoaded', function() {
             controls: ['play-large', 'restart', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
             settings: ['quality', 'speed', 'loop']
         });
+    });
+    document.querySelectorAll('.yt-plyr').forEach(function(el) {
+        var url = el.getAttribute('data-url');
+        function getYtId(u){if(!u)return null;var m=u.match(/^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/);return (m&&m[2].length===11)?m[2]:null;}
+        var vid = getYtId(url);
+        if(vid){
+            el.innerHTML = '<div data-plyr-provider="youtube" data-plyr-embed-id="' + vid + '"></div>';
+            new Plyr(el.querySelector('[data-plyr-provider]'), {
+                youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+            });
+        } else {
+            var isDirect = url.indexOf('.mp4') > -1 || url.indexOf('.webm') > -1 || url.indexOf('cloudinary.com') > -1;
+            if(isDirect){
+                var src = url.indexOf('cloudinary.com') > -1 && url.indexOf('f_auto') === -1 ? url.replace('/upload/','/upload/f_auto,q_auto,vc_h264/') : url;
+                el.innerHTML = '<video class="plyr-player" playsinline controls preload="auto" style="width:100%;height:100%;"><source src="'+src+'" type="video/mp4"></video>';
+                new Plyr(el.querySelector('.plyr-player'));
+            } else {
+                el.innerHTML = '<iframe src="'+url+'" style="width:100%;height:100%;border:none;" allowfullscreen></iframe>';
+            }
+        }
     });
 });
 function openDeleteModal(uid, name) {
