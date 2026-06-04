@@ -101,6 +101,7 @@ class Course(models.Model):
     pending_image = models.URLField(max_length=1000, blank=True, null=True)
     pending_image_public_id = models.CharField(max_length=255, blank=True, null=True)
     has_pending_edits = models.BooleanField(default=False, db_index=True)
+    chapters = models.JSONField(default=list, blank=True, help_text="List of chapter names for this course")
 
     @property
     def thumbnail_url(self):
@@ -129,6 +130,7 @@ class Lesson(models.Model):
     title = models.CharField(max_length=255)
     video_url = models.URLField(max_length=500, null=True, blank=True, help_text="YouTube or other video link")
     video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
+    chapter = models.CharField(max_length=255, default='', blank=True, db_index=True)
     order = models.PositiveIntegerField(default=1)
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
@@ -177,6 +179,7 @@ class CourseResource(models.Model):
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='resources')
     title = models.CharField(max_length=255)
+    chapter = models.CharField(max_length=255, default='', blank=True, db_index=True)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, db_index=True)
     resource_type = models.CharField(max_length=10, choices=RESOURCE_TYPE_CHOICES, db_index=True)
     

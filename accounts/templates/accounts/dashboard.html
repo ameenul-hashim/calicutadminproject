@@ -374,6 +374,14 @@
                     <h1 style="font-size: 2rem; font-weight: 800; color: #1e293b; margin-bottom: 0.25rem;">Welcome, {{ user.username }} 👋</h1>
                     <p style="color: #64748b; font-size: 1rem;">{% if user.user_type == 'TEACHER' %}Previewing Student View{% elif user.user_type == 'ADMIN' %}Administrator Preview Mode{% else %}Ready to continue your learning journey?{% endif %}</p>
                     
+                    {% if not user.image and not user.profile_photo %}
+                    <div style="margin-top: 1rem; padding: 0.75rem 1rem; background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 0.75rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <span style="font-size: 1.2rem;">👤</span>
+                        <span style="flex: 1; color: #4338ca; font-size: 0.9rem; font-weight: 500;">Set up your profile avatar to personalize your account.</span>
+                        <a href="{% url 'edit_profile' %}" style="padding: 0.4rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.8rem; white-space: nowrap;">Choose Avatar</a>
+                    </div>
+                    {% endif %}
+
                     {% if user.user_type == 'TEACHER' %}
                         <a href="{% url 'teacher_dashboard' %}" style="display: inline-block; margin-top: 1rem; padding: 0.5rem 1rem; background: #6366f1; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">← Back to Teacher Panel</a>
                     {% elif user.user_type == 'ADMIN' or user.is_staff %}

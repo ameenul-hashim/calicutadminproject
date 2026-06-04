@@ -13,190 +13,83 @@
     <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">{{ course.title }}</h1>
-            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Content organized in chapter folders — expand to manage videos & resources.</p>
+            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Content organized in chapter folders.</p>
         </div>
-        <div style="display: flex; gap: 0.75rem;">
-            <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Resource</a>
-            <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Lesson</a>
-        </div>
-    </div>
-    <!-- Workflow Diagram -->
-    <div style="margin-top: 1.5rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0; padding: 1.5rem; overflow-x: auto;">
-        <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem;">&#x1F4CA; Content Structure</div>
-        <svg viewBox="0 0 800 220" style="width: 100%; max-width: 800px; height: auto; display: block; margin: 0 auto;">
-            <!-- Course box -->
-            <rect x="330" y="0" width="140" height="40" rx="8" fill="#6366f1" />
-            <text x="400" y="26" text-anchor="middle" fill="white" font-size="14" font-weight="700">{{ course.title|truncatechars:18 }}</text>
-
-            <!-- Arrows from course to chapters -->
-            <line x1="400" y1="40" x2="400" y2="65" stroke="#94a3b8" stroke-width="2" />
-            <line x1="400" y1="65" x2="130" y2="65" stroke="#94a3b8" stroke-width="2" />
-            <line x1="400" y1="65" x2="400" y2="65" stroke="#94a3b8" stroke-width="2" />
-            <line x1="400" y1="65" x2="670" y2="65" stroke="#94a3b8" stroke-width="2" />
-
-            <!-- Chapter 1 Folder -->
-            <rect x="30" y="65" width="200" height="36" rx="8" fill="#f59e0b" />
-            <text x="130" y="89" text-anchor="middle" fill="white" font-size="13" font-weight="700">&#x1F4C1; Chapter 1</text>
-            <line x1="130" y1="101" x2="130" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-
-            <!-- Ch1 branches -->
-            <line x1="130" y1="120" x2="45" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="130" y1="120" x2="130" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="130" y1="120" x2="215" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-
-            <rect x="10" y="125" width="70" height="30" rx="6" fill="#eef2ff" />
-            <text x="45" y="144" text-anchor="middle" fill="#4f46e5" font-size="11" font-weight="600">&#x1F3AC; Videos</text>
-
-            <rect x="95" y="125" width="70" height="30" rx="6" fill="#ecfdf5" />
-            <text x="130" y="144" text-anchor="middle" fill="#059669" font-size="11" font-weight="600">&#x1F4C4; English</text>
-
-            <rect x="180" y="125" width="70" height="30" rx="6" fill="#fffbeb" />
-            <text x="215" y="144" text-anchor="middle" fill="#d97706" font-size="11" font-weight="600">&#x1F4D5; Malayalam</text>
-
-            <!-- Chapter 2 Folder -->
-            <rect x="300" y="65" width="200" height="36" rx="8" fill="#f59e0b" />
-            <text x="400" y="89" text-anchor="middle" fill="white" font-size="13" font-weight="700">&#x1F4C1; Chapter 2</text>
-            <line x1="400" y1="101" x2="400" y2="165" stroke="#94a3b8" stroke-width="1.5" />
-
-            <rect x="365" y="170" width="70" height="30" rx="6" fill="#f0f9ff" />
-            <text x="400" y="189" text-anchor="middle" fill="#0284c7" font-size="11" font-weight="600">&#x1F4BB; Online</text>
-
-            <!-- Chapter 3 Folder -->
-            <rect x="570" y="65" width="200" height="36" rx="8" fill="#f59e0b" />
-            <text x="670" y="89" text-anchor="middle" fill="white" font-size="13" font-weight="700">&#x1F4C1; Chapter 3</text>
-            <line x1="670" y1="101" x2="670" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-
-            <line x1="670" y1="120" x2="585" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="670" y1="120" x2="670" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-            <line x1="670" y1="120" x2="755" y2="120" stroke="#94a3b8" stroke-width="1.5" />
-
-            <rect x="550" y="125" width="70" height="30" rx="6" fill="#eef2ff" />
-            <text x="585" y="144" text-anchor="middle" fill="#4f46e5" font-size="11" font-weight="600">&#x1F3AC; Videos</text>
-
-            <rect x="635" y="125" width="70" height="30" rx="6" fill="#fffbeb" />
-            <text x="670" y="144" text-anchor="middle" fill="#d97706" font-size="11" font-weight="600">&#x1F4D5; Malayalam</text>
-
-            <rect x="720" y="125" width="70" height="30" rx="6" fill="#f0f9ff" />
-            <text x="755" y="144" text-anchor="middle" fill="#0284c7" font-size="11" font-weight="600">&#x1F4BB; Online</text>
-        </svg>
     </div>
 </div>
 {% endblock %}
 
 {% block content %}
 <style>
-    .chapter-folder {
+    .ch-card {
         background: white;
         border-radius: 1.25rem;
-        margin-bottom: 1.25rem;
+        margin-bottom: 1.5rem;
         border: 1px solid #e2e8f0;
         overflow: hidden;
-        transition: box-shadow 0.2s;
     }
-    .chapter-folder:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .chapter-folder-header {
+    .ch-card-header {
         padding: 1.1rem 1.5rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
         display: flex;
         align-items: center;
         gap: 0.75rem;
-        cursor: pointer;
-        user-select: none;
-        transition: background 0.15s;
     }
-    .chapter-folder-header:hover { background: #f8fafc; }
-    .chapter-folder-header .folder-icon { font-size: 1.3rem; transition: transform 0.2s; }
-    .chapter-folder-header.open .folder-icon { transform: rotate(90deg); }
-    .chapter-folder-body {
-        display: none;
-        border-top: 1px solid #e2e8f0;
-        padding: 0.5rem 1.5rem 1rem;
+    .ch-card-header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; }
+    .ch-card-body { padding: 1rem 1.5rem 1.25rem; }
+    .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin: 1rem 0 0.5rem;
+        padding-bottom: 0.25rem;
+        border-bottom: 1px solid #f1f5f9;
     }
-    .chapter-folder-body.open { display: block; }
-
-    .tree-branch {
-        position: relative;
-        padding-left: 2rem;
-        margin: 0.25rem 0;
-    }
-    .tree-branch::before {
-        content: '';
-        position: absolute;
-        left: 0.6rem;
-        top: 0;
-        bottom: 50%;
-        width: 1.2rem;
-        border-left: 2px solid #cbd5e1;
-        border-bottom: 2px solid #cbd5e1;
-        border-radius: 0 0 0 0.4rem;
-    }
-    .tree-branch:last-child::before {
-        bottom: 50%;
-    }
-    .tree-branch::after {
-        content: '';
-        position: absolute;
-        left: 0.6rem;
-        top: 50%;
-        bottom: 0;
-        width: 0;
-        border-left: 2px solid #cbd5e1;
-    }
-    .tree-branch:last-child::after { display: none; }
-    .tree-leaf {
-        position: relative;
-        padding-left: 2rem;
-        margin: 0.15rem 0;
-    }
-    .tree-leaf::before {
-        content: '';
-        position: absolute;
-        left: 0.6rem;
-        top: 50%;
-        width: 1.2rem;
-        border-bottom: 2px solid #cbd5e1;
-    }
-    .tree-leaf:last-child::before {
-        width: 1.2rem;
-    }
-    .tree-connector-v {
-        position: absolute;
-        left: 0.6rem;
-        top: 0;
-        bottom: 0;
-        width: 0;
-        border-left: 2px solid #cbd5e1;
-    }
-
-    .cat-label {
-        font-weight: 700;
-        font-size: 0.8rem;
-        padding: 0.2rem 0.6rem;
-        border-radius: 0.4rem;
-        display: inline-block;
-    }
-    .cat-label.video { background: #eef2ff; color: #4f46e5; }
-    .cat-label.english { background: #ecfdf5; color: #059669; }
-    .cat-label.malayalam { background: #fffbeb; color: #d97706; }
-    .cat-label.online { background: #f0f9ff; color: #0284c7; }
-
+    .section-header:first-child { margin-top: 0; }
+    .section-header .label { font-weight: 700; font-size: 0.85rem; display: flex; align-items: center; gap: 0.4rem; }
     .item-row {
         display: flex;
         align-items: center;
         gap: 0.6rem;
-        padding: 0.4rem 0.75rem;
+        padding: 0.4rem 0.6rem;
         border-radius: 0.5rem;
-        transition: background 0.15s;
         font-size: 0.85rem;
+        transition: background 0.15s;
     }
     .item-row:hover { background: #f1f5f9; }
-
+    .item-row + .item-row { border-top: 1px solid #f8fafc; }
+    .stat-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.15rem 0.5rem;
+        border-radius: 0.4rem;
+    }
+    .stat-badge.approved { background: #dcfce7; color: #16a34a; }
+    .stat-badge.pending { background: #fef9c3; color: #ca8a04; }
+    .stat-badge.rejected { background: #fee2e2; color: #dc2626; }
+    .action-link { font-size: 0.75rem; font-weight: 600; text-decoration: none; padding: 0.2rem 0.5rem; border-radius: 0.3rem; transition: background 0.15s; }
+    .action-link:hover { background: #e2e8f0; }
+    .empty-section { font-size: 0.8rem; color: #94a3b8; font-style: italic; padding: 0.3rem 0.6rem; }
     @media (max-width: 768px) {
-        .chapter-folder-header { padding: 0.9rem 1rem; }
-        .chapter-folder-body { padding: 0.5rem 1rem 0.75rem; }
+        .ch-card-header { padding: 0.9rem 1rem; }
+        .ch-card-body { padding: 0.75rem 1rem 1rem; }
         .item-row { flex-wrap: wrap; gap: 0.3rem; }
-        .tree-branch, .tree-leaf { padding-left: 1.5rem; }
     }
 </style>
+
+<form action="{% url 'create_chapter' course.uid %}" method="post" style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+    {% csrf_token %}
+    <input type="text" name="chapter_name" required placeholder="Enter chapter name..."
+           style="flex: 1; min-width: 200px; padding: 0.75rem 1rem; border: 2px dashed #cbd5e1; border-radius: 0.75rem; font-size: 0.95rem; font-weight: 500; outline: none; transition: border-color 0.2s;"
+           onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#cbd5e1'">
+    <button type="submit" class="btn" style="background: #6366f1; color: white; padding: 0.75rem 1.5rem; border-radius: 0.75rem; border: none; font-weight: 700; font-size: 0.9rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 0.5rem;">
+        + Create Chapter
+    </button>
+</form>
 
 {% if course.status == 'DRAFT' or course.status == 'REJECTED' or has_pending_content %}
 <div style="margin-bottom: 2rem;">
@@ -221,161 +114,122 @@
 </div>
 {% endif %}
 
-<!-- Folder Tree -->
-<div id="chapterTree">
-    {% for chapter in chapters %}
-    <div class="chapter-folder">
-        <div class="chapter-folder-header" onclick="toggleFolder(this)">
-            <span class="folder-icon">&#x25B6;</span>
-            <span style="font-weight: 800; font-size: 1rem; color: #1e293b;">{{ chapter.name }}</span>
-            <span style="font-size: 0.78rem; color: #94a3b8; margin-left: auto;">
-                {{ chapter.videos_count }} vid{% if chapter.videos_count != 1 %}s{% endif %} &middot;
-                {{ chapter.cat_counts.ENGLISH.total }} Eng &middot;
-                {{ chapter.cat_counts.MALAYALAM.total }} Mal &middot;
-                {{ chapter.cat_counts.ONLINE.total }} On
-            </span>
-            <span style="font-size: 0.72rem; color: #64748b;">[+]</span>
-        </div>
-
-        <div class="chapter-folder-body">
-            <!-- Videos Branch -->
-            <div class="tree-branch">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <span class="cat-label video">&#x1F3AC; Videos ({{ chapter.videos_count }})</span>
-                    <a href="{% url 'chapter_videos' course.uid chapter.name %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
-                </div>
-                {% for lesson in chapter.videos %}
-                <div class="tree-leaf">
-                    <div class="item-row">
-                        <span style="color: #64748b; width: 1.2rem; text-align: right; font-size: 0.75rem;">{{ forloop.counter }}.</span>
-                        <span style="flex: 1; font-weight: 500;">{{ lesson.title }}</span>
-                        {% if lesson.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705; Approved</span>{% endif %}
-                        {% if lesson.status == 'PENDING' %}<span class="stat-chip pending">&#x23F3; Pending</span>{% endif %}
-                        {% if lesson.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C; Rejected</span>{% endif %}
-                        <a href="{% url 'edit_lesson' lesson.uid %}" class="action-btn" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
-                        <a href="javascript:void(0)" onclick="deleteLesson('{{ lesson.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
-                    </div>
-                </div>
-                {% empty %}
-                <div class="tree-leaf">
-                    <div class="item-row" style="color: #94a3b8; font-style: italic;">No videos in this chapter.</div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- English Branch -->
-            <div class="tree-branch">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <span class="cat-label english">&#x1F4C4; English ({{ chapter.cat_counts.ENGLISH.total }})</span>
-                    <a href="{% url 'chapter_resources' course.uid chapter.name 'ENGLISH' %}" style="font-size: 0.72rem; color: #059669; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
-                </div>
-                {% for res in chapter.resources %}
-                {% if res.category == 'ENGLISH' %}
-                <div class="tree-leaf">
-                    <div class="item-row">
-                        <span style="font-size: 1rem;">&#x1F4C4;</span>
-                        <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
-                        <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
-                        {% if res.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705;</span>{% endif %}
-                        {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-chip pending">&#x23F3;</span>{% endif %}
-                        {% if res.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C;</span>{% endif %}
-                        <a href="{% url 'edit_resource' res.uid %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
-                        <a href="javascript:void(0)" onclick="deleteResource('{{ res.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
-                    </div>
-                </div>
-                {% endif %}
-                {% empty %}
-                <div class="tree-leaf">
-                    <div class="item-row" style="color: #94a3b8; font-style: italic;">No English resources.</div>
-                </div>
-                {% endfor %}
-            </div>
-
-            <!-- Malayalam Branch -->
-            <div class="tree-branch">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <span class="cat-label malayalam">&#x1F4D5; Malayalam ({{ chapter.cat_counts.MALAYALAM.total }})</span>
-                    <a href="{% url 'chapter_resources' course.uid chapter.name 'MALAYALAM' %}" style="font-size: 0.72rem; color: #d97706; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
-                </div>
-                {% for res in chapter.resources %}
-                {% if res.category == 'MALAYALAM' %}
-                <div class="tree-leaf">
-                    <div class="item-row">
-                        <span style="font-size: 1rem;">&#x1F4D5;</span>
-                        <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
-                        <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
-                        {% if res.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705;</span>{% endif %}
-                        {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-chip pending">&#x23F3;</span>{% endif %}
-                        {% if res.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C;</span>{% endif %}
-                        <a href="{% url 'edit_resource' res.uid %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
-                        <a href="javascript:void(0)" onclick="deleteResource('{{ res.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
-
-            <!-- Online Branch -->
-            <div class="tree-branch" style="margin-bottom: 0;">
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <span class="cat-label online">&#x1F4BB; Online ({{ chapter.cat_counts.ONLINE.total }})</span>
-                    <a href="{% url 'chapter_resources' course.uid chapter.name 'ONLINE' %}" style="font-size: 0.72rem; color: #0284c7; text-decoration: none; font-weight: 600;">Manage &rarr;</a>
-                </div>
-                {% for res in chapter.resources %}
-                {% if res.category == 'ONLINE' %}
-                <div class="tree-leaf">
-                    <div class="item-row">
-                        <span style="font-size: 1rem;">&#x1F4BB;</span>
-                        <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
-                        <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
-                        {% if res.status == 'APPROVED' %}<span class="stat-chip approved">&#x2705;</span>{% endif %}
-                        {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-chip pending">&#x23F3;</span>{% endif %}
-                        {% if res.status == 'REJECTED' %}<span class="stat-chip rejected">&#x274C;</span>{% endif %}
-                        <a href="{% url 'edit_resource' res.uid %}" style="font-size: 0.72rem; color: #6366f1; text-decoration: none; font-weight: 600;">Edit</a>
-                        <a href="javascript:void(0)" onclick="deleteResource('{{ res.uid }}')" style="font-size: 0.72rem; color: #ef4444; text-decoration: none; font-weight: 600;">Delete</a>
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
-            </div>
-        </div>
+{% for chapter in chapters %}
+<div class="ch-card">
+    <div class="ch-card-header">
+        <span style="font-size: 1.3rem;">&#x1F4C1;</span>
+        <h3>{{ chapter.name }}</h3>
+        <span style="margin-left: auto; font-size: 0.8rem; color: #64748b;">
+            {{ chapter.videos_count }} vid{% if chapter.videos_count != 1 %}s{% endif %} &middot;
+            {{ chapter.cat_counts.ENGLISH.total }} Eng &middot;
+            {{ chapter.cat_counts.MALAYALAM.total }} Mal &middot;
+            {{ chapter.cat_counts.ONLINE.total }} On
+        </span>
     </div>
-    {% empty %}
-    <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">&#x1F4DA;</div>
-        <h3 style="margin: 0 0 0.5rem; color: #1e293b;">No Content Yet</h3>
-        <p style="color: #94a3b8; margin: 0 0 1.5rem;">Add your first lesson or resource using the buttons above.</p>
-        <div style="display: flex; gap: 1rem; justify-content: center;">
-            <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
-            <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Resource</a>
+
+    <div class="ch-card-body">
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+            <a href="{% url 'add_lesson' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #eef2ff; color: #4f46e5; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                + Add Lesson
+            </a>
+            <a href="{% url 'add_resource' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #ecfdf5; color: #059669; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
+                + Add Resource
+            </a>
         </div>
+
+        <!-- Videos Section -->
+        <div class="section-header">
+            <span class="label" style="color: #4f46e5;">&#x1F3AC; Videos ({{ chapter.videos_count }})</span>
+        </div>
+        {% if chapter.videos %}
+            {% for lesson in chapter.videos %}
+            <div class="item-row">
+                <span style="color: #64748b; min-width: 1.2rem; text-align: right; font-size: 0.75rem;">{{ forloop.counter }}.</span>
+                <span style="flex: 1; font-weight: 500;">{{ lesson.title }}</span>
+                {% if lesson.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705; Approved</span>{% endif %}
+                {% if lesson.status == 'PENDING' %}<span class="stat-badge pending">&#x23F3; Pending</span>{% endif %}
+                {% if lesson.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C; Rejected</span>{% endif %}
+                <a href="{% url 'edit_lesson' lesson.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                <a href="javascript:void(0)" onclick="if(confirm('Delete this video?'))window.location.href='{% url 'delete_lesson' lesson.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-section">No videos in this chapter yet.</div>
+        {% endif %}
+
+        <!-- English Section -->
+        <div class="section-header">
+            <span class="label" style="color: #059669;">&#x1F4C4; English ({{ chapter.cat_counts.ENGLISH.total }})</span>
+        </div>
+        {% if chapter.cat_counts.ENGLISH.total %}
+            {% for res in chapter.resources %}
+            {% if res.category == 'ENGLISH' %}
+            <div class="item-row">
+                <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
+                {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
+                {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
+                <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                <a href="javascript:void(0)" onclick="if(confirm('Request deletion of this resource?'))window.location.href='{% url 'delete_resource' res.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-section">No English resources.</div>
+        {% endif %}
+
+        <!-- Malayalam Section -->
+        <div class="section-header">
+            <span class="label" style="color: #d97706;">&#x1F4D5; Malayalam ({{ chapter.cat_counts.MALAYALAM.total }})</span>
+        </div>
+        {% if chapter.cat_counts.MALAYALAM.total %}
+            {% for res in chapter.resources %}
+            {% if res.category == 'MALAYALAM' %}
+            <div class="item-row">
+                <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
+                {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
+                {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
+                <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                <a href="javascript:void(0)" onclick="if(confirm('Request deletion of this resource?'))window.location.href='{% url 'delete_resource' res.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-section">No Malayalam resources.</div>
+        {% endif %}
+
+        <!-- Online Section -->
+        <div class="section-header">
+            <span class="label" style="color: #0284c7;">&#x1F4BB; Online ({{ chapter.cat_counts.ONLINE.total }})</span>
+        </div>
+        {% if chapter.cat_counts.ONLINE.total %}
+            {% for res in chapter.resources %}
+            {% if res.category == 'ONLINE' %}
+            <div class="item-row">
+                <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
+                <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
+                {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
+                {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
+                {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
+                <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                <a href="javascript:void(0)" onclick="if(confirm('Request deletion of this resource?'))window.location.href='{% url 'delete_resource' res.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+            </div>
+            {% endif %}
+            {% endfor %}
+        {% else %}
+            <div class="empty-section">No Online resources.</div>
+        {% endif %}
     </div>
-    {% endfor %}
 </div>
-
-<script>
-function toggleFolder(header) {
-    header.classList.toggle('open');
-    const body = header.nextElementSibling;
-    body.classList.toggle('open');
-    const indicator = header.querySelector('span:last-child');
-    if (body.classList.contains('open')) {
-        indicator.textContent = '[-]';
-    } else {
-        indicator.textContent = '[+]';
-    }
-}
-
-function deleteLesson(uid) {
-    if (confirm('Delete this video? This action cannot be undone.')) {
-        window.location.href = "{% url 'delete_lesson' 'PLACEHOLDER' %}".replace('PLACEHOLDER', uid);
-    }
-}
-
-function deleteResource(uid) {
-    if (confirm('Request deletion of this resource? An admin must approve it.')) {
-        window.location.href = "{% url 'delete_resource' 'PLACEHOLDER' %}".replace('PLACEHOLDER', uid);
-    }
-}
-</script>
+{% empty %}
+<div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
+    <div style="font-size: 3rem; margin-bottom: 1rem;">&#x1F4DA;</div>
+    <h3 style="margin: 0 0 0.5rem; color: #1e293b;">No Chapters Yet</h3>
+    <p style="color: #94a3b8; margin: 0;">Create your first chapter above to start organizing content.</p>
+</div>
+{% endfor %}
 {% endblock %}

@@ -371,6 +371,7 @@
                 <form id="lessonForm" method="POST" enctype="multipart/form-data">
                     {% csrf_token %}
                     <input type="hidden" name="video_url" id="video_url" value="">
+                    <input type="hidden" name="chapter" value="{{ chapter }}">
                     <div class="input-group">
                         <label for="title">Lesson Title</label>
                         <input type="text" name="title" id="title" required>
