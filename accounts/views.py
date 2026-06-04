@@ -1039,6 +1039,61 @@ def create_chapter(request, course_uid):
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+@require_POST
+def rename_chapter(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    old_name = request.POST.get('old_name', '').strip()
+    new_name = request.POST.get('new_name', '').strip()
+    if not old_name or not new_name:
+        messages.error(request, "Both old and new chapter names are required.")
+        return redirect('course_lessons', course_uid=course.uid)
+    if old_name == new_name:
+        messages.info(request, "No change — names are identical.")
+        return redirect('course_lessons', course_uid=course.uid)
+    chapters = list(course.chapters or [])
+    if old_name not in chapters:
+        messages.error(request, f"Chapter '{old_name}' not found.")
+        return redirect('course_lessons', course_uid=course.uid)
+    if new_name in chapters:
+        messages.warning(request, f"Chapter '{new_name}' already exists.")
+        return redirect('course_lessons', course_uid=course.uid)
+    # Rename in master list
+    idx = chapters.index(old_name)
+    chapters[idx] = new_name
+    course.chapters = chapters
+    course.save(update_fields=['chapters'])
+    # Rename on all lessons and resources using this chapter
+    course.lessons.filter(chapter=old_name).update(chapter=new_name)
+    from .models import CourseResource
+    CourseResource.objects.filter(course=course, chapter=old_name).update(chapter=new_name)
+    messages.success(request, f"Chapter renamed from '{old_name}' to '{new_name}'.")
+    return redirect('course_lessons', course_uid=course.uid)
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+@require_POST
+def delete_chapter(request, course_uid):
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    chapter_name = request.POST.get('chapter_name', '').strip()
+    if not chapter_name:
+        messages.error(request, "Chapter name is required.")
+        return redirect('course_lessons', course_uid=course.uid)
+    chapters = list(course.chapters or [])
+    if chapter_name not in chapters:
+        messages.error(request, f"Chapter '{chapter_name}' not found.")
+        return redirect('course_lessons', course_uid=course.uid)
+    chapters.remove(chapter_name)
+    course.chapters = chapters
+    course.save(update_fields=['chapters'])
+    # Unlink lessons and resources — move them to uncategorized
+    course.lessons.filter(chapter=chapter_name).update(chapter='')
+    from .models import CourseResource
+    CourseResource.objects.filter(course=course, chapter=chapter_name).update(chapter='')
+    messages.success(request, f"Chapter '{chapter_name}' deleted. Content moved to uncategorized.")
+    return redirect('course_lessons', course_uid=course.uid)
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def manage_chapter_items(request, course_uid, chapter_name, item_type, category=None):
     """Show all items (videos or resources) in a specific chapter for a course."""
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
