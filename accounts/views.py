@@ -2671,6 +2671,7 @@ def init_video_upload(request):
         course_uid = data.get('course_uid')
         title = data.get('title', '').strip()
         order = data.get('order', 1)
+        file_size = data.get('file_size')
 
         if not title:
             return JsonResponse({'error': 'Title is required'}, status=400)
@@ -2691,6 +2692,7 @@ def init_video_upload(request):
         result = create_resumable_upload_url(
             title=title,
             description=f'Lesson from course: {course.title}',
+            file_size=file_size,
         )
 
         if not result or result.get('error'):
@@ -2797,6 +2799,8 @@ def init_youtube_edit_upload(request):
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
     lesson_uid_str = data.get('lesson_uid')
+    file_size = data.get('file_size')
+
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
 
@@ -2809,6 +2813,7 @@ def init_youtube_edit_upload(request):
     result = create_resumable_upload_url(
         title=lesson.title,
         description=f'Updated lesson: {lesson.title}',
+        file_size=file_size,
     )
 
     if not result or result.get('error'):
