@@ -1922,8 +1922,10 @@ def access_resource(request, resource_uid):
     # Generate a short-lived signed URL — browser loads PDF directly from Supabase
     if resource.firebase_file_path:
         try:
-            # firebase_file_path format: "bucket_name/path/in/bucket" — bucket is in the path
             from accounts.utils.storage_manager import supabase as res_supabase
+            if res_supabase is None:
+                logger.error(f"Resource Supabase client not initialized for {resource_uid}")
+                raise ValueError("Storage service not configured")
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
@@ -1962,6 +1964,9 @@ def pdf_viewer(request, resource_uid):
     if resource.firebase_file_path:
         try:
             from accounts.utils.storage_manager import supabase as res_supabase
+            if res_supabase is None:
+                logger.error(f"Resource Supabase client not initialized for pdf_viewer {resource_uid}")
+                raise ValueError("Storage service not configured")
             parts = resource.firebase_file_path.split('/', 1)
             bucket = parts[0]
             path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path

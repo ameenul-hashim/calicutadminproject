@@ -361,9 +361,9 @@
                         }{% if not forloop.last %},{% endif %}
                         {% endfor %}
                     ]
-                </script>
+            </script>
 
-            </aside>
+
             <script>
                 // ---------- TAB NAVIGATION ----------
                 function switchTab(tab, pushHistory) {
@@ -423,6 +423,8 @@
 
                     document.getElementById('resources-categories-view').style.display = 'none';
                     document.getElementById('resources-list-view').style.display = 'flex';
+                    // Scroll resource list to top
+                    document.getElementById('category-items-container').scrollTop = 0;
                     if (pushHistory !== false) {
                         history.pushState({view:'resources-folder', category:category}, '', window.location.pathname + '#folder-' + category.toLowerCase());
                     }
@@ -631,6 +633,17 @@
         });
         if (!isActive) {
             header.classList.add('active');
+            // Auto-scroll sidebar so the active lesson is visible
+            setTimeout(() => {
+                const sidebar = document.querySelector('.content-sidebar');
+                if (sidebar) {
+                    const headerRect = header.getBoundingClientRect();
+                    const sidebarRect = sidebar.getBoundingClientRect();
+                    if (headerRect.bottom > sidebarRect.bottom || headerRect.top < sidebarRect.top) {
+                        header.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+            }, 100);
         }
     }
 
@@ -649,6 +662,18 @@
 
         document.querySelectorAll('.sub-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
+
+        // Scroll sidebar so the active sub-item is visible
+        setTimeout(() => {
+            const sidebar = document.querySelector('.content-sidebar');
+            if (sidebar && window.innerWidth > 1024) {
+                const elRect = element.getBoundingClientRect();
+                const sbRect = sidebar.getBoundingClientRect();
+                if (elRect.bottom > sbRect.bottom || elRect.top < sbRect.top) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }, 150);
 
         const noVideoMsg = document.getElementById('noVideoMsg');
         const pdfViewer = document.getElementById('pdfViewer');
