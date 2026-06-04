@@ -9,7 +9,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
-from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, LoginHistory
+from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
 from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
 from django.contrib.auth.decorators import user_passes_test
@@ -19,16 +19,16 @@ from django.views.decorators.http import require_POST
 from django.conf import settings
 
 def log_admin_activity(request, action, target_user=None, details=""):
-    """Enterprise helper to track all administrative actions."""
+    """Enterprise helper to track all administrative actions (Firebase RTDB)."""
     try:
-        from accounts.models import AdminActivityLog
+        from accounts.utils.firebase_db import admin_log_create
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
         
-        AdminActivityLog.objects.create(
-            admin=request.user,
+        admin_log_create(
+            admin_uid=request.user.uid if request.user.is_authenticated else None,
             action=action,
-            target_user=target_user,
+            target_user_uid=str(target_user.uid) if target_user else None,
             details=details,
             ip_address=ip
         )
@@ -615,67 +615,34 @@ def analytics_view(request):
         user_status[entry['status'].lower()] = entry['cnt']
     context['user_status'] = user_status
 
-    # --- Daily User Entries from LoginHistory ---
-    from django.db.models.functions import TruncDate
+    # --- Daily User Entries from Firebase LoginHistory ---
     from datetime import timedelta
     today = timezone.now().date()
     yesterday = today - timedelta(days=1)
 
-    # Today / Yesterday quick stats
-    context['today_entries'] = LoginHistory.objects.filter(
-        timestamp__date=today, status='SUCCESS'
-    ).values('user').distinct().count()
-    context['yesterday_entries'] = LoginHistory.objects.filter(
-        timestamp__date=yesterday, status='SUCCESS'
-    ).values('user').distinct().count()
+    from accounts.utils.firebase_db import login_history_get_daily_unique
+    daily_counts_7 = login_history_get_daily_unique(days=7, status='SUCCESS')
 
-    # This Week (last 7 days)
+    context['today_entries'] = daily_counts_7.get(today.strftime('%Y-%m-%d'), 0)
+    context['yesterday_entries'] = daily_counts_7.get(yesterday.strftime('%Y-%m-%d'), 0)
+
     week_ago = today - timedelta(days=6)
-    week_logins = LoginHistory.objects.filter(
-        timestamp__date__gte=week_ago, status='SUCCESS'
-    ).annotate(
-        login_date=TruncDate('timestamp')
-    ).values('login_date').annotate(
-        count=Count('user', distinct=True)
-    ).order_by('login_date')
-    week_counts = {r['login_date']: r['count'] for r in week_logins}
     week_labels = []
     week_data = []
-    for i in range(7):
-        d = week_ago + timedelta(days=i)
-        week_labels.append(d.strftime('%a'))
-        week_data.append(week_counts.get(d, 0))
-    context['week_daily_labels'] = week_labels
-    context['week_daily_data'] = week_data
-
-    # Last 7 Days (retention window)
-    week_ago_7 = today - timedelta(days=6)
-    month_logins = LoginHistory.objects.filter(
-        timestamp__date__gte=week_ago_7, status='SUCCESS'
-    ).annotate(
-        login_date=TruncDate('timestamp')
-    ).values('login_date').annotate(
-        count=Count('user', distinct=True)
-    ).order_by('login_date')
-    month_counts = {r['login_date']: r['count'] for r in month_logins}
     month_labels = []
     month_data = []
     for i in range(7):
-        d = week_ago_7 + timedelta(days=i)
+        d = week_ago + timedelta(days=i)
+        key = d.strftime('%Y-%m-%d')
+        c = daily_counts_7.get(key, 0)
+        week_labels.append(d.strftime('%a'))
+        week_data.append(c)
         month_labels.append(d.strftime('%d %b'))
-        month_data.append(month_counts.get(d, 0))
+        month_data.append(c)
+    context['week_daily_labels'] = week_labels
+    context['week_daily_data'] = week_data
     context['daily_visit_labels'] = month_labels
     context['daily_visit_data'] = month_data
-
-    # Cleanup: delete LoginHistory records older than 7 days (max once per hour)
-    cleanup_cache_key = 'analytics_login_cleanup_last_run'
-    last_cleanup = cache.get(cleanup_cache_key, 0)
-    if _time.time() - last_cleanup > 3600:
-        cutoff = today - timedelta(days=7)
-        deleted_count = LoginHistory.objects.filter(timestamp__date__lt=cutoff).delete()
-        if deleted_count[0]:
-            logger.info(f"Cleaned up {deleted_count[0]} old LoginHistory records")
-        cache.set(cleanup_cache_key, _time.time(), 7200)
 
     # Notifications now provided by context processor — no duplicate query needed
     
@@ -1569,7 +1536,7 @@ def proxy_pdf_access(request, user_uid):
 def system_audit_view(request):
     """Real-time system audit — crash-proof with full try/except wrapping."""
     from django.db import connection
-    from datetime import timedelta
+    from datetime import datetime, timedelta
 
     db_total_mb = 0
     try:
@@ -1599,7 +1566,8 @@ def system_audit_view(request):
         ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
     ]
     try:
-        sec_checks.append(('Audit Logging', bool(AdminActivityLog.objects.count()), 'Admin activity tracked'))
+        from accounts.utils.firebase_db import admin_log_get_total_count
+        sec_checks.append(('Audit Logging', admin_log_get_total_count() > 0, 'Admin activity tracked'))
     except Exception:
         sec_checks.append(('Audit Logging', False, 'Admin activity tracked'))
 
@@ -1630,12 +1598,14 @@ def system_audit_view(request):
 
     combined_logs = []
     try:
-        admin_logs = AdminActivityLog.objects.all().select_related('admin')[:5]
-        login_logs = LoginHistory.objects.all().select_related('user')[:5]
+        from accounts.utils.firebase_db import admin_log_get_recent, login_history_get_recent
+        admin_logs = admin_log_get_recent(5)
+        login_logs = login_history_get_recent(limit=5)
         for log in admin_logs:
-            combined_logs.append({'username': log.admin.username if log.admin else 'SYSTEM', 'action': log.action, 'time': log.timestamp})
+            combined_logs.append({'username': log.get('admin_uid', 'SYSTEM')[:8], 'action': log.get('action', ''), 'time': datetime.fromtimestamp(log.get('timestamp', 0) / 1000) if log.get('timestamp') else None})
         for log in login_logs:
-            combined_logs.append({'username': log.user.username, 'action': f"Login {log.status}", 'time': log.timestamp})
+            combined_logs.append({'username': log.get('user_uid', '')[:8], 'action': f"Login {log.get('status', '')}", 'time': datetime.fromtimestamp(log.get('timestamp', 0) / 1000) if log.get('timestamp') else None})
+        combined_logs = [l for l in combined_logs if l['time']]
         combined_logs = sorted(combined_logs, key=lambda x: x['time'], reverse=True)[:10]
     except Exception:
         pass
@@ -1665,9 +1635,9 @@ def system_audit_view(request):
     supabase_limit_mb_val = ss.get('limit_mb', 1024)
 
     try:
-        cutoff_7 = timezone.now() - timedelta(days=7)
-        LoginHistory.objects.filter(timestamp__lt=cutoff_7).delete()
-        AdminActivityLog.objects.filter(timestamp__lt=cutoff_7).delete()
+        from accounts.utils.firebase_db import login_history_cleanup, admin_log_cleanup
+        login_history_cleanup(7)
+        admin_log_cleanup(7)
     except Exception:
         pass
 
@@ -1809,10 +1779,10 @@ def master_audit_summary_view(request):
         'verdict': 'ULTIMATE ENTERPRISE CERTIFIED',
     }
 
-    # 8. Attack Timeline from DB (source of truth) + Firebase events
-    from accounts.models import AdminActivityLog, LoginHistory
-    context['audit_logs'] = AdminActivityLog.objects.all().select_related('admin', 'target_user').order_by('-timestamp')[:15]
-    context['login_logs'] = LoginHistory.objects.all().select_related('user').order_by('-timestamp')[:15]
+    # 8. Attack Timeline from Firebase + Firebase events
+    from accounts.utils.firebase_db import admin_log_get_recent, login_history_get_recent
+    context['audit_logs'] = admin_log_get_recent(15)
+    context['login_logs'] = login_history_get_recent(limit=15)
     context['firebase_events_24h'] = fb_events[:20]
 
     return render(request, 'custom_admin/master_audit_summary.html', context)
