@@ -67,6 +67,7 @@ def upload_video(video_file, title, description, privacy_status='private'):
             },
             'status': {
                 'privacyStatus': privacy_status,
+                'embeddable': True,
                 'selfDeclaredMadeForKids': False,
             }
         }
@@ -109,10 +110,13 @@ def change_video_visibility(video_id, privacy_status):
             part='status',
             body={
                 'id': video_id,
-                'status': {'privacyStatus': privacy_status}
+                'status': {
+                    'privacyStatus': privacy_status,
+                    'embeddable': True,
+                }
             }
         ).execute()
-        logger.info(f"YouTube video {video_id} visibility changed to {privacy_status}")
+        logger.info(f"YouTube video {video_id} visibility changed to {privacy_status} (embeddable: True)")
     except Exception as e:
         logger.error(f"YouTube visibility change error: {e}")
         raise
@@ -178,6 +182,7 @@ def create_resumable_upload_url(title, description, file_size=None):
             },
             'status': {
                 'privacyStatus': 'unlisted',
+                'embeddable': True,
                 'selfDeclaredMadeForKids': False,
             }
         }
