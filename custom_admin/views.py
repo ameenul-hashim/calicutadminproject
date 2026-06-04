@@ -137,7 +137,7 @@ def manage_students(request):
         )
     
     from django.core.paginator import Paginator
-    paginator = Paginator(users, 20)
+    paginator = Paginator(users, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -188,7 +188,7 @@ def manage_teachers(request):
         )
     # Pagination
     from django.core.paginator import Paginator
-    paginator = Paginator(users, 20)
+    paginator = Paginator(users, 10)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
@@ -1036,11 +1036,26 @@ def pending_resources(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
-    from accounts.models import CourseResource
+    from accounts.models import CourseResource, DeletionRequest
+    from django.db.models import Q
     from itertools import groupby
 
     lessons = course.lessons.all().order_by('chapter', 'order')
     resources = course.resources.exclude(is_deleted=True).order_by('chapter', '-created_at')
+
+    # Fetch pending deletion requests for this course's content
+    lesson_ids = list(lessons.values_list('id', flat=True))
+    resource_ids = list(resources.values_list('id', flat=True))
+    
+    pending_deletions = DeletionRequest.objects.filter(
+        status='PENDING'
+    ).filter(
+        (Q(item_type='Lesson') & Q(item_id__in=lesson_ids)) |
+        (Q(item_type='Resource') & Q(item_id__in=resource_ids))
+    )
+    
+    # Map deletions for easy lookup
+    deletions_map = {f"{d.item_type}_{d.item_id}": d for d in pending_deletions}
 
     # Group by chapter
     lessons_list = list(lessons)
@@ -1063,17 +1078,27 @@ def admin_view_course_content(request, course_uid):
         ch_lessons = lesson_by_chapter.get(ch_name, [])
         ch_resources = res_by_chapter.get(ch_name, [])
 
-        pending_res = [r for r in ch_resources if r.status in ('PENDING', 'DELETION_PENDING')]
-        approved_res = [r for r in ch_resources if r.status == 'APPROVED']
-        rejected_res = [r for r in ch_resources if r.status == 'REJECTED']
+        # Process items to attach deletion requests
+        for l in ch_lessons:
+            l.deletion_request = deletions_map.get(f"Lesson_{l.id}")
+        for r in ch_resources:
+            r.deletion_request = deletions_map.get(f"Resource_{r.id}")
+
+        # Segregate content for tabs
+        pending_lessons = [l for l in ch_lessons if l.status == 'PENDING' or l.has_pending_edits or l.deletion_request]
+        pending_resources = [r for r in ch_resources if r.status in ('PENDING', 'DELETION_PENDING') or r.has_pending_edits or r.deletion_request]
+        
+        approved_lessons = [l for l in ch_lessons if l.status == 'APPROVED' and not l.has_pending_edits and not l.deletion_request]
+        approved_resources = [r for r in ch_resources if r.status == 'APPROVED' and not r.has_pending_edits and not r.deletion_request]
 
         chapters_data.append({
             'name': ch_name if ch_name else 'Uncategorized',
-            'lessons': ch_lessons,
-            'resources': ch_resources,
-            'pending_resources': pending_res,
-            'approved_resources': approved_res,
-            'rejected_resources': rejected_res,
+            'pending_lessons': pending_lessons,
+            'pending_resources': pending_resources,
+            'approved_lessons': approved_lessons,
+            'approved_resources': approved_resources,
+            'has_pending': bool(pending_lessons or pending_resources),
+            'has_approved': bool(approved_lessons or approved_resources),
         })
 
     return render(request, 'custom_admin/course_content_verify.html', {

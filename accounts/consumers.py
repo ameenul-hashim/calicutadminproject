@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
-from accounts.models import CustomUser
+from accounts.models import CustomUser, ChatMessage
 
 
 @sync_to_async
@@ -13,19 +13,41 @@ def get_user_by_uid(uid):
         return None
 
 
-def _fb_send(sender_uid, receiver_uid, message_text, sender_name):
-    from accounts.utils.firebase_db import chat_send
-    return chat_send(sender_uid, receiver_uid, message_text, sender_name)
+@sync_to_async
+def _orm_save_message(sender, receiver_uid, message_text, sender_name):
+    try:
+        receiver = CustomUser.objects.get(uid=receiver_uid)
+        msg = ChatMessage.objects.create(
+            sender=sender,
+            receiver=receiver,
+            message=message_text,
+        )
+        return str(msg.uid), int(msg.timestamp.timestamp() * 1000)
+    except CustomUser.DoesNotExist:
+        return None, 0
 
 
-def _fb_edit(sender_uid, msg_uid, new_message):
-    from accounts.utils.firebase_db import chat_edit
-    return chat_edit(sender_uid, msg_uid, new_message)
+@sync_to_async
+def _orm_edit_message(sender, msg_uid, new_message):
+    try:
+        msg = ChatMessage.objects.get(uid=msg_uid, sender=sender, is_deleted=False)
+        msg.message = new_message
+        msg.is_edited = True
+        msg.save(update_fields=['message', 'is_edited'])
+        return True
+    except ChatMessage.DoesNotExist:
+        return False
 
 
-def _fb_delete(sender_uid, msg_uid):
-    from accounts.utils.firebase_db import chat_delete
-    return chat_delete(sender_uid, msg_uid)
+@sync_to_async
+def _orm_delete_message(sender, msg_uid):
+    try:
+        msg = ChatMessage.objects.get(uid=msg_uid, sender=sender, is_deleted=False)
+        msg.is_deleted = True
+        msg.save(update_fields=['is_deleted'])
+        return True
+    except ChatMessage.DoesNotExist:
+        return False
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -68,12 +90,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 sender.full_name or sender.username
             )
 
-            msg_uid, now_ms = await sync_to_async(_fb_send)(
-                str(sender.uid), receiver_uid, message, sender_name
+            msg_uid, now_ms = await _orm_save_message(
+                sender, receiver_uid, message, sender_name
             )
             if msg_uid and now_ms:
-                from datetime import datetime as dt
-                ts_str = dt.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
+                ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
 
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -91,7 +112,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         elif action == 'edit':
             message_uid = data['message_uid']
             new_message = data['message']
-            success = await sync_to_async(_fb_edit)(str(sender.uid), message_uid, new_message)
+            success = await _orm_edit_message(sender, message_uid, new_message)
             if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -104,7 +125,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 )
         elif action == 'delete':
             message_uid = data['message_uid']
-            success = await sync_to_async(_fb_delete)(str(sender.uid), message_uid)
+            success = await _orm_delete_message(sender, message_uid)
             if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
