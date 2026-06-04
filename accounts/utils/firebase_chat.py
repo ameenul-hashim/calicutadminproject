@@ -2,40 +2,15 @@ import os
 import json
 import time
 import uuid
-import threading
 from datetime import datetime, timezone
-import firebase_admin
-from firebase_admin import credentials, db
+from firebase_admin import db
 
-_firebase_app = None
-_lock = threading.Lock()
+# Reuse the Firebase app from firebase_db to avoid duplicate initialization
+from .firebase_db import _get_app as _get_firebase_app
 
 
 def _get_app():
-    global _firebase_app
-    if _firebase_app is not None:
-        return _firebase_app
-    with _lock:
-        if _firebase_app is not None:
-            return _firebase_app
-        db_url = os.getenv('FIREBASE_RTDB_URL')
-        if not db_url:
-            return None
-        json_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
-        json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
-        if json_str:
-            cred = credentials.Certificate(json.loads(json_str))
-        elif json_path:
-            try:
-                cred = credentials.Certificate(json_path)
-            except Exception:
-                return None
-        else:
-            return None
-        _firebase_app = firebase_admin.initialize_app(
-            cred, {'databaseURL': db_url}, name='chat'
-        )
-    return _firebase_app
+    return _get_firebase_app()
 
 
 def get_room_name(uid1, uid2):
