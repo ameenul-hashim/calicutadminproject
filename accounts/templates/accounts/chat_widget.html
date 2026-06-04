@@ -431,7 +431,9 @@
 
     function editMessage(msgId, btnElement) {
         const msgDiv = document.getElementById(`msg-${msgId}`);
+        if (!msgDiv) return;
         const textDiv = msgDiv.querySelector('.msg-text');
+        if (!textDiv) return;
         const currentText = textDiv.innerText;
         
         const newText = prompt("Edit message:", currentText);
