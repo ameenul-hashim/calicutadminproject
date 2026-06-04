@@ -1,19 +1,19 @@
 {% extends 'teacher_portal/base_teacher.html' %}
 {% load static %}
 
-{% block title %}Manage Lessons | Neo Learner{% endblock %}
+{% block title %}Manage Content | Neo Learner{% endblock %}
 
 {% block page_header %}
 <div style="width: 100%;">
     <div style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <a href="{% url 'my_courses' %}" class="btn" style="background: white; color: #64748b; padding: 0.6rem 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; border: 1px solid #e2e8f0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-            <span>←</span> My Courses
+            <span>&larr;</span> My Courses
         </a>
     </div>
     <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
         <div>
             <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">Manage: {{ course.title }}</h1>
-            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Add and organize your course content.</p>
+            <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Content organized by chapters. Add videos and resources to each chapter.</p>
         </div>
         <div style="display: flex; gap: 0.75rem;">
             <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; white-space: nowrap;">+ Add Resource</a>
@@ -25,13 +25,20 @@
 
 {% block content %}
 <style>
-    .lesson-card { background: white; border-radius: 1rem; padding: 1.5rem; border: 1px solid #e2e8f0; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 1rem; }
-    .lesson-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-    .status-badge { font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 1rem; font-weight: 700; white-space: nowrap; }
-    
+    .chapter-card { background: white; border-radius: 1.25rem; padding: 1.5rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; transition: box-shadow 0.2s; }
+    .chapter-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .type-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.35rem 0.8rem; border-radius: 0.6rem; font-size: 0.78rem; font-weight: 600; }
+    .type-badge.video { background: #eef2ff; color: #4f46e5; }
+    .type-badge.malayalam { background: #fffbeb; color: #d97706; }
+    .type-badge.english { background: #ecfdf5; color: #059669; }
+    .type-badge.online { background: #f0f9ff; color: #0284c7; }
+    .stat-chip { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.72rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 0.4rem; }
+    .stat-chip.approved { background: #dcfce7; color: #16a34a; }
+    .stat-chip.pending { background: #fef9c3; color: #ca8a04; }
+    .stat-chip.rejected { background: #fee2e2; color: #dc2626; }
     @media (max-width: 768px) {
-        .lesson-header { flex-direction: column; align-items: flex-start; }
-        .lesson-actions { width: 100%; justify-content: flex-end; border-top: 1px solid #f1f5f9; padding-top: 0.75rem; margin-top: 0.5rem; }
+        .chapter-card { padding: 1rem; }
+        .type-grid { grid-template-columns: 1fr !important; }
     }
 </style>
 
@@ -39,11 +46,11 @@
 <div style="margin-bottom: 2rem;">
     <a href="{% url 'submit_course_approval' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2); display: inline-flex; align-items: center; gap: 0.5rem;">
         {% if course.status == 'REJECTED' or any_lesson_rejected %}
-            <span>🔁</span> Resubmit for Review
+            <span>&#x21BB;</span> Resubmit for Review
         {% elif has_pending_content %}
-            <span>📤</span> Submit Changes for Approval
+            <span>&#x1F4E4;</span> Submit Changes for Approval
         {% else %}
-            <span>🚀</span> Submit for Approval
+            <span>&#x1F680;</span> Submit for Approval
         {% endif %}
     </a>
 </div>
@@ -52,167 +59,114 @@
 {% if course.status == 'REJECTED' and course.rejection_reason %}
 <div style="margin-bottom: 2rem; padding: 1.25rem; background: #fee2e2; border-left: 5px solid #ef4444; border-radius: 0.75rem; color: #b91c1c;">
     <div style="font-weight: 800; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <span>⚠️</span> REJECTION FEEDBACK
+        <span>&#x26A0;&#xFE0F;</span> REJECTION FEEDBACK
     </div>
     <div style="line-height: 1.5;">{{ course.rejection_reason }}</div>
 </div>
 {% endif %}
 
-<div class="lessons-list">
-    {% for lesson in lessons %}
-    <div class="lesson-card">
-        <div class="lesson-header">
-            <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
-                <div style="width: 36px; height: 36px; background: #eef2ff; color: #6366f1; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">{{ lesson.order }}</div>
+<!-- Chapter Cards -->
+<div id="chapterContainer">
+    {% for chapter in chapters %}
+    <div class="chapter-card">
+        <!-- Chapter Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="background: #f1f5f9; width: 40px; height: 40px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">&#x1F4C1;</span>
                 <div>
-                    <h3 style="margin: 0; font-size: 1.05rem; color: #1e293b;">{{ lesson.title }}</h3>
-                    <div style="display: flex; gap: 0.75rem; margin-top: 0.25rem; flex-wrap: wrap;">
-                        {% if lesson.video_url %}<span style="font-size: 0.75rem; color: #94a3b8;">🎥 Video URL</span>{% endif %}
-                        {% if lesson.video_file %}<span style="font-size: 0.75rem; color: #94a3b8;">🎞️ Video File</span>{% endif %}
-                    </div>
-                </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 1rem;" class="lesson-actions">
-                <span class="status-badge" style="{% if lesson.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;{% elif lesson.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;{% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
-                    {{ lesson.status }}
-                </span>
-                <div style="display: flex; gap: 0.75rem; border-left: 1px solid #e2e8f0; padding-left: 1rem;">
-                    <a href="{% url 'edit_lesson' lesson.uid %}" style="color: #6366f1; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Edit</a>
-                    <a href="javascript:void(0)" onclick="Toast.confirm('Are you sure you want to delete this lesson? This action cannot be undone.', () => { window.location.href = '{% url 'delete_lesson' lesson.uid %}'; })" style="color: #ef4444; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Delete</a>
-                </div>
-            </div>
-        </div>
-        
-        {% if lesson.status == 'REJECTED' and lesson.rejection_reason %}
-        <div style="background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.85rem; color: #c53030;">
-            <strong style="display: block; margin-bottom: 0.25rem;">Admin Feedback:</strong>
-            {{ lesson.rejection_reason }}
-        </div>
-        {% endif %}
-    </div>
-    {% empty %}
-    <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; color: #94a3b8;">
-        <div style="font-size: 2.5rem; margin-bottom: 1rem;">🌑</div>
-        <p>No lessons added yet. Start by adding your first lesson!</p>
-    </div>
-    {% endfor %}
-</div>
-
-<!-- Study Resources Section -->
-<div style="margin-top: 4rem; margin-bottom: 2rem;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h2 style="margin: 0; font-size: 1.4rem; color: #1e293b;">Study Resources</h2>
-        <p style="color: #64748b; font-size: 0.9rem;">PDFs, DOCX, and other materials for this course.</p>
-    </div>
-
-    <div class="resources-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
-        {% for resource in resources %}
-        {% if not resource.is_deleted %}
-        <div class="lesson-card" style="margin-bottom: 0;">
-            <div style="display: flex; gap: 1rem; align-items: center;">
-                <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                    {% if resource.thumbnail_path %}
-                        <img src="{{ resource.thumbnail_path }}" style="width: 100%; height: 100%; object-fit: cover;">
-                    {% else %}
-                        <span style="font-size: 1.2rem;">📄</span>
-                    {% endif %}
-                </div>
-                <div style="flex: 1;">
-                    <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ resource.title }}</h4>
-                    <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">
-                        {{ resource.get_category_display }} • {{ resource.resource_type }}
-                        {% if resource.compressed_size %} • {{ resource.compressed_size|filesizeformat }}{% endif %}
+                    <h3 style="margin: 0; font-size: 1.15rem; color: #1e293b; font-weight: 800;">{{ chapter.name }}</h3>
+                    <p style="margin: 0.15rem 0 0; font-size: 0.78rem; color: #94a3b8;">
+                        {{ chapter.videos_count }} video{% if chapter.videos_count != 1 %}s{% endif %} &bull; {{ chapter.resources_count }} resource{% if chapter.resources_count != 1 %}s{% endif %}
                     </p>
                 </div>
             </div>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem;">
-                {% if resource.status == 'APPROVED' %}
-                    <span class="status-badge" style="background: #ecfdf5; color: #10b981;">✓ Approved</span>
-                {% elif resource.status == 'REJECTED' %}
-                    <span class="status-badge" style="background: #fef2f2; color: #ef4444;">✗ Rejected</span>
-                {% elif resource.status == 'DELETION_PENDING' %}
-                    <span class="status-badge" style="background: #fff7ed; color: #f97316;">🕐 Deletion Pending</span>
-                {% else %}
-                    <span class="status-badge" style="background: #fffbeb; color: #f59e0b;">⏳ Pending Review</span>
-                {% endif %}
-
-                <div style="display: flex; gap: 0.75rem;">
-                    {% if resource.status == 'DELETION_PENDING' %}
-                        <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Awaiting admin approval</span>
-                    {% else %}
-                        <a href="{% url 'edit_resource' resource.uid %}" style="color: #6366f1; text-decoration: none; font-size: 0.85rem; font-weight: 700;">Edit</a>
-                        
-                        {% if resource.status == 'APPROVED' %}
-                            <button onclick="openDeleteModal('{{ resource.uid }}', '{{ resource.title|escapejs }}')"
-                                style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0;">
-                                Request Deletion
-                            </button>
-                        {% else %}
-                            <form method="POST" action="{% url 'delete_resource' resource.uid %}" style="margin: 0;"
-                                onsubmit="return confirm('Delete this resource permanently?')">
-                                {% csrf_token %}
-                                <button type="submit" style="color: #ef4444; background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
-                                    Delete
-                                </button>
-                            </form>
-                        {% endif %}
+        <!-- Type Cards Row -->
+        <div class="type-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
+            <!-- Video Card -->
+            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+                    <span>&#x1F3AC;</span>
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Videos</span>
+                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #6366f1;">{{ chapter.videos_count }}</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    {% if chapter.videos_approved %}<span class="stat-chip approved">&#x2705; {{ chapter.videos_approved }}</span>{% endif %}
+                    {% if chapter.videos_pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.videos_pending }}</span>{% endif %}
+                    {% if chapter.videos_rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.videos_rejected }}</span>{% endif %}
+                    {% if not chapter.videos_approved and not chapter.videos_pending and not chapter.videos_rejected %}
+                    <span style="font-size: 0.75rem; color: #94a3b8;">No videos</span>
                     {% endif %}
                 </div>
+                <a href="{% url 'chapter_videos' course.uid chapter.name %}" class="btn" style="display: block; text-align: center; background: #eef2ff; color: #4f46e5; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage Videos &rarr;</a>
             </div>
 
-            {% if resource.status == 'REJECTED' and resource.rejection_reason %}
-            <div style="margin-top: 0.5rem; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem; color: #c53030;">
-                <strong style="display: block; margin-bottom: 0.25rem;">Rejection Reason:</strong>
-                {{ resource.rejection_reason }}
+            <!-- Malayalam Card -->
+            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+                    <span>&#x1F4D5;</span>
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Malayalam</span>
+                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #d97706;">{{ chapter.cat_counts.MALAYALAM.total }}</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    {% if chapter.cat_counts.MALAYALAM.approved %}<span class="stat-chip approved">&#x2705; {{ chapter.cat_counts.MALAYALAM.approved }}</span>{% endif %}
+                    {% if chapter.cat_counts.MALAYALAM.pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.cat_counts.MALAYALAM.pending }}</span>{% endif %}
+                    {% if chapter.cat_counts.MALAYALAM.rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.cat_counts.MALAYALAM.rejected }}</span>{% endif %}
+                    {% if not chapter.cat_counts.MALAYALAM.approved and not chapter.cat_counts.MALAYALAM.pending and not chapter.cat_counts.MALAYALAM.rejected %}
+                    <span style="font-size: 0.75rem; color: #94a3b8;">No resources</span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'chapter_resources' course.uid chapter.name 'MALAYALAM' %}" class="btn" style="display: block; text-align: center; background: #fffbeb; color: #d97706; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage Malayalam &rarr;</a>
             </div>
-            {% endif %}
-        </div>
-        {% endif %}
-        {% empty %}
-        <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 1rem; color: #94a3b8;">
-            <p style="margin: 0;">No resources uploaded yet.</p>
-        </div>
-        {% endfor %}
-    </div>
-</div>
 
-<!-- Deletion Request Modal -->
-<div id="deleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
-    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
-        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Request Resource Deletion</h3>
-        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
-            You are requesting deletion of: <strong id="deleteResourceName"></strong><br>
-            This request will be sent to an admin for approval.
-        </p>
-        <form id="deleteForm" method="POST" action="">
-            {% csrf_token %}
-            <div style="margin-bottom:1rem;">
-                <label style="font-weight:600; color:#1e293b; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for deletion (optional)</label>
-                <textarea name="reason" rows="3" placeholder="e.g. Outdated content, uploaded wrong file..."
-                    style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;"></textarea>
+            <!-- English Card -->
+            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+                    <span>&#x1F4C4;</span>
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">English</span>
+                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #059669;">{{ chapter.cat_counts.ENGLISH.total }}</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    {% if chapter.cat_counts.ENGLISH.approved %}<span class="stat-chip approved">&#x2705; {{ chapter.cat_counts.ENGLISH.approved }}</span>{% endif %}
+                    {% if chapter.cat_counts.ENGLISH.pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.cat_counts.ENGLISH.pending }}</span>{% endif %}
+                    {% if chapter.cat_counts.ENGLISH.rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.cat_counts.ENGLISH.rejected }}</span>{% endif %}
+                    {% if not chapter.cat_counts.ENGLISH.approved and not chapter.cat_counts.ENGLISH.pending and not chapter.cat_counts.ENGLISH.rejected %}
+                    <span style="font-size: 0.75rem; color: #94a3b8;">No resources</span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'chapter_resources' course.uid chapter.name 'ENGLISH' %}" class="btn" style="display: block; text-align: center; background: #ecfdf5; color: #059669; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage English &rarr;</a>
             </div>
-            <div style="display:flex; gap:1rem;">
-                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">
-                    Submit Deletion Request
-                </button>
-                <button type="button" onclick="closeDeleteModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">
-                    Cancel
-                </button>
+
+            <!-- Online Card -->
+            <div style="background: #f8fafc; border-radius: 0.9rem; padding: 1rem; border: 1px solid #e2e8f0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.6rem;">
+                    <span>&#x1F4BB;</span>
+                    <span style="font-weight: 700; font-size: 0.85rem; color: #1e293b;">Online</span>
+                    <span style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: #0284c7;">{{ chapter.cat_counts.ONLINE.total }}</span>
+                </div>
+                <div style="display: flex; gap: 0.35rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    {% if chapter.cat_counts.ONLINE.approved %}<span class="stat-chip approved">&#x2705; {{ chapter.cat_counts.ONLINE.approved }}</span>{% endif %}
+                    {% if chapter.cat_counts.ONLINE.pending %}<span class="stat-chip pending">&#x23F3; {{ chapter.cat_counts.ONLINE.pending }}</span>{% endif %}
+                    {% if chapter.cat_counts.ONLINE.rejected %}<span class="stat-chip rejected">&#x274C; {{ chapter.cat_counts.ONLINE.rejected }}</span>{% endif %}
+                    {% if not chapter.cat_counts.ONLINE.approved and not chapter.cat_counts.ONLINE.pending and not chapter.cat_counts.ONLINE.rejected %}
+                    <span style="font-size: 0.75rem; color: #94a3b8;">No resources</span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'chapter_resources' course.uid chapter.name 'ONLINE' %}" class="btn" style="display: block; text-align: center; background: #f0f9ff; color: #0284c7; padding: 0.4rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.78rem; font-weight: 700;">Manage Online &rarr;</a>
             </div>
-        </form>
+        </div>
     </div>
+    {% empty %}
+    <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">&#x1F4DA;</div>
+        <h3 style="margin: 0 0 0.5rem; color: #1e293b;">No Content Yet</h3>
+        <p style="color: #94a3b8; margin: 0 0 1.5rem;">Add your first lesson or resource using the buttons above.</p>
+        <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Lesson</a>
+            <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Resource</a>
+        </div>
+    </div>
+    {% endfor %}
 </div>
-<script>
-function openDeleteModal(uid, name) {
-    document.getElementById('deleteResourceName').textContent = name;
-    document.getElementById('deleteForm').action = '/resource/' + uid + '/delete/';
-    document.getElementById('deleteModal').style.display = 'flex';
-}
-function closeDeleteModal() {
-    document.getElementById('deleteModal').style.display = 'none';
-}
-</script>
 {% endblock %}
-
-

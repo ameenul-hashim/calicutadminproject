@@ -1,0 +1,115 @@
+{% extends 'teacher_portal/base_teacher.html' %}
+{% load static %}
+
+{% block title %}{{ category_label }} Resources | Neo Learner{% endblock %}
+
+{% block page_header %}
+<div style="width: 100%;">
+    <div style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="{% url 'course_lessons' course.uid %}" class="btn" style="background: white; color: #64748b; padding: 0.6rem 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; border: 1px solid #e2e8f0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>&larr;</span> Back to Content
+        </a>
+    </div>
+    <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">{{ category_label }} Resources: {{ chapter_name }}</h1>
+    <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Manage {{ category_label|lower }} resources in this chapter.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .item-card { background: white; border-radius: 1rem; padding: 1.25rem; border: 1px solid #e2e8f0; margin-bottom: 1rem; }
+    .status-badge { font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 1rem; font-weight: 700; white-space: nowrap; }
+    .action-btn { background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0.4rem 0.8rem; border-radius: 0.5rem; text-decoration: none; }
+    @media (max-width: 768px) {
+        .item-card > div:last-child { flex-direction: column; align-items: flex-start !important; }
+    }
+</style>
+
+{% if not items %}
+<div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0;">
+    <div style="font-size: 2.5rem; margin-bottom: 1rem;">&#x1F4C4;</div>
+    <p style="color: #94a3b8; margin: 0 0 1rem;">No {{ category_label|lower }} resources in this chapter.</p>
+    <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Resource</a>
+</div>
+{% endif %}
+
+{% for item in items %}
+<div class="item-card">
+    <div style="display: flex; gap: 1rem; align-items: flex-start;">
+        <div style="width: 44px; height: 44px; background: #f1f5f9; border-radius: 0.6rem; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+            {% if item.thumbnail_path %}
+                <img src="{{ item.thumbnail_path }}" style="width: 100%; height: 100%; object-fit: cover;">
+            {% else %}
+                <span style="font-size: 1.1rem;">&#x1F4C4;</span>
+            {% endif %}
+        </div>
+        <div style="flex: 1;">
+            <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ item.title }}</h4>
+            <p style="margin: 0.25rem 0 0; font-size: 0.8rem; color: #64748b;">
+                {{ item.resource_type }}
+                {% if item.compressed_size %} &bull; {{ item.compressed_size|filesizeformat }}{% endif %}
+            </p>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex-shrink: 0;">
+            <span class="status-badge" style="{% if item.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;{% elif item.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;{% elif item.status == 'DELETION_PENDING' %}background: #fff7ed; color: #f97316;{% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
+                {% if item.status == 'DELETION_PENDING' %}Deletion Pending{% else %}{{ item.status }}{% endif %}
+            </span>
+        </div>
+    </div>
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.75rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+        {% if item.status == 'DELETION_PENDING' %}
+            <span style="font-size: 0.8rem; color: #94a3b8; font-style: italic;">Awaiting admin approval for deletion</span>
+        {% else %}
+            <a href="{% url 'edit_resource' item.uid %}" class="action-btn" style="color: #6366f1;">Edit</a>
+            {% if item.status == 'APPROVED' %}
+                <button onclick="openDeleteModal('{{ item.uid }}', '{{ item.title|escapejs }}')" class="action-btn" style="color: #ef4444;">Request Deletion</button>
+            {% else %}
+                <form method="POST" action="{% url 'delete_resource' item.uid %}" style="margin: 0;" onsubmit="return confirm('Delete permanently?')">
+                    {% csrf_token %}
+                    <button type="submit" class="action-btn" style="color: #ef4444;">Delete</button>
+                </form>
+            {% endif %}
+        {% endif %}
+    </div>
+    {% if item.status == 'REJECTED' and item.rejection_reason %}
+    <div style="margin-top: 0.75rem; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.8rem; color: #c53030;">
+        <strong>Rejection Reason:</strong> {{ item.rejection_reason }}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">+ Add {{ category_label }} Resource to {{ chapter_name }}</a>
+</div>
+
+<!-- Deletion Request Modal -->
+<div id="deleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Request Resource Deletion</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Request deletion of: <strong id="deleteResourceName"></strong><br>
+            This will be sent to admin for approval.
+        </p>
+        <form id="deleteForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason (optional)</label>
+                <textarea name="reason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;"></textarea>
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Submit Request</button>
+                <button type="button" onclick="closeDeleteModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function openDeleteModal(uid, name) {
+    document.getElementById('deleteResourceName').textContent = name;
+    document.getElementById('deleteForm').action = '/resource/' + uid + '/delete/';
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+function closeDeleteModal() { document.getElementById('deleteModal').style.display = 'none'; }
+</script>
+{% endblock %}

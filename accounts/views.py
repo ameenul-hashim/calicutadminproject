@@ -904,20 +904,98 @@ def edit_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
-    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved').order_by('order')
     from .models import CourseResource
-    resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved').order_by('-created_at')
-    
+
+    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid').order_by('chapter', 'order')
+    resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'chapter', 'rejection_reason', 'uid', 'compressed_size', 'thumbnail_path').order_by('-created_at')
+
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
     any_lesson_rejected = lessons.filter(status='REJECTED').exists() or resources.filter(status='REJECTED').exists()
-    
+
+    # Group by chapter
+    from itertools import groupby
+    lessons_list = list(lessons)
+    resources_list = list(resources)
+
+    lesson_by_chapter = {}
+    for ch, grp in groupby(lessons_list, key=lambda x: x.chapter or ''):
+        lesson_by_chapter[ch] = list(grp)
+
+    res_by_chapter = {}
+    for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
+        res_by_chapter[ch] = list(grp)
+
+    all_chapter_names = sorted(set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys())), key=lambda x: (x == ''), reverse=True)
+    # Remove empty chapter if there are no items in it
+    if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
+        all_chapter_names.remove('')
+
+    chapters_data = []
+    for ch_name in all_chapter_names:
+        ch_lessons = lesson_by_chapter.get(ch_name, [])
+        ch_resources = res_by_chapter.get(ch_name, [])
+
+        ch_lessons_approved = sum(1 for l in ch_lessons if l.status == 'APPROVED')
+        ch_lessons_pending = sum(1 for l in ch_lessons if l.status == 'PENDING')
+        ch_lessons_rejected = sum(1 for l in ch_lessons if l.status == 'REJECTED')
+
+        cat_counts = {}
+        for code in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
+            cat_items = [r for r in ch_resources if r.category == code]
+            cat_counts[code] = {
+                'total': len(cat_items),
+                'approved': sum(1 for r in cat_items if r.status == 'APPROVED'),
+                'pending': sum(1 for r in cat_items if r.status == 'PENDING'),
+                'rejected': sum(1 for r in cat_items if r.status == 'REJECTED'),
+            }
+
+        chapters_data.append({
+            'name': ch_name if ch_name else 'Uncategorized',
+            'is_uncategorized': ch_name == '',
+            'videos': ch_lessons,
+            'videos_count': len(ch_lessons),
+            'videos_approved': ch_lessons_approved,
+            'videos_pending': ch_lessons_pending,
+            'videos_rejected': ch_lessons_rejected,
+            'resources': ch_resources,
+            'resources_count': len(ch_resources),
+            'cat_counts': cat_counts,
+        })
+
     return render(request, 'teacher_portal/course_lessons.html', {
-        'course': course, 
-        'lessons': lessons,
-        'resources': resources,
+        'course': course,
+        'chapters': chapters_data,
         'has_pending_content': has_pending_content,
         'any_lesson_rejected': any_lesson_rejected,
     })
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def manage_chapter_items(request, course_uid, chapter_name, item_type, category=None):
+    """Show all items (videos or resources) in a specific chapter for a course."""
+    course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
+    from .models import CourseResource
+
+    if item_type == 'videos':
+        items = course.lessons.filter(chapter=chapter_name).order_by('order')
+        template = 'teacher_portal/chapter_videos.html'
+        extra_ctx = {}
+    elif item_type == 'resources' and category:
+        items = course.resources.filter(is_deleted=False, chapter=chapter_name, category=category).order_by('-created_at')
+        template = 'teacher_portal/chapter_resources.html'
+        extra_ctx = {'category': category, 'category_label': dict(CourseResource.CATEGORY_CHOICES).get(category, category)}
+    else:
+        messages.error(request, "Invalid request.")
+        return redirect('course_lessons', course_uid=course.uid)
+
+    return render(request, template, {
+        'course': course,
+        'chapter_name': chapter_name,
+        'items': items,
+        'item_type': item_type,
+        **extra_ctx,
+    })
+
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def add_lesson(request, course_uid):
@@ -1598,44 +1676,37 @@ def course_player(request, course_uid):
 
     # === ACCESS CONTROL ===
     if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
-        # Admin or Teacher in Student View: Strictly mimic student behavior (APPROVED only)
-        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
+        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file', 'chapter').order_by('chapter', 'order')
 
     elif is_admin:
-        # Normal Admin: Always allowed, sees all non-rejected content
-        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').order_by('chapter', 'order')
 
-    # Teacher: allowed for own course OR any approved course
     elif request.user.user_type == 'TEACHER':
         if course.teacher != request.user and not course.is_approved:
             messages.error(request, "You do not have permission to view this course.")
             return redirect('teacher_dashboard')
-        lessons = course.lessons.exclude(status='REJECTED').order_by('order')
+        lessons = course.lessons.exclude(status='REJECTED').order_by('chapter', 'order')
 
-    # Student: must be enrolled, sees approved lessons
     else:
         if not Enrollment.objects.filter(user=request.user, course=course).exists():
             messages.error(request, "You are not enrolled in this course.")
             return redirect('student_explore')
-        # Filter: Students see APPROVED content only
-        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file').order_by('order')
+        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file', 'chapter').order_by('chapter', 'order')
 
     from .models import CourseResource
     approved_resources = CourseResource.objects.filter(
         course=course, status='APPROVED', is_deleted=False
-    ).order_by('-created_at')
+    ).order_by('chapter', '-created_at')
 
     # Resolve Supabase video URLs to signed URLs
     for lesson in lessons:
         if lesson.video_url and lesson.video_url.startswith('supabase://'):
-            # Skip if upload not yet complete
             if lesson.upload_status not in ('READY', 'NOT_UPLOADED'):
                 lesson.video_url = ''
                 continue
             storage_path = lesson.video_url.replace('supabase://', '', 1)
             try:
                 from .utils.supabase_storage import supabase as vid_supabase
-                # Path may include bucket prefix: "bucket_name/videos/lesson_xxx.mp4"
                 parts = storage_path.split('/', 1)
                 if len(parts) == 2 and '-' in parts[0]:
                     v_bucket, v_path = parts[0], parts[1]
@@ -1651,10 +1722,41 @@ def course_player(request, course_uid):
             except Exception:
                 lesson.video_url = ''
 
+    # Group by chapter
+    from itertools import groupby
+    lessons_list = list(lessons)
+    resources_list = list(approved_resources)
+
+    lesson_by_chapter = {}
+    for ch, grp in groupby(lessons_list, key=lambda x: x.chapter or ''):
+        lesson_by_chapter[ch] = list(grp)
+
+    res_by_chapter = {}
+    for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
+        res_by_chapter[ch] = list(grp)
+
+    all_chapter_names = sorted(set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys())), key=lambda x: (x == ''), reverse=True)
+    if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
+        all_chapter_names.remove('')
+
+    chapters_data = []
+    for ch_name in all_chapter_names:
+        ch_lessons = lesson_by_chapter.get(ch_name, [])
+        ch_resources = res_by_chapter.get(ch_name, [])
+        chapters_data.append({
+            'name': ch_name if ch_name else 'Uncategorized',
+            'is_uncategorized': ch_name == '',
+            'videos': ch_lessons,
+            'videos_count': len(ch_lessons),
+            'resources': ch_resources,
+            'resources_count': len(ch_resources),
+        })
+
     context = {
         'course': course,
         'lessons': lessons,
         'approved_resources': approved_resources,
+        'chapters': chapters_data,
         'first_lesson': lessons.first() if lessons.exists() else None,
         'is_admin': getattr(request.user, 'is_staff', False),
     }

@@ -496,7 +496,7 @@
         })
         .then(r => r.json())
         .then(d => {
-            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => location.reload(), 1500); }
+            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_dashboard" %}', 1500); }
             else { showToast(d.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; }
         })
         .catch(() => { showToast('Connection error', 'error'); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; });
@@ -529,7 +529,7 @@
         })
         .then(r => r.json())
         .then(d => {
-            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => location.reload(), 1500); }
+            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_dashboard" %}', 1500); }
             else { showToast(d.message || 'Failed', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; }
         })
         .catch(() => { showToast('Connection error', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; });
