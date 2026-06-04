@@ -1108,14 +1108,13 @@ def add_resource(request, course_uid):
             import uuid
             course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
             course_slug = re.sub(r'-+', '-', course_slug)
-            title_slug = re.sub(r'[^a-zA-Z0-9]', '-', title).strip('-').lower()
-            title_slug = re.sub(r'-+', '-', title_slug)
-            cat_map = {'ENGLISH': 'eng', 'MALAYALAM': 'mal', 'ONLINE': 'onl'}
-            cat_short = cat_map.get(category, 'gen')
+            safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).strip()
+            safe_title = re.sub(r'\s+', '-', safe_title)
+            safe_title = re.sub(r'-+', '-', safe_title).lower()
+            safe_title = safe_title[:40]
             category_folder = category.lower() if category else 'uncategorised'
-            # Readable filename: {course}-{category_short}-{title}-{tiny_suffix}.{ext}
             suffix = uuid.uuid4().hex[:4]
-            dest_filename = f"{course_slug[:20]}-{cat_short}-{title_slug[:25]}-{suffix}.{ext}"
+            dest_filename = f"{safe_title}-{suffix}.{ext}"
             # compressed_bytes is ALREADY compressed (process_pdf ran above) — only compressed saved
             dest_path = f"resources/courses/{course_slug}/{category_folder}/{dest_filename}"
             fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
@@ -1219,13 +1218,13 @@ def edit_resource(request, resource_uid):
                 import uuid
                 course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
                 course_slug = re.sub(r'-+', '-', course_slug)
-                title_slug = re.sub(r'[^a-zA-Z0-9]', '-', title).strip('-').lower()
-                title_slug = re.sub(r'-+', '-', title_slug)
-                cat_map = {'ENGLISH': 'eng', 'MALAYALAM': 'mal', 'ONLINE': 'onl'}
-                cat_short = cat_map.get(category, 'gen')
+                safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).strip()
+                safe_title = re.sub(r'\s+', '-', safe_title)
+                safe_title = re.sub(r'-+', '-', safe_title).lower()
+                safe_title = safe_title[:40]
                 category_folder = category.lower() if category else 'uncategorised'
                 suffix = uuid.uuid4().hex[:4]
-                dest_filename = f"{course_slug[:20]}-{cat_short}-{title_slug[:25]}-{suffix}.{new_ext}"
+                dest_filename = f"{safe_title}-{suffix}.{new_ext}"
                 # compressed_bytes is already compressed — only compressed version saved
                 dest_path = f"resources/courses/{course_slug}/{category_folder}/{dest_filename}"
                 new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
