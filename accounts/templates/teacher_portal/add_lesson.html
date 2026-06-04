@@ -260,20 +260,22 @@
                         throw new Error(err.error || 'Failed to save video info');
                     }
 
-                    // Step 4: Redirect to lessons page
-                    setProgress(100, 'Upload complete!');
-                    setPhase('Video uploaded! Processing on YouTube...', 'complete');
+                    // Step 4: Success — redirect to lessons page
+                    setProgress(100, '✅ Upload complete!');
+                    setPhase('✅ Video uploaded successfully! Processing on YouTube...', 'complete');
                     document.getElementById('progressDetail').textContent = '';
+                    document.getElementById('progressBar').classList.add('complete');
 
                     setTimeout(function() {
                         window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                    }, 800);
+                    }, 1500);
 
                 } catch (err) {
                     console.error('Upload error:', err);
                     setProgress(0, 'Upload failed');
-                    setPhase('Error: ' + err.message, 'error');
-                    setError(err.message || 'Upload failed. Please try again.');
+                    const errorMsg = err.message || 'Upload failed. Please try again.';
+                    setPhase('❌ ' + errorMsg, 'error');
+                    setError(errorMsg);
                     setButtonLoading(false);
                 }
             });

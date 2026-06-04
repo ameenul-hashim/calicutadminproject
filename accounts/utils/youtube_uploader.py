@@ -134,6 +134,8 @@ def create_resumable_upload_url(title, description, file_size=None):
     """
     Creates a YouTube resumable upload session and returns the upload URL.
     The browser uploads the file directly to this URL — no server RAM used.
+    Returns {'upload_url': ..., 'access_token': ...} on success,
+    or {'error': '...'} on failure with a specific message.
     """
     from google.auth.transport.requests import Request as GoogleRequest
     client_id = os.getenv('YOUTUBE_CLIENT_ID')
@@ -142,7 +144,7 @@ def create_resumable_upload_url(title, description, file_size=None):
 
     if not all([client_id, client_secret, refresh_token]):
         logger.warning("YouTube credentials not configured")
-        return None
+        return {'error': 'YouTube API credentials not configured. Contact admin to set up YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, and YOUTUBE_REFRESH_TOKEN.'}
 
     try:
         creds = Credentials(
@@ -153,7 +155,12 @@ def create_resumable_upload_url(title, description, file_size=None):
             client_secret=client_secret,
             scopes=None
         )
-        creds.refresh(GoogleRequest())
+
+        try:
+            creds.refresh(GoogleRequest())
+        except Exception as auth_err:
+            logger.error(f"YouTube auth refresh failed: {auth_err}")
+            return {'error': 'YouTube API credentials expired or invalid. Contact admin to re-authenticate with Google.'}
 
         url = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status'
         headers = {
@@ -175,13 +182,39 @@ def create_resumable_upload_url(title, description, file_size=None):
             }
         }
 
-        resp = requests.post(url, headers=headers, json=body)
+        try:
+            resp = requests.post(url, headers=headers, json=body, timeout=30)
+        except requests.exceptions.ConnectionError:
+            logger.error("YouTube API connection failed")
+            return {'error': 'Cannot connect to YouTube API. Check your internet connection and try again.'}
+        except requests.exceptions.Timeout:
+            logger.error("YouTube API request timed out")
+            return {'error': 'YouTube API request timed out. Please try again.'}
+
         if resp.status_code in (200, 201):
             upload_url = resp.headers.get('Location')
+            if not upload_url:
+                return {'error': 'YouTube did not return an upload URL. Please try again.'}
             return {'upload_url': upload_url, 'access_token': creds.token}
 
+        error_msg = f"YouTube API error (HTTP {resp.status_code})"
+        try:
+            error_body = resp.json()
+            api_errors = error_body.get('error', {}).get('errors', [])
+            if api_errors:
+                reason = api_errors[0].get('reason', '')
+                message = api_errors[0].get('message', '')
+                if 'quota' in reason.lower() or 'quota' in message.lower():
+                    error_msg = 'YouTube API quota exhausted. The daily upload limit has been reached. Please try again tomorrow or contact admin to increase quota.'
+                elif 'auth' in reason.lower() or 'expired' in reason.lower() or 'invalid' in reason.lower():
+                    error_msg = 'YouTube API credentials are invalid or expired. Contact admin to re-authenticate.'
+                else:
+                    error_msg = f"YouTube API rejected the request: {message} (Reason: {reason})"
+        except Exception:
+            error_msg = f"YouTube API error (HTTP {resp.status_code}). Please try again."
+
         logger.error(f"YouTube resumable session error: {resp.status_code} {resp.text}")
-        return None
+        return {'error': error_msg}
     except Exception as e:
         logger.error(f"YouTube resumable session creation failed: {e}")
-        return None
+        return {'error': f'YouTube upload initialization failed unexpectedly: {str(e)}'}

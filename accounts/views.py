@@ -2420,9 +2420,10 @@ def init_video_upload(request):
             description=f'Lesson from course: {course.title}',
         )
 
-        if not result:
+        if not result or result.get('error'):
+            error_msg = result.get('error', 'YouTube upload service unavailable.')
             lesson.delete()
-            return JsonResponse({'error': 'YouTube upload service unavailable. Check YouTube credentials.'}, status=500)
+            return JsonResponse({'error': error_msg}, status=500)
 
         upload_url = result['upload_url']
         access_token = result['access_token']
@@ -2473,7 +2474,7 @@ def youtube_upload_complete(request):
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
-        return JsonResponse({'error': 'Lesson not found'}, status=404)
+        return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
     lesson.youtube_video_id = video_id
     lesson.youtube_upload_status = 'UPLOADED'
@@ -2487,6 +2488,7 @@ def youtube_upload_complete(request):
 
     return JsonResponse({
         'success': True,
+        'message': 'Video uploaded to YouTube successfully!',
         'upload_status': 'PROCESSING',
         'video_id': video_id,
     })
@@ -2536,8 +2538,9 @@ def init_youtube_edit_upload(request):
         description=f'Updated lesson: {lesson.title}',
     )
 
-    if not result:
-        return JsonResponse({'error': 'YouTube upload service unavailable. Check YouTube credentials.'}, status=500)
+    if not result or result.get('error'):
+        error_msg = result.get('error', 'YouTube upload service unavailable.')
+        return JsonResponse({'error': error_msg}, status=500)
 
     upload_url = result['upload_url']
     access_token = result['access_token']
@@ -2583,7 +2586,7 @@ def youtube_edit_complete(request):
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
-        return JsonResponse({'error': 'Lesson not found'}, status=404)
+        return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
     new_youtube_url = f'https://www.youtube.com/watch?v={video_id}'
 
@@ -2612,6 +2615,7 @@ def youtube_edit_complete(request):
 
     return JsonResponse({
         'success': True,
+        'message': 'Video uploaded to YouTube successfully!',
         'upload_status': 'PROCESSING',
         'video_id': video_id,
     })

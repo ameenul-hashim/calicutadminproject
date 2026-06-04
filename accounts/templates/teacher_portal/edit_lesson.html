@@ -275,20 +275,21 @@
                     progressBar.style.width = '100%';
                     progressBar.classList.add('complete');
                     progressPercent.textContent = '100%';
-                    progressText.textContent = 'Upload complete!';
-                    uploadPhase.textContent = 'Video uploaded! Processing on YouTube...';
+                    progressText.textContent = '✅ Upload complete!';
+                    uploadPhase.textContent = '✅ Video uploaded successfully! Processing on YouTube...';
                     uploadPhase.classList.add('complete');
                     progressDetail.textContent = '';
 
                     setTimeout(function() {
                         window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                    }, 800);
+                    }, 1500);
 
                 } catch(err) {
                     progressBar.classList.add('error');
-                    uploadPhase.textContent = 'Error: ' + err.message;
+                    const errorMsg = err.message || 'Upload failed. Please try again.';
+                    uploadPhase.textContent = '❌ ' + errorMsg;
                     uploadPhase.classList.add('error');
-                    uploadError.textContent = err.message || 'Upload failed. Please try again.';
+                    uploadError.textContent = errorMsg;
                     uploadError.classList.add('active');
                     submitBtn.disabled = false;
                     submitBtn.textContent = 'Try Again';
