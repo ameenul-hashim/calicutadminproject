@@ -71,24 +71,23 @@ class ChatConsumer(AsyncWebsocketConsumer):
             msg_uid, now_ms = await sync_to_async(_fb_send)(
                 str(sender.uid), receiver_uid, message, sender_name
             )
-            ts_str = ''
-            if now_ms and msg_uid:
+            if msg_uid and now_ms:
                 from datetime import datetime as dt
                 ts_str = dt.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
 
-            await self.channel_layer.group_send(
-                self.room_group_name,
-                {
-                    'type': 'chat_message',
-                    'action': 'send',
-                    'message_uid': msg_uid or '',
-                    'message': message,
-                    'sender_uid': str(sender.uid),
-                    'sender_name': sender_name,
-                    'timestamp': ts_str,
-                    'raw_ts': now_ms,
-                }
-            )
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'action': 'send',
+                        'message_uid': msg_uid,
+                        'message': message,
+                        'sender_uid': str(sender.uid),
+                        'sender_name': sender_name,
+                        'timestamp': ts_str,
+                        'raw_ts': now_ms,
+                    }
+                )
         elif action == 'edit':
             message_uid = data['message_uid']
             new_message = data['message']
