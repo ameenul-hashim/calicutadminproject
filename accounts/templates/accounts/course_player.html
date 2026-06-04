@@ -268,6 +268,29 @@
                     
                     <!-- View 1: Categorized Folders -->
                     <div id="resources-categories-view" style="flex: 1; padding: 1.2rem 1rem; overflow-y: auto;">
+                        <!-- Resource Breakdown Chart -->
+                        {% with total=resource_counts.ENGLISH|add:resource_counts.MALAYALAM|add:resource_counts.ONLINE %}
+                        {% if total > 0 %}
+                        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1rem;margin-bottom:1rem;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
+                                <span style="font-size:0.8rem;color:#94a3b8;">Resources by Category</span>
+                                <span style="font-size:0.75rem;color:#64748b;">{{ total }} total</span>
+                            </div>
+                            <div style="display:flex;gap:4px;height:32px;border-radius:0.5rem;overflow:hidden;">
+                                {% if resource_counts.ENGLISH %}
+                                <div style="flex:{{ resource_counts.ENGLISH }};background:#10b981;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;" title="English: {{ resource_counts.ENGLISH }}">{{ resource_counts.ENGLISH }}</div>
+                                {% endif %}
+                                {% if resource_counts.MALAYALAM %}
+                                <div style="flex:{{ resource_counts.MALAYALAM }};background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;" title="Malayalam: {{ resource_counts.MALAYALAM }}">{{ resource_counts.MALAYALAM }}</div>
+                                {% endif %}
+                                {% if resource_counts.ONLINE %}
+                                <div style="flex:{{ resource_counts.ONLINE }};background:#a855f7;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;" title="Online: {{ resource_counts.ONLINE }}">{{ resource_counts.ONLINE }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+
                         <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                             <!-- English Notes Card -->
                             <div onclick="showResourceCategory('ENGLISH')" class="glass-folder-card" style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 1rem; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.3s;">
@@ -276,11 +299,11 @@
                                 </div>
                                 <div>
                                     <div style="font-size: 0.95rem; font-weight: 700; color: #d1fae5;">English Notes</div>
-                                    <div style="font-size: 0.75rem; color: #6ee7b7; margin-top: 0.2rem;">Tap to view resources</div>
+                                    <div style="font-size: 0.75rem; color: #6ee7b7; margin-top: 0.2rem;">{{ resource_counts.ENGLISH }} resource{{ resource_counts.ENGLISH|pluralize }}</div>
                                 </div>
-                                <span style="margin-left: auto; color: #6ee7b7;">›</span>
+                                <span style="margin-left: auto; background: rgba(16,185,129,0.2); color: #6ee7b7; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ resource_counts.ENGLISH }}</span>
                             </div>
-                            
+
                             <!-- Malayalam Notes Card -->
                             <div onclick="showResourceCategory('MALAYALAM')" class="glass-folder-card" style="background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: 1rem; display: flex; align-items: center; gap: 1rem; padding: 1rem 1.25rem; cursor: pointer; transition: all 0.3s;">
                                 <div style="width: 48px; height: 48px; background: rgba(59,130,246,0.2); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -288,9 +311,9 @@
                                 </div>
                                 <div>
                                     <div style="font-size: 0.95rem; font-weight: 700; color: #dbeafe;">മലയാളം Notes</div>
-                                    <div style="font-size: 0.75rem; color: #93c5fd; margin-top: 0.2rem;">Tap to view resources</div>
+                                    <div style="font-size: 0.75rem; color: #93c5fd; margin-top: 0.2rem;">{{ resource_counts.MALAYALAM }} resource{{ resource_counts.MALAYALAM|pluralize }}</div>
                                 </div>
-                                <span style="margin-left: auto; color: #93c5fd;">›</span>
+                                <span style="margin-left: auto; background: rgba(59,130,246,0.2); color: #93c5fd; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ resource_counts.MALAYALAM }}</span>
                             </div>
 
                             <!-- Online Notes Card -->
@@ -300,9 +323,9 @@
                                 </div>
                                 <div>
                                     <div style="font-size: 0.95rem; font-weight: 700; color: #f3e8ff;">Online Resources</div>
-                                    <div style="font-size: 0.75rem; color: #d8b4fe; margin-top: 0.2rem;">Tap to view resources</div>
+                                    <div style="font-size: 0.75rem; color: #d8b4fe; margin-top: 0.2rem;">{{ resource_counts.ONLINE }} resource{{ resource_counts.ONLINE|pluralize }}</div>
                                 </div>
-                                <span style="margin-left: auto; color: #d8b4fe;">›</span>
+                                <span style="margin-left: auto; background: rgba(168,85,247,0.2); color: #d8b4fe; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 700;">{{ resource_counts.ONLINE }}</span>
                             </div>
                         </div>
                     </div>
