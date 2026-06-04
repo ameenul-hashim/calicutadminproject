@@ -30,6 +30,7 @@ urlpatterns = [
     path('course/<uuid:course_uid>/resource/add/', views.add_resource, name='add_resource'),
     path('resource/<uuid:resource_uid>/edit/', views.edit_resource, name='edit_resource'),
     path('resource/<uuid:resource_uid>/delete/', views.delete_resource, name='delete_resource'),
+    path('teacher/deletion-requests/', views.teacher_deletion_requests, name='teacher_deletion_requests'),
     path('teacher/courses/<uuid:course_uid>/submit/', views.submit_course_approval, name='submit_course_approval'),
     path('student/enroll/<uuid:course_uid>/', views.enroll_course, name='enroll_course'),
     path('logout/', views.logout_view, name='logout'),

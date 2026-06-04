@@ -930,7 +930,7 @@ def edit_course(request, course_uid):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
-    from .models import CourseResource
+    from .models import CourseResource, DeletionRequest
     from itertools import groupby
 
     lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid').order_by('chapter', 'order')
@@ -938,6 +938,24 @@ def course_lessons(request, course_uid):
 
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
     any_lesson_rejected = lessons.filter(status='REJECTED').exists() or resources.filter(status='REJECTED').exists()
+
+    # Build deletion request lookup maps
+    lesson_ids = list(lessons.values_list('id', flat=True))
+    resource_ids = list(resources.values_list('id', flat=True))
+    lesson_del_requests = DeletionRequest.objects.filter(
+        teacher=request.user, item_type='Lesson', item_id__in=lesson_ids
+    )
+    resource_del_requests = DeletionRequest.objects.filter(
+        teacher=request.user, item_type='Resource', item_id__in=resource_ids
+    )
+    lesson_dr_map = {dr.item_id: dr for dr in lesson_del_requests}
+    resource_dr_map = {dr.item_id: dr for dr in resource_del_requests}
+
+    # Attach deletion request to each lesson/resource
+    for lesson in lessons:
+        lesson._deletion_request = lesson_dr_map.get(lesson.id)
+    for res in resources:
+        res._deletion_request = resource_dr_map.get(res.id)
 
     # Group by chapter
     lessons_list = list(lessons)
@@ -1163,10 +1181,20 @@ def edit_lesson(request, lesson_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def delete_lesson(request, lesson_uid):
+    if request.method != 'POST':
+        return redirect('teacher_dashboard')
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     course_uid = lesson.course.uid
     
     from .models import DeletionRequest
+    
+    # For PENDING/REJECTED lessons (not yet approved), delete immediately
+    if lesson.status in ('PENDING', 'REJECTED'):
+        lesson.delete()
+        messages.success(request, "Lesson deleted successfully.")
+        return redirect('course_lessons', course_uid=course_uid)
+    
+    # For APPROVED lessons — create a deletion request
     existing_request = DeletionRequest.objects.filter(
         teacher=request.user, item_type='Lesson', item_id=lesson.id, status='PENDING'
     ).first()
@@ -1174,11 +1202,14 @@ def delete_lesson(request, lesson_uid):
     if existing_request:
         messages.info(request, "A deletion request for this lesson is already pending admin approval.")
     else:
+        reason = request.POST.get('reason', '').strip() or 'Teacher requested deletion.'
         DeletionRequest.objects.create(
             teacher=request.user,
             item_type='Lesson',
             item_id=lesson.id,
-            item_name=f"{lesson.title} (Course: {lesson.course.title})"
+            item_name=f"{lesson.title} (Course: {lesson.course.title})",
+            reason=reason,
+            status='PENDING',
         )
         messages.success(request, "Deletion request sent to admin. The lesson will be removed once approved.")
         notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete lesson '{lesson.title}'.")
@@ -1477,6 +1508,14 @@ def delete_resource(request, resource_uid):
     notify_admins(f"🗑️ DELETION REQUEST: Teacher {request.user.username} requested deletion of resource '{resource.title}' in course '{resource.course.title}'.")
     messages.success(request, f"Deletion request for '{resource.title}' submitted. Awaiting admin approval.")
     return redirect('course_lessons', course_uid=resource.course.uid)
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def teacher_deletion_requests(request):
+    from .models import DeletionRequest
+    deletion_requests = DeletionRequest.objects.filter(teacher=request.user).order_by('-created_at')
+    return render(request, 'teacher_portal/deletion_requests.html', {
+        'deletion_requests': deletion_requests,
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def submit_course_approval(request, course_uid):

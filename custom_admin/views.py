@@ -1384,9 +1384,16 @@ def approve_deletion_request(request, request_uid):
         else:
             messages.warning(request, "Resource already gone.")
 
-    del_request.delete() # Free up space after processing
+    del_request.status = 'APPROVED'
+    del_request.reviewed_by = request.user
+    del_request.reviewed_at = timezone.now()
+    admin_feedback = request.POST.get('admin_feedback', '').strip()
+    if admin_feedback:
+        del_request.admin_feedback = admin_feedback
+    del_request.save()
     messages.success(request, f"✅ {success_msg}")
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.")
+    note = f" Admin note: {admin_feedback}" if admin_feedback else ""
+    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been APPROVED.{note}")
     return redirect('manage_deletion_requests')
 
 
@@ -1398,6 +1405,10 @@ def reject_deletion_request(request, request_uid):
         messages.error(request, "This request has already been processed.")
         return redirect('manage_deletion_requests')
     
+    if request.method != 'POST':
+        messages.error(request, "Invalid request method.")
+        return redirect('manage_deletion_requests')
+    
     # If it's a Resource deletion request, restore the resource status to APPROVED
     if del_request.item_type == 'Resource':
         from accounts.models import CourseResource
@@ -1406,12 +1417,14 @@ def reject_deletion_request(request, request_uid):
             resource.status = 'APPROVED'
             resource.save()
     
+    admin_feedback = request.POST.get('admin_feedback', '').strip() or 'No reason provided.'
     del_request.status = 'REJECTED'
     del_request.reviewed_by = request.user
     del_request.reviewed_at = timezone.now()
+    del_request.admin_feedback = admin_feedback
     del_request.save()
     
-    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. The content remains live.")
+    create_notification(del_request.teacher, f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. Reason: {admin_feedback}")
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Resource restored to Approved status.")
     return redirect('manage_deletion_requests')
 

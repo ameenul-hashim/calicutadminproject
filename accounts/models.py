@@ -344,6 +344,7 @@ class DeletionRequest(models.Model):
     # Direct FK for Resource deletion requests (nullable for legacy lesson requests)
     resource = models.ForeignKey('CourseResource', on_delete=models.CASCADE, null=True, blank=True, related_name='deletion_requests')
     reason = models.TextField(blank=True, null=True)
+    admin_feedback = models.TextField(blank=True, null=True, help_text="Admin's feedback/reason when approving or rejecting the request")
     status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
     reviewed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='reviewed_deletion_requests')
     reviewed_at = models.DateTimeField(null=True, blank=True)

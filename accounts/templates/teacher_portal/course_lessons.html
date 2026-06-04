@@ -31,7 +31,9 @@
         margin-bottom: 1.5rem;
         border: 1px solid #e2e8f0;
         overflow: hidden;
+        transition: box-shadow 0.2s;
     }
+    .ch-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
     .ch-card-header {
         padding: 1.1rem 1.5rem;
         background: #f8fafc;
@@ -39,9 +41,15 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        cursor: pointer;
+        user-select: none;
     }
+    .ch-card-header:hover { background: #f1f5f9; }
     .ch-card-header h3 { margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; }
     .ch-card-body { padding: 1rem 1.5rem 1.25rem; }
+    .ch-card-body.collapsed { display: none; }
+    .toggle-icon { font-size: 0.8rem; color: #94a3b8; transition: transform 0.2s; }
+    .toggle-icon.expanded { transform: rotate(90deg); }
     .section-header {
         display: flex;
         align-items: center;
@@ -78,6 +86,19 @@
     .action-link { font-size: 0.75rem; font-weight: 600; text-decoration: none; padding: 0.2rem 0.5rem; border-radius: 0.3rem; transition: background 0.15s; }
     .action-link:hover { background: #e2e8f0; }
     .empty-section { font-size: 0.8rem; color: #94a3b8; font-style: italic; padding: 0.3rem 0.6rem; }
+    .dr-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 0.1rem 0.4rem;
+        border-radius: 0.35rem;
+    }
+    .dr-badge.pending { background: #fef9c3; color: #a16207; }
+    .dr-badge.approved { background: #dcfce7; color: #16a34a; }
+    .dr-badge.rejected { background: #fee2e2; color: #dc2626; }
+
     @media (max-width: 768px) {
         .ch-card-header { padding: 0.9rem 1rem; }
         .ch-card-body { padding: 0.75rem 1rem 1rem; }
@@ -120,7 +141,8 @@
 
 {% for chapter in chapters %}
 <div class="ch-card">
-    <div class="ch-card-header">
+    <div class="ch-card-header" onclick="toggleChapter(this)">
+        <span class="toggle-icon" id="icon-{{ forloop.counter }}">&#x25B6;</span>
         <span style="font-size: 1.3rem;">&#x1F4C1;</span>
         <h3>{{ chapter.name }}</h3>
         <span style="margin-left: auto; font-size: 0.8rem; color: #64748b;">
@@ -131,7 +153,7 @@
         </span>
     </div>
 
-    <div class="ch-card-body">
+    <div class="ch-card-body" id="body-{{ forloop.counter }}">
         <!-- Action Buttons -->
         <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
             <a href="{% url 'add_lesson' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #eef2ff; color: #4f46e5; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
@@ -154,8 +176,19 @@
                 {% if lesson.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705; Approved</span>{% endif %}
                 {% if lesson.status == 'PENDING' %}<span class="stat-badge pending">&#x23F3; Pending</span>{% endif %}
                 {% if lesson.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C; Rejected</span>{% endif %}
-                <a href="{% url 'edit_lesson' lesson.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
-                <a href="javascript:void(0)" onclick="if(confirm('Delete this video?'))window.location.href='{% url 'delete_lesson' lesson.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+                {% if lesson._deletion_request %}
+                    {% if lesson._deletion_request.status == 'PENDING' %}
+                        <span class="dr-badge pending">&#x23F3; Del. Pending</span>
+                    {% elif lesson._deletion_request.status == 'APPROVED' %}
+                        <span class="dr-badge approved">&#x2705; Del. Approved</span>
+                    {% elif lesson._deletion_request.status == 'REJECTED' %}
+                        <span class="dr-badge rejected">&#x274C; Del. Rejected</span>
+                    {% endif %}
+                {% endif %}
+                {% if not lesson._deletion_request or lesson._deletion_request.status == 'REJECTED' %}
+                    <a href="{% url 'edit_lesson' lesson.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                    <a href="javascript:void(0)" onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" class="action-link" style="color: #ef4444;">Delete</a>
+                {% endif %}
             </div>
             {% endfor %}
         {% else %}
@@ -166,17 +199,37 @@
         <div class="section-header">
             <span class="label" style="color: #059669;">&#x1F4C4; English ({{ chapter.cat_counts.ENGLISH.total }})</span>
         </div>
-        {% if chapter.cat_counts.ENGLISH.total %}
+            {% if chapter.cat_counts.ENGLISH.total %}
             {% for res in chapter.resources %}
             {% if res.category == 'ENGLISH' %}
             <div class="item-row">
                 <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
                 <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
                 {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
-                {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
+                {% if res.status == 'PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
                 {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
-                <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
-                <a href="javascript:void(0)" onclick="if(confirm('Request deletion of this resource?'))window.location.href='{% url 'delete_resource' res.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+                {% if res.status == 'DELETION_PENDING' %}<span class="dr-badge pending">&#x23F3; Del. Pending</span>{% endif %}
+                {% if res._deletion_request and res._deletion_request.status == 'APPROVED' %}
+                    <span class="dr-badge approved">&#x2705; Del. Approved</span>
+                {% endif %}
+                {% if res._deletion_request and res._deletion_request.status == 'REJECTED' %}
+                    <span class="dr-badge rejected">&#x274C; Del. Rejected</span>
+                {% endif %}
+                {% if res.status != 'DELETION_PENDING' %}
+                    {% if not res._deletion_request or res._deletion_request.status == 'REJECTED' %}
+                        {% if res.status != 'DELETION_PENDING' %}
+                            <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                        {% endif %}
+                        {% if res.status == 'APPROVED' %}
+                            <a href="javascript:void(0)" onclick="openResourceDeleteModal('{{ res.uid }}', '{{ res.title|escapejs }}')" class="action-link" style="color: #ef4444;">Delete</a>
+                        {% elif res.status != 'DELETION_PENDING' %}
+                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently?')">
+                                {% csrf_token %}
+                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;">Delete</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
             </div>
             {% endif %}
             {% endfor %}
@@ -188,39 +241,37 @@
         <div class="section-header">
             <span class="label" style="color: #d97706;">&#x1F4D5; Malayalam ({{ chapter.cat_counts.MALAYALAM.total }})</span>
         </div>
-        {% if chapter.cat_counts.MALAYALAM.total %}
+            {% if chapter.cat_counts.MALAYALAM.total %}
             {% for res in chapter.resources %}
             {% if res.category == 'MALAYALAM' %}
             <div class="item-row">
                 <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
                 <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
                 {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
-                {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
+                {% if res.status == 'PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
                 {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
-                <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
-                <a href="javascript:void(0)" onclick="if(confirm('Request deletion of this resource?'))window.location.href='{% url 'delete_resource' res.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
-            </div>
-            {% endif %}
-            {% endfor %}
-        {% else %}
-            <div class="empty-section">No Malayalam resources.</div>
-        {% endif %}
-
-        <!-- Online Section -->
-        <div class="section-header">
-            <span class="label" style="color: #0284c7;">&#x1F4BB; Online ({{ chapter.cat_counts.ONLINE.total }})</span>
-        </div>
-        {% if chapter.cat_counts.ONLINE.total %}
-            {% for res in chapter.resources %}
-            {% if res.category == 'ONLINE' %}
-            <div class="item-row">
-                <span style="flex: 1; font-weight: 500;">{{ res.title }}</span>
-                <span style="font-size: 0.72rem; color: #94a3b8;">{{ res.resource_type }}</span>
-                {% if res.status == 'APPROVED' %}<span class="stat-badge approved">&#x2705;</span>{% endif %}
-                {% if res.status == 'PENDING' or res.status == 'DELETION_PENDING' %}<span class="stat-badge pending">&#x23F3;</span>{% endif %}
-                {% if res.status == 'REJECTED' %}<span class="stat-badge rejected">&#x274C;</span>{% endif %}
-                <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
-                <a href="javascript:void(0)" onclick="if(confirm('Request deletion of this resource?'))window.location.href='{% url 'delete_resource' res.uid %}'" class="action-link" style="color: #ef4444;">Delete</a>
+                {% if res.status == 'DELETION_PENDING' %}<span class="dr-badge pending">&#x23F3; Del. Pending</span>{% endif %}
+                {% if res._deletion_request and res._deletion_request.status == 'APPROVED' %}
+                    <span class="dr-badge approved">&#x2705; Del. Approved</span>
+                {% endif %}
+                {% if res._deletion_request and res._deletion_request.status == 'REJECTED' %}
+                    <span class="dr-badge rejected">&#x274C; Del. Rejected</span>
+                {% endif %}
+                {% if res.status != 'DELETION_PENDING' %}
+                    {% if not res._deletion_request or res._deletion_request.status == 'REJECTED' %}
+                        {% if res.status != 'DELETION_PENDING' %}
+                            <a href="{% url 'edit_resource' res.uid %}" class="action-link" style="color: #6366f1;">Edit</a>
+                        {% endif %}
+                        {% if res.status == 'APPROVED' %}
+                            <a href="javascript:void(0)" onclick="openResourceDeleteModal('{{ res.uid }}', '{{ res.title|escapejs }}')" class="action-link" style="color: #ef4444;">Delete</a>
+                        {% elif res.status != 'DELETION_PENDING' %}
+                            <form method="POST" action="{% url 'delete_resource' res.uid %}" style="display:inline;margin:0;" onsubmit="return confirm('Delete permanently?')">
+                                {% csrf_token %}
+                                <button type="submit" class="action-link" style="color: #ef4444; border:none; background:none; cursor:pointer; padding:0.2rem 0.5rem;">Delete</button>
+                            </form>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
             </div>
             {% endif %}
             {% endfor %}
@@ -236,4 +287,78 @@
     <p style="color: #94a3b8; margin: 0;">Create your first chapter above to start organizing content.</p>
 </div>
 {% endfor %}
+
+<div style="margin-top: 2rem; padding: 1rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0;">
+    <a href="{% url 'teacher_deletion_requests' %}" class="action-link" style="color: #6366f1; font-size: 0.9rem;">&#x1F4DD; View My Deletion Requests</a>
+</div>
+
+<!-- Lesson Deletion Request Modal -->
+<div id="lessonDeleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Request Lesson Deletion</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Request deletion of: <strong id="lessonDeleteName"></strong><br>
+            This will be sent to admin for approval.
+        </p>
+        <form id="lessonDeleteForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for deletion</label>
+                <textarea name="reason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this lesson should be deleted..."></textarea>
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Submit Request</button>
+                <button type="button" onclick="closeLessonDeleteModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resource Deletion Request Modal -->
+<div id="resourceDeleteModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Request Resource Deletion</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Request deletion of: <strong id="resourceDeleteName"></strong><br>
+            This will be sent to admin for approval.
+        </p>
+        <form id="resourceDeleteForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for deletion</label>
+                <textarea name="reason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this resource should be deleted..."></textarea>
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Submit Request</button>
+                <button type="button" onclick="closeResourceDeleteModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleChapter(header) {
+    var body = header.nextElementSibling;
+    var icon = header.querySelector('.toggle-icon');
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        icon.style.transform = 'rotate(90deg)';
+    } else {
+        body.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+    }
+}
+function openLessonDeleteModal(uid, title) {
+    document.getElementById('lessonDeleteName').textContent = title;
+    document.getElementById('lessonDeleteForm').action = '/teacher/lessons/' + uid + '/delete/';
+    document.getElementById('lessonDeleteModal').style.display = 'flex';
+}
+function closeLessonDeleteModal() { document.getElementById('lessonDeleteModal').style.display = 'none'; }
+function openResourceDeleteModal(uid, title) {
+    document.getElementById('resourceDeleteName').textContent = title;
+    document.getElementById('resourceDeleteForm').action = '/resource/' + uid + '/delete/';
+    document.getElementById('resourceDeleteModal').style.display = 'flex';
+}
+function closeResourceDeleteModal() { document.getElementById('resourceDeleteModal').style.display = 'none'; }
+</script>
 {% endblock %}
