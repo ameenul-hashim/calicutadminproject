@@ -978,9 +978,9 @@ def course_lessons(request, course_uid):
 
     # Attach deletion request to each lesson/resource
     for lesson in lessons:
-        lesson._deletion_request = lesson_dr_map.get(lesson.id)
+        lesson.deletion_request = lesson_dr_map.get(lesson.id)
     for res in resources:
-        res._deletion_request = resource_dr_map.get(res.id)
+        res.deletion_request = resource_dr_map.get(res.id)
 
     # Group by chapter
     lessons_list = list(lessons)
