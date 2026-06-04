@@ -1,4 +1,5 @@
 import os
+import re
 import logging
 import time as _time
 from django.shortcuts import render, redirect, get_object_or_404
@@ -11,6 +12,8 @@ from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
 from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
 from accounts.utils.cloudinary_helpers import update_image
+from accounts.utils.supabase_storage import upload_pdf
+from accounts.utils.malware_scanner import scanner
 from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.cache import cache_control
@@ -418,28 +421,35 @@ def create_student_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        else:
-            # Upload PDF to Supabase
-            pdf_url = upload_pdf(proof_file)
-            if not pdf_url:
-                messages.error(request, "Failed to upload document.")
-                return render(request, 'custom_admin/create_student.html', {
+        # 7. Malware & File Security Scan
+        is_infected, reason = scanner.scan_file(proof_file)
+        if is_infected:
+            messages.error(request, f"Security check failed: {reason.replace('_', ' ').title()}. Please upload a valid PDF or image document.")
+            return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-            CustomUser.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                full_name=fullname,
-                phone_number=phone_number,
-                is_active=True,
-                status='ACTIVE',
-                user_type='STUDENT',
-                pdf_path=pdf_url
-            )
-            messages.success(request, f"✅ Account for {username} created successfully!")
-            return redirect('manage_students')
+        # Upload PDF to Supabase
+        pdf_url = upload_pdf(proof_file)
+        if not pdf_url:
+            messages.error(request, "Failed to upload document.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        CustomUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            full_name=fullname,
+            phone_number=phone_number,
+            is_active=True,
+            status='ACTIVE',
+            user_type='STUDENT',
+            pdf_path=pdf_url
+        )
+        messages.success(request, f"✅ Account for {username} created successfully!")
+        return redirect('manage_students')
             
     return render(request, 'custom_admin/create_student.html')
 
@@ -515,29 +525,36 @@ def create_teacher_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        else:
-            # Upload PDF to Supabase
-            pdf_url = upload_pdf(proof_file)
-            if not pdf_url:
-                messages.error(request, "Failed to upload document.")
-                return render(request, 'custom_admin/create_teacher.html', {
+        # 7. Malware & File Security Scan
+        is_infected, reason = scanner.scan_file(proof_file)
+        if is_infected:
+            messages.error(request, f"Security check failed: {reason.replace('_', ' ').title()}. Please upload a valid PDF or image document.")
+            return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-            CustomUser.objects.create_user(
-                username=username,
-                email=email,
-                password=password,
-                full_name=fullname,
-                phone_number=phone_number,
-                is_active=True,
-                is_staff=True,
-                status='ACTIVE',
-                user_type='TEACHER',
-                pdf_path=pdf_url
-            )
-            messages.success(request, f"✅ Account for {username} created successfully!")
-            return redirect('manage_teachers')
+        # Upload PDF to Supabase
+        pdf_url = upload_pdf(proof_file)
+        if not pdf_url:
+            messages.error(request, "Failed to upload document.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        CustomUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password,
+            full_name=fullname,
+            phone_number=phone_number,
+            is_active=True,
+            is_staff=True,
+            status='ACTIVE',
+            user_type='TEACHER',
+            pdf_path=pdf_url
+        )
+        messages.success(request, f"✅ Account for {username} created successfully!")
+        return redirect('manage_teachers')
             
     return render(request, 'custom_admin/create_teacher.html')
 
