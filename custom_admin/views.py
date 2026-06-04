@@ -1187,10 +1187,79 @@ def admin_delete_lesson_secure(request, lesson_uid):
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
 @user_passes_test(is_admin, login_url='admin_login')
+def admin_delete_resource_secure(request, resource_uid):
+    from accounts.models import CourseResource
+    try:
+        if request.method == 'POST':
+            username = request.POST.get('admin_username', '').strip()
+            password = request.POST.get('admin_password', '')
+
+            admin_user = request.user
+            is_identity_match = (
+                username.lower() == admin_user.username.lower() or
+                username.lower() == admin_user.email.lower()
+            )
+
+            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+                resource = get_object_or_404(CourseResource, uid=resource_uid)
+                resource_title = resource.title
+                course_uid = resource.course.uid
+
+                if resource.firebase_file_path:
+                    try:
+                        from accounts.utils.storage_manager import StorageManager
+                        manager = StorageManager()
+                        manager.delete_supabase_file(resource.firebase_file_path)
+                    except Exception as e:
+                        print(f"Error wiping Supabase file: {e}")
+
+                resource.delete()
+                messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
+                return redirect('admin_view_course_content', course_uid=course_uid)
+            else:
+                messages.error(request, "Action not allowed. Please verify administrator credentials.")
+    except Exception as e:
+        messages.error(request, f"⚠️ Could not delete resource: {str(e)}")
+
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_update_order(request, item_type, uid):
+    if request.method == 'POST':
+        new_order = request.POST.get('order', 0)
+        try:
+            new_order = int(new_order)
+            if item_type == 'lesson':
+                item = get_object_or_404(Lesson, uid=uid)
+                item.order = new_order
+                item.save(update_fields=['order'])
+                course_uid = item.course.uid
+            elif item_type == 'resource':
+                from accounts.models import CourseResource
+                item = get_object_or_404(CourseResource, uid=uid)
+                item.order = new_order
+                item.save(update_fields=['order'])
+                course_uid = item.course.uid
+            else:
+                return redirect('admin_content')
+
+            messages.success(request, f"Order updated successfully.")
+            return redirect('admin_view_course_content', course_uid=course_uid)
+        except Exception:
+            messages.error(request, "Invalid order value.")
+
+    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+
+@user_passes_test(is_admin, login_url='admin_login')
 @csrf_protect
 @require_POST
 def delete_user_admin(request, user_uid):
-    target_user = get_object_or_404(CustomUser, uid=user_uid)
+    try:
+        target_user = get_object_or_404(CustomUser, uid=user_uid)
+    except Exception:
+        messages.error(request, "⚠️ User not found.")
+        return redirect('manage_students')
     
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
