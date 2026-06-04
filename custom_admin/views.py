@@ -136,16 +136,10 @@ def manage_students(request):
             Q(full_name__icontains=search_query)
         )
     
-    from django.core.paginator import Paginator
-    paginator = Paginator(users, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
     return render(request, 'custom_admin/manage_students.html', {
-        'users': page_obj, 
+        'users': users,
         'search_query': search_query,
         'status_filter': status_filter,
-        'page_obj': page_obj
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -186,17 +180,10 @@ def manage_teachers(request):
             Q(email__icontains=search_query) |
             Q(full_name__icontains=search_query)
         )
-    # Pagination
-    from django.core.paginator import Paginator
-    paginator = Paginator(users, 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
     return render(request, 'custom_admin/manage_teachers.html', {
-        'users': page_obj, 
+        'users': users,
         'search_query': search_query,
         'status_filter': status_filter,
-        'page_obj': page_obj
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
