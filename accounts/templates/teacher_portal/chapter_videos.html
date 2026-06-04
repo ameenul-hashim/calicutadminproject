@@ -1,0 +1,69 @@
+{% extends 'teacher_portal/base_teacher.html' %}
+{% load static %}
+
+{% block title %}Chapter Videos | Neo Learner{% endblock %}
+
+{% block page_header %}
+<div style="width: 100%;">
+    <div style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <a href="{% url 'course_lessons' course.uid %}" class="btn" style="background: white; color: #64748b; padding: 0.6rem 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; border: 1px solid #e2e8f0; font-size: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>&larr;</span> Back to Content
+        </a>
+    </div>
+    <h1 style="margin: 0; font-size: 1.6rem; color: #1e293b;">Videos: {{ chapter_name }}</h1>
+    <p style="color: #64748b; margin-top: 0.5rem; font-size: 0.9rem;">Manage videos in this chapter.</p>
+</div>
+{% endblock %}
+
+{% block content %}
+<style>
+    .item-card { background: white; border-radius: 1rem; padding: 1.25rem; border: 1px solid #e2e8f0; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+    .status-badge { font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 1rem; font-weight: 700; white-space: nowrap; }
+    .action-btn { background: none; border: none; font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 0.4rem 0.8rem; border-radius: 0.5rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem; }
+    @media (max-width: 768px) {
+        .item-card { flex-direction: column; align-items: flex-start; }
+        .item-actions { width: 100%; border-top: 1px solid #f1f5f9; padding-top: 0.75rem; justify-content: flex-end; }
+    }
+</style>
+
+{% if not items %}
+<div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0;">
+    <div style="font-size: 2.5rem; margin-bottom: 1rem;">&#x1F3AC;</div>
+    <p style="color: #94a3b8; margin: 0 0 1rem;">No videos in this chapter yet.</p>
+    <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Video</a>
+</div>
+{% endif %}
+
+{% for item in items %}
+<div class="item-card">
+    <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+        <div style="width: 36px; height: 36px; background: #eef2ff; color: #6366f1; border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;">{{ item.order }}</div>
+        <div>
+            <h4 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ item.title }}</h4>
+            <p style="margin: 0.15rem 0 0; font-size: 0.78rem; color: #94a3b8;">
+                {% if item.video_url %}YouTube Video{% endif %}
+                {% if item.video_file %}Uploaded File{% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="item-actions" style="display: flex; align-items: center; gap: 1rem;">
+        <span class="status-badge" style="{% if item.status == 'APPROVED' %}background: #ecfdf5; color: #10b981;{% elif item.status == 'REJECTED' %}background: #fef2f2; color: #ef4444;{% else %}background: #fffbeb; color: #f59e0b;{% endif %}">
+            {{ item.status }}
+        </span>
+        <div style="display: flex; gap: 0.5rem; border-left: 1px solid #e2e8f0; padding-left: 1rem;">
+            <a href="{% url 'edit_lesson' item.uid %}" class="action-btn" style="color: #6366f1;">Edit</a>
+            <a href="javascript:void(0)" onclick="Toast.confirm('Delete this video?', () => { window.location.href = '{% url 'delete_lesson' item.uid %}'; })" class="action-btn" style="color: #ef4444;">Delete</a>
+        </div>
+    </div>
+    {% if item.status == 'REJECTED' and item.rejection_reason %}
+    <div style="width: 100%; margin-top: 0.75rem; background: #fff5f5; border: 1px solid #fed7d7; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.85rem; color: #c53030;">
+        <strong>Admin Feedback:</strong> {{ item.rejection_reason }}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'add_lesson' course.uid %}" class="btn" style="background: #6366f1; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">+ Add Video to {{ chapter_name }}</a>
+</div>
+{% endblock %}

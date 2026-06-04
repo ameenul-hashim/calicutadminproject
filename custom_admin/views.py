@@ -1036,24 +1036,49 @@ def pending_resources(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
-    # Hide REJECTED content from admin view until it's resubmitted (PENDING)
-    lessons = course.lessons.exclude(status='REJECTED').order_by('order')
-    
     from accounts.models import CourseResource
-    # Show all non-deleted resources — admin must be able to see REJECTED ones to re-approve after teacher fixes
-    resources = course.resources.exclude(is_deleted=True).order_by('-created_at')
-    
-    pending_resources = resources.filter(status__in=['PENDING', 'DELETION_PENDING'])
-    approved_resources = resources.filter(status='APPROVED')
-    rejected_resources = resources.filter(status='REJECTED')
-    
+    from itertools import groupby
+
+    lessons = course.lessons.all().order_by('chapter', 'order')
+    resources = course.resources.exclude(is_deleted=True).order_by('chapter', '-created_at')
+
+    # Group by chapter
+    lessons_list = list(lessons)
+    resources_list = list(resources)
+
+    lesson_by_chapter = {}
+    for ch, grp in groupby(lessons_list, key=lambda x: x.chapter or ''):
+        lesson_by_chapter[ch] = list(grp)
+
+    res_by_chapter = {}
+    for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
+        res_by_chapter[ch] = list(grp)
+
+    all_chapter_names = sorted(set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys())), key=lambda x: (x == ''), reverse=True)
+    if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
+        all_chapter_names.remove('')
+
+    chapters_data = []
+    for ch_name in all_chapter_names:
+        ch_lessons = lesson_by_chapter.get(ch_name, [])
+        ch_resources = res_by_chapter.get(ch_name, [])
+
+        pending_res = [r for r in ch_resources if r.status in ('PENDING', 'DELETION_PENDING')]
+        approved_res = [r for r in ch_resources if r.status == 'APPROVED']
+        rejected_res = [r for r in ch_resources if r.status == 'REJECTED']
+
+        chapters_data.append({
+            'name': ch_name if ch_name else 'Uncategorized',
+            'lessons': ch_lessons,
+            'resources': ch_resources,
+            'pending_resources': pending_res,
+            'approved_resources': approved_res,
+            'rejected_resources': rejected_res,
+        })
+
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
-        'lessons': lessons,
-        'resources': resources,
-        'pending_resources': pending_resources,
-        'approved_resources': approved_resources,
-        'rejected_resources': rejected_resources,
+        'chapters': chapters_data,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
