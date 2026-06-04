@@ -58,13 +58,13 @@
         {% regroup lessons by chapter as chapter_list %}
         {% for chapter_group in chapter_list %}
         <div style="margin-bottom: 2rem;">
+            {% if chapter_group.grouper %}
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 2px solid #eef2ff;">
                 <span style="font-size: 1.1rem;">📁</span>
-                <span style="font-weight: 800; font-size: 1.05rem; color: #1e293b; text-transform: uppercase; letter-spacing: 0.03em;">
-                    {% if chapter_group.grouper %}{{ chapter_group.grouper }}{% else %}General{% endif %}
-                </span>
+                <span style="font-weight: 800; font-size: 1.05rem; color: #1e293b; text-transform: uppercase; letter-spacing: 0.03em;">{{ chapter_group.grouper }}</span>
                 <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600;">({{ chapter_group.list|length }} part{% if chapter_group.list|length != 1 %}s{% endif %})</span>
             </div>
+            {% endif %}
 
             <div class="lessons-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(min(350px, 100%), 1fr)); gap: 1.25rem;">
                 {% for lesson in chapter_group.list %}

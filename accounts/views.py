@@ -906,7 +906,7 @@ def course_lessons(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     lessons = course.lessons.all().order_by('chapter', 'order')
     from .models import CourseResource
-    resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved').order_by('-created_at')
+    resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'compressed_size', 'uid', 'rejection_reason').order_by('-created_at')
 
     # Resolve Supabase video URLs to signed URLs for playback
     for lesson in lessons:
@@ -931,29 +931,47 @@ def course_lessons(request, course_uid):
 
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
     any_lesson_rejected = lessons.filter(status='REJECTED').exists() or resources.filter(status='REJECTED').exists()
-    
+
     lessons_approved_count = lessons.filter(status='APPROVED').count()
     lessons_pending_count = lessons.filter(status='PENDING').count()
     lessons_rejected_count = lessons.filter(status='REJECTED').count()
-    resources_approved_count = resources.filter(status='APPROVED').count()
-    resources_pending_count = resources.filter(status='PENDING').count()
-    resources_rejected_count = resources.filter(status='REJECTED').count()
 
     last_lesson = lessons.latest('created_at') if lessons.exists() else None
     last_updated = last_lesson.created_at if last_lesson else course.created_at
+
+    # Build per-category resource sections
+    resources_list = list(resources)
+    resource_sections = []
+    for code, label, icon in [
+        ('ENGLISH', 'English Notes', '📄'),
+        ('MALAYALAM', 'Malayalam Notes', '📕'),
+        ('ONLINE', 'Online Class Notes', '💻'),
+    ]:
+        items = [r for r in resources_list if r.category == code]
+        approved = sum(1 for r in items if r.status == 'APPROVED')
+        pending = sum(1 for r in items if r.status == 'PENDING')
+        rejected = sum(1 for r in items if r.status == 'REJECTED')
+        resource_sections.append({
+            'code': code,
+            'label': label,
+            'icon': icon,
+            'items': items,
+            'total': len(items),
+            'approved': approved,
+            'pending': pending,
+            'rejected': rejected,
+        })
     
     return render(request, 'teacher_portal/course_lessons.html', {
         'course': course, 
         'lessons': lessons,
         'resources': resources,
+        'resource_sections': resource_sections,
         'has_pending_content': has_pending_content,
         'any_lesson_rejected': any_lesson_rejected,
         'lessons_approved_count': lessons_approved_count,
         'lessons_pending_count': lessons_pending_count,
         'lessons_rejected_count': lessons_rejected_count,
-        'resources_approved_count': resources_approved_count,
-        'resources_pending_count': resources_pending_count,
-        'resources_rejected_count': resources_rejected_count,
         'last_updated': last_updated,
     })
 
