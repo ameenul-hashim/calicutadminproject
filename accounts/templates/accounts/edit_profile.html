@@ -205,6 +205,9 @@
             {% endif %}
 
             <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
+            <div style="text-align: center; margin-top: 0.75rem;">
+                <a href="javascript:void(0)" id="skipBtn" style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;">Skip</a>
+            </div>
             {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
             {% endif %}
@@ -270,6 +273,7 @@
         const previewContainer = document.getElementById('previewContainer');
         const submitBtn = document.getElementById('submitBtn');
         const profileForm = document.getElementById('profileForm');
+        const skipBtn = document.getElementById('skipBtn');
 
         avatarOptions.forEach(option => {
             option.addEventListener('click', function() {
@@ -346,8 +350,10 @@
                 if (data.status === 'success') {
                     showToast(data.message, 'success');
                     setTimeout(() => {
-                        window.location.href = "{% if user.image or user.profile_photo %}{% url 'profile' %}{% else %}{% url 'dashboard' %}{% endif %}";
+                        window.location.href = "{% url 'dashboard' %}";
                     }, 1500);
+                } else if (data.status === 'skip') {
+                    window.location.href = data.redirect;
                 } else {
                     showToast(data.message || 'Update failed', 'error');
                     submitBtn.disabled = false;
@@ -370,6 +376,29 @@
             } else {
                 alert(message);
             }
+        }
+
+        if (skipBtn) {
+            skipBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const formData = new FormData();
+                formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                formData.append('skip', 'true');
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'skip' && data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                })
+                .catch(() => {});
+            });
         }
     </script>
     </div>
