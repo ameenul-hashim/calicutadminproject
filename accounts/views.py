@@ -190,12 +190,6 @@ def signup_view(request):
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # Avatar from grid selection
-            avatar_url = request.POST.get('avatar_url', '')
-            if avatar_url:
-                user.image = avatar_url
-                user.save(update_fields=['image'])
-
             from accounts.utils.pdf_helpers import convert_image_to_pdf
             from accounts.utils.supabase_storage import upload_user_proof
 
@@ -312,12 +306,6 @@ def teacher_signup_view(request):
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, status='PENDING', user_type='TEACHER',
             )
-
-            # Avatar from grid selection
-            avatar_url = request.POST.get('avatar_url', '')
-            if avatar_url:
-                user.image = avatar_url
-                user.save(update_fields=['image'])
 
             from accounts.utils.pdf_helpers import convert_image_to_pdf
             from accounts.utils.supabase_storage import upload_user_proof
