@@ -1338,7 +1338,11 @@ def add_resource(request, course_uid):
             mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
             is_infected, scan_reason = scanner.scan_file(upload_file)
             if is_infected:
-                raise ValueError(f"Security scan failed: {scan_reason}")
+                logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                    request.user.username, upload_file.name, scan_reason,
+                    request.META.get('REMOTE_ADDR'))
+                messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
+                return redirect('course_lessons', course_uid=course.uid)
             file_bytes = upload_file.read()
             original_size = len(file_bytes)
             
@@ -1412,7 +1416,9 @@ def add_resource(request, course_uid):
             )
             messages.success(request, success_msg)
         except Exception as e:
-            messages.error(request, f"Upload failed: {str(e)}")
+            logger.error("Resource upload error | user=%s course=%s error=%s",
+                request.user.username, course.uid, str(e))
+            messages.error(request, "An error occurred while uploading the file. Please try again.")
             
         return redirect('course_lessons', course_uid=course.uid)
         
@@ -1461,7 +1467,11 @@ def edit_resource(request, resource_uid):
                 new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
                 is_infected, scan_reason = scanner.scan_file(upload_file)
                 if is_infected:
-                    raise ValueError(f"Security scan failed: {scan_reason}")
+                    logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                        request.user.username, upload_file.name, scan_reason,
+                        request.META.get('REMOTE_ADDR'))
+                    messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
+                    return redirect('edit_resource', resource_uid=resource.uid)
                 file_bytes = upload_file.read()
                 new_orig_size = len(file_bytes)
                 
@@ -1502,7 +1512,9 @@ def edit_resource(request, resource_uid):
                         new_thumb_path = t_url
                         new_thumb_pid = t_pid
             except Exception as e:
-                messages.error(request, f"File processing failed: {str(e)}")
+                logger.error("Resource edit error | user=%s resource=%s error=%s",
+                    request.user.username, resource.uid, str(e))
+                messages.error(request, "An error occurred while processing the file. Please try again.")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
         course_is_published = course.status == 'PUBLISHED' and course.is_approved

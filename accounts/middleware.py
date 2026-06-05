@@ -184,9 +184,6 @@ class PortalSecurityMiddleware:
             raise e
 
 
-from .utils.malware_scanner import scanner
-
-
 class EnterpriseHardeningMiddleware:
     """Enterprise-grade security header injection and threat mitigation."""
 
@@ -194,24 +191,8 @@ class EnterpriseHardeningMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.method == 'POST' and request.FILES:
-            for file_key in request.FILES:
-                uploaded_file = request.FILES[file_key]
-                is_infected, reason = scanner.scan_file(uploaded_file)
-
-                if is_infected:
-                    from django.http import HttpResponseForbidden
-                    try:
-                        from .utils.firebase_db import admin_log_create
-                        admin_log_create(None, 'MALWARE_BLOCK', details=f"Infected payload blocked: {uploaded_file.name} | Reason: {reason} | IP: {request.META.get('REMOTE_ADDR')}", ip_address=request.META.get('REMOTE_ADDR'))
-                    except Exception:
-                        pass
-                    try:
-                        from .utils.firebase_audit import log_security_event
-                        log_security_event('MALWARE_BLOCK', f"Blocked: {uploaded_file.name} ({reason})", ip=request.META.get('REMOTE_ADDR'))
-                    except Exception:
-                        pass
-                    return HttpResponseForbidden(f"Security Alert: {reason}. Upload blocked by Enterprise SOC.")
+        # File upload malware scanning is handled per-view for better UX
+        # (professional messages, stay-on-page, AJAX support)
 
         if request.user.is_authenticated:
             import threading
