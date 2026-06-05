@@ -20,6 +20,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.conf import settings
+from django.core.paginator import Paginator
 
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions (Firebase RTDB)."""
@@ -136,6 +137,7 @@ def manage_students(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
     sort = request.GET.get('sort', 'date_desc')
+    page = request.GET.get('page', 1)
     
     users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
     
@@ -158,11 +160,15 @@ def manage_students(request):
     else:
         users = users.order_by('-date_joined')
     
+    paginator = Paginator(users, 50)
+    page_obj = paginator.get_page(page)
+    
     return render(request, 'custom_admin/manage_students.html', {
-        'users': users,
+        'users': page_obj,
         'search_query': search_query,
         'status_filter': status_filter,
         'sort': sort,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -192,6 +198,7 @@ def manage_teachers(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
     sort = request.GET.get('sort', 'date_desc')
+    page = request.GET.get('page', 1)
     
     users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses')
     
@@ -214,12 +221,24 @@ def manage_teachers(request):
     else:
         users = users.order_by('-date_joined')
     
+    paginator = Paginator(users, 50)
+    page_obj = paginator.get_page(page)
+    
     return render(request, 'custom_admin/manage_teachers.html', {
-        'users': users,
+        'users': page_obj,
         'search_query': search_query,
         'status_filter': status_filter,
         'sort': sort,
+        'page_obj': page_obj,
     })
+
+def check_email(request):
+    from django.http import JsonResponse
+    email = request.GET.get('email', '').strip()
+    if not email:
+        return JsonResponse({'available': False, 'error': 'Email is required.'})
+    exists = CustomUser.objects.filter(email__iexact=email).exists()
+    return JsonResponse({'available': not exists})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_teacher_profile(request, user_uid):
@@ -1919,7 +1938,6 @@ def system_audit_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def master_audit_summary_view(request):
     """Executive SOC, SIEM & Observability Dashboard — powered by Firebase RTDB."""
-    from django.conf import settings
     from django.db import connection
     from accounts.utils.firebase_audit import run_infrastructure_check, get_security_counters, get_recent_events
     import time
