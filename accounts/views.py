@@ -809,6 +809,7 @@ def my_courses(request):
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+@require_POST
 def delete_course(request, course_uid):
     from .models import DeletionRequest, Course
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
