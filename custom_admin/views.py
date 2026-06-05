@@ -344,13 +344,18 @@ def decline_user(request, user_uid):
         return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
-@csrf_protect
-@require_POST
 def toggle_user_status(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if user.status == 'ACTIVE':
         user.status = 'BLOCKED'
         user.is_active = False
+        if user.current_session_key:
+            try:
+                from django.contrib.sessions.models import Session
+                Session.objects.filter(session_key=user.current_session_key).delete()
+            except Exception:
+                pass
+            user.current_session_key = ''
         msg = "blocked"
     elif user.status == 'BLOCKED':
         user.status = 'ACTIVE'
@@ -366,7 +371,7 @@ def toggle_user_status(request, user_uid):
         messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED/PENDING users can be toggled.")
         return redirect('manage_students' if user.user_type != 'TEACHER' else 'manage_teachers')
     user.save()
-    messages.success(request, f"✅ User {user.username} has been {msg}.")
+    messages.success(request, f"User {user.username} has been {msg}.")
     if user.user_type == 'TEACHER':
         return redirect('manage_teachers')
     return redirect('manage_students')
@@ -1378,6 +1383,14 @@ def delete_user_admin(request, user_uid):
         
         if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER')):
             user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
+
+            # Invalidate any active session
+            if target_user.current_session_key:
+                try:
+                    from django.contrib.sessions.models import Session
+                    Session.objects.filter(session_key=target_user.current_session_key).delete()
+                except Exception:
+                    pass
             
             # Explicitly cleanup logs that don't cascade
             ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
