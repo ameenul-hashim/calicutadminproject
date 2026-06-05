@@ -458,7 +458,10 @@ def create_student_admin(request):
         # 7. Malware & File Security Scan
         is_infected, reason = scanner.scan_file(proof_file)
         if is_infected:
-            messages.error(request, f"Security check failed: {reason.replace('_', ' ').title()}. Please upload a valid PDF or image document.")
+            logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                'admin-creation', proof_file.name, reason,
+                request.META.get('REMOTE_ADDR'))
+            messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -568,7 +571,10 @@ def create_teacher_admin(request):
         # 7. Malware & File Security Scan
         is_infected, reason = scanner.scan_file(proof_file)
         if is_infected:
-            messages.error(request, f"Security check failed: {reason.replace('_', ' ').title()}. Please upload a valid PDF or image document.")
+            logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                'admin-creation', proof_file.name, reason,
+                request.META.get('REMOTE_ADDR'))
+            messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
