@@ -585,7 +585,14 @@ def teacher_login_view(request):
                 return redirect('teacher_dashboard')
         else:
             log_login_attempt(request, user_candidate, status='FAILED')
-            messages.error(request, "Invalid username or password. Please try again.")
+            if user_candidate and user_candidate.status == 'PENDING':
+                messages.warning(request, "Your account is PENDING approval. Please wait or contact administration.")
+            elif user_candidate and user_candidate.status == 'REJECTED':
+                messages.error(request, "Your account was REJECTED. Please contact admin for details.")
+            elif user_candidate and user_candidate.status == 'BLOCKED':
+                messages.error(request, "Your account has been BLOCKED. Access is restricted.")
+            else:
+                messages.error(request, "Invalid username or password. Please try again.")
             
     return render(request, 'accounts/teacher_login.html')
 
