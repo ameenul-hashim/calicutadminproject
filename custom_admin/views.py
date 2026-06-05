@@ -356,8 +356,14 @@ def toggle_user_status(request, user_uid):
         user.status = 'ACTIVE'
         user.is_active = True
         msg = "activated"
+    elif user.status == 'PENDING':
+        user.status = 'ACTIVE'
+        user.is_active = True
+        user.approved_by = request.user
+        user.approved_at = timezone.now()
+        msg = "approved and activated"
     else:
-        messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED users can be toggled.")
+        messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED/PENDING users can be toggled.")
         return redirect('manage_students' if user.user_type != 'TEACHER' else 'manage_teachers')
     user.save()
     messages.success(request, f"✅ User {user.username} has been {msg}.")
