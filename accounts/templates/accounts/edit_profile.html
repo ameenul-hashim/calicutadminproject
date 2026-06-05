@@ -293,29 +293,32 @@
             
             const usernameField = document.getElementById('new_username');
             const origUsername = '{{ user.username }}';
-            const usernameChanged = usernameField ? usernameField.value.trim() !== origUsername : false;
-            const passEntered = document.getElementById('new_password') ? document.getElementById('new_password').value : '';
+            const usernameChanged = usernameField ? (usernameField.value.trim() !== origUsername) : false;
+            const newPasswordEl = document.getElementById('new_password');
+            const passEntered = newPasswordEl ? newPasswordEl.value : '';
 
             if (!avatarUrlInput.value && !document.getElementById('previewImg') && !usernameChanged && !passEntered) {
                 showToast('No changes detected.', 'error');
                 return;
             }
             
-            if (document.getElementById('new_password').value) {
-                const newPass = document.getElementById('new_password').value;
-                if (!document.getElementById('current_password').value) {
+            const newPassVal = newPasswordEl ? newPasswordEl.value : '';
+            if (newPassVal) {
+                const currentPassEl = document.getElementById('current_password');
+                const confirmPassEl = document.getElementById('confirm_password');
+                if (!currentPassEl || !currentPassEl.value) {
                     showToast('Current password is required to set a new password.', 'error');
                     return;
                 }
-                if (newPass.length < 8) {
+                if (newPassVal.length < 8) {
                     showToast('Password must be at least 8 characters long.', 'error');
                     return;
                 }
-                if (!/[A-Z]/.test(newPass) || !/[a-z]/.test(newPass) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPass)) {
+                if (!/[A-Z]/.test(newPassVal) || !/[a-z]/.test(newPassVal) || !/[!@#$%^&*(),.?":{}|<>]/.test(newPassVal)) {
                     showToast('Password must contain Uppercase, Lowercase, and a Special character.', 'error');
                     return;
                 }
-                if (newPass !== document.getElementById('confirm_password').value) {
+                if (!confirmPassEl || newPassVal !== confirmPassEl.value) {
                     showToast('New passwords do not match.', 'error');
                     return;
                 }
@@ -326,8 +329,8 @@
             submitBtn.innerText = 'Updating...';
 
             // don't send username if unchanged
-            if (usernameField && !usernameChanged) {
-                usernameField.value = '';
+            if (!usernameChanged) {
+                if (usernameField) usernameField.value = '';
             }
 
             const formData = new FormData(this);

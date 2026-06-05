@@ -50,13 +50,11 @@ scratch/
 # Local backups (Neon snapshots)
 local_backups/
 
-# Playwright / test artifacts
+# Node / Playwright
 node_modules/
 playwright-report/
 test-results/
-
-# Temp scripts
 tmp/
-tests/e2e/screenshots/
 tests/e2e/playwright-report/
 tests/e2e/test-results/
+tests/e2e/screenshots/

@@ -89,11 +89,11 @@ class PortalSecurityMiddleware:
                     return redirect(f"{reverse('login')}?next={path}")
 
             # --- IDLE TIMEOUT (15 min) — stored in CACHE, not session ---
-            if request.user.is_staff or getattr(request.user, 'user_type', '') == 'TEACHER':
+            if request.user.is_superuser or getattr(request.user, 'user_type', '') in ('ADMIN', 'TEACHER'):
                 last_activity = cache.get(f"last_activity_{request.user.id}", 0)
 
                 if last_activity and (_time.time() - last_activity > 900):
-                    is_admin_path = request.user.is_staff or path.startswith('/customadmin/')
+                    is_admin_path = (request.user.is_superuser or getattr(request.user, 'user_type', '') == 'ADMIN') or path.startswith('/customadmin/')
                     timeout_user = request.user
                     request.session.flush()
                     logout(request)
@@ -145,7 +145,7 @@ class PortalSecurityMiddleware:
                     messages.error(request, "Admin panel is strictly restricted to desktop/laptop devices for security.")
                     return redirect('login')
 
-                if request.user.is_authenticated and not request.user.is_staff:
+                if request.user.is_authenticated and not (request.user.is_superuser or request.user.user_type == 'ADMIN' or (request.user.is_staff and request.user.user_type != 'TEACHER')):
                     if request.user.user_type == 'TEACHER':
                         return redirect('teacher_dashboard')
                     else:
