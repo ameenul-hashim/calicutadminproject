@@ -256,7 +256,6 @@ def pending_teachers_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 @csrf_protect
-@require_POST
 def accept_user(request, user_uid):
     try:
         user = get_object_or_404(CustomUser, uid=user_uid)
