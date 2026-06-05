@@ -1,139 +1,155 @@
 {% extends 'custom_admin/base_admin.html' %}
-
 {% block title %}create Student | Admin{% endblock %}
-
 {% block header_title %}
-    <div style="text-align: center; width: 100%;">
-        <h1>create New Student</h1>
-        <p style="color: #64748b;">Add a new student to the platform manually.</p>
+    <div style="text-align:center;width:100%">
+        <h1 style="margin:0;font-size:1.4rem">Create New Student</h1>
+        <p style="color:#64748b;margin:0.25rem 0 0;font-size:0.85rem">Add a new student to the platform manually.</p>
     </div>
 {% endblock %}
-
 {% block content %}
-<div style="display: flex; justify-content: center; width: 100%; padding: 2rem 0;">
-    <div style="background: white; border-radius: 1.5rem; border: 1px solid #e2e8f0; padding: 2.5rem; width: 100%; max-width: 550px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);">
-        <form method="POST" enctype="multipart/form-data" autocomplete="off" id="createStudentForm" novalidate>
-            {% include 'includes/validation_engine.html' %}
-            {% csrf_token %}
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Username</label>
-                <input type="text" name="username" id="username" value="{{ username|default:'' }}" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Full Name</label>
-                <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Email Address</label>
-                <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Contact Number</label>
-                <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" maxlength="10" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box;">
-            </div>
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Student Proof (PDF)</label>
-                <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*" onchange="handleFileSelection(this)" style="width: 100%; padding: 0.8rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 0.9rem; box-sizing: border-box;">
-                <div id="upload-help-text" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">PDF Document Only (Max 200KB)</div>
-            </div>
-            
-            <div style="margin-bottom: 1.5rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Password</label>
-                <div style="position: relative;">
-                    <input type="password" id="password" name="password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
-                    <div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Min 8 chars, 1 Uppercase, 1 Lowercase, 1 Special</div>
-                    <span onclick="togglecreatePassword('password', 'eye-1')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
-                        <svg id="eye-1" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    </span>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 2rem;">
-                <label style="display: block; font-weight: 700; margin-bottom: 0.5rem; color: #1e293b; font-size: 0.95rem;">Confirm Password</label>
-                <div style="position: relative;">
-                    <input type="password" id="confirm_password" name="confirm_password" style="width: 100%; padding: 0.85rem; border: 1px solid #cbd5e1; border-radius: 0.75rem; outline: none; font-size: 1rem; box-sizing: border-box; padding-right: 2.5rem;">
-                    <span onclick="togglecreatePassword('confirm_password', 'eye-2')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #64748b; display: flex; align-items: center;">
-                        <svg id="eye-2" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                    </span>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 1rem;">
-                <button type="submit" style="flex: 2; background: #0ea5e9; color: white; border: none; padding: 1rem; border-radius: 0.75rem; font-weight: 700; cursor: pointer; font-size: 1rem; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2);" onmouseover="this.style.background='#0284c7'" onmouseout="this.style.background='#0ea5e9'">create Student Account</button>
-                <a href="{% url 'manage_students' %}" style="flex: 1; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #64748b; padding: 1rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Cancel</a>
-            </div>
-        </form>
+<div style="display:flex;justify-content:center;width:100%;padding:0.5rem 0">
+<div style="background:white;border-radius:1rem;border:1px solid #e2e8f0;padding:1.25rem 1.5rem;width:100%;max-width:520px;box-shadow:0 8px 12px -3px rgba(0,0,0,0.05)">
+<form method="POST" enctype="multipart/form-data" autocomplete="off" id="createStudentForm" novalidate>
+    {% csrf_token %}
+    {% if messages %}
+    <div style="margin-bottom:0.75rem">
+        {% for m in messages %}<div style="padding:0.5rem 0.75rem;border-radius:0.5rem;font-size:0.8rem;font-weight:600;background:{% if m.tags == 'error' %}#fef2f2;color:#dc2626{% else %}#f0fdf4;color:#16a34a{% endif %}">{{ m }}</div>{% endfor %}
     </div>
+    {% endif %}
+
+    <div style="margin-bottom:0.6rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Username</label>
+        <input type="text" name="username" id="username" value="{{ username|default:'' }}" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.88rem;box-sizing:border-box" required>
+        <div id="usernameStatus" style="font-size:0.7rem;margin-top:0.15rem;min-height:1rem"></div>
+    </div>
+
+    <div style="margin-bottom:0.6rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Full Name</label>
+        <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.88rem;box-sizing:border-box" required>
+    </div>
+
+    <div style="margin-bottom:0.6rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Email Address</label>
+        <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.88rem;box-sizing:border-box" required>
+        <div id="emailStatus" style="font-size:0.7rem;margin-top:0.15rem;min-height:1rem"></div>
+    </div>
+
+    <div style="margin-bottom:0.6rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Contact Number</label>
+        <input type="tel" name="phone_number" id="phone_number" value="{{ phone_number|default:'' }}" maxlength="10" style="width:100%;padding:0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.88rem;box-sizing:border-box" required>
+        <div id="phoneStatus" style="font-size:0.7rem;margin-top:0.15rem;min-height:1rem"></div>
+    </div>
+
+    <div style="margin-bottom:0.6rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Student Proof (PDF)</label>
+        <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*" onchange="handleFileSelection(this)" style="width:100%;padding:0.45rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.85rem;box-sizing:border-box">
+        <div id="fileHelp" style="font-size:0.7rem;color:#64748b;margin-top:0.15rem">PDF only (Max 200KB)</div>
+    </div>
+
+    <div style="margin-bottom:0.6rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Password</label>
+        <div style="position:relative">
+            <input type="password" id="password" name="password" style="width:100%;padding:0.55rem 2.2rem 0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.88rem;box-sizing:border-box" required>
+            <span onclick="togglePW('password','eye1')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:#64748b;display:flex;align-items:center">
+                <svg id="eye1" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+        </div>
+        <div id="pwRules" style="font-size:0.7rem;color:#64748b;margin-top:0.15rem">8+ chars, upper, lower & special required</div>
+    </div>
+
+    <div style="margin-bottom:0.75rem">
+        <label style="display:block;font-weight:700;margin-bottom:0.25rem;color:#1e293b;font-size:0.8rem">Confirm Password</label>
+        <div style="position:relative">
+            <input type="password" id="confirm_password" name="confirm_password" style="width:100%;padding:0.55rem 2.2rem 0.55rem 0.75rem;border:1px solid #cbd5e1;border-radius:0.5rem;outline:none;font-size:0.88rem;box-sizing:border-box" required>
+            <span onclick="togglePW('confirm_password','eye2')" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);cursor:pointer;color:#64748b;display:flex;align-items:center">
+                <svg id="eye2" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </span>
+        </div>
+        <div id="pwMatch" style="font-size:0.7rem;margin-top:0.15rem;min-height:1rem"></div>
+    </div>
+
+    <div style="display:flex;gap:0.75rem">
+        <button type="submit" id="submitBtn" style="flex:2;background:#0ea5e9;color:white;border:none;padding:0.7rem;border-radius:0.5rem;font-weight:700;cursor:pointer;font-size:0.9rem;box-shadow:0 3px 6px -1px rgba(14,165,233,0.2)">Create Student Account</button>
+        <a href="{% url 'manage_students' %}" style="flex:1;display:flex;align-items:center;justify-content:center;background:#f1f5f9;color:#64748b;padding:0.7rem;border-radius:0.5rem;text-decoration:none;font-weight:600;font-size:0.85rem">Cancel</a>
+    </div>
+</form>
+</div>
 </div>
 
 <script>
-    function handleFileSelection(input) {
-        const file = input.files[0];
-        if (!file) return;
+function togglePW(id, iconId) {
+    const i = document.getElementById(id), e = document.getElementById(iconId);
+    if (i.type === 'password') { i.type = 'text'; e.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>'; }
+    else { i.type = 'password'; e.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'; }
+}
 
-        const isMobile = window.innerWidth <= 1024;
-        const fileName = file.name.toLowerCase();
-        const isPDF = fileName.endsWith('.pdf');
-        const isImage = ['.jpg', '.jpeg', '.png', '.heic', '.heif'].some(ext => fileName.endsWith(ext));
+function handleFileSelection(input) {
+    const file = input.files[0]; if (!file) return;
+    const isPDF = file.name.toLowerCase().endsWith('.pdf');
+    const isImage = ['.jpg','.jpeg','.png','.heic','.heif'].some(e => file.name.toLowerCase().endsWith(e));
+    if (!isPDF && !isImage) { Toast.error('Please upload a PDF or image.'); input.value = ''; return; }
+    if (window.innerWidth > 1024 && !isPDF) { Toast.error('On laptop, only PDF files are allowed.'); input.value = ''; return; }
+    if (isPDF && file.size > 200*1024) { Toast.error('PDF too large. Max 200KB.'); input.value = ''; return; }
+}
 
-        // On Laptop (non-mobile), only PDF is allowed
-        if (!isMobile && !isPDF) {
-            Toast.error("On laptop, only PDF files are allowed. Please use a mobile device for image uploads.");
-            input.value = "";
-            return;
-        }
+// Username ajax check
+document.getElementById('username').addEventListener('blur', function() {
+    const v = this.value.trim(), s = document.getElementById('usernameStatus');
+    if (v.length < 3) { s.textContent = ''; return; }
+    fetch('/check-username/?username=' + encodeURIComponent(v)).then(r=>r.json()).then(d => {
+        s.textContent = d.available ? '✓ Available' : '✗ Username already taken';
+        s.style.color = d.available ? '#16a34a' : '#dc2626';
+    }).catch(()=>{});
+});
 
-        if (!isPDF && !isImage) {
-            Toast.error("Please upload a PDF or an image.");
-            input.value = "";
-            return;
-        }
+// Email ajax check
+document.getElementById('email').addEventListener('blur', function() {
+    const v = this.value.trim(), s = document.getElementById('emailStatus');
+    if (!v || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { s.textContent = ''; return; }
+    fetch('/customadmin/check-email/?email=' + encodeURIComponent(v)).then(r=>r.json()).then(d => {
+        s.textContent = d.available ? '✓ Available' : '✗ Email already registered';
+        s.style.color = d.available ? '#16a34a' : '#dc2626';
+    }).catch(()=>{});
+});
 
-        if (isPDF && file.size > 200 * 1024) {
-            Toast.error("PDF too large. Max 200KB.");
-            input.value = "";
-            return;
-        }
+// Phone validation
+document.getElementById('phone_number').addEventListener('input', function() {
+    this.value = this.value.replace(/\D/g, '').slice(0, 10);
+    const s = document.getElementById('phoneStatus');
+    if (this.value.length > 0 && this.value.length !== 10) {
+        s.textContent = 'Must be exactly 10 digits'; s.style.color = '#dc2626';
+    } else if (this.value.length === 10) {
+        s.textContent = '✓ Valid number'; s.style.color = '#16a34a';
+    } else { s.textContent = ''; }
+});
+
+// Password rules & match
+const pw = document.getElementById('password'), cf = document.getElementById('confirm_password');
+const r = document.getElementById('pwRules'), m = document.getElementById('pwMatch');
+pw.addEventListener('input', function() {
+    const v = this.value;
+    const len=v.length>=8, up=/[A-Z]/.test(v), lo=/[a-z]/.test(v), sp=/[@$!%*?&#]/.test(v);
+    const ok = len && up && lo && sp;
+    r.innerHTML = (ok ? '✓ ' : '✗ ') + '8+ chars, upper, lower & special required';
+    r.style.color = ok ? '#16a34a' : '#dc2626';
+    if (cf.value) checkMatch();
+});
+cf.addEventListener('input', checkMatch);
+function checkMatch() {
+    if (!cf.value) { m.textContent = ''; return; }
+    const ok = cf.value === pw.value;
+    m.textContent = ok ? '✓ Passwords match' : '✗ Passwords do not match';
+    m.style.color = ok ? '#16a34a' : '#dc2626';
+}
+
+// Final validation on submit
+document.getElementById('createStudentForm').addEventListener('submit', function(e) {
+    const pwVal = pw.value, cfVal = cf.value, file = document.querySelector('#proof_file').files[0];
+    if (pwVal.length < 8 || !/[A-Z]/.test(pwVal) || !/[a-z]/.test(pwVal) || !/[@$!%*?&#]/.test(pwVal)) {
+        e.preventDefault(); Toast.error('Password must be 8+ chars with uppercase, lowercase & special character.'); return;
     }
-
-    function togglecreatePassword(inputId, iconId) {
-        const input = document.getElementById(inputId);
-        const icon = document.getElementById(iconId);
-        if (input.type === "password") {
-            input.type = "text";
-            icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
-        } else {
-            input.type = "password";
-            icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
-        }
-    }
-
-    // Initialize Validation Engine
-    Validation.initForm('createStudentForm', {
-        fields: [
-            { id: 'username', label: 'Username', required: true },
-            { id: 'fullname', label: 'Full Name', required: true },
-            { id: 'email', label: 'Email Address', required: true, type: 'email' },
-            { id: 'phone_number', label: 'Contact Number', required: true, type: 'phone' },
-            { id: 'password', label: 'Password', required: true, custom: (val) => {
-                if (val.length < 8) return "Password must be at least 8 characters";
-                if (!/[A-Z]/.test(val)) return "Include at least one uppercase letter";
-                if (!/[a-z]/.test(val)) return "Include at least one lowercase letter";
-                if (!/[@$!%*?&#]/.test(val)) return "Include at least one special character";
-                return null;
-            }},
-            { id: 'confirm_password', label: 'Confirm Password', required: true, custom: (val, form) => {
-                if (val !== form.querySelector('#password').value) return "Passwords do not match";
-                return null;
-            }},
-            { id: 'proof_file', label: 'Verification Document', custom: (val, form) => {
-                const file = form.querySelector('#proof_file').files[0];
-                if (!file) return "Please upload a verification document";
-                return null;
-            }}
-        ]
-    });
+    if (pwVal !== cfVal) { e.preventDefault(); Toast.error('Passwords do not match.'); return; }
+    if (!file) { e.preventDefault(); Toast.error('Please upload a verification document.'); return; }
+});
 </script>
 {% endblock %}
-
-
