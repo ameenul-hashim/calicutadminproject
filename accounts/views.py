@@ -1765,10 +1765,17 @@ def edit_profile(request):
         from django.contrib.auth import update_session_auth_hash
         import re
 
-        # Handle Skip — mark photo cache as True so middleware stops redirecting
+        # Handle Skip — set default avatar and mark photo cache so middleware stops redirecting
         if request.POST.get('skip'):
             from django.core.cache import cache
-            cache.set(f"user_has_photo_{request.user.id}", True, 300)
+            if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
+                request.user.image = '/static/avatars/admin_m_0.png'
+            elif request.user.user_type == 'TEACHER':
+                request.user.image = '/static/avatars/teacher_m_0.png'
+            else:
+                request.user.image = '/static/avatars/student_m_0.png'
+            request.user.save(update_fields=['image'])
+            cache.delete(f"user_has_photo_{request.user.id}")
             redirect_url = reverse('teacher_dashboard') if request.user.user_type == 'TEACHER' else reverse('dashboard')
             return JsonResponse({'status': 'skip', 'redirect': redirect_url})
 
