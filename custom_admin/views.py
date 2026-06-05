@@ -2087,7 +2087,7 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     avatar_img = None
     _tmp_avatar_path = None
     avatar_url = getattr(user_obj, 'avatar_url', None)
-    if avatar_url:
+    if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
         try:
             resp = http_requests.get(avatar_url, timeout=10)
             if resp.status_code == 200:
@@ -2219,7 +2219,16 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     elements.append(Paragraph("Thank you for being part of Neo Learner Learning Academy.", styles['Footer']))
     elements.append(Paragraph("This is a computer-generated document and does not require a physical signature.", ParagraphStyle('Footer2', parent=styles['Footer'], fontSize=8)))
 
-    doc.build(elements)
+    try:
+        doc.build(elements)
+    except Exception:
+        try:
+            doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+            elements = [Paragraph("Error generating invoice. Please try again.", ParagraphStyle('Error', parent=styles['Normal'], fontSize=12, textColor=HexColor('#ef4444'), alignment=TA_CENTER))]
+            doc.build(elements)
+        except Exception:
+            from django.http import HttpResponse
+            return HttpResponse("Unable to generate PDF.", status=500)
     pdf_bytes = buf.getvalue()
     buf.close()
 
@@ -2236,7 +2245,6 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     return response
 
 
-@user_passes_test(is_admin, login_url='admin_login')
 @user_passes_test(is_admin, login_url='admin_login')
 def download_student_invoice_pdf(request, user_uid):
     student = get_object_or_404(CustomUser, uid=user_uid, user_type='STUDENT')
