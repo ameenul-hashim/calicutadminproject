@@ -44,7 +44,7 @@ def create_notification(user, message):
         return
     Notification.objects.create(user=user, message=message)
 
-@user_passes_test(lambda u: u.is_authenticated and u.is_staff, login_url='admin_login')
+@user_passes_test(lambda u: u.is_authenticated and (u.is_superuser or u.user_type == 'ADMIN'), login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_student_view_auth(request):
     # Direct access as requested - no password required for admin switching
@@ -62,7 +62,7 @@ def admin_student_view_auth(request):
 def admin_login_view(request):
     """Enterprise Admin Login with TOTP 2FA Support."""
     if request.user.is_authenticated:
-        if getattr(request.user, 'is_staff', False): return redirect('admin_dashboard')
+        if request.user.is_superuser or request.user.user_type == 'ADMIN': return redirect('admin_dashboard')
         logout(request)
         return redirect('admin_login')
         
@@ -75,7 +75,7 @@ def admin_login_view(request):
 
         user = authenticate(request, username=username, password=password)
         
-        if user is not None and user.is_staff:
+        if user is not None and (user.is_superuser or user.user_type == 'ADMIN'):
             # 2FA Check
             if user.totp_secret:
                 if otp_step and otp_code:
@@ -122,7 +122,7 @@ def admin_login_view(request):
     return render(request, 'custom_admin/login.html')
 
 def is_admin(user):
-    return user.is_authenticated and user.is_staff
+    return user.is_authenticated and (user.is_superuser or user.user_type == 'ADMIN')
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(is_admin, login_url='admin_login')
@@ -578,7 +578,6 @@ def create_teacher_admin(request):
             full_name=fullname,
             phone_number=phone_number,
             is_active=True,
-            is_staff=True,
             status='ACTIVE',
             user_type='TEACHER',
             pdf_path=pdf_url
@@ -1204,7 +1203,7 @@ def admin_delete_course_secure(request, course_uid):
             username.lower() == admin_user.email.lower()
         )
         
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+        if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN'):
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
             
@@ -1247,7 +1246,7 @@ def admin_delete_lesson_secure(request, lesson_uid):
             username.lower() == admin_user.email.lower()
         )
         
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+        if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN'):
             lesson = get_object_or_404(Lesson, uid=lesson_uid)
             lesson_title = lesson.title
             course_uid = lesson.course.uid
@@ -1283,7 +1282,7 @@ def admin_delete_resource_secure(request, resource_uid):
                 username.lower() == admin_user.email.lower()
             )
 
-            if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+            if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN'):
                 resource = get_object_or_404(CourseResource, uid=resource_uid)
                 resource_title = resource.title
                 course_uid = resource.course.uid
@@ -1355,7 +1354,7 @@ def delete_user_admin(request, user_uid):
             username.lower() == admin_user.email.lower()
         )
         
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+        if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN'):
             user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
             
             # Explicitly cleanup logs that don't cascade
@@ -1440,7 +1439,7 @@ def approve_deletion_request(request, request_uid):
         username.lower() == admin_user.username.lower() or
         username.lower() == admin_user.email.lower()
     )
-    if not (is_identity_match and admin_user.check_password(password) and admin_user.is_staff):
+    if not (is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN')):
         messages.error(request, "Admin credentials verification failed. Please enter your admin username and password.")
         return redirect('manage_deletion_requests')
 
@@ -1504,7 +1503,7 @@ def reject_deletion_request(request, request_uid):
         username.lower() == admin_user.username.lower() or
         username.lower() == admin_user.email.lower()
     )
-    if not (is_identity_match and admin_user.check_password(password) and admin_user.is_staff):
+    if not (is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN')):
         messages.error(request, "Admin credentials verification failed. Please enter your admin username and password.")
         return redirect('manage_deletion_requests')
     
@@ -1552,7 +1551,7 @@ def admin_permanent_delete_course_secure(request, course_uid):
             username.lower() == admin_user.email.lower()
         )
         
-        if is_identity_match and admin_user.check_password(password) and admin_user.is_staff:
+        if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN'):
             course = get_object_or_404(Course, uid=course_uid, status='DELETED')
             course_title = course.title
             course.delete()
