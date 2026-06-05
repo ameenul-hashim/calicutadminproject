@@ -838,53 +838,70 @@ def reject_course(request, course_uid):
 def edit_user_admin(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if request.method == 'POST':
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        fullname = request.POST.get('fullname')
-        phone_number = request.POST.get('phone_number')
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
-        profile_photo = request.FILES.get('profile_photo')
-        
-        if not all([username, email, fullname]):
-            messages.error(request, "Username, Email, and Full Name are mandatory fields.")
-        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messages.error(request, "The email address you entered is not in a valid format.")
-        elif password and (password != confirm_password):
-            messages.error(request, "The new passwords you entered do not match.")
-        elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
-            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
-        elif CustomUser.objects.filter(username=username).exclude(uid=user_uid).exists():
-            messages.error(request, "This username is already taken by another user.")
-        elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
-            messages.error(request, "This email is already registered to another account.")
-        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(uid=user_uid).exclude(status='REJECTED').exists():
-            messages.error(request, "This contact number is already in use by another active account.")
-        elif phone_number and len(''.join(filter(str.isdigit, phone_number))) != 10:
-            messages.error(request, "Contact number must be exactly 10 digits.")
-        else:
-            user.username = username
-            user.email = email
-            user.full_name = fullname
-            user.phone_number = phone_number
-            if password:
-                user.set_password(password)
-            
-            if profile_photo:
-                if profile_photo.size > 2 * 1024 * 1024:
-                    messages.error(request, "Profile photo exceeds 2MB limit.")
-                else:
-                    if update_image(user, profile_photo, folder="Neo Learner/profiles"):
-                        messages.success(request, "✅ Profile photo updated successfully!")
+        form_type = request.POST.get('form_type')
+
+        if form_type == 'profile':
+            fullname = request.POST.get('fullname')
+            phone_number = request.POST.get('phone_number')
+            profile_photo = request.FILES.get('profile_photo')
+
+            if not fullname:
+                messages.error(request, "Full Name is required.")
+            elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(uid=user_uid).exclude(status='REJECTED').exists():
+                messages.error(request, "This contact number is already in use by another active account.")
+            elif phone_number and len(''.join(filter(str.isdigit, phone_number))) != 10:
+                messages.error(request, "Contact number must be exactly 10 digits.")
+            else:
+                user.full_name = fullname
+                user.phone_number = phone_number
+
+                if profile_photo:
+                    if profile_photo.size > 2 * 1024 * 1024:
+                        messages.error(request, "Profile photo exceeds 2MB limit.")
                     else:
-                        messages.error(request, "Failed to update profile photo.")
-                
-            user.save()
-            messages.success(request, f"✅ User {user.username} data updated successfully!")
-            if user.user_type == 'TEACHER':
-                return redirect('manage_teachers')
-            return redirect('manage_students')
-            
+                        if update_image(user, profile_photo, folder="Neo Learner/profiles"):
+                            messages.success(request, "Profile photo updated successfully!")
+                        else:
+                            messages.error(request, "Failed to update profile photo.")
+
+                user.save(update_fields=['full_name', 'phone_number'] if not profile_photo else None)
+                messages.success(request, f"Profile for {user.full_name} updated successfully!")
+                if user.user_type == 'TEACHER':
+                    return redirect('manage_teachers')
+                return redirect('manage_students')
+
+        elif form_type == 'credentials':
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            password = request.POST.get('password')
+            confirm_password = request.POST.get('confirm_password')
+
+            if not all([username, email]):
+                messages.error(request, "Username and Email are required.")
+            elif CustomUser.objects.filter(username=username).exclude(uid=user_uid).exists():
+                messages.error(request, "This username is already taken by another user.")
+            elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
+                messages.error(request, "This email is already registered to another account.")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                messages.error(request, "The email address you entered is not in a valid format.")
+            elif password and (password != confirm_password):
+                messages.error(request, "The new passwords you entered do not match.")
+            elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+                messages.error(request, "Password must be 8+ characters and include at least one uppercase letter, one lowercase letter, and one special character.")
+            else:
+                user.username = username
+                user.email = email
+                if password:
+                    user.set_password(password)
+                user.save(update_fields=['username', 'email'] if not password else None)
+                messages.success(request, f"Credentials for {user.full_name} updated successfully!")
+                if user.user_type == 'TEACHER':
+                    return redirect('manage_teachers')
+                return redirect('manage_students')
+
+        else:
+            messages.error(request, "Invalid form submission.")
+
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
