@@ -19,7 +19,7 @@
 {% endblock %}
 
 {% block content %}
-    <div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white; display: flex; flex-direction: column; height: calc(100vh - 220px);">
+    <div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white; display: flex; flex-direction: column; height: calc(100vh - 140px);">
         <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
             <a href="{% url 'create_student_admin' %}" class="btn-primary" style="padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #0ea5e9; color: white; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);">
                 <span>+</span> New Student
@@ -121,7 +121,7 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">No students found.</td>
+                            <td colspan="7" style="padding: 3rem; text-align: center; color: #94a3b8;">No students found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
