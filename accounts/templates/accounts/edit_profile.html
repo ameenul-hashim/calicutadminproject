@@ -231,26 +231,28 @@
         const usernameInput = document.getElementById('new_username');
         const usernameStatus = document.getElementById('usernameStatus');
 
-        usernameInput.addEventListener('blur', function() {
-            const val = this.value.trim();
-            if (!val || val === origUsername) {
-                usernameStatus.textContent = '';
-                usernameStatus.style.color = 'transparent';
-                return;
-            }
-            fetch('/check-username/?username=' + encodeURIComponent(val))
-                .then(r => r.json())
-                .then(data => {
-                    if (data.available) {
-                        usernameStatus.textContent = '✓ Username available';
-                        usernameStatus.style.color = '#10b981';
-                    } else {
-                        usernameStatus.textContent = '✗ Username already taken';
-                        usernameStatus.style.color = '#ef4444';
-                    }
-                })
-                .catch(() => {});
-        });
+        if (usernameInput) {
+            usernameInput.addEventListener('blur', function() {
+                const val = this.value.trim();
+                if (!val || val === origUsername) {
+                    usernameStatus.textContent = '';
+                    usernameStatus.style.color = 'transparent';
+                    return;
+                }
+                fetch('/check-username/?username=' + encodeURIComponent(val))
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.available) {
+                            usernameStatus.textContent = '✓ Username available';
+                            usernameStatus.style.color = '#10b981';
+                        } else {
+                            usernameStatus.textContent = '✗ Username already taken';
+                            usernameStatus.style.color = '#ef4444';
+                        }
+                    })
+                    .catch(() => {});
+            });
+        }
 
         function toggleCredSection() {
             const section = document.getElementById('credSection');
