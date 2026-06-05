@@ -420,9 +420,13 @@
 
                 <!-- 3. Manage Courses -->
                 <div class="nav-group">
-                    <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">
-                        📚 Courses
-                    </a>
+                    <button class="nav-link dropdown-btn" onclick="toggleDropdown('course-drop')">
+                        <span>📚 Manage Courses</span>
+                        <span id="course-arrow">▼</span>
+                    </button>
+                    <div id="course-drop" class="dropdown-container {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">
+                        <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">Courses</a>
+                    </div>
                 </div>
 
                 <!-- 4. Student View -->
