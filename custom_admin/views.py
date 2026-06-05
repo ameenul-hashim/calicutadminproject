@@ -1367,8 +1367,28 @@ def delete_user_admin(request, user_uid):
     try:
         target_user = get_object_or_404(CustomUser, uid=user_uid)
     except Exception:
-        messages.error(request, "⚠️ User not found.")
+        messages.error(request, "User not found.")
         return redirect('manage_students')
+
+    # TEACHER CONTENT CHECK — block deletion if any content exists
+    if target_user.user_type == 'TEACHER':
+        from accounts.models import CourseResource
+        course_count = Course.objects.filter(teacher=target_user).count()
+        lesson_count = Lesson.objects.filter(course__teacher=target_user).count()
+        resource_count = CourseResource.objects.filter(course__teacher=target_user).count()
+
+        if course_count > 0 or lesson_count > 0 or resource_count > 0:
+            messages.error(request, (
+                f"Cannot delete teacher {target_user.full_name or target_user.username}. "
+                f"This teacher still owns: "
+                f"{course_count} Course{'s' if course_count != 1 else ''}, "
+                f"{lesson_count} Lesson{'s' if lesson_count != 1 else ''}, "
+                f"{resource_count} Resource{'s' if resource_count != 1 else ''}. "
+                f"Delete all teacher-owned content first."
+            ))
+            if target_user.user_type == 'TEACHER':
+                return redirect('manage_teachers')
+            return redirect('manage_students')
     
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
@@ -1396,14 +1416,13 @@ def delete_user_admin(request, user_uid):
             ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
             
             target_user.delete()
-            messages.success(request, f"✅ User {user_info} and all associated data permanently purged.")
+            messages.success(request, f"{target_user.user_type.title()} {target_user.full_name or target_user.username} deleted successfully.")
             
-            # Redirect back to appropriate list
             if target_user.user_type == 'TEACHER':
                 return redirect('manage_teachers')
             return redirect('manage_students')
         else:
-            messages.error(request, "Action not allowed. Please verify administrator credentials.")
+            messages.error(request, "Invalid admin credentials.")
             
     return render(request, 'custom_admin/delete_user_confirm.html', {
         'target_user': target_user
