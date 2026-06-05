@@ -1583,7 +1583,7 @@ def deleted_courses_view(request):
     from django.db.models import Count
     courses = Course.objects.filter(status='DELETED').select_related('teacher').annotate(
         lessons_count=Count('lessons'),
-        resources_count=Count('courseresource'),
+        resources_count=Count('resources'),
     ).order_by('-created_at')[:20]
     
     return render(request, 'custom_admin/deleted_courses.html', {

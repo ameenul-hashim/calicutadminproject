@@ -420,19 +420,9 @@
 
                 <!-- 3. Manage Courses -->
                 <div class="nav-group">
-                    <button class="nav-link dropdown-btn" onclick="toggleDropdown('course-drop')">
-                        <span>📚 Manage Courses</span>
-                        <span id="course-arrow">▼</span>
-                    </button>
-                    <div id="course-drop" class="dropdown-container {% if 'content' in request.path or 'pending_courses' in request.path %}active{% endif %}">
-                        <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">Details</a>
-                        <a href="{% url 'pending_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_courses' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
-                            Requests
-                            {% if pending_courses_total > 0 %}
-                            <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_courses_total }}</span>
-                            {% endif %}
-                        </a>
-                    </div>
+                    <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">
+                        📚 Courses
+                    </a>
                 </div>
 
                 <!-- 4. Student View -->
