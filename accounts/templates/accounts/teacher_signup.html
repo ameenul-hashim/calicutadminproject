@@ -90,8 +90,6 @@
                         {% endfor %}
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        <label for="avatar_upload" style="font-size: 0.8rem; color: #6366f1; cursor: pointer; font-weight: 600; padding: 0.3rem 0.8rem; border: 1px dashed #6366f1; border-radius: 0.5rem;">Upload Custom</label>
-                        <input type="file" name="avatar_upload" id="avatar_upload" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
                         <span id="avatarFileName" style="font-size: 0.8rem; color: #94a3b8;"></span>
                         <a href="#" onclick="skipAvatar(event)" style="font-size: 0.8rem; color: #94a3b8; text-decoration: none; margin-left: auto;">Skip for now</a>
                     </div>
@@ -211,12 +209,10 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const val = document.getElementById('avatarUrlInput').value;
-            if (val && val !== '__upload__') {
+            if (val) {
                 document.querySelectorAll('.av-choice').forEach(a => {
                     if (a.dataset.avatar === val) selectAvatar(a);
                 });
-            } else if (val === '__upload__') {
-                document.getElementById('avatarFileName').textContent = 'Custom image selected';
             }
         });
         function selectAvatar(el) {
@@ -232,14 +228,6 @@
             document.getElementById('avatarUrlInput').value = '';
             document.getElementById('avatarFileName').textContent = 'Skipped — set later in profile';
         }
-        function handleAvatarUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
-            document.querySelectorAll('.av-choice').forEach(a => a.style.borderColor = '#e2e8f0');
-            document.getElementById('avatarUrlInput').value = '__upload__';
-            document.getElementById('avatarFileName').textContent = file.name;
-        }
-
         // Initialize Validation Engine
         Validation.initForm('signupForm', {
             fields: [
