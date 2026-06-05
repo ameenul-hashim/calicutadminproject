@@ -246,12 +246,12 @@ def admin_teacher_profile(request, user_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_users_view(request):
-    pending_students = CustomUser.objects.filter(status='PENDING', user_type='STUDENT').exclude(is_superuser=True)
+    pending_students = CustomUser.objects.filter(status='PENDING', user_type='STUDENT').exclude(is_superuser=True).order_by('-date_joined')
     return render(request, 'custom_admin/pending_students.html', {'users': pending_students})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_teachers_view(request):
-    pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True)
+    pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True).order_by('-date_joined')
     return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
 
 @user_passes_test(is_admin, login_url='admin_login')
