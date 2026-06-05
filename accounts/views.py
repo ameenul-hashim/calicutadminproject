@@ -315,7 +315,7 @@ def teacher_signup_view(request):
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
-                is_active=False, is_staff=True, status='PENDING', user_type='TEACHER',
+                is_active=False, status='PENDING', user_type='TEACHER',
             )
 
             # Avatar (optional)

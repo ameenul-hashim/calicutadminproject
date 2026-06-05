@@ -143,7 +143,7 @@ class PortalSecurityMiddleware:
                     messages.error(request, "Admin panel is strictly restricted to desktop/laptop devices for security.")
                     return redirect('login')
 
-                if request.user.is_authenticated and not request.user.is_staff:
+                if request.user.is_authenticated and not (request.user.is_superuser or request.user.user_type == 'ADMIN'):
                     if request.user.user_type == 'TEACHER':
                         return redirect('teacher_dashboard')
                     else:
