@@ -133,13 +133,7 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            {% if user.image or user.profile_photo %}
-            <!-- ════ Manage Credentials Toggle ════ -->
-            <button type="button" onclick="toggleCredSection()" id="credToggleBtn" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 1rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; margin-bottom: 1.5rem;">
-                🔐 Manage Credentials
-            </button>
-
-            <div id="credSection" style="display: none;">
+            <div id="credSection">
                 <!-- ════ Username Section ════ -->
                 <div style="margin-top: 1.5rem; padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem;">
                     <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Username</h3>
@@ -202,15 +196,12 @@
                     </div>
                 </div>
             </div>
-            {% endif %}
 
             <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
             <div style="text-align: center; margin-top: 0.75rem;">
                 <a href="javascript:void(0)" id="skipBtn" style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;">Skip</a>
             </div>
-            {% if user.image or user.profile_photo %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
-            {% endif %}
         </form>
     </div>
 
@@ -252,21 +243,6 @@
                     })
                     .catch(() => {});
             });
-        }
-
-        function toggleCredSection() {
-            const section = document.getElementById('credSection');
-            const btn = document.getElementById('credToggleBtn');
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                section.style.animation = 'slideDown 0.3s ease';
-                btn.textContent = '✕ Close Credentials';
-                btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-            } else {
-                section.style.display = 'none';
-                btn.textContent = '🔐 Manage Credentials';
-                btn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
-            }
         }
 
         const avatarOptions = document.querySelectorAll('.avatar-option');
