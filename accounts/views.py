@@ -190,17 +190,12 @@ def signup_view(request):
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # Avatar (optional)
+            # Avatar from grid selection
             avatar_url = request.POST.get('avatar_url', '')
-            avatar_file = request.FILES.get('avatar_upload')
-            if avatar_url and avatar_url != '__upload__':
+            if avatar_url:
                 user.image = avatar_url
                 user.save(update_fields=['image'])
-            elif avatar_file:
-                from accounts.utils.cloudinary_helpers import update_image
-                update_image(user, avatar_file, folder="Neo Learner/profiles")
 
-            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
             from accounts.utils.pdf_helpers import convert_image_to_pdf
             from accounts.utils.supabase_storage import upload_user_proof
 
@@ -318,17 +313,12 @@ def teacher_signup_view(request):
                 is_active=False, status='PENDING', user_type='TEACHER',
             )
 
-            # Avatar (optional)
+            # Avatar from grid selection
             avatar_url = request.POST.get('avatar_url', '')
-            avatar_file = request.FILES.get('avatar_upload')
-            if avatar_url and avatar_url != '__upload__':
+            if avatar_url:
                 user.image = avatar_url
                 user.save(update_fields=['image'])
-            elif avatar_file:
-                from accounts.utils.cloudinary_helpers import update_image
-                update_image(user, avatar_file, folder="Neo Learner/profiles")
 
-            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
             from accounts.utils.pdf_helpers import convert_image_to_pdf
             from accounts.utils.supabase_storage import upload_user_proof
 
@@ -344,7 +334,6 @@ def teacher_signup_view(request):
                     raise Exception("Supabase storage failure.")
             else:
                 logger.debug("Teacher signup: processing image for %s", username)
-                # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
                 
                 if not optimized_pdf:
