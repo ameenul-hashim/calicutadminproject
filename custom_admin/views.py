@@ -254,6 +254,8 @@ def pending_teachers_view(request):
     return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def accept_user(request, user_uid):
     try:
         user = get_object_or_404(CustomUser, uid=user_uid)
@@ -343,16 +345,21 @@ def decline_user(request, user_uid):
         return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def toggle_user_status(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if user.status == 'ACTIVE':
         user.status = 'BLOCKED'
         user.is_active = False
         msg = "blocked"
-    else:
+    elif user.status == 'BLOCKED':
         user.status = 'ACTIVE'
         user.is_active = True
         msg = "activated"
+    else:
+        messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED users can be toggled.")
+        return redirect('manage_students' if user.user_type != 'TEACHER' else 'manage_teachers')
     user.save()
     messages.success(request, f"✅ User {user.username} has been {msg}.")
     if user.user_type == 'TEACHER':
@@ -584,6 +591,7 @@ def create_teacher_admin(request):
 @user_passes_test(is_admin, login_url='admin_login')
 def analytics_view(request):
     from django.db.models import Count, Q, Sum
+    from accounts.models import CourseResource
 
     # ===== CARD METRICS =====
     active_users = CustomUser.objects.filter(status='ACTIVE').count()
@@ -709,6 +717,8 @@ def pending_courses_view(request):
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def approve_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
     
@@ -774,12 +784,6 @@ def approve_course(request, course_uid):
         lesson.save()
 
     create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
-    
-    # Notify all active students about new course
-    students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
-    teacher_name = course.teacher.full_name or course.teacher.username
-    for student in students:
-        create_notification(student, f"{teacher_name} added course {course.title}")
     
     ApprovalLog.objects.create(
         content_type='COURSE',
@@ -880,6 +884,8 @@ def edit_user_admin(request, user_uid):
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def approve_lesson(request, lesson_uid):
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
     
@@ -962,6 +968,8 @@ def reject_lesson(request, lesson_uid):
     return render(request, 'custom_admin/decline_reason.html', {'lesson': lesson, 'is_content': True, 'content_type': 'Lesson'})
 
 @user_passes_test(is_admin, login_url='admin_login')
+@csrf_protect
+@require_POST
 def approve_resource(request, resource_uid):
     from accounts.models import CourseResource, Enrollment
     from accounts.views import create_notification
@@ -1080,7 +1088,7 @@ def reject_resource(request, resource_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_resources(request):
     from accounts.models import CourseResource
-    resources = CourseResource.objects.filter(is_approved=False).select_related('course__teacher').order_by('-created_at')
+    resources = CourseResource.objects.filter(is_approved=False, status='PENDING').select_related('course__teacher').order_by('-created_at')
     return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1218,7 +1226,7 @@ def admin_delete_course_secure(request, course_uid):
             course.delete()
             
             messages.success(request, f"✅ '{course_title}' and all associated storage files have been permanently purged.")
-            return redirect('admin_deleted_courses')
+            return redirect('deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
@@ -1313,8 +1321,9 @@ def admin_update_order(request, item_type, uid):
             elif item_type == 'resource':
                 from accounts.models import CourseResource
                 item = get_object_or_404(CourseResource, uid=uid)
-                item.order = new_order
-                item.save(update_fields=['order'])
+                if hasattr(item, 'order'):
+                    item.order = new_order
+                    item.save(update_fields=['order'])
                 course_uid = item.course.uid
             else:
                 return redirect('admin_content')
@@ -1328,7 +1337,6 @@ def admin_update_order(request, item_type, uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 @csrf_protect
-@require_POST
 def delete_user_admin(request, user_uid):
     try:
         target_user = get_object_or_404(CustomUser, uid=user_uid)

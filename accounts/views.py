@@ -133,7 +133,6 @@ def signup_view(request):
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
         avatar_url = request.POST.get('avatar_url', '')
-        is_mobile = request.POST.get('is_mobile') == 'true'
 
         logger.debug("Student signup attempt: %s", username)
 
@@ -255,7 +254,6 @@ def teacher_signup_view(request):
         proof_file = request.FILES.get('proof_file')
         phone_number = request.POST.get('phone_number')
         avatar_url = request.POST.get('avatar_url', '')
-        is_mobile = request.POST.get('is_mobile') == 'true'
 
         ctx = {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number, 'avatar_url': avatar_url}
 
@@ -844,6 +842,10 @@ def create_course(request):
         # Accept either the compressed version (JS succeeded) or raw version (JS fallback)
         thumbnail = request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed')
 
+        if not all([title, description, category, level]):
+            messages.error(request, "All required fields (title, description, category, level) must be filled.")
+            return render(request, 'teacher_portal/create_course.html')
+
         from .utils.cloudinary_helpers import update_image
         course = Course.objects.create(
             teacher=request.user,
@@ -1143,15 +1145,21 @@ def add_lesson(request, course_uid):
 
         chapter = request.POST.get('chapter', '')
 
-        # MP4 file uploads should use the AJAX endpoints
         if video_source == 'file' and video_file:
             messages.error(request, "MP4 uploads must use the upload button. Please try again.")
             return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
 
+        if video_source == 'file' and not video_file:
+            messages.error(request, "Please upload a video file or select YouTube URL mode.")
+            return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
+
         if video_source == 'url' and video_url:
             video_url = video_url.strip()
-        else:
+        elif video_source == 'url' and not video_url:
             messages.error(request, "Please provide a YouTube video link.")
+            return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
+        elif video_source not in ('file', 'url'):
+            messages.error(request, "Invalid video source selected.")
             return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
 
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
@@ -1168,7 +1176,7 @@ def add_lesson(request, course_uid):
             chapter=chapter,
             video_url=video_url,
             video_file=None,
-            order=request.POST.get('order', course.lessons.count() + 1),
+            order=max(int(order_raw), 1) if (order_raw := request.POST.get('order')) and order_raw.strip() else (course.lessons.count() + 1),
             status=lesson_status,
             is_approved=lesson_approved,
             youtube_video_id=youtube_video_id,
@@ -1203,17 +1211,25 @@ def edit_lesson(request, lesson_uid):
         video_source = request.POST.get('video_source', 'file')
         video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
-        order = request.POST.get('order', 1)
 
-        # MP4 file uploads should use the AJAX endpoint
         if video_source == 'file' and video_file:
             messages.error(request, "MP4 uploads must use the upload button. Please try again.")
             return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
 
+        if video_source == 'file' and not video_file:
+            messages.error(request, "Please upload a video file or select YouTube URL mode.")
+            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+
         if video_source == 'url' and video_url:
             video_url = video_url.strip()
-        else:
+        elif video_source == 'url' and not video_url:
             video_url = lesson.video_url or ''
+        elif video_source not in ('file', 'url'):
+            messages.error(request, "Invalid video source selected.")
+            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+
+        order_raw = request.POST.get('order')
+        order = max(int(order_raw), 1) if order_raw and order_raw.strip() else lesson.order
 
         youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
         new_youtube_video_id = youtube_match.group(1) if youtube_match else None
@@ -1800,9 +1816,9 @@ def edit_profile(request):
 
         profile_photo = request.FILES.get('profile_photo')
         if profile_photo:
-            MAX_SIZE = 2 * 1024 * 1024 * 1024
+            MAX_SIZE = 5 * 1024 * 1024
             if profile_photo.size > MAX_SIZE:
-                return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 2GB allowed).'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 5MB allowed).'}, status=400)
             
             from .utils.cloudinary_helpers import update_image
             if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
@@ -2004,7 +2020,7 @@ def course_player(request, course_uid):
         'approved_resources': approved_resources,
         'resource_counts': resource_counts,
         'chapters': chapters_data,
-        'first_lesson': lessons.first() if lessons.exists() else None,
+        'first_lesson': lessons.first(),
         'is_admin': getattr(request.user, 'is_staff', False),
     }
     return render(request, 'accounts/course_player.html', context)
@@ -2296,7 +2312,7 @@ def pdf_viewer(request, resource_uid):
         return HttpResponseForbidden("Failed to retrieve resource. Please contact administrator.")
 
     # Track view on initial page load (not on iframe redirect)
-    CourseResource.objects.filter(pk=resource.pk).update(view_count=models.F('view_count') + 1)
+    CourseResource.objects.filter(pk=resource.pk).update(view_count=F('view_count') + 1)
 
     return render(request, 'accounts/pdf_viewer.html', {
         'proxy_url': signed_url,
@@ -2362,7 +2378,7 @@ def stream_video(request, lesson_uid):
     import requests
 
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
-    course = lesson.lesson_course
+    course = lesson.course
     is_teacher = (request.user.user_type == 'TEACHER' and course.teacher == request.user)
     is_admin = getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN'
 
@@ -2417,8 +2433,6 @@ def all_notifications(request):
             n['created_at_display'] = dt_mod.fromtimestamp(ts / 1000, tz=tz_mod.utc).strftime('%b %d, %Y %I:%M %p')
         else:
             n['created_at_display'] = ''
-    
-    mark_all_read(str(request.user.uid))
     
     base_template = 'custom_admin/base_admin.html' if (request.user.user_type == 'ADMIN' or request.user.is_superuser) else 'accounts/base.html'
     if request.user.user_type == 'TEACHER' and not request.user.is_superuser:
