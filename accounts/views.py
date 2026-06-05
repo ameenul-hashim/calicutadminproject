@@ -150,8 +150,8 @@ def signup_view(request):
             messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
             return render(request, 'accounts/signup.html', ctx)
 
-        if (CustomUser.objects.filter(username__iexact=username).exists() or
-            CustomUser.objects.filter(email__iexact=email).exists() or
+        if (CustomUser.objects.filter(username__iexact=username).exclude(status='REJECTED').exists() or
+            CustomUser.objects.filter(email__iexact=email).exclude(status='REJECTED').exists() or
             CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists()):
             messages.error(request, "This information conflicts with an existing account. Please check your details or try logging in.")
             return render(request, 'accounts/signup.html', ctx)
@@ -260,12 +260,12 @@ def teacher_signup_view(request):
             messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        # Unique checks
-        if CustomUser.objects.filter(username__iexact=username).exists():
+        # Unique checks — exclude REJECTED so users can reapply
+        if CustomUser.objects.filter(username__iexact=username).exclude(status='REJECTED').exists():
             messages.error(request, "This username is already taken. Please try another one.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        if CustomUser.objects.filter(email__iexact=email).exists():
+        if CustomUser.objects.filter(email__iexact=email).exclude(status='REJECTED').exists():
             messages.error(request, "This email is already registered. If it's yours, try logging in.")
             return render(request, 'accounts/teacher_signup.html', ctx)
         
