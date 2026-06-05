@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -1764,6 +1765,13 @@ def edit_profile(request):
         from django.contrib.auth import update_session_auth_hash
         import re
 
+        # Handle Skip — mark photo cache as True so middleware stops redirecting
+        if request.POST.get('skip'):
+            from django.core.cache import cache
+            cache.set(f"user_has_photo_{request.user.id}", True, 300)
+            redirect_url = reverse('teacher_dashboard') if request.user.user_type == 'TEACHER' else reverse('dashboard')
+            return JsonResponse({'status': 'skip', 'redirect': redirect_url})
+
         changes_made = False
         password_changed = False
         avatar_changed = False
@@ -1816,6 +1824,10 @@ def edit_profile(request):
             request.user.save()
             if password_changed:
                 update_session_auth_hash(request, request.user)
+
+            # Clear middleware photo cache so user isn't redirected back to edit_profile
+            from django.core.cache import cache
+            cache.delete(f"user_has_photo_{request.user.id}")
 
             if avatar_changed and not new_username and not new_password:
                 return JsonResponse({'status': 'success', 'message': '✅ Avatar updated successfully!'})
@@ -1892,6 +1904,8 @@ def teacher_edit_profile(request):
             request.user.save()
             if password_changed:
                 update_session_auth_hash(request, request.user)
+            from django.core.cache import cache
+            cache.delete(f"user_has_photo_{request.user.id}")
             return JsonResponse({'status': 'success', 'message': '✅ Profile updated successfully!'})
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
