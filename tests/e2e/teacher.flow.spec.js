@@ -38,7 +38,27 @@ async function tryNavigate(page, url) {
   }
 }
 
+async function ensureTeacherLoggedIn(page) {
+  if (!teacher) throw new Error('No teacher credentials');
+  // Navigate to dashboard — if redirected to login, re-authenticate
+  await page.goto(`${BASE_URL}/teacher/dashboard/`, { waitUntil: 'networkidle', timeout: 30000 }).catch(() => {});
+  await page.waitForTimeout(1000);
+  if (page.url().includes('/login/')) {
+    console.log('[AUTH] Session expired, re-logging in...');
+    await tryFill(page, '#username', teacher.username);
+    await tryFill(page, '#password', teacher.password);
+    const loginBtn = page.locator('#loginBtn, button[type="submit"]').first();
+    await loginBtn.click();
+    await page.waitForTimeout(2000);
+    console.log(`[AUTH] Re-login result URL: ${page.url()}`);
+  } else {
+    console.log('[AUTH] Session valid');
+  }
+}
+
 test.describe('Teacher Flow - Full LMS Audit', () => {
+  let loginEstablished = false;
+
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     // Disable device restriction overlay on every page load
@@ -62,6 +82,18 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
         });
       }
     });
+    // Auto-re-login once login has been established (after TEACHER-04b passes)
+    if (loginEstablished && teacher) {
+      await page.goto(`${BASE_URL}/teacher/dashboard/`, { waitUntil: 'networkidle', timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      if (page.url().includes('/login/')) {
+        await tryFill(page, '#username', teacher.username);
+        await tryFill(page, '#password', teacher.password);
+        const loginBtn = page.locator('#loginBtn, button[type="submit"]').first();
+        await loginBtn.click();
+        await page.waitForTimeout(1500);
+      }
+    }
   });
 
   // ===================================================================
@@ -597,8 +629,10 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
       const loggedIn = currentUrl.includes('/dashboard/') || currentUrl.includes('/teacher/dashboard/');
       if (loggedIn) {
         console.log('[TEACHER-04b] SUCCESS: Teacher logged in successfully (dashboard)');
+        loginEstablished = true;
       } else if (currentUrl.includes('/profile/edit/')) {
         console.log('[TEACHER-04b] SUCCESS: Teacher logged in (redirected to profile edit)');
+        loginEstablished = true;
       } else if (currentUrl.includes('/login/') || currentUrl.includes('/teacher/login/')) {
         console.log('[TEACHER-04b] Still on login page - login may have failed');
         bugs.push({
@@ -807,9 +841,7 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
       const ts = timestamp();
       await tryFill(page, '#title, input[name="title"]', `Test Course ${ts}`);
       await tryFill(page, '#description, textarea[name="description"]', `Description for test course ${ts}`);
-      await tryFill(page, '#category, select[name="category"]', 'Computer Science');
-      await tryFill(page, '#price, input[name="price"]', '0');
-      await tryFill(page, '#duration, input[name="duration"]', '4 weeks');
+      await tryFill(page, '#category, input[name="category"]', 'Computer Science');
 
       const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10000 }).catch(() => null);
       const imgUploadBtn = page.locator('#image-label, [for="image"], .upload-label, #upload-image-btn').first();
@@ -1084,13 +1116,39 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
 
       const ts = timestamp();
       await tryFill(page, '#title, input[name="title"]', `Test Lesson ${ts}`);
-      await tryFill(page, '#description, textarea[name="description"]', `Lesson description ${ts}`);
 
-      const videoField = page.locator('#video_url, #youtube_url, input[name="video_url"], input[name="youtube_url"]').first();
-      if (await videoField.count() > 0) {
-        await videoField.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-        console.log('[TEACHER-11] Video URL filled');
+      // Select "URL" as video source (default is "file")
+      const urlRadio = page.locator('input[name="video_source"][value="url"]');
+      if (await urlRadio.count() > 0) {
+        await urlRadio.click();
+        console.log('[TEACHER-11] Selected URL video source');
       }
+
+      // Fill visible YouTube URL input (copies to hidden video_url via JS)
+      const urlInput = page.locator('#video_url_input, input[name="video_url"]').first();
+      if (await urlInput.count() > 0) {
+        const type = await urlInput.getAttribute('type').catch(() => '');
+        if (type === 'hidden') {
+          await page.evaluate(() => {
+            const el = document.getElementById('video_url');
+            if (el) el.value = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+          });
+          console.log('[TEACHER-11] Video URL set via evaluate (hidden input)');
+        } else {
+          await urlInput.fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+          console.log('[TEACHER-11] Video URL filled');
+          // Trigger the oninput handler to copy to hidden video_url
+          await page.evaluate(() => {
+            const input = document.getElementById('video_url_input');
+            if (input) {
+              input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          });
+        }
+      }
+
+      // Fill order field if present
+      await tryFill(page, '#order, input[name="order"]', '1');
 
       const submitBtn = page.locator('button[type="submit"], input[type="submit"], .btn-submit, #submit-btn').first();
       await submitBtn.click();
@@ -1367,31 +1425,34 @@ test.describe('Teacher Flow - Full LMS Audit', () => {
       }
 
       await tryFill(page, '#title, input[name="title"]', `Test Resource ${timestamp()}`);
-      await tryFill(page, '#description, textarea[name="description"]', 'Resource description');
 
       const categoryField = page.locator('#category, select[name="category"]').first();
       if (await categoryField.count() > 0) {
         const options = await categoryField.locator('option').allTextContents().catch(() => []);
         console.log(`[TEACHER-16] Category options: ${JSON.stringify(options)}`);
         if (options.length > 1) {
-          await categoryField.selectOption(options[1]);
-        } else {
-          await categoryField.selectOption(options[0]);
+          await categoryField.selectOption({ index: 1 });
         }
+      }
+
+      // Set resource type to PDF
+      const typeField = page.locator('#resource_type, select[name="resource_type"]').first();
+      if (await typeField.count() > 0) {
+        await typeField.selectOption('PDF');
       }
 
       const pdfPath = getTestPdfPath();
       const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 10000 }).catch(() => null);
-      const uploadBtn = page.locator('#file-label, [for="file"], .upload-label, #file-input-label, label[for*="file"]').first();
-      if (await uploadBtn.count() > 0) {
-        await uploadBtn.click();
+      const uploadLabel = page.locator('label[for="upload_file"], #file-label, [for="file"]').first();
+      if (await uploadLabel.count() > 0) {
+        await uploadLabel.click();
         const fileChooser = await fileChooserPromise;
         if (fileChooser) {
           await fileChooser.setFiles([pdfPath]);
           console.log('[TEACHER-16] PDF selected for resource');
         }
       } else {
-        await page.setInputFiles('input[type="file"]', pdfPath).catch(e => {
+        await page.setInputFiles('#upload_file, input[type="file"]', pdfPath).catch(e => {
           console.log(`[TEACHER-16] Direct file input failed: ${e.message}`);
         });
       }

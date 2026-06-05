@@ -83,6 +83,10 @@ def admin_login_view(request):
                     if totp_service.verify_totp(user.totp_secret, otp_code):
                         login(request, user)
                         request.session.set_expiry(0)
+                        if not request.session.session_key:
+                            request.session.save()
+                        user.current_session_key = request.session.session_key
+                        user.save(update_fields=['current_session_key'])
                         log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated with 2FA")
                         from accounts.views import log_login_attempt as log_attempt
                         log_attempt(request, user)
@@ -97,6 +101,10 @@ def admin_login_view(request):
                 # No 2FA configured for this admin yet
                 login(request, user)
                 request.session.set_expiry(0)
+                if not request.session.session_key:
+                    request.session.save()
+                user.current_session_key = request.session.session_key
+                user.save(update_fields=['current_session_key'])
                 log_admin_activity(request, "LOGIN_SUCCESS", user, "Authenticated without 2FA (Legacy)")
                 from accounts.views import log_login_attempt as log_attempt
                 log_attempt(request, user)
@@ -249,6 +257,8 @@ def pending_teachers_view(request):
 def accept_user(request, user_uid):
     try:
         user = get_object_or_404(CustomUser, uid=user_uid)
+        logger.debug("Accepting user: uid=%s, username=%s, user_type=%s, current_status=%s, is_active=%s, is_staff=%s",
+                     user_uid, user.username, user.user_type, user.status, user.is_active, user.is_staff)
 
         user.status = 'ACTIVE'
         user.is_active = True
@@ -256,6 +266,7 @@ def accept_user(request, user_uid):
         user.approved_at = timezone.now()
         user.rejection_reason = ""
         user.save()
+        logger.debug("User after save: status=%s, is_active=%s", user.status, user.is_active)
 
         try:
             create_notification(user, "Your account has been approved by admin. You can now login.")
@@ -374,14 +385,20 @@ def create_student_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
         # 3. Unique Identification Checks
-        if CustomUser.objects.filter(username=username).exists():
+        if CustomUser.objects.filter(username__iexact=username).exists():
             messages.error(request, "This username is already taken. Please choose another one.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
-        
-        if CustomUser.objects.filter(email=email).exists():
+
+        if CustomUser.objects.filter(email__iexact=email).exists():
             messages.error(request, "This email is already registered. Please use a different email.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
@@ -478,14 +495,20 @@ def create_teacher_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
+        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+            messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
         # 3. Unique Identification Checks
-        if CustomUser.objects.filter(username=username).exists():
+        if CustomUser.objects.filter(username__iexact=username).exists():
             messages.error(request, "This username is already taken. Please choose another one.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
-        
-        if CustomUser.objects.filter(email=email).exists():
+
+        if CustomUser.objects.filter(email__iexact=email).exists():
             messages.error(request, "This email is already registered. Please use a different email.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number

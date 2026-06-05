@@ -19,6 +19,7 @@ class CustomUser(AbstractUser):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='ACTIVE', db_index=True)
     full_name = models.CharField(max_length=255, blank=True)
     profile_photo = models.ImageField(upload_to='profile_photos/', blank=True, null=True) # Legacy
+    email = models.EmailField(unique=True, max_length=254, blank=True)
     image = models.URLField(max_length=1000, blank=True, null=True)
     image_public_id = models.CharField(max_length=255, blank=True, null=True)
     proof_pdf = models.CharField(max_length=1000, blank=True, null=True) # Legacy Supabase path

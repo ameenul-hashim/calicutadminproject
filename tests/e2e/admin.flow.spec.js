@@ -20,6 +20,27 @@ function setupConsoleCapture(page) {
 test.describe('Admin Flow - Full LMS Audit', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
+    // Disable device restriction overlay on every page load
+    await page.addInitScript(() => {
+      const observer = new MutationObserver(() => {
+        const overlay = document.getElementById('device-restriction-overlay');
+        if (overlay) {
+          overlay.remove();
+          observer.disconnect();
+        }
+        const adminLayout = document.querySelector('.admin-layout');
+        if (adminLayout && window.getComputedStyle(adminLayout).display === 'none') {
+          adminLayout.style.setProperty('display', 'flex', 'important');
+        }
+      });
+      if (document.body) {
+        observer.observe(document.body, { childList: true, subtree: true });
+      } else {
+        document.addEventListener('DOMContentLoaded', () => {
+          observer.observe(document.body, { childList: true, subtree: true });
+        });
+      }
+    });
   });
 
   // ===================================================================
