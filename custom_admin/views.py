@@ -1028,10 +1028,9 @@ def approve_resource(request, resource_uid):
             from accounts.utils.pdf_processor import process_pdf
             
             # Download original
-            parts = teacher_original_path.split('/', 1)
-            bucket_name = parts[0]
-            p_in_b = parts[1] if len(parts) > 1 else teacher_original_path
-            original_bytes = res_supabase.storage.from_(bucket_name).download(p_in_b)
+            from accounts.utils.storage_manager import _get_resource_bucket
+            bucket_name = _get_resource_bucket()
+            original_bytes = res_supabase.storage.from_(bucket_name).download(teacher_original_path)
             
             if original_bytes:
                 comp_bytes, _ = process_pdf(original_bytes)

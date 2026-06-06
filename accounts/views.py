@@ -2267,15 +2267,13 @@ def access_resource(request, resource_uid):
     # Generate a short-lived signed URL — browser loads PDF directly from Supabase
     if resource.firebase_file_path:
         try:
-            from accounts.utils.storage_manager import supabase as res_supabase
+            from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
             if res_supabase is None:
                 logger.error(f"Resource Supabase client not initialized for {resource_uid}")
                 raise ValueError("Storage service not configured")
-            parts = resource.firebase_file_path.split('/', 1)
-            bucket = parts[0]
-            path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
+            bucket = _get_resource_bucket()
 
-            res = res_supabase.storage.from_(bucket).create_signed_url(path_in_bucket, 600)
+            res = res_supabase.storage.from_(bucket).create_signed_url(resource.firebase_file_path, 600)
             signed_url = res.get("signedURL") if isinstance(res, dict) else res
             if signed_url:
                 return redirect(signed_url)
@@ -2308,14 +2306,12 @@ def pdf_viewer(request, resource_uid):
     signed_url = None
     if resource.firebase_file_path:
         try:
-            from accounts.utils.storage_manager import supabase as res_supabase
+            from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
             if res_supabase is None:
                 logger.error(f"Resource Supabase client not initialized for pdf_viewer {resource_uid}")
                 raise ValueError("Storage service not configured")
-            parts = resource.firebase_file_path.split('/', 1)
-            bucket = parts[0]
-            path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
-            res = res_supabase.storage.from_(bucket).create_signed_url(path_in_bucket, 600)
+            bucket = _get_resource_bucket()
+            res = res_supabase.storage.from_(bucket).create_signed_url(resource.firebase_file_path, 600)
             signed_url = res.get("signedURL") if isinstance(res, dict) else res
         except Exception as e:
             logger.error(f"Signed URL failed in pdf_viewer for {resource_uid}: {e}")
@@ -2358,14 +2354,12 @@ def download_resource(request, resource_uid):
         resource.save(update_fields=['download_count'])
     
     # Stream file bytes directly from Supabase (never expose signed URL)
-    from accounts.utils.storage_manager import supabase as res_supabase
+    from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
     if res_supabase and resource.firebase_file_path:
         try:
-            parts = resource.firebase_file_path.split('/', 1)
-            bucket = parts[0]
-            path_in_bucket = parts[1] if len(parts) > 1 else resource.firebase_file_path
+            bucket = _get_resource_bucket()
             
-            file_bytes = res_supabase.storage.from_(bucket).download(path_in_bucket)
+            file_bytes = res_supabase.storage.from_(bucket).download(resource.firebase_file_path)
             if file_bytes:
                 content_type = resource.mime_type or 'application/octet-stream'
                 response = HttpResponse(file_bytes, content_type=content_type)
