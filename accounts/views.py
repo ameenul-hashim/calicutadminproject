@@ -1320,28 +1320,35 @@ def add_resource(request, course_uid):
 
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if request.method == 'POST':
-        title = request.POST.get('title')
-        category = request.POST.get('category')
-        resource_type = request.POST.get('resource_type')
+        title = request.POST.get('title', '').strip()
+        category = request.POST.get('category', '').strip()
         upload_file = request.FILES.get('upload_file')
 
+        if not title:
+            messages.error(request, "Please enter a resource name.")
+            return redirect('course_lessons', course_uid=course.uid)
+
+        if not category or category not in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
+            messages.error(request, "Please select a category (English, Malayalam, or Online).")
+            return redirect('course_lessons', course_uid=course.uid)
+
         if not upload_file:
-            messages.error(request, "File upload missing.")
+            messages.error(request, "Please select a PDF file to upload.")
             return redirect('course_lessons', course_uid=course.uid)
 
-        if resource_type not in ('PDF', 'DOCX'):
-            messages.error(request, "Only PDF and DOCX formats are supported.")
-            return redirect('course_lessons', course_uid=course.uid)
-
-        # Pre-read size gate: 20MB raw upload limit to prevent DoS (PyMuPDF uses 2-5x RAM)
-        MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+        # Pre-read size gate: 10MB raw upload limit
+        MAX_UPLOAD_BYTES = 10 * 1024 * 1024
         if upload_file.size > MAX_UPLOAD_BYTES:
-            messages.error(request, "File too large. Maximum upload size is 20MB.")
+            messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
             return redirect('course_lessons', course_uid=course.uid)
             
         try:
             from .utils.malware_scanner import scanner
+            resource_type = 'PDF'
             mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
+            if ext.lower() != 'pdf':
+                messages.error(request, "Only PDF files are allowed. Please select a PDF file.")
+                return redirect('course_lessons', course_uid=course.uid)
             is_infected, scan_reason = scanner.scan_file(upload_file)
             if is_infected:
                 logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
@@ -1352,20 +1359,7 @@ def add_resource(request, course_uid):
             file_bytes = upload_file.read()
             original_size = len(file_bytes)
             
-            # Convert DOCX to PDF internally, then process as PDF
-            if resource_type == 'DOCX':
-                from .utils.pdf_processor import convert_docx_to_pdf
-                pdf_bytes = convert_docx_to_pdf(file_bytes, title)
-                resource_type = 'PDF'
-                mime_type = 'application/pdf'
-                ext = 'pdf'
-                file_bytes = pdf_bytes
-            
-            compressed_bytes = file_bytes
-            thumbnail_bytes = None
-            if resource_type == 'PDF':
-                compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
-            
+            compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
             compressed_size = len(compressed_bytes)
             
             import uuid
@@ -1401,7 +1395,7 @@ def add_resource(request, course_uid):
                 resource_status = 'PENDING'
                 resource_approved = False
                 success_msg = f"Resource '{title}' uploaded and pending approval."
-                notify_admins(f"🆕 NEW RESOURCE: Teacher {request.user.username} uploaded a {resource_type} for course '{course.title}'.")
+                notify_admins(f"🆕 NEW RESOURCE: Teacher {request.user.username} uploaded a PDF for course '{course.title}'.")
 
             CourseResource.objects.create(
                 course=course,
@@ -1441,11 +1435,19 @@ def edit_resource(request, resource_uid):
     course = resource.course
 
     if request.method == 'POST':
-        title = request.POST.get('title')
-        category = request.POST.get('category')
-        resource_type = request.POST.get('resource_type')
+        title = request.POST.get('title', '').strip()
+        category = request.POST.get('category', '').strip()
         upload_file = request.FILES.get('upload_file')
 
+        if not title:
+            messages.error(request, "Please enter a resource name.")
+            return redirect('edit_resource', resource_uid=resource.uid)
+
+        if not category or category not in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
+            messages.error(request, "Please select a category (English, Malayalam, or Online).")
+            return redirect('edit_resource', resource_uid=resource.uid)
+
+        resource_type = 'PDF'
         is_approved = resource.status == 'APPROVED'
 
         # If a new file is uploaded
@@ -1458,19 +1460,18 @@ def edit_resource(request, resource_uid):
         new_comp_size = 0
 
         if upload_file:
-            if resource_type not in ('PDF', 'DOCX'):
-                messages.error(request, "Only PDF and DOCX formats are supported.")
-                return redirect('edit_resource', resource_uid=resource.uid)
-
-            # Pre-read size gate
-            MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+            # Pre-read size gate: 10MB
+            MAX_UPLOAD_BYTES = 10 * 1024 * 1024
             if upload_file.size > MAX_UPLOAD_BYTES:
-                messages.error(request, "File too large. Maximum upload size is 20MB.")
+                messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
                 return redirect('edit_resource', resource_uid=resource.uid)
                 
             try:
                 from .utils.malware_scanner import scanner
                 new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
+                if new_ext.lower() != 'pdf':
+                    messages.error(request, "Only PDF files are allowed. Please select a PDF file.")
+                    return redirect('edit_resource', resource_uid=resource.uid)
                 is_infected, scan_reason = scanner.scan_file(upload_file)
                 if is_infected:
                     logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
@@ -1481,20 +1482,7 @@ def edit_resource(request, resource_uid):
                 file_bytes = upload_file.read()
                 new_orig_size = len(file_bytes)
                 
-                # Convert DOCX to PDF internally
-                if resource_type == 'DOCX':
-                    from .utils.pdf_processor import convert_docx_to_pdf
-                    pdf_bytes = convert_docx_to_pdf(file_bytes, title)
-                    resource_type = 'PDF'
-                    new_mime = 'application/pdf'
-                    new_ext = 'pdf'
-                    file_bytes = pdf_bytes
-                
-                compressed_bytes = file_bytes
-                thumbnail_bytes = None
-                if resource_type == 'PDF':
-                    compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
-                
+                compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
                 new_comp_size = len(compressed_bytes)
                 
                 import uuid

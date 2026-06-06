@@ -483,9 +483,7 @@
                 </div>
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
-                    {% if res.status == 'APPROVED' or res.status == 'PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
-                    {% endif %}
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
                         {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
@@ -535,9 +533,7 @@
                 </div>
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
-                    {% if res.status == 'APPROVED' or res.status == 'PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
-                    {% endif %}
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
                         {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
@@ -587,9 +583,7 @@
                 </div>
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
-                    {% if res.status == 'APPROVED' or res.status == 'PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
-                    {% endif %}
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
                         {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
