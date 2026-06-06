@@ -2264,17 +2264,11 @@ def access_resource(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
     
-    # Generate a short-lived signed URL — browser loads PDF directly from Supabase
+    # Generate a short-lived signed URL — browser loads PDF directly from Supabase CDN
     if resource.firebase_file_path:
         try:
-            from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
-            if res_supabase is None:
-                logger.error(f"Resource Supabase client not initialized for {resource_uid}")
-                raise ValueError("Storage service not configured")
-            bucket = _get_resource_bucket()
-
-            res = res_supabase.storage.from_(bucket).create_signed_url(resource.firebase_file_path, 600)
-            signed_url = res.get("signedURL") if isinstance(res, dict) else res
+            from accounts.utils.storage_manager import StorageManager
+            signed_url = StorageManager.generate_supabase_signed_url(resource.firebase_file_path, 10)
             if signed_url:
                 return redirect(signed_url)
         except Exception as e:
@@ -2302,17 +2296,12 @@ def pdf_viewer(request, resource_uid):
         if not has_enrollment:
             return HttpResponseForbidden("You are not enrolled in this course.")
 
-    # Use signed URL instead of direct proxy — browser loads PDF from Supabase directly
+    # Generate signed URL — PDF.js renders pages directly from Supabase CDN
     signed_url = None
     if resource.firebase_file_path:
         try:
-            from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
-            if res_supabase is None:
-                logger.error(f"Resource Supabase client not initialized for pdf_viewer {resource_uid}")
-                raise ValueError("Storage service not configured")
-            bucket = _get_resource_bucket()
-            res = res_supabase.storage.from_(bucket).create_signed_url(resource.firebase_file_path, 600)
-            signed_url = res.get("signedURL") if isinstance(res, dict) else res
+            from accounts.utils.storage_manager import StorageManager
+            signed_url = StorageManager.generate_supabase_signed_url(resource.firebase_file_path, 10)
         except Exception as e:
             logger.error(f"Signed URL failed in pdf_viewer for {resource_uid}: {e}")
 
@@ -2354,18 +2343,13 @@ def download_resource(request, resource_uid):
         resource.save(update_fields=['download_count'])
     
     # Stream file bytes from Supabase in chunks (never expose signed URL directly)
-    from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
-    if res_supabase and resource.firebase_file_path:
+    if resource.firebase_file_path:
         try:
-            bucket = _get_resource_bucket()
+            from accounts.utils.storage_manager import StorageManager
             content_type = resource.mime_type or 'application/octet-stream'
             filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
 
-            # Generate signed URL for streaming (10 min expiry)
-            signed_result = res_supabase.storage.from_(bucket).create_signed_url(
-                resource.firebase_file_path, 600
-            )
-            signed_url = signed_result if isinstance(signed_result, str) else signed_result.get('signedURL')
+            signed_url = StorageManager.generate_supabase_signed_url(resource.firebase_file_path, 10)
             if not signed_url:
                 raise ValueError("Failed to generate signed URL")
 
