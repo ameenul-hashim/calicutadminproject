@@ -996,18 +996,6 @@ def reject_lesson(request, lesson_uid):
         course_uid = lesson.course.uid
         teacher = lesson.course.teacher
 
-        # If lesson has a YouTube video, delete it from YouTube
-        if lesson.youtube_video_id:
-            try:
-                from accounts.utils.youtube_uploader import delete_youtube_video
-                delete_youtube_video(lesson.youtube_video_id)
-                lesson.youtube_video_id = None
-                lesson.youtube_upload_status = 'NOT_UPLOADED'
-                lesson.upload_status = 'NOT_UPLOADED'
-                lesson.video_url = ''
-            except Exception as e:
-                logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
-
         lesson.status = 'REJECTED'
         lesson.is_approved = False
         lesson.rejection_reason = reason
