@@ -1155,6 +1155,10 @@ def admin_view_course_content(request, course_uid):
     # Fetch pending deletion requests for this course's content
     lesson_ids = list(lessons.values_list('id', flat=True))
     resource_ids = list(resources.values_list('id', flat=True))
+
+    course_deletion_request = DeletionRequest.objects.filter(
+        status='PENDING', item_type='Course', item_id=course.id
+    ).first()
     
     pending_deletions = DeletionRequest.objects.filter(
         status='PENDING'
@@ -1213,6 +1217,7 @@ def admin_view_course_content(request, course_uid):
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
         'chapters': chapters_data,
+        'course_deletion_request': course_deletion_request,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1552,10 +1557,12 @@ def approve_deletion_request(request, request_uid):
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
+            from django.utils import timezone
+            now = timezone.now()
             # Cascade soft-delete: mark all lessons and resources as deleted
             course.lessons.all().update(status='REJECTED', is_approved=False)
             from accounts.models import CourseResource
-            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True)
+            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True, deleted_at=now)
             course.status = 'DELETED'
             course.is_approved = False
             course.save()
