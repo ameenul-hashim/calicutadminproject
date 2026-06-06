@@ -203,51 +203,66 @@
                             <div class="ch-section resources-section">
                                 <div class="ch-section-title">📚 Resources</div>
                                 {% if chapter.cat_counts.ENGLISH %}
-                                <div class="res-group">
-                                    <div class="res-group-title" style="color:#10b981;">English ({{ chapter.cat_counts.ENGLISH }})</div>
-                                    {% for res in chapter.resources %}
-                                    {% if res.category == 'ENGLISH' %}
-                                    <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
-                                        <span class="res-icon">📄</span>
-                                        <div class="res-meta">
-                                            <div class="res-name">{{ res.title }}</div>
-                                            <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
-                                        </div>
+                                <div class="res-category">
+                                    <div class="res-cat-header" onclick="toggleResCategory(this)">
+                                        <span style="color:#10b981;font-weight:700;">English ({{ chapter.cat_counts.ENGLISH }})</span>
+                                        <span class="res-chevron">▶</span>
                                     </div>
-                                    {% endif %}
-                                    {% endfor %}
+                                    <div class="res-cat-body">
+                                        {% for res in chapter.resources %}
+                                        {% if res.category == 'ENGLISH' %}
+                                        <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
+                                            <span class="res-icon">📄</span>
+                                            <div class="res-meta">
+                                                <div class="res-name">{{ res.title }}</div>
+                                                <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 {% endif %}
                                 {% if chapter.cat_counts.MALAYALAM %}
-                                <div class="res-group">
-                                    <div class="res-group-title" style="color:#3b82f6;">Malayalam ({{ chapter.cat_counts.MALAYALAM }})</div>
-                                    {% for res in chapter.resources %}
-                                    {% if res.category == 'MALAYALAM' %}
-                                    <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
-                                        <span class="res-icon">📄</span>
-                                        <div class="res-meta">
-                                            <div class="res-name">{{ res.title }}</div>
-                                            <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
-                                        </div>
+                                <div class="res-category">
+                                    <div class="res-cat-header" onclick="toggleResCategory(this)">
+                                        <span style="color:#3b82f6;font-weight:700;">Malayalam ({{ chapter.cat_counts.MALAYALAM }})</span>
+                                        <span class="res-chevron">▶</span>
                                     </div>
-                                    {% endif %}
-                                    {% endfor %}
+                                    <div class="res-cat-body">
+                                        {% for res in chapter.resources %}
+                                        {% if res.category == 'MALAYALAM' %}
+                                        <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
+                                            <span class="res-icon">📄</span>
+                                            <div class="res-meta">
+                                                <div class="res-name">{{ res.title }}</div>
+                                                <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 {% endif %}
                                 {% if chapter.cat_counts.ONLINE %}
-                                <div class="res-group">
-                                    <div class="res-group-title" style="color:#a855f7;">Online ({{ chapter.cat_counts.ONLINE }})</div>
-                                    {% for res in chapter.resources %}
-                                    {% if res.category == 'ONLINE' %}
-                                    <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
-                                        <span class="res-icon">📄</span>
-                                        <div class="res-meta">
-                                            <div class="res-name">{{ res.title }}</div>
-                                            <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
-                                        </div>
+                                <div class="res-category">
+                                    <div class="res-cat-header" onclick="toggleResCategory(this)">
+                                        <span style="color:#a855f7;font-weight:700;">Online ({{ chapter.cat_counts.ONLINE }})</span>
+                                        <span class="res-chevron">▶</span>
                                     </div>
-                                    {% endif %}
-                                    {% endfor %}
+                                    <div class="res-cat-body">
+                                        {% for res in chapter.resources %}
+                                        {% if res.category == 'ONLINE' %}
+                                        <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
+                                            <span class="res-icon">📄</span>
+                                            <div class="res-meta">
+                                                <div class="res-name">{{ res.title }}</div>
+                                                <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
                                 </div>
                                 {% endif %}
                             </div>
@@ -303,6 +318,17 @@
                     .lesson-title { flex: 1; font-size: 0.82rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                     .lesson-type { font-size: 0.6rem; color: #475569; flex-shrink: 0; }
                     
+                    .res-category { margin: 0.1rem 0; border-radius: 0.4rem; overflow: hidden; }
+                    .res-cat-header {
+                        padding: 0.4rem 1.5rem 0.4rem 2rem; display: flex; align-items: center;
+                        gap: 0.5rem; cursor: pointer; transition: background 0.15s; user-select: none;
+                        font-size: 0.72rem;
+                    }
+                    .res-cat-header:hover { background: rgba(255,255,255,0.04); }
+                    .res-cat-header .res-chevron { font-size: 0.55rem; color: #475569; transition: transform 0.2s; flex-shrink: 0; }
+                    .res-cat-header.active .res-chevron { transform: rotate(90deg); }
+                    .res-cat-body { display: none; }
+                    .res-cat-header.active + .res-cat-body { display: block; }
                     .res-group { margin: 0.15rem 0; }
                     .res-group-title { padding: 0.35rem 1.5rem 0.15rem 2rem; font-size: 0.68rem; font-weight: 700; }
                     .res-item {
@@ -683,6 +709,10 @@
     function retryPDF() {
         if (!currentPDFUid) return;
         _showPDFOverlay(currentPDFUid, currentPDFTitle);
+    }
+
+    function toggleResCategory(header) {
+        header.classList.toggle('active');
     }
 
     function openResourcePDF(uid, title) {
