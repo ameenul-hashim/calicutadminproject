@@ -2831,11 +2831,27 @@ def youtube_upload_complete(request):
 
     lesson_uid_str = data.get('lesson_uid')
     video_id = data.get('video_id', '').strip()
+    auto_recover = data.get('auto_recover', False)
 
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
+
     if not video_id:
-        return JsonResponse({'error': 'video_id required'}, status=400)
+        if not auto_recover:
+            return JsonResponse({'error': 'video_id required'}, status=400)
+        from .utils.youtube_uploader import find_latest_youtube_upload
+        try:
+            lesson_lookup = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+            lesson_title = lesson_lookup.title
+            recovered_id = find_latest_youtube_upload(lesson_title)
+            if not recovered_id:
+                return JsonResponse({
+                    'error': 'upload_succeeded_but_needs_manual_url',
+                    'message': 'Video uploaded to YouTube but the video ID could not be captured automatically. Please edit the lesson to add the YouTube URL manually.',
+                }, status=200)
+            video_id = recovered_id
+        except Lesson.DoesNotExist:
+            return JsonResponse({'error': 'auto_recover: Lesson not found'}, status=404)
 
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
@@ -2861,6 +2877,9 @@ def youtube_upload_complete(request):
     if course_is_published:
         update_fields.extend(['status', 'is_approved'])
     lesson.save(update_fields=update_fields)
+
+    if auto_recover:
+        logger.info(f"auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
 
     return JsonResponse({
         'success': True,
@@ -2948,11 +2967,26 @@ def youtube_edit_complete(request):
 
     lesson_uid_str = data.get('lesson_uid')
     video_id = data.get('video_id', '').strip()
+    auto_recover = data.get('auto_recover', False)
 
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
+
     if not video_id:
-        return JsonResponse({'error': 'video_id required'}, status=400)
+        if not auto_recover:
+            return JsonResponse({'error': 'video_id required'}, status=400)
+        from .utils.youtube_uploader import find_latest_youtube_upload
+        try:
+            lesson_lookup = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+            recovered_id = find_latest_youtube_upload(lesson_lookup.title)
+            if not recovered_id:
+                return JsonResponse({
+                    'error': 'upload_succeeded_but_needs_manual_url',
+                    'message': 'Video uploaded to YouTube but the video ID could not be captured automatically. Please add the YouTube URL manually.',
+                }, status=200)
+            video_id = recovered_id
+        except Lesson.DoesNotExist:
+            return JsonResponse({'error': 'auto_recover: Lesson not found'}, status=404)
 
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
@@ -2996,6 +3030,9 @@ def youtube_edit_complete(request):
             'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
             'upload_status', 'video_url',
         ])
+
+    if auto_recover:
+        logger.info(f"youtube_edit_complete auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
 
     return JsonResponse({
         'success': True,

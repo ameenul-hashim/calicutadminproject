@@ -290,3 +290,71 @@ def create_resumable_upload_url(title, description, file_size=None):
     except Exception as e:
         logger.error(f"YouTube resumable session creation failed: {e}")
         return {'error': f'YouTube upload initialization failed unexpectedly: {str(e)}'}
+
+
+def find_latest_youtube_upload(lesson_title=None, minutes_back=30):
+    """
+    Find the most recent video uploaded to the authenticated YouTube channel.
+    Used for auto-recovery when browser XHR error fires after >=90% progress
+    and the video_id response is lost.
+    Searches by title match first, falls back to most recent upload.
+    Only considers videos uploaded within minutes_back minutes.
+    Called at most once per upload — no polling.
+    """
+    youtube = get_authenticated_service()
+    if not youtube:
+        logger.warning("find_latest_youtube_upload: YouTube service unavailable")
+        return None
+
+    from datetime import datetime, timedelta
+
+    try:
+        search_response = youtube.search().list(
+            part='snippet',
+            forMine=True,
+            order='date',
+            maxResults=10,
+            type='video',
+        ).execute()
+
+        items = search_response.get('items', [])
+        if not items:
+            logger.info("find_latest_youtube_upload: No videos found")
+            return None
+
+        cutoff = datetime.utcnow() - timedelta(minutes=minutes_back)
+        best_match = None
+
+        for item in items:
+            snippet = item.get('snippet', {})
+            video_id = item['id']['videoId']
+            published_str = snippet.get('publishedAt', '')
+
+            try:
+                published_str = published_str.replace('Z', '+00:00')
+                published_dt = datetime.fromisoformat(published_str)
+                published_utc = published_dt.replace(tzinfo=None) if published_dt.tzinfo else published_dt
+            except Exception:
+                published_utc = datetime.utcnow()
+
+            if published_utc < cutoff:
+                continue
+
+            item_title = snippet.get('title', '')
+            if lesson_title and lesson_title.lower() in item_title.lower():
+                logger.info(f"find_latest_youtube_upload: Title match → {video_id} ('{item_title}')")
+                return video_id
+
+            if best_match is None or published_utc > best_match['published']:
+                best_match = {'video_id': video_id, 'published': published_utc, 'title': item_title}
+
+        if best_match:
+            logger.info(f"find_latest_youtube_upload: Using most recent → {best_match['video_id']} ('{best_match['title']}')")
+            return best_match['video_id']
+
+        logger.info("find_latest_youtube_upload: No videos found within time window")
+        return None
+
+    except Exception as e:
+        logger.error(f"find_latest_youtube_upload error: {e}")
+        return None

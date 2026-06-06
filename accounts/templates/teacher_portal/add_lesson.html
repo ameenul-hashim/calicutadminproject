@@ -233,7 +233,7 @@
                     }
 
                     const initData = await initResp.json();
-                    const lessonUid = initData.lesson_uid;
+                    var lessonUid = initData.lesson_uid;
                     const uploadUrl = initData.upload_url;
                     const accessToken = initData.access_token;
 
@@ -285,10 +285,32 @@
                         document.getElementById('uploadError').classList.remove('active');
                         document.getElementById('progressDetail').textContent = '';
                         submitBtn.disabled = true;
-                        submitBtn.textContent = 'Redirecting...';
-                        setTimeout(function() {
-                            window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                        }, 2000);
+                        submitBtn.textContent = 'Finalizing...';
+                        // Try to auto-recover: call youtube-complete with auto_recover flag
+                        (async function() {
+                            try {
+                                const recoverResp = await fetch('/api/video/youtube-complete/', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                                    },
+                                    body: JSON.stringify({
+                                        lesson_uid: lessonUid,
+                                        auto_recover: true,
+                                    })
+                                });
+                                const recoverData = await recoverResp.json();
+                                if (!recoverResp.ok || recoverData.error) {
+                                    console.warn('Auto-recover could not save video_id:', recoverData);
+                                }
+                            } catch (recoverErr) {
+                                console.warn('Auto-recover request failed:', recoverErr);
+                            }
+                            setTimeout(function() {
+                                window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                            }, 500);
+                        })();
                         return;
                     }
                     console.error('Upload error:', err);
