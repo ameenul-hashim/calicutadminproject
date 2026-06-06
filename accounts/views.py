@@ -929,7 +929,7 @@ def course_lessons(request, course_uid):
     from .models import CourseResource, DeletionRequest
     from itertools import groupby
 
-    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid').order_by('chapter', 'order')
+    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid', 'video_file', 'youtube_video_id').order_by('chapter', 'order')
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'chapter', 'rejection_reason', 'uid', 'compressed_size', 'thumbnail_path').order_by('-created_at')
 
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
