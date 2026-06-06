@@ -1005,6 +1005,11 @@ def course_lessons(request, course_uid):
             'cat_counts': cat_counts,
         })
 
+    print(f"\n=====[DEBUG course_lessons view BEFORE RENDER]=====")
+    for l in lessons_list:
+        print(f"lesson uid={l.uid}, youtube_video_id='{l.youtube_video_id}', video_url='{l.video_url}', upload_status='{l.upload_status}'")
+    print(f"=====[END course_lessons view]=====\n")
+
     return render(request, 'teacher_portal/course_lessons.html', {
         'course': course,
         'chapters': chapters_data,
@@ -2779,6 +2784,15 @@ def init_video_upload(request):
             youtube_upload_status='PENDING',
         )
 
+        print(f"\n=====[DEBUG init_video_upload]=====")
+        print(f"Lesson created: uid={lesson.uid}")
+        print(f"  title='{lesson.title}'")
+        print(f"  upload_status='{lesson.upload_status}'")
+        print(f"  youtube_upload_status='{lesson.youtube_upload_status}'")
+        print(f"  youtube_video_id='{lesson.youtube_video_id}'")
+        print(f"  video_url='{lesson.video_url}'")
+        print(f"=====[END init_video_upload]=====\n")
+
         from .utils.youtube_uploader import create_resumable_upload_url
         result = create_resumable_upload_url(
             title=title,
@@ -2833,6 +2847,13 @@ def youtube_upload_complete(request):
     video_id = data.get('video_id', '').strip()
     auto_recover = data.get('auto_recover', False)
 
+    print(f"\n=====[DEBUG youtube_upload_complete]=====")
+    print(f"Request data:")
+    print(f"  lesson_uid='{lesson_uid_str}'")
+    print(f"  video_id='{video_id}'")
+    print(f"  auto_recover={auto_recover}")
+    print(f"=====[END request data]=====\n")
+
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
 
@@ -2880,6 +2901,24 @@ def youtube_upload_complete(request):
 
     if auto_recover:
         logger.info(f"auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
+
+    print(f"\n=====[DEBUG youtube_upload_complete AFTER SAVE]=====")
+    print(f"lesson.uid={lesson.uid}")
+    print(f"lesson.youtube_video_id='{lesson.youtube_video_id}'")
+    print(f"lesson.video_url='{lesson.video_url}'")
+    print(f"lesson.upload_status='{lesson.upload_status}'")
+    print(f"lesson.youtube_upload_status='{lesson.youtube_upload_status}'")
+
+    # Re-query from database
+    from django.db import connection
+    connection.close_if_unusable_or_obsolete()
+    fresh_lesson = Lesson.objects.get(uid=lesson.uid)
+    print(f"--- Re-query from database ---")
+    print(f"fresh_lesson.uid={fresh_lesson.uid}")
+    print(f"fresh_lesson.youtube_video_id='{fresh_lesson.youtube_video_id}'")
+    print(f"fresh_lesson.video_url='{fresh_lesson.video_url}'")
+    print(f"fresh_lesson.upload_status='{fresh_lesson.upload_status}'")
+    print(f"=====[END youtube_upload_complete]=====\n")
 
     return JsonResponse({
         'success': True,
@@ -2969,6 +3008,13 @@ def youtube_edit_complete(request):
     video_id = data.get('video_id', '').strip()
     auto_recover = data.get('auto_recover', False)
 
+    print(f"\n=====[DEBUG youtube_edit_complete]=====")
+    print(f"Request data:")
+    print(f"  lesson_uid='{lesson_uid_str}'")
+    print(f"  video_id='{video_id}'")
+    print(f"  auto_recover={auto_recover}")
+    print(f"=====[END request data]=====\n")
+
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
 
@@ -3033,6 +3079,22 @@ def youtube_edit_complete(request):
 
     if auto_recover:
         logger.info(f"youtube_edit_complete auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
+
+    print(f"\n=====[DEBUG youtube_edit_complete AFTER SAVE]=====")
+    print(f"lesson.uid={lesson.uid}")
+    print(f"lesson.youtube_video_id='{lesson.youtube_video_id}'")
+    print(f"lesson.video_url='{lesson.video_url}'")
+    print(f"lesson.upload_status='{lesson.upload_status}'")
+
+    from django.db import connection
+    connection.close_if_unusable_or_obsolete()
+    fresh_lesson = Lesson.objects.get(uid=lesson.uid)
+    print(f"--- Re-query from database ---")
+    print(f"fresh_lesson.uid={fresh_lesson.uid}")
+    print(f"fresh_lesson.youtube_video_id='{fresh_lesson.youtube_video_id}'")
+    print(f"fresh_lesson.video_url='{fresh_lesson.video_url}'")
+    print(f"fresh_lesson.upload_status='{fresh_lesson.upload_status}'")
+    print(f"=====[END youtube_edit_complete]=====\n")
 
     return JsonResponse({
         'success': True,
