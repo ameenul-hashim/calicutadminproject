@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 from accounts.utils.supabase_storage import supabase, get_client, _do_upload
 
 def _get_resource_bucket():
-    """Returns the Supabase bucket name for resource storage."""
-    return os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
+    """Returns the Supabase bucket name for resource storage (second Supabase project)."""
+    return os.getenv("RESOURCE_SUPABASE_BUCKET", "resources")
 
 class StorageManager:
     @staticmethod
