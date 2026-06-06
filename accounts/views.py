@@ -1280,6 +1280,12 @@ def delete_lesson(request, lesson_uid):
     
     # For PENDING/REJECTED lessons (not yet approved), delete immediately
     if lesson.status in ('PENDING', 'REJECTED'):
+        from .utils.youtube_uploader import delete_youtube_video
+        if lesson.youtube_video_id:
+            try:
+                delete_youtube_video(lesson.youtube_video_id)
+            except Exception:
+                pass
         lesson.delete()
         messages.success(request, "Lesson deleted successfully.")
         return redirect('course_lessons', course_uid=course_uid)
@@ -2842,8 +2848,15 @@ def youtube_upload_complete(request):
     lesson.youtube_video_id = video_id
     lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
-    lesson.upload_status = 'PROCESSING'
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
+
+    # Check if YouTube has already finished processing
+    from .utils.youtube_uploader import verify_youtube_video
+    if verify_youtube_video(video_id):
+        lesson.upload_status = 'READY'
+    else:
+        lesson.upload_status = 'PROCESSING'
+
     if course_is_published:
         lesson.status = 'APPROVED'
         lesson.is_approved = True
@@ -2858,7 +2871,7 @@ def youtube_upload_complete(request):
     return JsonResponse({
         'success': True,
         'message': 'Video uploaded to YouTube successfully!',
-        'upload_status': 'PROCESSING',
+        'upload_status': lesson.upload_status,
         'video_id': video_id,
     })
 
@@ -3047,12 +3060,21 @@ def trigger_backup(request):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def check_youtube_video_status(request, lesson_uid):
-    """Check if a YouTube video is ready for playback (used by processing card 'Refresh Status')."""
+    """Check if a YouTube video is ready for playback.
+
+    When YouTube confirms the video is ready, writes back to the database so
+    subsequent page loads show the correct status.
+    """
     from .utils.youtube_uploader import verify_youtube_video
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if not lesson.youtube_video_id:
         return JsonResponse({'status': 'no_video', 'ready': False})
     is_ready = verify_youtube_video(lesson.youtube_video_id)
+    if is_ready and lesson.upload_status != 'READY':
+        lesson.upload_status = 'READY'
+        if lesson.youtube_upload_status == 'UPLOADING':
+            lesson.youtube_upload_status = 'UPLOADED'
+        lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
     return JsonResponse({
         'status': 'ready' if is_ready else 'processing',
         'ready': is_ready,

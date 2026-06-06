@@ -414,7 +414,7 @@
         {% if chapter.videos %}
             <div class="lesson-grid">
             {% for lesson in chapter.videos %}
-                <div class="lesson-card">
+                <div class="lesson-card" data-lesson-uid="{{ lesson.uid }}" data-processing="{% if lesson.upload_status == 'PROCESSING' or lesson.youtube_upload_status == 'UPLOADING' %}true{% endif %}">
                     <div class="lesson-thumbnail">
                     {% if lesson.youtube_video_id %}
                         <img src="https://img.youtube.com/vi/{{ lesson.youtube_video_id }}/0.jpg" alt="{{ lesson.title }}" loading="lazy">
@@ -895,5 +895,29 @@ document.getElementById('videoPlayerModal').addEventListener('click', function(e
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeVideoPlayer();
 });
+
+/* Auto-check YouTube processing status for any cards stuck in PROCESSING/UPLOADING */
+(function() {
+    var cards = document.querySelectorAll('.lesson-card[data-processing="true"]');
+    if (cards.length === 0) return;
+    cards.forEach(function(card) {
+        var uid = card.getAttribute('data-lesson-uid');
+        if (!uid) return;
+        fetch('/api/video/check/' + uid + '/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ready) {
+                    var badge = card.querySelector('.badge.processing');
+                    if (badge) badge.style.display = 'none';
+                    var playOverlays = card.querySelectorAll('.play-overlay');
+                    if (playOverlays.length > 0) {
+                        playOverlays.forEach(function(o) { o.style.display = 'flex'; });
+                    }
+                    card.setAttribute('data-processing', 'false');
+                }
+            })
+            .catch(function() {});
+    });
+})();
 </script>
 {% endblock %}
