@@ -1,6 +1,6 @@
 # AGENTS.md — Neo Learner E-Learning Platform
 # Master AI Reference Document
-# Last Updated: 2026-06-04 | Branch: ongoing
+# Last Updated: 2026-06-06 | Branch: 3-fullcorrect
 
 ---
 
@@ -662,5 +662,18 @@ Available globally in all templates:
 
 ---
 
+## ⏰ RECOMMENDED CRON JOBS (Render)
+
+| Command | Frequency | Purpose |
+|:---|:---|:---|
+| `python manage.py recover_orphaned_lessons --minutes-back 30` | Every 10 minutes | Recover lessons where YouTube upload succeeded but callback never fired (browser disconnect, timeout, etc.) |
+| `python manage.py keep_alive` | Every 10 minutes | Prevent Render free-tier spin-down (if `keep_alive` management command exists) |
+
+**Note:** Render does not natively support cron jobs. Use an external uptime monitor (e.g., cron-job.org, UptimeRobot, Better Uptime) that hits:
+- `https://neolearner.onrender.com/health/` every 10 min (keep-alive + recovery check)
+- Or deploy a tiny cron service container on the same Render project.
+
+---
+
 *This document is the single source of truth for any AI working on Neo Learner.*
-*Updated: 2026-05-31. Maintain this file whenever models, URLs, or workflows change.*
+*Updated: 2026-06-06. Maintain this file whenever models, URLs, or workflows change.*

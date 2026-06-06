@@ -1271,7 +1271,7 @@ def admin_delete_course_secure(request, course_uid):
                             from accounts.utils.cloudinary_helpers import delete_temp_image
                             delete_temp_image(res.thumbnail_public_id)
                     except Exception as e:
-                        print(f"Error deleting resource {res.uid}: {e}")
+                        logger.error(f"Error deleting resource {res.uid}: {e}")
 
             # 2. Delete the course (cascades to internal models)
             course.delete()
@@ -1320,7 +1320,7 @@ def admin_delete_lesson_secure(request, lesson_uid):
                     if os.path.isfile(lesson.video_file.path):
                         os.remove(lesson.video_file.path)
                 except Exception as e:
-                    print(f"Error deleting lesson video file: {e}")
+                    logger.error(f"Error deleting lesson video file: {e}")
 
             lesson.delete()
             messages.success(request, f"✅ {lesson_title} removed successfully.")
@@ -1355,7 +1355,7 @@ def admin_delete_resource_secure(request, resource_uid):
                         manager = StorageManager()
                         manager.delete_supabase_file(resource.firebase_file_path)
                     except Exception as e:
-                        print(f"Error wiping Supabase file: {e}")
+                        logger.error(f"Error wiping Supabase file: {e}")
 
                 resource.delete()
                 messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
