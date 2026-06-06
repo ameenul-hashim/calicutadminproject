@@ -303,6 +303,34 @@
         border: none;
         display: block;
     }
+    #videoPlayerModal .video-wrapper .processing-card {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #0f172a;
+        color: #f8fafc;
+        padding: 2rem;
+        box-sizing: border-box;
+        text-align: center;
+    }
+    #videoPlayerModal .video-wrapper .processing-card .icon { font-size: 3rem; margin-bottom: 1rem; }
+    #videoPlayerModal .video-wrapper .processing-card h3 { font-size: 1.2rem; font-weight: 700; margin: 0 0 0.5rem; color: #fbbf24; }
+    #videoPlayerModal .video-wrapper .processing-card p { font-size: 0.9rem; color: #94a3b8; margin: 0 0 1.5rem; line-height: 1.5; max-width: 360px; }
+    #videoPlayerModal .video-wrapper .processing-card .refresh-btn {
+        background: #6366f1;
+        color: white;
+        border: none;
+        padding: 0.7rem 1.5rem;
+        border-radius: 0.75rem;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    #videoPlayerModal .video-wrapper .processing-card .refresh-btn:hover { background: #4f46e5; }
 
     @media (max-width: 768px) {
         .ch-card-header { padding: 0.9rem 1rem; }
@@ -708,6 +736,64 @@
 </div>
 
 <script>
+let ytApiLoaded = false;
+let ytLoadCallbacks = [];
+let currentYTPlayer = null;
+
+function loadYTAPI(callback) {
+    if (window.YT && window.YT.Player) { callback(); return; }
+    ytLoadCallbacks.push(callback);
+    if (!ytApiLoaded) {
+        ytApiLoaded = true;
+        var tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        document.head.appendChild(tag);
+    }
+}
+window.onYouTubeIframeAPIReady = function() {
+    var cbs = ytLoadCallbacks.slice();
+    ytLoadCallbacks = [];
+    cbs.forEach(function(cb) { cb(); });
+};
+
+function showProcessingCard(wrapper, videoId) {
+    wrapper.innerHTML =
+        '<div class="processing-card">' +
+            '<div class="icon">&#x1F7E1;</div>' +
+            '<h3>Processing Video</h3>' +
+            '<p>Your video has been uploaded successfully.<br>YouTube is preparing the video for playback.<br>This may take a few moments.</p>' +
+            '<button class="refresh-btn" onclick="retryPlayVideo(\'' + videoId + '\')">&#x1F504; Refresh Status</button>' +
+        '</div>';
+}
+function retryPlayVideo(videoId) {
+    var wrapper = document.getElementById('videoPlayerWrapper');
+    if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
+    wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Checking video status...</div>';
+    attemptYoutubePlay(wrapper, videoId);
+}
+function attemptYoutubePlay(wrapper, videoId) {
+    wrapper.innerHTML = '<div id="ytplayer-el" style="width:100%;height:100%;"></div>';
+    setTimeout(function() {
+        try {
+            currentYTPlayer = new YT.Player('ytplayer-el', {
+                videoId: videoId,
+                height: '100%',
+                width: '100%',
+                playerVars: { autoplay: 1, rel: 0 },
+                events: {
+                    onReady: function() {},
+                    onError: function() {
+                        if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
+                        showProcessingCard(wrapper, videoId);
+                    }
+                }
+            });
+        } catch(e) {
+            showProcessingCard(wrapper, videoId);
+        }
+    }, 150);
+}
+
 function toggleChapter(header) {
     var body = header.nextElementSibling;
     var icon = header.querySelector('.toggle-icon');
@@ -749,29 +835,31 @@ function openDeleteChapterModal(courseUid, chapterName) {
 function closeDeleteChapterModal() { document.getElementById('deleteChapterModal').style.display = 'none'; }
 
 function extractYoutubeId(url) {
-    const patterns = [
+    var patterns = [
         /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
         /^([a-zA-Z0-9_-]{11})$/
     ];
-    for (const p of patterns) {
-        const m = url.match(p);
+    for (var i = 0; i < patterns.length; i++) {
+        var m = url.match(patterns[i]);
         if (m) return m[1];
     }
     return null;
 }
 function openVideoPlayer(type, src) {
-    const modal = document.getElementById('videoPlayerModal');
-    const wrapper = document.getElementById('videoPlayerWrapper');
+    var modal = document.getElementById('videoPlayerModal');
+    var wrapper = document.getElementById('videoPlayerWrapper');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
-    if (type === 'youtube') {
-        wrapper.innerHTML = '<iframe src="https://www.youtube.com/embed/' + src + '?autoplay=1&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
-    } else if (type === 'mp4') {
+    if (type === 'mp4') {
         wrapper.innerHTML = '<video src="' + src + '" controls autoplay style="width:100%;height:100%;"></video>';
+    } else if (type === 'youtube') {
+        wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
+        loadYTAPI(function() { attemptYoutubePlay(wrapper, src); });
     } else if (type === 'url') {
-        const vid = extractYoutubeId(src);
+        var vid = extractYoutubeId(src);
         if (vid) {
-            wrapper.innerHTML = '<iframe src="https://www.youtube.com/embed/' + vid + '?autoplay=1&rel=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>';
+            wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
+            loadYTAPI(function() { attemptYoutubePlay(wrapper, vid); });
         } else {
             window.open(src, '_blank');
             closeVideoPlayer();
@@ -779,8 +867,9 @@ function openVideoPlayer(type, src) {
     }
 }
 function closeVideoPlayer() {
-    const modal = document.getElementById('videoPlayerModal');
-    const wrapper = document.getElementById('videoPlayerWrapper');
+    if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
+    var modal = document.getElementById('videoPlayerModal');
+    var wrapper = document.getElementById('videoPlayerWrapper');
     modal.style.display = 'none';
     document.body.style.overflow = '';
     wrapper.innerHTML = '';
