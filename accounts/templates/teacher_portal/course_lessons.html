@@ -423,11 +423,6 @@
                     </div>
                     <div class="lesson-body">
                         <h4>{{ lesson.title }}</h4>
-                        {% if lesson.video_url %}
-                        <div class="lesson-url">
-                            &#x1F517; <a href="{{ lesson.video_url }}" target="_blank" rel="noopener">{{ lesson.video_url }}</a>
-                        </div>
-                        {% endif %}
                         <div class="lesson-meta">
                             {% if lesson.status == 'APPROVED' %}<span class="badge approved">&#x2705; Approved</span>{% endif %}
                             {% if lesson.status == 'PENDING' %}<span class="badge pending">&#x23F3; Pending</span>{% endif %}
@@ -442,20 +437,10 @@
                                 {% endif %}
                             {% endif %}
                         </div>
-                        {% if request.user.user_type == 'TEACHER' and lesson.youtube_video_id %}
-                        <div style="font-size:0.72rem;margin:0.4rem 0;padding:0.35rem 0.5rem;background:#f8fafc;border-radius:0.4rem;border:1px solid #e2e8f0;line-height:1.5;">
-                            <div><strong>Video ID:</strong> <code style="font-size:0.65rem;background:#e2e8f0;padding:0.05rem 0.3rem;border-radius:0.2rem;">{{ lesson.youtube_video_id }}</code></div>
-                            <div><strong>Watch URL:</strong> <a href="https://www.youtube.com/watch?v={{ lesson.youtube_video_id }}" target="_blank" rel="noopener" style="font-size:0.65rem;word-break:break-all;">https://www.youtube.com/watch?v={{ lesson.youtube_video_id }}</a></div>
-                            <div><strong>Embed URL:</strong> <code style="font-size:0.65rem;background:#e2e8f0;padding:0.05rem 0.3rem;border-radius:0.2rem;word-break:break-all;">https://www.youtube.com/embed/{{ lesson.youtube_video_id }}</code></div>
-                        </div>
-                        {% endif %}
                         <div class="lesson-actions">
                         {% if not lesson.deletion_request or lesson.deletion_request.status == 'REJECTED' %}
-                            {% if lesson.video_url %}
-                            <a href="{{ lesson.video_url }}" target="_blank" rel="noopener" class="rc-action open">&#x25B6; Open Video</a>
-                            {% endif %}
                             {% if lesson.youtube_video_id %}
-                            <a href="javascript:void(0)" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}')" class="rc-action view">&#x25B6; Play Embedded</a>
+                            <a href="javascript:void(0)" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}')" class="rc-action view">&#x25B6; Play</a>
                             {% endif %}
                             <a href="{% url 'edit_lesson' lesson.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                             <a href="javascript:void(0)" onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" class="rc-action delete">&#x1F5D1;&#xFE0F; Delete Request</a>
@@ -909,47 +894,16 @@ document.addEventListener('keydown', function(e) {
                 }
                 var body = card.querySelector('.lesson-body');
                 if (body) {
-                    // Add lesson-url
-                    var urlDiv = body.querySelector('.lesson-url');
-                    if (!urlDiv) {
-                        var newUrlDiv = document.createElement('div');
-                        newUrlDiv.className = 'lesson-url';
-                        newUrlDiv.innerHTML = '&#x1F517; <a href="' + data.watch_url + '" target="_blank" rel="noopener">' + data.watch_url + '</a>';
-                        var meta = body.querySelector('.lesson-meta');
-                        if (meta) body.insertBefore(newUrlDiv, meta);
-                    }
-                    // Add debug panel
-                    var existingDebug = body.querySelector('.debug-panel');
-                    if (!existingDebug) {
-                        var debugDiv = document.createElement('div');
-                        debugDiv.style.cssText = 'font-size:0.72rem;margin:0.4rem 0;padding:0.35rem 0.5rem;background:#f8fafc;border-radius:0.4rem;border:1px solid #e2e8f0;line-height:1.5;';
-                        debugDiv.className = 'debug-panel';
-                        debugDiv.innerHTML = '<div><strong>Video ID:</strong> <code style="font-size:0.65rem;background:#e2e8f0;padding:0.05rem 0.3rem;border-radius:0.2rem;">' + data.youtube_video_id + '</code></div>' +
-                            '<div><strong>Watch URL:</strong> <a href="' + data.watch_url + '" target="_blank" rel="noopener" style="font-size:0.65rem;word-break:break-all;">' + data.watch_url + '</a></div>' +
-                            '<div><strong>Embed URL:</strong> <code style="font-size:0.65rem;background:#e2e8f0;padding:0.05rem 0.3rem;border-radius:0.2rem;word-break:break-all;">' + data.embed_url + '</code></div>';
-                        var actions = body.querySelector('.lesson-actions');
-                        if (actions) body.insertBefore(debugDiv, actions);
-                    }
-                    // Add Open Video and Play Embedded buttons
+                    // Add Play button if missing
                     var actionsDiv = body.querySelector('.lesson-actions');
                     if (actionsDiv) {
-                        var hasOpenBtn = actionsDiv.querySelector('.open');
-                        if (!hasOpenBtn) {
-                            var openBtn = document.createElement('a');
-                            openBtn.href = data.watch_url;
-                            openBtn.target = '_blank';
-                            openBtn.rel = 'noopener';
-                            openBtn.className = 'rc-action open';
-                            openBtn.innerHTML = '&#x25B6; Open Video';
-                            actionsDiv.insertBefore(openBtn, actionsDiv.firstChild);
-                        }
                         var hasPlayBtn = actionsDiv.querySelector('.view');
                         if (!hasPlayBtn) {
                             var playBtn = document.createElement('a');
                             playBtn.href = 'javascript:void(0)';
                             playBtn.onclick = function() { openVideoPlayer('youtube', data.youtube_video_id); };
                             playBtn.className = 'rc-action view';
-                            playBtn.innerHTML = '&#x25B6; Play Embedded';
+                            playBtn.innerHTML = '&#x25B6; Play';
                             actionsDiv.insertBefore(playBtn, actionsDiv.firstChild);
                         }
                     }
