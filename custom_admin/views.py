@@ -1348,7 +1348,7 @@ def admin_delete_resource_secure(request, resource_uid):
                     try:
                         from accounts.utils.storage_manager import StorageManager
                         manager = StorageManager()
-                        manager.delete_supabase_file(resource.firebase_file_path)
+                        manager.delete_from_supabase_storage(resource.firebase_file_path)
                     except Exception as e:
                         logger.error(f"Error wiping Supabase file: {e}")
 
@@ -1649,6 +1649,21 @@ def admin_permanent_delete_course_secure(request, course_uid):
         if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER')):
             course = get_object_or_404(Course, uid=course_uid, status='DELETED')
             course_title = course.title
+
+            # Cleanup all Course Resources from Supabase before deletion
+            from accounts.models import CourseResource
+            from accounts.utils.storage_manager import StorageManager
+            resources = CourseResource.objects.filter(course=course)
+            for res in resources:
+                if res.firebase_file_path:
+                    try:
+                        StorageManager.delete_from_supabase_storage(res.firebase_file_path)
+                        if res.thumbnail_public_id:
+                            from accounts.utils.cloudinary_helpers import delete_temp_image
+                            delete_temp_image(res.thumbnail_public_id)
+                    except Exception as e:
+                        logger.error(f"Error deleting resource {res.uid} from Supabase: {e}")
+
             course.delete()
             messages.success(request, f"✅ Course '{course_title}' has been PERMANENTLY deleted from the database.")
             return redirect('deleted_courses')

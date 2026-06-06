@@ -2334,8 +2334,8 @@ def pdf_viewer(request, resource_uid):
 def download_resource(request, resource_uid):
     """Downloads a resource file with Content-Disposition: attachment for actual file download."""
     from accounts.models import CourseResource, Enrollment
-    from django.shortcuts import get_object_or_404, redirect
-    from django.http import HttpResponseForbidden, Http404, HttpResponse
+    from django.shortcuts import get_object_or_404
+    from django.http import HttpResponseForbidden, Http404, StreamingHttpResponse
     
     resource = get_object_or_404(CourseResource, uid=resource_uid, is_deleted=False)
     
@@ -2353,22 +2353,36 @@ def download_resource(request, resource_uid):
         resource.download_count += 1
         resource.save(update_fields=['download_count'])
     
-    # Stream file bytes directly from Supabase (never expose signed URL)
+    # Stream file bytes from Supabase in chunks (never expose signed URL directly)
     from accounts.utils.storage_manager import supabase as res_supabase, _get_resource_bucket
     if res_supabase and resource.firebase_file_path:
         try:
             bucket = _get_resource_bucket()
-            
-            file_bytes = res_supabase.storage.from_(bucket).download(resource.firebase_file_path)
-            if file_bytes:
-                content_type = resource.mime_type or 'application/octet-stream'
-                response = HttpResponse(file_bytes, content_type=content_type)
-                filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
-                response['Content-Disposition'] = f'attachment; filename="{filename}"'
-                response['Content-Length'] = len(file_bytes)
-                response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
-                response['Pragma'] = 'no-cache'
-                return response
+            content_type = resource.mime_type or 'application/octet-stream'
+            filename = f"{resource.title}.{resource.file_extension or 'pdf'}"
+
+            # Generate signed URL for streaming (10 min expiry)
+            signed_result = res_supabase.storage.from_(bucket).create_signed_url(
+                resource.firebase_file_path, 600
+            )
+            signed_url = signed_result if isinstance(signed_result, str) else signed_result.get('signedURL')
+            if not signed_url:
+                raise ValueError("Failed to generate signed URL")
+
+            import urllib.request
+            def file_stream():
+                with urllib.request.urlopen(signed_url) as upstream:
+                    while True:
+                        chunk = upstream.read(65536)
+                        if not chunk:
+                            break
+                        yield chunk
+
+            response = StreamingHttpResponse(file_stream(), content_type=content_type)
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response['Pragma'] = 'no-cache'
+            return response
         except Exception as e:
             logger.error(f"Resource proxy download failed for {resource_uid}: {e}")
     
