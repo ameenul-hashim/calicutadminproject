@@ -1373,7 +1373,7 @@ def add_resource(request, course_uid):
             suffix = uuid.uuid4().hex[:4]
             dest_filename = f"{safe_title}-{suffix}.{ext}"
             # compressed_bytes is ALREADY compressed (process_pdf ran above) — only compressed saved
-            dest_path = f"resources/courses/{course_slug}/{category_folder}/{dest_filename}"
+            dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
             fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
             
             thumb_path = None
@@ -1496,7 +1496,7 @@ def edit_resource(request, resource_uid):
                 suffix = uuid.uuid4().hex[:4]
                 dest_filename = f"{safe_title}-{suffix}.{new_ext}"
                 # compressed_bytes is already compressed — only compressed version saved
-                dest_path = f"resources/courses/{course_slug}/{category_folder}/{dest_filename}"
+                dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
                 new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
                 
                 if thumbnail_bytes:
