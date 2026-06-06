@@ -232,8 +232,21 @@
     }
     .rc-action:hover { background: #f1f5f9; }
     .rc-action.view { color: #059669; }
+    .rc-action.open { color: #059669; }
     .rc-action.edit { color: #6366f1; }
     .rc-action.delete { color: #ef4444; }
+    .lesson-url {
+        font-size: 0.72rem;
+        color: #64748b;
+        margin: 0.2rem 0 0.4rem;
+        word-break: break-all;
+        line-height: 1.4;
+    }
+    .lesson-url a {
+        color: #6366f1;
+        text-decoration: none;
+    }
+    .lesson-url a:hover { text-decoration: underline; }
 
     /* ===== Badges ===== */
     .badge {
@@ -437,6 +450,11 @@
                     </div>
                     <div class="lesson-body">
                         <h4>{{ lesson.title }}</h4>
+                        {% if lesson.video_url %}
+                        <div class="lesson-url">
+                            &#x1F517; <a href="{{ lesson.video_url }}" target="_blank" rel="noopener">{{ lesson.video_url }}</a>
+                        </div>
+                        {% endif %}
                         <div class="lesson-meta">
                             {% if lesson.status == 'APPROVED' %}<span class="badge approved">&#x2705; Approved</span>{% endif %}
                             {% if lesson.status == 'PENDING' %}<span class="badge pending">&#x23F3; Pending</span>{% endif %}
@@ -454,6 +472,9 @@
                         </div>
                         <div class="lesson-actions">
                         {% if not lesson.deletion_request or lesson.deletion_request.status == 'REJECTED' %}
+                            {% if lesson.video_url %}
+                            <a href="{{ lesson.video_url }}" target="_blank" rel="noopener" class="rc-action open">&#x25B6; Open Video</a>
+                            {% endif %}
                             <a href="{% url 'edit_lesson' lesson.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                             <a href="javascript:void(0)" onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" class="rc-action delete">&#x1F5D1;&#xFE0F; Delete Request</a>
                         {% endif %}
