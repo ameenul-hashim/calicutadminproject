@@ -208,6 +208,7 @@
                         const xhr = new XMLHttpRequest();
                         let lastLoaded = 0, lastTime = Date.now();
                         let timedOut = false;
+                        let lastProgressPct = 0;
 
                         // 30-minute timeout for large files
                         const timeoutMs = 1800000;
@@ -220,6 +221,7 @@
                         xhr.upload.addEventListener('progress', function(ev) {
                             if (ev.lengthComputable) {
                                 const pct = Math.round(ev.loaded / ev.total * 100);
+                                lastProgressPct = pct;
                                 const now = Date.now();
                                 const timeDelta = (now - lastTime) / 1000;
 
@@ -268,7 +270,11 @@
                         xhr.addEventListener('error', function() {
                             clearTimeout(timer);
                             if (!timedOut) {
-                                reject(new Error('Network error: Could not reach YouTube. Check your internet connection and try again.'));
+                                if (lastProgressPct >= 90) {
+                                    reject(new Error('__UPLOAD_LIKELY_SUCCESS__'));
+                                } else {
+                                    reject(new Error('Network error: Could not reach YouTube. Check your internet connection and try again.'));
+                                }
                             }
                         });
                         xhr.addEventListener('abort', function() {
@@ -308,7 +314,7 @@
                     progressBar.classList.add('complete');
                     progressPercent.textContent = '100%';
                     progressText.textContent = '✅ Upload complete!';
-                    uploadPhase.textContent = '✅ Video uploaded successfully! Processing on YouTube...';
+                    uploadPhase.textContent = '✅ Video uploaded successfully!';
                     uploadPhase.classList.add('complete');
                     progressDetail.textContent = '';
 
@@ -317,8 +323,47 @@
                     }, 1500);
 
                 } catch(err) {
-                    progressBar.classList.add('error');
                     const errorMsg = err.message || 'Upload failed. Please try again.';
+                    if (errorMsg === '__UPLOAD_LIKELY_SUCCESS__') {
+                        progressBar.style.width = '100%';
+                        progressBar.classList.add('complete');
+                        progressPercent.textContent = '100%';
+                        progressText.textContent = '✅ Upload complete!';
+                        uploadPhase.textContent = '✅ Video uploaded to YouTube!';
+                        uploadPhase.classList.add('complete');
+                        uploadError.textContent = '';
+                        uploadError.classList.remove('active');
+                        progressDetail.textContent = '';
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Finalizing...';
+                        // Try to auto-recover: call youtube-edit-complete with auto_recover flag
+                        (async function() {
+                            try {
+                                const recoverResp = await fetch('/api/video/youtube-edit-complete/', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                                    },
+                                    body: JSON.stringify({
+                                        lesson_uid: '{{ lesson.uid }}',
+                                        auto_recover: true,
+                                    })
+                                });
+                                const recoverData = await recoverResp.json();
+                                if (!recoverResp.ok || recoverData.error) {
+                                    console.warn('Auto-recover could not save video_id:', recoverData);
+                                }
+                            } catch (recoverErr) {
+                                console.warn('Auto-recover request failed:', recoverErr);
+                            }
+                            setTimeout(function() {
+                                window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                            }, 500);
+                        })();
+                        return;
+                    }
+                    progressBar.classList.add('error');
                     uploadPhase.textContent = '❌ ' + errorMsg;
                     uploadPhase.classList.add('error');
                     uploadError.textContent = errorMsg;

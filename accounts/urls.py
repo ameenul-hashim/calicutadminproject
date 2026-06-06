@@ -68,7 +68,8 @@ urlpatterns = [
     path('api/video/youtube-complete/', views.youtube_upload_complete, name='youtube_upload_complete'),
     path('api/video/init-youtube-edit/', views.init_youtube_edit_upload, name='init_youtube_edit_upload'),
     path('api/video/youtube-edit-complete/', views.youtube_edit_complete, name='youtube_edit_complete'),
-    path('api/video/status/<uuid:lesson_uid>/', views.video_upload_status, name='video_upload_status'),
+    path('api/video/recover-lesson/<uuid:lesson_uid>/', views.recover_lesson_view, name='recover_lesson_view'),
+
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
     path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),
 ]

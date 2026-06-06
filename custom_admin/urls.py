@@ -29,6 +29,7 @@ urlpatterns = [
     path('user/accept/<uuid:user_uid>/', views.accept_user, name='accept_user'),
     path('user/decline/<uuid:user_uid>/', views.decline_user, name='decline_user'),
     path('user/toggle/<uuid:user_uid>/', views.toggle_user_status, name='toggle_user_status'),
+    path('check-email/', views.check_email, name='check_email'),
     path('student/create/', views.create_student_admin, name='create_student_admin'),
     path('student/<uuid:user_uid>/profile/', views.admin_student_profile, name='admin_student_profile'),
     path('student/<uuid:user_uid>/invoice/pdf/', views.download_student_invoice_pdf, name='download_student_invoice_pdf'),

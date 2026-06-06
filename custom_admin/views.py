@@ -20,6 +20,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.conf import settings
+from django.core.paginator import Paginator
 
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions (Firebase RTDB)."""
@@ -136,6 +137,7 @@ def manage_students(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
     sort = request.GET.get('sort', 'date_desc')
+    page = request.GET.get('page', 1)
     
     users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
     
@@ -158,11 +160,15 @@ def manage_students(request):
     else:
         users = users.order_by('-date_joined')
     
+    paginator = Paginator(users, 50)
+    page_obj = paginator.get_page(page)
+    
     return render(request, 'custom_admin/manage_students.html', {
-        'users': users,
+        'users': page_obj,
         'search_query': search_query,
         'status_filter': status_filter,
         'sort': sort,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -192,6 +198,7 @@ def manage_teachers(request):
     search_query = request.GET.get('search', '')
     status_filter = request.GET.get('status', '')
     sort = request.GET.get('sort', 'date_desc')
+    page = request.GET.get('page', 1)
     
     users = CustomUser.objects.filter(user_type='TEACHER').exclude(is_superuser=True).prefetch_related('courses')
     
@@ -214,12 +221,24 @@ def manage_teachers(request):
     else:
         users = users.order_by('-date_joined')
     
+    paginator = Paginator(users, 50)
+    page_obj = paginator.get_page(page)
+    
     return render(request, 'custom_admin/manage_teachers.html', {
-        'users': users,
+        'users': page_obj,
         'search_query': search_query,
         'status_filter': status_filter,
         'sort': sort,
+        'page_obj': page_obj,
     })
+
+def check_email(request):
+    from django.http import JsonResponse
+    email = request.GET.get('email', '').strip()
+    if not email:
+        return JsonResponse({'available': False, 'error': 'Email is required.'})
+    exists = CustomUser.objects.filter(email__iexact=email).exists()
+    return JsonResponse({'available': not exists})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_teacher_profile(request, user_uid):
@@ -246,17 +265,15 @@ def admin_teacher_profile(request, user_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_users_view(request):
-    pending_students = CustomUser.objects.filter(status='PENDING', user_type='STUDENT').exclude(is_superuser=True)
+    pending_students = CustomUser.objects.filter(status='PENDING', user_type='STUDENT').exclude(is_superuser=True).order_by('-date_joined')
     return render(request, 'custom_admin/pending_students.html', {'users': pending_students})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_teachers_view(request):
-    pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True)
+    pending_teachers = CustomUser.objects.filter(status='PENDING', user_type='TEACHER').exclude(is_superuser=True).order_by('-date_joined')
     return render(request, 'custom_admin/pending_teachers.html', {'users': pending_teachers})
 
 @user_passes_test(is_admin, login_url='admin_login')
-@csrf_protect
-@require_POST
 def accept_user(request, user_uid):
     try:
         user = get_object_or_404(CustomUser, uid=user_uid)
@@ -346,23 +363,34 @@ def decline_user(request, user_uid):
         return redirect('pending_users')
 
 @user_passes_test(is_admin, login_url='admin_login')
-@csrf_protect
-@require_POST
 def toggle_user_status(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if user.status == 'ACTIVE':
         user.status = 'BLOCKED'
         user.is_active = False
+        if user.current_session_key:
+            try:
+                from django.contrib.sessions.models import Session
+                Session.objects.filter(session_key=user.current_session_key).delete()
+            except Exception:
+                pass
+            user.current_session_key = ''
         msg = "blocked"
     elif user.status == 'BLOCKED':
         user.status = 'ACTIVE'
         user.is_active = True
         msg = "activated"
+    elif user.status == 'PENDING':
+        user.status = 'ACTIVE'
+        user.is_active = True
+        user.approved_by = request.user
+        user.approved_at = timezone.now()
+        msg = "approved and activated"
     else:
-        messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED users can be toggled.")
+        messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED/PENDING users can be toggled.")
         return redirect('manage_students' if user.user_type != 'TEACHER' else 'manage_teachers')
     user.save()
-    messages.success(request, f"✅ User {user.username} has been {msg}.")
+    messages.success(request, f"User {user.username} has been {msg}.")
     if user.user_type == 'TEACHER':
         return redirect('manage_teachers')
     return redirect('manage_students')
@@ -449,7 +477,10 @@ def create_student_admin(request):
         # 7. Malware & File Security Scan
         is_infected, reason = scanner.scan_file(proof_file)
         if is_infected:
-            messages.error(request, f"Security check failed: {reason.replace('_', ' ').title()}. Please upload a valid PDF or image document.")
+            logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                'admin-creation', proof_file.name, reason,
+                request.META.get('REMOTE_ADDR'))
+            messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -559,7 +590,10 @@ def create_teacher_admin(request):
         # 7. Malware & File Security Scan
         is_infected, reason = scanner.scan_file(proof_file)
         if is_infected:
-            messages.error(request, f"Security check failed: {reason.replace('_', ' ').title()}. Please upload a valid PDF or image document.")
+            logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                'admin-creation', proof_file.name, reason,
+                request.META.get('REMOTE_ADDR'))
+            messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -834,53 +868,70 @@ def reject_course(request, course_uid):
 def edit_user_admin(request, user_uid):
     user = get_object_or_404(CustomUser, uid=user_uid)
     if request.method == 'POST':
-        username = request.POST.get('username')
-        email = request.POST.get('email')
-        fullname = request.POST.get('fullname')
-        phone_number = request.POST.get('phone_number')
-        password = request.POST.get('password')
-        confirm_password = request.POST.get('confirm_password')
-        profile_photo = request.FILES.get('profile_photo')
-        
-        if not all([username, email, fullname]):
-            messages.error(request, "Username, Email, and Full Name are mandatory fields.")
-        elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messages.error(request, "The email address you entered is not in a valid format.")
-        elif password and (password != confirm_password):
-            messages.error(request, "The new passwords you entered do not match.")
-        elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
-            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
-        elif CustomUser.objects.filter(username=username).exclude(uid=user_uid).exists():
-            messages.error(request, "This username is already taken by another user.")
-        elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
-            messages.error(request, "This email is already registered to another account.")
-        elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(uid=user_uid).exclude(status='REJECTED').exists():
-            messages.error(request, "This contact number is already in use by another active account.")
-        elif phone_number and len(''.join(filter(str.isdigit, phone_number))) != 10:
-            messages.error(request, "Contact number must be exactly 10 digits.")
-        else:
-            user.username = username
-            user.email = email
-            user.full_name = fullname
-            user.phone_number = phone_number
-            if password:
-                user.set_password(password)
-            
-            if profile_photo:
-                if profile_photo.size > 2 * 1024 * 1024:
-                    messages.error(request, "Profile photo exceeds 2MB limit.")
-                else:
-                    if update_image(user, profile_photo, folder="Neo Learner/profiles"):
-                        messages.success(request, "✅ Profile photo updated successfully!")
+        form_type = request.POST.get('form_type')
+
+        if form_type == 'profile':
+            fullname = request.POST.get('fullname')
+            phone_number = request.POST.get('phone_number')
+            profile_photo = request.FILES.get('profile_photo')
+
+            if not fullname:
+                messages.error(request, "Full Name is required.")
+            elif phone_number and CustomUser.objects.filter(phone_number=phone_number).exclude(uid=user_uid).exclude(status='REJECTED').exists():
+                messages.error(request, "This contact number is already in use by another active account.")
+            elif phone_number and len(''.join(filter(str.isdigit, phone_number))) != 10:
+                messages.error(request, "Contact number must be exactly 10 digits.")
+            else:
+                user.full_name = fullname
+                user.phone_number = phone_number
+
+                if profile_photo:
+                    if profile_photo.size > 2 * 1024 * 1024:
+                        messages.error(request, "Profile photo exceeds 2MB limit.")
                     else:
-                        messages.error(request, "Failed to update profile photo.")
-                
-            user.save()
-            messages.success(request, f"✅ User {user.username} data updated successfully!")
-            if user.user_type == 'TEACHER':
-                return redirect('manage_teachers')
-            return redirect('manage_students')
-            
+                        if update_image(user, profile_photo, folder="Neo Learner/profiles"):
+                            messages.success(request, "Profile photo updated successfully!")
+                        else:
+                            messages.error(request, "Failed to update profile photo.")
+
+                user.save(update_fields=['full_name', 'phone_number'] if not profile_photo else None)
+                messages.success(request, f"Profile for {user.full_name} updated successfully!")
+                if user.user_type == 'TEACHER':
+                    return redirect('manage_teachers')
+                return redirect('manage_students')
+
+        elif form_type == 'credentials':
+            username = request.POST.get('username')
+            email = request.POST.get('email')
+            password = request.POST.get('password')
+            confirm_password = request.POST.get('confirm_password')
+
+            if not all([username, email]):
+                messages.error(request, "Username and Email are required.")
+            elif CustomUser.objects.filter(username=username).exclude(uid=user_uid).exists():
+                messages.error(request, "This username is already taken by another user.")
+            elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
+                messages.error(request, "This email is already registered to another account.")
+            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+                messages.error(request, "The email address you entered is not in a valid format.")
+            elif password and (password != confirm_password):
+                messages.error(request, "The new passwords you entered do not match.")
+            elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
+                messages.error(request, "Password must be 8+ characters and include at least one uppercase letter, one lowercase letter, and one special character.")
+            else:
+                user.username = username
+                user.email = email
+                if password:
+                    user.set_password(password)
+                user.save(update_fields=['username', 'email'] if not password else None)
+                messages.success(request, f"Credentials for {user.full_name} updated successfully!")
+                if user.user_type == 'TEACHER':
+                    return redirect('manage_teachers')
+                return redirect('manage_students')
+
+        else:
+            messages.error(request, "Invalid form submission.")
+
     return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1104,6 +1155,10 @@ def admin_view_course_content(request, course_uid):
     # Fetch pending deletion requests for this course's content
     lesson_ids = list(lessons.values_list('id', flat=True))
     resource_ids = list(resources.values_list('id', flat=True))
+
+    course_deletion_request = DeletionRequest.objects.filter(
+        status='PENDING', item_type='Course', item_id=course.id
+    ).first()
     
     pending_deletions = DeletionRequest.objects.filter(
         status='PENDING'
@@ -1162,6 +1217,7 @@ def admin_view_course_content(request, course_uid):
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
         'chapters': chapters_data,
+        'course_deletion_request': course_deletion_request,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1220,7 +1276,7 @@ def admin_delete_course_secure(request, course_uid):
                             from accounts.utils.cloudinary_helpers import delete_temp_image
                             delete_temp_image(res.thumbnail_public_id)
                     except Exception as e:
-                        print(f"Error deleting resource {res.uid}: {e}")
+                        logger.error(f"Error deleting resource {res.uid}: {e}")
 
             # 2. Delete the course (cascades to internal models)
             course.delete()
@@ -1251,15 +1307,25 @@ def admin_delete_lesson_secure(request, lesson_uid):
             lesson = get_object_or_404(Lesson, uid=lesson_uid)
             lesson_title = lesson.title
             course_uid = lesson.course.uid
+
+            # Delete from YouTube if it was a YouTube upload
+            if lesson.youtube_video_id:
+                try:
+                    from accounts.utils.youtube_uploader import delete_youtube_video
+                    delete_youtube_video(lesson.youtube_video_id)
+                except Exception as e:
+                    logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
+                    messages.error(request, f"YouTube video deletion failed: {e}. Lesson NOT removed.")
+                    return redirect('admin_view_course_content', course_uid=course_uid)
             
-            # Explicit file cleanup for Lesson videos
+            # Explicit file cleanup for Lesson videos (local MP4 uploads)
             if lesson.video_file:
                 try:
                     import os
                     if os.path.isfile(lesson.video_file.path):
                         os.remove(lesson.video_file.path)
                 except Exception as e:
-                    print(f"Error deleting lesson video file: {e}")
+                    logger.error(f"Error deleting lesson video file: {e}")
 
             lesson.delete()
             messages.success(request, f"✅ {lesson_title} removed successfully.")
@@ -1294,7 +1360,7 @@ def admin_delete_resource_secure(request, resource_uid):
                         manager = StorageManager()
                         manager.delete_supabase_file(resource.firebase_file_path)
                     except Exception as e:
-                        print(f"Error wiping Supabase file: {e}")
+                        logger.error(f"Error wiping Supabase file: {e}")
 
                 resource.delete()
                 messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
@@ -1341,8 +1407,28 @@ def delete_user_admin(request, user_uid):
     try:
         target_user = get_object_or_404(CustomUser, uid=user_uid)
     except Exception:
-        messages.error(request, "⚠️ User not found.")
+        messages.error(request, "User not found.")
         return redirect('manage_students')
+
+    # TEACHER CONTENT CHECK — block deletion if any content exists
+    if target_user.user_type == 'TEACHER':
+        from accounts.models import CourseResource
+        course_count = Course.objects.filter(teacher=target_user).count()
+        lesson_count = Lesson.objects.filter(course__teacher=target_user).count()
+        resource_count = CourseResource.objects.filter(course__teacher=target_user).count()
+
+        if course_count > 0 or lesson_count > 0 or resource_count > 0:
+            messages.error(request, (
+                f"Cannot delete teacher {target_user.full_name or target_user.username}. "
+                f"This teacher still owns: "
+                f"{course_count} Course{'s' if course_count != 1 else ''}, "
+                f"{lesson_count} Lesson{'s' if lesson_count != 1 else ''}, "
+                f"{resource_count} Resource{'s' if resource_count != 1 else ''}. "
+                f"Delete all teacher-owned content first."
+            ))
+            if target_user.user_type == 'TEACHER':
+                return redirect('manage_teachers')
+            return redirect('manage_students')
     
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
@@ -1357,19 +1443,26 @@ def delete_user_admin(request, user_uid):
         
         if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER')):
             user_info = f"{target_user.full_name or target_user.username} ({target_user.user_type})"
+
+            # Invalidate any active session
+            if target_user.current_session_key:
+                try:
+                    from django.contrib.sessions.models import Session
+                    Session.objects.filter(session_key=target_user.current_session_key).delete()
+                except Exception:
+                    pass
             
             # Explicitly cleanup logs that don't cascade
             ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
             
             target_user.delete()
-            messages.success(request, f"✅ User {user_info} and all associated data permanently purged.")
+            messages.success(request, f"{target_user.user_type.title()} {target_user.full_name or target_user.username} deleted successfully.")
             
-            # Redirect back to appropriate list
             if target_user.user_type == 'TEACHER':
                 return redirect('manage_teachers')
             return redirect('manage_students')
         else:
-            messages.error(request, "Action not allowed. Please verify administrator credentials.")
+            messages.error(request, "Invalid admin credentials.")
             
     return render(request, 'custom_admin/delete_user_confirm.html', {
         'target_user': target_user
@@ -1449,16 +1542,27 @@ def approve_deletion_request(request, request_uid):
     if del_request.item_type == 'Lesson':
         lesson = Lesson.objects.filter(id=del_request.item_id).first()
         if lesson:
+            # Delete from YouTube before removing the DB record
+            if lesson.youtube_video_id:
+                try:
+                    from accounts.utils.youtube_uploader import delete_youtube_video
+                    delete_youtube_video(lesson.youtube_video_id)
+                except Exception as e:
+                    logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
+                    messages.error(request, f"Failed to delete YouTube video. The request has been kept pending. Error: {e}")
+                    return redirect('manage_deletion_requests')
             lesson.delete()
         else:
             messages.warning(request, "Item already gone.")
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
+            from django.utils import timezone
+            now = timezone.now()
             # Cascade soft-delete: mark all lessons and resources as deleted
             course.lessons.all().update(status='REJECTED', is_approved=False)
             from accounts.models import CourseResource
-            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True)
+            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True, deleted_at=now)
             course.status = 'DELETED'
             course.is_approved = False
             course.save()
@@ -1530,7 +1634,7 @@ def deleted_courses_view(request):
     from django.db.models import Count
     courses = Course.objects.filter(status='DELETED').select_related('teacher').annotate(
         lessons_count=Count('lessons'),
-        resources_count=Count('courseresource'),
+        resources_count=Count('resources'),
     ).order_by('-created_at')[:20]
     
     return render(request, 'custom_admin/deleted_courses.html', {
@@ -1861,7 +1965,6 @@ def system_audit_view(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def master_audit_summary_view(request):
     """Executive SOC, SIEM & Observability Dashboard — powered by Firebase RTDB."""
-    from django.conf import settings
     from django.db import connection
     from accounts.utils.firebase_audit import run_infrastructure_check, get_security_counters, get_recent_events
     import time
@@ -2035,7 +2138,7 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     avatar_img = None
     _tmp_avatar_path = None
     avatar_url = getattr(user_obj, 'avatar_url', None)
-    if avatar_url:
+    if avatar_url and (avatar_url.startswith('http://') or avatar_url.startswith('https://')):
         try:
             resp = http_requests.get(avatar_url, timeout=10)
             if resp.status_code == 200:
@@ -2167,7 +2270,16 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     elements.append(Paragraph("Thank you for being part of Neo Learner Learning Academy.", styles['Footer']))
     elements.append(Paragraph("This is a computer-generated document and does not require a physical signature.", ParagraphStyle('Footer2', parent=styles['Footer'], fontSize=8)))
 
-    doc.build(elements)
+    try:
+        doc.build(elements)
+    except Exception:
+        try:
+            doc = SimpleDocTemplate(buf, pagesize=A4, leftMargin=40, rightMargin=40, topMargin=40, bottomMargin=40)
+            elements = [Paragraph("Error generating invoice. Please try again.", ParagraphStyle('Error', parent=styles['Normal'], fontSize=12, textColor=HexColor('#ef4444'), alignment=TA_CENTER))]
+            doc.build(elements)
+        except Exception:
+            from django.http import HttpResponse
+            return HttpResponse("Unable to generate PDF.", status=500)
     pdf_bytes = buf.getvalue()
     buf.close()
 
@@ -2184,7 +2296,6 @@ def generate_invoice_pdf_response(request, title, user_obj, items, balance, yest
     return response
 
 
-@user_passes_test(is_admin, login_url='admin_login')
 @user_passes_test(is_admin, login_url='admin_login')
 def download_student_invoice_pdf(request, user_uid):
     student = get_object_or_404(CustomUser, uid=user_uid, user_type='STUDENT')

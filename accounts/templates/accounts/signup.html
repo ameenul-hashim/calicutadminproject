@@ -74,30 +74,6 @@
                     <input type="text" name="fullname" id="fullname" value="{{ fullname|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
                 </div>
 
-                <!-- Avatar Selection (Optional) -->
-                <div class="form-group">
-                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Profile Avatar <span style="color: #94a3b8; font-weight: 400;">(optional)</span></label>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;" id="avatarGrid">
-                        {% for i in "01234"|make_list %}
-                        <div class="av-choice" data-avatar="/static/avatars/student_m_{{ i }}.png" onclick="selectAvatar(this)" style="width: 52px; height: 52px; border-radius: 50%; border: 3px solid #e2e8f0; cursor: pointer; overflow: hidden; transition: all 0.2s;">
-                            <img src="/static/avatars/student_m_{{ i }}.png" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
-                        </div>
-                        {% endfor %}
-                        {% for i in "01234"|make_list %}
-                        <div class="av-choice" data-avatar="/static/avatars/student_f_{{ i }}.png" onclick="selectAvatar(this)" style="width: 52px; height: 52px; border-radius: 50%; border: 3px solid #e2e8f0; cursor: pointer; overflow: hidden; transition: all 0.2s;">
-                            <img src="/static/avatars/student_f_{{ i }}.png" alt="Avatar" style="width: 100%; height: 100%; object-fit: cover;">
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                        <label for="avatar_upload" style="font-size: 0.8rem; color: #6366f1; cursor: pointer; font-weight: 600; padding: 0.3rem 0.8rem; border: 1px dashed #6366f1; border-radius: 0.5rem;">Upload Custom</label>
-                        <input type="file" name="avatar_upload" id="avatar_upload" accept="image/*" style="display: none;" onchange="handleAvatarUpload(this)">
-                        <span id="avatarFileName" style="font-size: 0.8rem; color: #94a3b8;"></span>
-                        <a href="#" onclick="skipAvatar(event)" style="font-size: 0.8rem; color: #94a3b8; text-decoration: none; margin-left: auto;">Skip for now</a>
-                    </div>
-                    <input type="hidden" name="avatar_url" id="avatarUrlInput" value="{{ avatar_url|default:'' }}">
-                </div>
-
                 <div class="form-group">
                     <label for="email">Email Address</label>
                     <input type="email" name="email" id="email" value="{{ email|default:'' }}" style="width: 100%; padding: 0.8rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; font-size: 1rem; outline: none;">
@@ -207,37 +183,6 @@
             display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
             label.style.borderColor = "#10b981";
             label.style.background = "#f0fdf4";
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const val = document.getElementById('avatarUrlInput').value;
-            if (val && val !== '__upload__') {
-                document.querySelectorAll('.av-choice').forEach(a => {
-                    if (a.dataset.avatar === val) selectAvatar(a);
-                });
-            } else if (val === '__upload__') {
-                document.getElementById('avatarFileName').textContent = 'Custom image selected';
-            }
-        });
-        function selectAvatar(el) {
-            document.querySelectorAll('.av-choice').forEach(a => a.style.borderColor = '#e2e8f0');
-            el.style.borderColor = '#6366f1';
-            el.style.transform = 'scale(1.1)';
-            document.getElementById('avatarUrlInput').value = el.dataset.avatar;
-            document.getElementById('avatarFileName').textContent = 'Avatar selected';
-        }
-        function skipAvatar(e) {
-            e.preventDefault();
-            document.querySelectorAll('.av-choice').forEach(a => a.style.borderColor = '#e2e8f0');
-            document.getElementById('avatarUrlInput').value = '';
-            document.getElementById('avatarFileName').textContent = 'Skipped — set later in profile';
-        }
-        function handleAvatarUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
-            document.querySelectorAll('.av-choice').forEach(a => a.style.borderColor = '#e2e8f0');
-            document.getElementById('avatarUrlInput').value = '__upload__';
-            document.getElementById('avatarFileName').textContent = file.name;
         }
 
         // Initialize Validation Engine

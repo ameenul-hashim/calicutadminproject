@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.urls import reverse
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
@@ -155,8 +156,8 @@ def signup_view(request):
             messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
             return render(request, 'accounts/signup.html', ctx)
 
-        if (CustomUser.objects.filter(username__iexact=username).exists() or
-            CustomUser.objects.filter(email__iexact=email).exists() or
+        if (CustomUser.objects.filter(username__iexact=username).exclude(status='REJECTED').exists() or
+            CustomUser.objects.filter(email__iexact=email).exclude(status='REJECTED').exists() or
             CustomUser.objects.filter(phone_number=phone_number).exclude(status='REJECTED').exists()):
             messages.error(request, "This information conflicts with an existing account. Please check your details or try logging in.")
             return render(request, 'accounts/signup.html', ctx)
@@ -195,17 +196,6 @@ def signup_view(request):
                 is_active=False, status='PENDING', user_type='STUDENT',
             )
 
-            # Avatar (optional)
-            avatar_url = request.POST.get('avatar_url', '')
-            avatar_file = request.FILES.get('avatar_upload')
-            if avatar_url and avatar_url != '__upload__':
-                user.image = avatar_url
-                user.save(update_fields=['image'])
-            elif avatar_file:
-                from accounts.utils.cloudinary_helpers import update_image
-                update_image(user, avatar_file, folder="Neo Learner/profiles")
-
-            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
             from accounts.utils.pdf_helpers import convert_image_to_pdf
             from accounts.utils.supabase_storage import upload_user_proof
 
@@ -278,12 +268,12 @@ def teacher_signup_view(request):
             messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        # Unique checks
-        if CustomUser.objects.filter(username__iexact=username).exists():
+        # Unique checks — exclude REJECTED so users can reapply
+        if CustomUser.objects.filter(username__iexact=username).exclude(status='REJECTED').exists():
             messages.error(request, "This username is already taken. Please try another one.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        if CustomUser.objects.filter(email__iexact=email).exists():
+        if CustomUser.objects.filter(email__iexact=email).exclude(status='REJECTED').exists():
             messages.error(request, "This email is already registered. If it's yours, try logging in.")
             return render(request, 'accounts/teacher_signup.html', ctx)
         
@@ -325,17 +315,6 @@ def teacher_signup_view(request):
                 is_active=False, status='PENDING', user_type='TEACHER',
             )
 
-            # Avatar (optional)
-            avatar_url = request.POST.get('avatar_url', '')
-            avatar_file = request.FILES.get('avatar_upload')
-            if avatar_url and avatar_url != '__upload__':
-                user.image = avatar_url
-                user.save(update_fields=['image'])
-            elif avatar_file:
-                from accounts.utils.cloudinary_helpers import update_image
-                update_image(user, avatar_file, folder="Neo Learner/profiles")
-
-            # OPTIMIZED HYBRID FLOW (Direct Memory Processing):
             from accounts.utils.pdf_helpers import convert_image_to_pdf
             from accounts.utils.supabase_storage import upload_user_proof
 
@@ -351,7 +330,6 @@ def teacher_signup_view(request):
                     raise Exception("Supabase storage failure.")
             else:
                 logger.debug("Teacher signup: processing image for %s", username)
-                # convert_image_to_pdf now processes the file object directly in RAM
                 optimized_pdf = convert_image_to_pdf(proof_file)
                 
                 if not optimized_pdf:
@@ -627,7 +605,14 @@ def teacher_login_view(request):
             reason = "user not found" if not user_candidate else "password mismatch" if not user_candidate.check_password(password) else "backend rejected"
             logger.debug("Login FAILED for %s: %s", username, reason)
             log_login_attempt(request, user_candidate, status='FAILED')
-            messages.error(request, "Invalid username or password. Please try again.")
+            if user_candidate and user_candidate.status == 'PENDING':
+                messages.warning(request, "Your account is PENDING approval. Please wait or contact administration.")
+            elif user_candidate and user_candidate.status == 'REJECTED':
+                messages.error(request, "Your account was REJECTED. Please contact admin for details.")
+            elif user_candidate and user_candidate.status == 'BLOCKED':
+                messages.error(request, "Your account has been BLOCKED. Access is restricted.")
+            else:
+                messages.error(request, "Invalid username or password. Please try again.")
             
     return render(request, 'accounts/teacher_login.html')
 
@@ -969,7 +954,7 @@ def course_lessons(request, course_uid):
     from .models import CourseResource, DeletionRequest
     from itertools import groupby
 
-    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid').order_by('chapter', 'order')
+    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid', 'video_file', 'youtube_video_id', 'youtube_upload_status').order_by('chapter', 'order')
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'chapter', 'rejection_reason', 'uid', 'compressed_size', 'thumbnail_path').order_by('-created_at')
 
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
@@ -1324,6 +1309,12 @@ def delete_lesson(request, lesson_uid):
     
     # For PENDING/REJECTED lessons (not yet approved), delete immediately
     if lesson.status in ('PENDING', 'REJECTED'):
+        from .utils.youtube_uploader import delete_youtube_video
+        if lesson.youtube_video_id:
+            try:
+                delete_youtube_video(lesson.youtube_video_id)
+            except Exception:
+                pass
         lesson.delete()
         messages.success(request, "Lesson deleted successfully.")
         return redirect('course_lessons', course_uid=course_uid)
@@ -1385,7 +1376,11 @@ def add_resource(request, course_uid):
             mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
             is_infected, scan_reason = scanner.scan_file(upload_file)
             if is_infected:
-                raise ValueError(f"Security scan failed: {scan_reason}")
+                logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                    request.user.username, upload_file.name, scan_reason,
+                    request.META.get('REMOTE_ADDR'))
+                messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
+                return redirect('course_lessons', course_uid=course.uid)
             file_bytes = upload_file.read()
             original_size = len(file_bytes)
             
@@ -1459,7 +1454,9 @@ def add_resource(request, course_uid):
             )
             messages.success(request, success_msg)
         except Exception as e:
-            messages.error(request, f"Upload failed: {str(e)}")
+            logger.error("Resource upload error | user=%s course=%s error=%s",
+                request.user.username, course.uid, str(e))
+            messages.error(request, "An error occurred while uploading the file. Please try again.")
             
         return redirect('course_lessons', course_uid=course.uid)
         
@@ -1508,7 +1505,11 @@ def edit_resource(request, resource_uid):
                 new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
                 is_infected, scan_reason = scanner.scan_file(upload_file)
                 if is_infected:
-                    raise ValueError(f"Security scan failed: {scan_reason}")
+                    logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                        request.user.username, upload_file.name, scan_reason,
+                        request.META.get('REMOTE_ADDR'))
+                    messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
+                    return redirect('edit_resource', resource_uid=resource.uid)
                 file_bytes = upload_file.read()
                 new_orig_size = len(file_bytes)
                 
@@ -1549,7 +1550,9 @@ def edit_resource(request, resource_uid):
                         new_thumb_path = t_url
                         new_thumb_pid = t_pid
             except Exception as e:
-                messages.error(request, f"File processing failed: {str(e)}")
+                logger.error("Resource edit error | user=%s resource=%s error=%s",
+                    request.user.username, resource.uid, str(e))
+                messages.error(request, "An error occurred while processing the file. Please try again.")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
         course_is_published = course.status == 'PUBLISHED' and course.is_approved
@@ -1814,6 +1817,20 @@ def edit_profile(request):
     if request.method == 'POST':
         from django.contrib.auth import update_session_auth_hash
         import re
+
+        # Handle Skip — set default avatar and mark photo cache so middleware stops redirecting
+        if request.POST.get('skip'):
+            from django.core.cache import cache
+            if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
+                request.user.image = '/static/avatars/admin_m_0.png'
+            elif request.user.user_type == 'TEACHER':
+                request.user.image = '/static/avatars/teacher_m_0.png'
+            else:
+                request.user.image = '/static/avatars/student_m_0.png'
+            request.user.save(update_fields=['image'])
+            cache.delete(f"user_has_photo_{request.user.id}")
+            redirect_url = reverse('teacher_dashboard') if request.user.user_type == 'TEACHER' else reverse('dashboard')
+            return JsonResponse({'status': 'skip', 'redirect': redirect_url})
 
         changes_made = False
         password_changed = False
@@ -2863,16 +2880,35 @@ def youtube_upload_complete(request):
 
     lesson_uid_str = data.get('lesson_uid')
     video_id = data.get('video_id', '').strip()
+    auto_recover = data.get('auto_recover', False)
 
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
+
     if not video_id:
-        return JsonResponse({'error': 'video_id required'}, status=400)
+        if not auto_recover:
+            return JsonResponse({'error': 'video_id required'}, status=400)
+        from .utils.youtube_uploader import find_latest_youtube_upload
+        try:
+            lesson_lookup = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+            lesson_title = lesson_lookup.title
+            recovered_id = find_latest_youtube_upload(lesson_title)
+            if not recovered_id:
+                return JsonResponse({
+                    'error': 'upload_succeeded_but_needs_manual_url',
+                    'message': 'Video uploaded to YouTube but the video ID could not be captured automatically. Please edit the lesson to add the YouTube URL manually.',
+                }, status=200)
+            video_id = recovered_id
+        except Lesson.DoesNotExist:
+            return JsonResponse({'error': 'auto_recover: Lesson not found'}, status=404)
 
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
+
+    if lesson.youtube_video_id == video_id and lesson.upload_status == 'READY':
+        return JsonResponse({'success': True, 'status': 'already_complete', 'video_id': video_id})
 
     course = lesson.course
     course_is_published = course.status == 'PUBLISHED' and course.is_approved
@@ -2880,8 +2916,9 @@ def youtube_upload_complete(request):
     lesson.youtube_video_id = video_id
     lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
-    lesson.upload_status = 'PROCESSING'
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
+    lesson.upload_status = 'READY'
+
     if course_is_published:
         lesson.status = 'APPROVED'
         lesson.is_approved = True
@@ -2893,25 +2930,14 @@ def youtube_upload_complete(request):
         update_fields.extend(['status', 'is_approved'])
     lesson.save(update_fields=update_fields)
 
+    if auto_recover:
+        logger.info(f"auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
+
     return JsonResponse({
         'success': True,
         'message': 'Video uploaded to YouTube successfully!',
-        'upload_status': 'PROCESSING',
         'video_id': video_id,
     })
-
-
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def video_upload_status(request, lesson_uid):
-    """Phase 3: Poll upload status for progress tracking."""
-    try:
-        lesson = Lesson.objects.get(uid=lesson_uid, course__teacher=request.user)
-        return JsonResponse({
-            'upload_status': lesson.upload_status,
-            'file_size': lesson.file_size,
-        })
-    except Lesson.DoesNotExist:
-        return JsonResponse({'error': 'Lesson not found'}, status=404)
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -2993,16 +3019,34 @@ def youtube_edit_complete(request):
 
     lesson_uid_str = data.get('lesson_uid')
     video_id = data.get('video_id', '').strip()
+    auto_recover = data.get('auto_recover', False)
 
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
+
     if not video_id:
-        return JsonResponse({'error': 'video_id required'}, status=400)
+        if not auto_recover:
+            return JsonResponse({'error': 'video_id required'}, status=400)
+        from .utils.youtube_uploader import find_latest_youtube_upload
+        try:
+            lesson_lookup = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
+            recovered_id = find_latest_youtube_upload(lesson_lookup.title)
+            if not recovered_id:
+                return JsonResponse({
+                    'error': 'upload_succeeded_but_needs_manual_url',
+                    'message': 'Video uploaded to YouTube but the video ID could not be captured automatically. Please add the YouTube URL manually.',
+                }, status=200)
+            video_id = recovered_id
+        except Lesson.DoesNotExist:
+            return JsonResponse({'error': 'auto_recover: Lesson not found'}, status=404)
 
     try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
     except Lesson.DoesNotExist:
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
+
+    if lesson.youtube_video_id == video_id and lesson.upload_status == 'READY':
+        return JsonResponse({'success': True, 'status': 'already_complete', 'video_id': video_id})
 
     new_youtube_url = f'https://www.youtube.com/watch?v={video_id}'
     course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
@@ -3013,7 +3057,7 @@ def youtube_edit_complete(request):
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
         lesson.youtube_uploaded_at = tz.now()
-        lesson.upload_status = 'PROCESSING'
+        lesson.upload_status = 'READY'
         lesson.save(update_fields=[
             'pending_video_url', 'has_pending_edits', 'youtube_video_id',
             'youtube_upload_status', 'youtube_uploaded_at', 'upload_status',
@@ -3023,7 +3067,7 @@ def youtube_edit_complete(request):
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
         lesson.youtube_uploaded_at = tz.now()
-        lesson.upload_status = 'PROCESSING'
+        lesson.upload_status = 'READY'
         lesson.video_url = new_youtube_url
         lesson.status = 'APPROVED'
         lesson.is_approved = True
@@ -3035,18 +3079,85 @@ def youtube_edit_complete(request):
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
         lesson.youtube_uploaded_at = tz.now()
-        lesson.upload_status = 'PROCESSING'
+        lesson.upload_status = 'READY'
         lesson.video_url = new_youtube_url
         lesson.save(update_fields=[
             'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
             'upload_status', 'video_url',
         ])
 
+    if auto_recover:
+        logger.info(f"youtube_edit_complete auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
+
     return JsonResponse({
         'success': True,
         'message': 'Video uploaded to YouTube successfully!',
-        'upload_status': 'PROCESSING',
         'video_id': video_id,
+    })
+
+
+@csrf_exempt
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def recover_lesson_view(request, lesson_uid):
+    """
+    Auto-recover a lesson whose video_id was not saved due to browser
+    disconnect, callback failure, or any other upload interruption.
+    Teacher opens lesson page → JS detects NULL youtube_video_id
+    → calls this endpoint → searches YouTube for matching video → saves if found.
+    """
+    from django.utils import timezone as tz
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        lesson = Lesson.objects.get(uid=lesson_uid, course__teacher=request.user)
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+    if lesson.upload_status == 'READY' and lesson.youtube_video_id:
+        return JsonResponse({'status': 'already_ready', 'youtube_video_id': lesson.youtube_video_id})
+
+    if lesson.video_url and not lesson.youtube_video_id:
+        return JsonResponse({'status': 'url_based', 'message': 'Lesson uses a direct URL, not YouTube upload.'})
+
+    from .utils.youtube_uploader import find_latest_youtube_upload
+    recovered_id = find_latest_youtube_upload(lesson.title)
+    if not recovered_id:
+        logger.info(f"recover_lesson_view: No matching video found for lesson {lesson_uid} ('{lesson.title}')")
+        return JsonResponse({
+            'status': 'not_found',
+            'message': 'Could not find a matching video on YouTube. The upload may not have completed.',
+        })
+
+    lesson.youtube_video_id = recovered_id
+    lesson.youtube_upload_status = 'UPLOADED'
+    lesson.youtube_uploaded_at = tz.now()
+    lesson.video_url = f'https://www.youtube.com/watch?v={recovered_id}'
+    lesson.upload_status = 'READY'
+
+    course = lesson.course
+    course_is_published = course.status == 'PUBLISHED' and course.is_approved
+    if course_is_published:
+        lesson.status = 'APPROVED'
+        lesson.is_approved = True
+
+    update_fields = [
+        'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
+        'upload_status', 'video_url',
+    ]
+    if course_is_published:
+        update_fields.extend(['status', 'is_approved'])
+    lesson.save(update_fields=update_fields)
+
+    logger.info(f"recover_lesson_view: Recovered lesson {lesson_uid} → video_id={recovered_id}")
+    return JsonResponse({
+        'status': 'recovered',
+        'youtube_video_id': recovered_id,
+        'watch_url': lesson.video_url,
+        'embed_url': f'https://www.youtube.com/embed/{recovered_id}',
+        'thumbnail_url': f'https://img.youtube.com/vi/{recovered_id}/0.jpg',
     })
 
 
@@ -3081,4 +3192,7 @@ def trigger_backup(request):
     thread = threading.Thread(target=run_backup, daemon=True)
     thread.start()
     return JsonResponse({'success': True, 'message': 'Backup started'})
+
+
+
 

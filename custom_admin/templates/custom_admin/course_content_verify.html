@@ -23,6 +23,25 @@
         <a href="{% url 'admin_content' %}" class="view-btn" style="text-decoration: none; color: #64748b; font-weight: 600;">&larr; Back to Courses</a>
     </div>
 
+    {% if course_deletion_request %}
+    <div style="background: #fef2f2; border-radius: 1rem; border: 2px solid #fecaca; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.5rem;">🗑️</span>
+            <div>
+                <div style="font-weight: 700; color: #991b1b;">Course Delete Request Pending</div>
+                <div style="font-size: 0.85rem; color: #b91c1c;">Teacher <strong>{{ course_deletion_request.teacher.full_name|default:course_deletion_request.teacher.username }}</strong> requested full deletion of this course and all its content.</div>
+                {% if course_deletion_request.reason %}
+                <div style="font-size: 0.8rem; color: #9f1239; margin-top: 0.25rem;">Reason: {{ course_deletion_request.reason }}</div>
+                {% endif %}
+            </div>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
+            <button onclick="openGenericModal('Approve Course Delete', '{% url 'approve_deletion_request' course_deletion_request.uid %}')" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 700; cursor: pointer;">Approve Delete</button>
+            <a href="{% url 'manage_deletion_requests' %}" style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600; cursor: pointer; text-decoration: none;">Back to Requests</a>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Course Overview Card -->
     <div style="background: white; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.5rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
         {% if course.thumbnail_url %}

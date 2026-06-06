@@ -233,7 +233,7 @@
                     }
 
                     const initData = await initResp.json();
-                    const lessonUid = initData.lesson_uid;
+                    var lessonUid = initData.lesson_uid;
                     const uploadUrl = initData.upload_url;
                     const accessToken = initData.access_token;
 
@@ -264,7 +264,7 @@
 
                     // Step 4: Success — redirect to lessons page
                     setProgress(100, '✅ Upload complete!');
-                    setPhase('✅ Video uploaded successfully! Processing on YouTube...', 'complete');
+                    setPhase('✅ Video uploaded successfully!', 'complete');
                     document.getElementById('progressDetail').textContent = '';
                     document.getElementById('progressBar').classList.add('complete');
 
@@ -273,9 +273,48 @@
                     }, 1500);
 
                 } catch (err) {
+                    const errorMsg = err.message || 'Upload failed. Please try again.';
+                    if (errorMsg === '__UPLOAD_LIKELY_SUCCESS__') {
+                        document.getElementById('progressBar').style.width = '100%';
+                        document.getElementById('progressBar').classList.add('complete');
+                        document.getElementById('progressPercent').textContent = '100%';
+                        document.getElementById('progressText').textContent = '✅ Upload complete!';
+                        document.getElementById('uploadPhase').textContent = '✅ Video uploaded to YouTube!';
+                        document.getElementById('uploadPhase').classList.add('complete');
+                        document.getElementById('uploadError').textContent = '';
+                        document.getElementById('uploadError').classList.remove('active');
+                        document.getElementById('progressDetail').textContent = '';
+                        submitBtn.disabled = true;
+                        submitBtn.textContent = 'Finalizing...';
+                        // Try to auto-recover: call youtube-complete with auto_recover flag
+                        (async function() {
+                            try {
+                                const recoverResp = await fetch('/api/video/youtube-complete/', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                                    },
+                                    body: JSON.stringify({
+                                        lesson_uid: lessonUid,
+                                        auto_recover: true,
+                                    })
+                                });
+                                const recoverData = await recoverResp.json();
+                                if (!recoverResp.ok || recoverData.error) {
+                                    console.warn('Auto-recover could not save video_id:', recoverData);
+                                }
+                            } catch (recoverErr) {
+                                console.warn('Auto-recover request failed:', recoverErr);
+                            }
+                            setTimeout(function() {
+                                window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                            }, 500);
+                        })();
+                        return;
+                    }
                     console.error('Upload error:', err);
                     setProgress(0, 'Upload failed');
-                    const errorMsg = err.message || 'Upload failed. Please try again.';
                     setPhase('❌ ' + errorMsg, 'error');
                     setError(errorMsg);
                     setButtonLoading(false);
@@ -289,6 +328,7 @@
                     let lastLoaded = 0;
                     let lastTime = startTime;
                     let timedOut = false;
+                    let lastProgressPercent = 0;
 
                     // 30-minute timeout for large files
                     const timeoutMs = 1800000;
@@ -301,6 +341,7 @@
                     xhr.upload.addEventListener('progress', function(e) {
                         if (e.lengthComputable) {
                             const percent = Math.round((e.loaded / e.total) * 100);
+                            lastProgressPercent = percent;
                             const now = Date.now();
                             const timeDelta = (now - lastTime) / 1000;
 
@@ -366,7 +407,11 @@
                     xhr.addEventListener('error', function() {
                         clearTimeout(timer);
                         if (!timedOut) {
-                            reject(new Error('Network error: Could not reach YouTube. Check your internet connection and try again.'));
+                            if (lastProgressPercent >= 90) {
+                                reject(new Error('__UPLOAD_LIKELY_SUCCESS__'));
+                            } else {
+                                reject(new Error('Network error: Could not reach YouTube. Check your internet connection and try again.'));
+                            }
                         }
                     });
 

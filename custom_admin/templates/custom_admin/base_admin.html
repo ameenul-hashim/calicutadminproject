@@ -72,7 +72,7 @@
         header {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(12px);
-            padding: 1.25rem 2.5rem;
+            padding: 1.25rem 1.5rem;
             border-bottom: 1px solid #e2e8f0;
             z-index: 40;
             flex-shrink: 0;
@@ -96,13 +96,13 @@
         }
         .main-content {
             flex: 1;
-            overflow-y: auto; /* Only content scrolls */
-            padding: 2rem 2.5rem;
+            overflow-y: auto;
+            padding: 1.5rem;
             width: 100%;
             box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            gap: 2rem;
+            gap: 1.5rem;
             scroll-behavior: smooth;
         }
 
@@ -187,11 +187,10 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            min-width: 1000px; /* Force minimum width for scrolling */
         }
         .table-responsive {
             width: 100%;
-            max-height: calc(100vh - 300px); /* Fill available space but keep header/footer visible */
+            max-height: calc(100vh - 120px); /* More space for table rows */
             overflow-x: auto;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
@@ -220,13 +219,13 @@
         }
 
         .table thead th, .table tr:first-child th {
-            background: #1e293b !important; /* Premium dark slate */
-            color: #ffffff !important; /* White text for contrast */
+            background: #1e293b !important;
+            color: #ffffff !important;
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.75rem;
             letter-spacing: 0.05em;
-            padding: 1.25rem 1.5rem;
+            padding: 0.8rem 1rem;
             border-bottom: 2px solid #334155;
             position: sticky;
             top: 0;
@@ -234,7 +233,7 @@
             text-align: left;
         }
         .table td {
-            padding: 1.25rem 1.5rem;
+            padding: 0.8rem 1rem;
             vertical-align: middle;
             border-bottom: 1px solid #f1f5f9;
             background: white;
@@ -425,14 +424,8 @@
                         <span>📚 Manage Courses</span>
                         <span id="course-arrow">▼</span>
                     </button>
-                    <div id="course-drop" class="dropdown-container {% if 'content' in request.path or 'pending_courses' in request.path %}active{% endif %}">
-                        <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">Details</a>
-                        <a href="{% url 'pending_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'pending_courses' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
-                            Requests
-                            {% if pending_courses_total > 0 %}
-                            <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_courses_total }}</span>
-                            {% endif %}
-                        </a>
+                    <div id="course-drop" class="dropdown-container {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">
+                        <a href="{% url 'admin_content' %}" class="nav-link {% if request.resolver_match.url_name == 'admin_content' %}active{% endif %}">Courses</a>
                     </div>
                 </div>
 
@@ -443,15 +436,15 @@
                 
 
 
-                <!-- 3.5 Deletion Requests & Recycle Bin -->
+                <!-- 3.5 Course Delete & Recycle Bin -->
                 <div class="nav-group">
                     <button class="nav-link dropdown-btn" onclick="toggleDropdown('deletion-drop')">
-                        <span>🗑️ Deletions & Recycle Bin</span>
+                        <span>🗑️ Course Delete</span>
                         <span id="deletion-arrow">▼</span>
                     </button>
                     <div id="deletion-drop" class="dropdown-container {% if 'deletion' in request.path or 'deleted-courses' in request.path %}active{% endif %}">
                         <a href="{% url 'manage_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_deletion_requests' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
-                            Requests
+                            Course Delete Requests
                             {% if pending_deletions_count > 0 %}
                             <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_deletions_count }}</span>
                             {% endif %}

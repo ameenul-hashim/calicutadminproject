@@ -14,12 +14,15 @@
         form[method="GET"] > div { flex-wrap: wrap; }
         form[method="GET"] select { flex: 1; min-width: 120px; }
     }
-        </style>
+    .table-responsive table tbody tr:last-child td {
+        padding-bottom: 1.2rem !important;
+    }
+</style>
 
 {% endblock %}
 
 {% block content %}
-    <div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white; display: flex; flex-direction: column; height: calc(100vh - 220px);">
+    <div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white; display: flex; flex-direction: column; height: calc(100vh - 100px);">
         <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; flex-shrink: 0;">
             <a href="{% url 'create_student_admin' %}" class="btn-primary" style="padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; background: #0ea5e9; color: white; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);">
                 <span>+</span> New Student
@@ -64,7 +67,7 @@
                     <tbody>
                         {% for u in users %}
                         <tr style="border-bottom: 1px solid #f1f5f9;">
-                            <td style="padding: 1.25rem 1.5rem;">
+                            <td style="padding: 0.8rem 1rem;">
                                 <div style="display: flex; align-items: center; gap: 1rem;">
                                     <div style="width: 44px; height: 44px; border-radius: 0.5rem; overflow: hidden; background: linear-gradient(135deg, #0ea5e9, #6366f1); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.2); border: 1px solid #e2e8f0;">
                                         {% if u.avatar_url %}
@@ -79,10 +82,10 @@
                                     </div>
                                 </div>
                             </td>
-                            <td style="padding: 1.25rem 1.5rem; color: #1e293b; font-size: 0.9rem; font-weight: 500;">
+                            <td style="padding: 0.8rem 1rem; color: #1e293b; font-size: 0.9rem; font-weight: 500;">
                                 {{ u.phone_number|default:"—" }}
                             </td>
-                            <td style="padding: 1.25rem 1.5rem;">
+                            <td style="padding: 0.8rem 1rem;">
                                 <span style="padding: 0.35rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 700; 
                                     {% if u.status == 'ACTIVE' %}background: #dcfce7; color: #15803d;
                                     {% elif u.status == 'PENDING' %}background: #fef9c3; color: #854d0e;
@@ -90,7 +93,7 @@
                                     {{ u.status }}
                                 </span>
                             </td>
-                            <td style="padding: 1.25rem 1.5rem;">
+                            <td style="padding: 0.8rem 1rem;">
                                 {% if u.pdf_path or u.proof_pdf or u.pdf_url %}
                                     <a href="{% url 'proxy_pdf_access' u.uid %}" target="_blank" style="color: #6366f1; text-decoration: none; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.3rem;">
                                         📄 View
@@ -99,13 +102,13 @@
                                     <span style="color: #94a3b8; font-size: 0.85rem;">None</span>
                                 {% endif %}
                             </td>
-                            <td style="padding: 1.25rem 1.5rem; color: #64748b; font-size: 0.9rem;">
+                            <td style="padding: 0.8rem 1rem; color: #64748b; font-size: 0.9rem;">
                                 {{ u.date_joined|date:"M d, Y" }}
                             </td>
-                            <td style="padding: 1.25rem 1.5rem;">
+                            <td style="padding: 0.8rem 1rem;">
                                 <a href="{% url 'admin_student_profile' u.uid %}" style="color: #0ea5e9; text-decoration: none; font-weight: 700;">👁️ View</a>
                             </td>
-                            <td style="padding: 1.25rem 1.5rem;">
+                            <td style="padding: 0.8rem 1rem;">
                                 <div style="display: flex; gap: 0.5rem;">
                                     <a href="{% url 'edit_user_admin' u.uid %}" title="Edit" style="padding: 0.3rem 0.6rem; background: #eff6ff; color: #3b82f6; border-radius: 0.5rem; text-decoration: none; font-weight: 600;">
                                         Edit
@@ -121,12 +124,32 @@
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" style="padding: 3rem; text-align: center; color: #94a3b8;">No students found.</td>
+                            <td colspan="7" style="padding: 3rem; text-align: center; color: #94a3b8;">No students found.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
         </div>
+        {% if page_obj.paginator.num_pages > 1 %}
+        <div style="padding:1rem 1.5rem;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;flex-wrap:wrap;gap:0.5rem">
+            <div style="font-size:0.8rem;color:#64748b">Showing {{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ page_obj.paginator.count }}</div>
+            <div style="display:flex;gap:0.25rem;align-items:center">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" style="padding:0.4rem 0.7rem;border-radius:0.4rem;background:#f1f5f9;color:#475569;text-decoration:none;font-weight:600;font-size:0.8rem">&laquo; Prev</a>
+                {% endif %}
+                {% for p in page_obj.paginator.page_range %}
+                    {% if p == page_obj.number %}
+                    <span style="padding:0.4rem 0.7rem;border-radius:0.4rem;background:#0ea5e9;color:white;font-weight:700;font-size:0.8rem">{{ p }}</span>
+                    {% elif p >= page_obj.number|add:'-2' and p <= page_obj.number|add:'2' %}
+                    <a href="?page={{ p }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" style="padding:0.4rem 0.7rem;border-radius:0.4rem;background:#f8fafc;color:#475569;text-decoration:none;font-weight:600;font-size:0.8rem">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if sort %}&sort={{ sort }}{% endif %}" style="padding:0.4rem 0.7rem;border-radius:0.4rem;background:#f1f5f9;color:#475569;text-decoration:none;font-weight:600;font-size:0.8rem">Next &raquo;</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
                 
 
             </div>

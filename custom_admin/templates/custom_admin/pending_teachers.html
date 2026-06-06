@@ -8,27 +8,27 @@
 {% endblock %}
 
 {% block content %}
-<div class="glass-card" style="border-radius: 1rem; overflow: hidden; background: white;">
+<div class="glass-card" style="border-radius: 1rem; overflow: visible; background: white;">
     <div style="padding: 1.5rem; border-bottom: 1px solid #e2e8f0;">
         <h2 style="margin: 0; font-size: 1.25rem; color: #1e293b;">Pending Teacher Requests</h2>
     </div>
-    <div class="table-responsive" style="overflow-x: auto;">
-        <table class="table" style="width: 100%; border-collapse: collapse; min-width: 900px;">
+    <div class="table-responsive" style="overflow-x: auto; padding-bottom: 3rem;">
+        <table class="table" style="width: 100%; border-collapse: collapse;">
             <thead>
                 <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Teacher</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Email</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Phone</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Applied</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Qualification Proof</th>
-                    <th style="padding: 1rem 1.25rem; text-align: left; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Actions</th>
+                    <th style="padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Teacher</th>
+                    <th style="padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Email</th>
+                    <th style="padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Phone</th>
+                    <th style="padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Applied</th>
+                    <th style="padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Proof</th>
+                    <th style="padding: 0.8rem 1rem; text-align: left; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; white-space: nowrap;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for u in users %}
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background=''">
                     <!-- Teacher Name -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.8rem 1rem;">
                         <div style="display: flex; align-items: center; gap: 0.75rem;">
                             <div style="width: 44px; height: 44px; border-radius: 0.5rem; overflow: hidden; background: linear-gradient(135deg, #8b5cf6, #06b6d4); display: flex; align-items: center; justify-content: center; flex-shrink: 0; border: 1px solid #e2e8f0;">
                                 {% if u.avatar_url %}
@@ -45,22 +45,22 @@
                     </td>
 
                     <!-- Email -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.8rem 1rem;">
                         <span style="font-size: 0.875rem; color: #334155;">{{ u.email }}</span>
                     </td>
 
                     <!-- Phone -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.8rem 1rem;">
                         <span style="font-size: 0.875rem; color: #334155;">{{ u.phone_number|default:"—" }}</span>
                     </td>
 
                     <!-- Applied Date -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.8rem 1rem;">
                         <span style="font-size: 0.875rem; color: #64748b;">{{ u.date_joined|date:"M d, Y" }}</span>
                     </td>
 
                     <!-- Qualification Proof -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.8rem 1rem;">
                         {% if u.pdf_path or u.proof_pdf or u.pdf_url %}
                             <a href="{% url 'proxy_pdf_access' u.uid %}" target="_blank"
                                style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.9rem; background: #eef2ff; color: #6366f1; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.8rem;">
@@ -72,14 +72,14 @@
                     </td>
 
                     <!-- Actions -->
-                    <td style="padding: 1rem 1.25rem;">
+                    <td style="padding: 0.8rem 1rem;">
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                            <a href="javascript:void(0)"
-                               onclick="Toast.confirm('Approve teacher {{ u.full_name|default:u.username }}? They will be able to create and manage courses.', () => { window.location.href = '{% url 'accept_user' u.uid %}'; })"
-                               style="padding: 0.4rem 0.9rem; background: #10b981; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.8rem; white-space: nowrap;">
+                            <button type="button"
+                               onclick="Toast.confirm('Are you sure you want to approve {{ u.full_name }}?', () => { window.location.href = '{% url 'accept_user' u.uid %}'; })"
+                               style="padding: 0.4rem 0.9rem; background: #10b981; color: white; border-radius: 0.5rem; border: none; font-weight: 700; font-size: 0.8rem; white-space: nowrap; cursor: pointer;">
                                 ✅ Approve
-                            </a>
-                            <button onclick="document.getElementById('reject-form-{{ u.uid }}').style.display='block'; this.closest('div').style.display='none';"
+                            </button>
+                            <button onclick="document.getElementById('reject-form-{{ u.uid }}').style.display='block';"
                                     style="padding: 0.4rem 0.9rem; background: #ef4444; color: white; border: none; border-radius: 0.5rem; font-weight: 700; font-size: 0.8rem; cursor: pointer; white-space: nowrap;">
                                 ❌ Reject
                             </button>

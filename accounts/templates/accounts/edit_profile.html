@@ -133,13 +133,7 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            {% if user.image or user.profile_photo %}
-            <!-- ════ Manage Credentials Toggle ════ -->
-            <button type="button" onclick="toggleCredSection()" id="credToggleBtn" style="width: 100%; padding: 1rem; background: linear-gradient(135deg, #6366f1, #4f46e5); color: white; border: none; border-radius: 1rem; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; font-family: 'Inter', sans-serif; margin-bottom: 1.5rem;">
-                🔐 Manage Credentials
-            </button>
-
-            <div id="credSection" style="display: none;">
+            <div id="credSection">
                 <!-- ════ Username Section ════ -->
                 <div style="margin-top: 1.5rem; padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem;">
                     <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Username</h3>
@@ -202,14 +196,12 @@
                     </div>
                 </div>
             </div>
-            {% endif %}
 
             <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
-            {% if user.image or user.profile_photo %}
+            <div style="text-align: center; margin-top: 0.75rem;">
+                <a href="javascript:void(0)" id="skipBtn" style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;">Skip</a>
+            </div>
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
-            {% else %}
-            <a href="{% url 'skip_avatar' %}" class="btn-back" style="border-color: #6366f1; color: #6366f1;">Skip to Dashboard →</a>
-            {% endif %}
         </form>
     </div>
 
@@ -230,40 +222,27 @@
         const usernameInput = document.getElementById('new_username');
         const usernameStatus = document.getElementById('usernameStatus');
 
-        usernameInput.addEventListener('blur', function() {
-            const val = this.value.trim();
-            if (!val || val === origUsername) {
-                usernameStatus.textContent = '';
-                usernameStatus.style.color = 'transparent';
-                return;
-            }
-            fetch('/check-username/?username=' + encodeURIComponent(val))
-                .then(r => r.json())
-                .then(data => {
-                    if (data.available) {
-                        usernameStatus.textContent = '✓ Username available';
-                        usernameStatus.style.color = '#10b981';
-                    } else {
-                        usernameStatus.textContent = '✗ Username already taken';
-                        usernameStatus.style.color = '#ef4444';
-                    }
-                })
-                .catch(() => {});
-        });
-
-        function toggleCredSection() {
-            const section = document.getElementById('credSection');
-            const btn = document.getElementById('credToggleBtn');
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                section.style.animation = 'slideDown 0.3s ease';
-                btn.textContent = '✕ Close Credentials';
-                btn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
-            } else {
-                section.style.display = 'none';
-                btn.textContent = '🔐 Manage Credentials';
-                btn.style.background = 'linear-gradient(135deg, #6366f1, #4f46e5)';
-            }
+        if (usernameInput) {
+            usernameInput.addEventListener('blur', function() {
+                const val = this.value.trim();
+                if (!val || val === origUsername) {
+                    usernameStatus.textContent = '';
+                    usernameStatus.style.color = 'transparent';
+                    return;
+                }
+                fetch('/check-username/?username=' + encodeURIComponent(val))
+                    .then(r => r.json())
+                    .then(data => {
+                        if (data.available) {
+                            usernameStatus.textContent = '✓ Username available';
+                            usernameStatus.style.color = '#10b981';
+                        } else {
+                            usernameStatus.textContent = '✗ Username already taken';
+                            usernameStatus.style.color = '#ef4444';
+                        }
+                    })
+                    .catch(() => {});
+            });
         }
 
         const avatarOptions = document.querySelectorAll('.avatar-option');
@@ -272,6 +251,7 @@
         const previewContainer = document.getElementById('previewContainer');
         const submitBtn = document.getElementById('submitBtn');
         const profileForm = document.getElementById('profileForm');
+        const skipBtn = document.getElementById('skipBtn');
 
         avatarOptions.forEach(option => {
             option.addEventListener('click', function() {
@@ -348,8 +328,10 @@
                 if (data.status === 'success') {
                     showToast(data.message, 'success');
                     setTimeout(() => {
-                        window.location.href = "{% if user.image or user.profile_photo %}{% url 'profile' %}{% else %}{% url 'dashboard' %}{% endif %}";
+                        window.location.href = "{% url 'dashboard' %}";
                     }, 1500);
+                } else if (data.status === 'skip') {
+                    window.location.href = data.redirect;
                 } else {
                     showToast(data.message || 'Update failed', 'error');
                     submitBtn.disabled = false;
@@ -372,6 +354,29 @@
             } else {
                 alert(message);
             }
+        }
+
+        if (skipBtn) {
+            skipBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const formData = new FormData();
+                formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+                formData.append('skip', 'true');
+                fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'skip' && data.redirect) {
+                        window.location.href = data.redirect;
+                    }
+                })
+                .catch(() => {});
+            });
         }
     </script>
     </div>
