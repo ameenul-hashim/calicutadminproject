@@ -2849,13 +2849,7 @@ def youtube_upload_complete(request):
     lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
-
-    # Check if YouTube has already finished processing
-    from .utils.youtube_uploader import verify_youtube_video
-    if verify_youtube_video(video_id):
-        lesson.upload_status = 'READY'
-    else:
-        lesson.upload_status = 'PROCESSING'
+    lesson.upload_status = 'PROCESSING'
 
     if course_is_published:
         lesson.status = 'APPROVED'
@@ -3070,11 +3064,11 @@ def check_youtube_video_status(request, lesson_uid):
     if not lesson.youtube_video_id:
         return JsonResponse({'status': 'no_video', 'ready': False})
     is_ready = verify_youtube_video(lesson.youtube_video_id)
-    if is_ready and lesson.upload_status != 'READY':
-        lesson.upload_status = 'READY'
-        if lesson.youtube_upload_status == 'UPLOADING':
+    if is_ready:
+        if lesson.upload_status != 'READY' or lesson.youtube_upload_status == 'UPLOADING':
+            lesson.upload_status = 'READY'
             lesson.youtube_upload_status = 'UPLOADED'
-        lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
+            lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
     return JsonResponse({
         'status': 'ready' if is_ready else 'processing',
         'ready': is_ready,

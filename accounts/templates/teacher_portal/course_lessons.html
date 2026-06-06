@@ -459,7 +459,7 @@
                             {% if lesson.status == 'APPROVED' %}<span class="badge approved">&#x2705; Approved</span>{% endif %}
                             {% if lesson.status == 'PENDING' %}<span class="badge pending">&#x23F3; Pending</span>{% endif %}
                             {% if lesson.status == 'REJECTED' %}<span class="badge rejected">&#x274C; Rejected</span>{% endif %}
-                            {% if lesson.youtube_upload_status == 'UPLOADING' %}<span class="badge processing">&#x1F7E1; Processing</span>{% endif %}
+                            {% if lesson.youtube_upload_status == 'UPLOADING' or lesson.upload_status == 'PROCESSING' %}<span class="badge processing">&#x1F7E1; Processing</span>{% endif %}
                             {% if lesson.deletion_request %}
                                 {% if lesson.deletion_request.status == 'PENDING' %}
                                     <span class="badge del-pending">&#x23F3; Del. Pending</span>

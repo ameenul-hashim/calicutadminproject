@@ -135,28 +135,67 @@ def delete_youtube_video(video_id):
 
 
 def verify_youtube_video(video_id):
-    """Verify a video exists and is accessible on YouTube. Returns True/False."""
+    """
+    Verify a video is fully processed and playable on YouTube.
+    Uses YouTube Data API v3 with part=status,processingDetails to check
+    processingStatus, uploadStatus, privacyStatus, and embeddable.
+
+    Logs all status fields for debugging.
+    Returns True only when the video is fully processed and embeddable.
+    """
     if not video_id:
         return False
     try:
-        resp = requests.head(
-            f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json",
-            timeout=10
-        )
-        if resp.status_code == 200:
-            return True
-        resp2 = requests.get(
-            f"https://www.googleapis.com/youtube/v3/videos?id={video_id}&part=id",
-            headers=None,
-            timeout=10
-        )
         youtube = get_authenticated_service()
         if not youtube:
-            return resp.status_code < 500
-        request = youtube.videos().list(part='id', id=video_id)
+            logger.warning(f"YouTube service unavailable — cannot verify video {video_id}")
+            return False
+
+        request = youtube.videos().list(part='status,processingDetails', id=video_id)
         response = request.execute()
         items = response.get('items', [])
-        return len(items) > 0
+        if not items:
+            logger.info(f"verify_youtube_video: {video_id} — no items returned (video may not exist)")
+            return False
+
+        item = items[0]
+        status = item.get('status', {})
+        processing = item.get('processingDetails', {})
+
+        upload_status = status.get('uploadStatus', 'unknown')
+        privacy_status = status.get('privacyStatus', 'unknown')
+        embeddable = status.get('embeddable', False)
+        processing_status = processing.get('processingStatus', 'unknown')
+        failure_reason = processing.get('processingFailureReason', '')
+
+        logger.info(
+            f"YouTube video {video_id} status: "
+            f"uploadStatus={upload_status}, "
+            f"processingStatus={processing_status}, "
+            f"privacyStatus={privacy_status}, "
+            f"embeddable={embeddable}"
+            f"{', failureReason=' + failure_reason if failure_reason else ''}"
+        )
+
+        if upload_status in ('rejected', 'failed'):
+            logger.warning(f"YouTube video {video_id} upload failed: {upload_status} {failure_reason}")
+            return False
+
+        if processing_status == 'failed':
+            logger.warning(f"YouTube video {video_id} processing failed: {failure_reason}")
+            return False
+
+        if not embeddable:
+            logger.warning(f"YouTube video {video_id} is not embeddable")
+            return False
+
+        if upload_status == 'uploaded' and processing_status == 'succeeded':
+            return True
+
+        # If processing is still running but video exists, treat as not ready yet
+        logger.info(f"YouTube video {video_id} not yet ready — will retry on next check")
+        return False
+
     except Exception as e:
         logger.error(f"YouTube verification error for {video_id}: {e}")
         return False
