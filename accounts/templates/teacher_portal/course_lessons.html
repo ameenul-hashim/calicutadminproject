@@ -252,6 +252,7 @@
     .badge.del-pending { background: #fff7ed; color: #f97316; }
     .badge.del-approved { background: #dcfce7; color: #16a34a; }
     .badge.del-rejected { background: #fee2e2; color: #dc2626; }
+    .badge.processing { background: #fef3c7; color: #d97706; }
 
     /* ===== Video Player Modal ===== */
     #videoPlayerModal {
@@ -417,12 +418,12 @@
                     <div class="lesson-thumbnail">
                     {% if lesson.youtube_video_id %}
                         <img src="https://img.youtube.com/vi/{{ lesson.youtube_video_id }}/0.jpg" alt="{{ lesson.title }}" loading="lazy">
-                        <div class="play-overlay" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}')">
+                        <div class="play-overlay" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}','{{ lesson.uid }}')">
                             <div class="play-btn-circle">&#x25B6;</div>
                         </div>
                     {% elif lesson.video_url %}
                         <div class="no-thumb" style="background:#334155;">&#x1F3AC;</div>
-                        <div class="play-overlay" onclick="openVideoPlayer('url','{{ lesson.video_url|escapejs }}')">
+                        <div class="play-overlay" onclick="openVideoPlayer('url','{{ lesson.video_url|escapejs }}','{{ lesson.uid }}')">
                             <div class="play-btn-circle">&#x25B6;</div>
                         </div>
                     {% elif lesson.video_file %}
@@ -440,6 +441,7 @@
                             {% if lesson.status == 'APPROVED' %}<span class="badge approved">&#x2705; Approved</span>{% endif %}
                             {% if lesson.status == 'PENDING' %}<span class="badge pending">&#x23F3; Pending</span>{% endif %}
                             {% if lesson.status == 'REJECTED' %}<span class="badge rejected">&#x274C; Rejected</span>{% endif %}
+                            {% if lesson.youtube_upload_status == 'UPLOADING' %}<span class="badge processing">&#x1F7E1; Processing</span>{% endif %}
                             {% if lesson.deletion_request %}
                                 {% if lesson.deletion_request.status == 'PENDING' %}
                                     <span class="badge del-pending">&#x23F3; Del. Pending</span>
@@ -756,22 +758,35 @@ window.onYouTubeIframeAPIReady = function() {
     cbs.forEach(function(cb) { cb(); });
 };
 
-function showProcessingCard(wrapper, videoId) {
+function showProcessingCard(wrapper, videoId, lessonUid) {
     wrapper.innerHTML =
         '<div class="processing-card">' +
             '<div class="icon">&#x1F7E1;</div>' +
             '<h3>Processing Video</h3>' +
             '<p>Your video has been uploaded successfully.<br>YouTube is preparing the video for playback.<br>This may take a few moments.</p>' +
-            '<button class="refresh-btn" onclick="retryPlayVideo(\'' + videoId + '\')">&#x1F504; Refresh Status</button>' +
+            '<button class="refresh-btn" onclick="retryPlayVideo(\'' + videoId + '\', \'' + lessonUid + '\')">&#x1F504; Refresh Status</button>' +
         '</div>';
 }
-function retryPlayVideo(videoId) {
+function retryPlayVideo(videoId, lessonUid) {
     var wrapper = document.getElementById('videoPlayerWrapper');
     if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
     wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Checking video status...</div>';
-    attemptYoutubePlay(wrapper, videoId);
+    if (lessonUid) {
+        fetch('/api/video/check/' + lessonUid + '/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.ready) {
+                    attemptYoutubePlay(wrapper, videoId, lessonUid);
+                } else {
+                    showProcessingCard(wrapper, videoId, lessonUid);
+                }
+            })
+            .catch(function() { attemptYoutubePlay(wrapper, videoId, lessonUid); });
+    } else {
+        attemptYoutubePlay(wrapper, videoId);
+    }
 }
-function attemptYoutubePlay(wrapper, videoId) {
+function attemptYoutubePlay(wrapper, videoId, lessonUid) {
     wrapper.innerHTML = '<div id="ytplayer-el" style="width:100%;height:100%;"></div>';
     setTimeout(function() {
         try {
@@ -784,12 +799,12 @@ function attemptYoutubePlay(wrapper, videoId) {
                     onReady: function() {},
                     onError: function() {
                         if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
-                        showProcessingCard(wrapper, videoId);
+                        showProcessingCard(wrapper, videoId, lessonUid);
                     }
                 }
             });
         } catch(e) {
-            showProcessingCard(wrapper, videoId);
+            showProcessingCard(wrapper, videoId, lessonUid);
         }
     }, 150);
 }
@@ -845,7 +860,7 @@ function extractYoutubeId(url) {
     }
     return null;
 }
-function openVideoPlayer(type, src) {
+function openVideoPlayer(type, src, lessonUid) {
     var modal = document.getElementById('videoPlayerModal');
     var wrapper = document.getElementById('videoPlayerWrapper');
     modal.style.display = 'flex';
@@ -854,12 +869,12 @@ function openVideoPlayer(type, src) {
         wrapper.innerHTML = '<video src="' + src + '" controls autoplay style="width:100%;height:100%;"></video>';
     } else if (type === 'youtube') {
         wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
-        loadYTAPI(function() { attemptYoutubePlay(wrapper, src); });
+        loadYTAPI(function() { attemptYoutubePlay(wrapper, src, lessonUid); });
     } else if (type === 'url') {
         var vid = extractYoutubeId(src);
         if (vid) {
             wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
-            loadYTAPI(function() { attemptYoutubePlay(wrapper, vid); });
+            loadYTAPI(function() { attemptYoutubePlay(wrapper, vid, lessonUid); });
         } else {
             window.open(src, '_blank');
             closeVideoPlayer();

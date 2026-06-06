@@ -929,7 +929,7 @@ def course_lessons(request, course_uid):
     from .models import CourseResource, DeletionRequest
     from itertools import groupby
 
-    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid', 'video_file', 'youtube_video_id').order_by('chapter', 'order')
+    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid', 'video_file', 'youtube_video_id', 'youtube_upload_status').order_by('chapter', 'order')
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'chapter', 'rejection_reason', 'uid', 'compressed_size', 'thumbnail_path').order_by('-created_at')
 
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
@@ -3043,4 +3043,19 @@ def trigger_backup(request):
     thread = threading.Thread(target=run_backup, daemon=True)
     thread.start()
     return JsonResponse({'success': True, 'message': 'Backup started'})
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def check_youtube_video_status(request, lesson_uid):
+    """Check if a YouTube video is ready for playback (used by processing card 'Refresh Status')."""
+    from .utils.youtube_uploader import verify_youtube_video
+    lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
+    if not lesson.youtube_video_id:
+        return JsonResponse({'status': 'no_video', 'ready': False})
+    is_ready = verify_youtube_video(lesson.youtube_video_id)
+    return JsonResponse({
+        'status': 'ready' if is_ready else 'processing',
+        'ready': is_ready,
+        'video_id': lesson.youtube_video_id,
+    })
 
