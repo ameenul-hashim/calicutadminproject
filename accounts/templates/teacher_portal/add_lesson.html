@@ -264,7 +264,7 @@
 
                     // Step 4: Success — redirect to lessons page
                     setProgress(100, '✅ Upload complete!');
-                    setPhase('✅ Video uploaded successfully! Processing on YouTube...', 'complete');
+                    setPhase('✅ Video uploaded successfully!', 'complete');
                     document.getElementById('progressDetail').textContent = '';
                     document.getElementById('progressBar').classList.add('complete');
 
@@ -279,7 +279,7 @@
                         document.getElementById('progressBar').classList.add('complete');
                         document.getElementById('progressPercent').textContent = '100%';
                         document.getElementById('progressText').textContent = '✅ Upload complete!';
-                        document.getElementById('uploadPhase').textContent = '✅ Video uploaded to YouTube! Redirecting...';
+                        document.getElementById('uploadPhase').textContent = '✅ Video uploaded to YouTube!';
                         document.getElementById('uploadPhase').classList.add('complete');
                         document.getElementById('uploadError').textContent = '';
                         document.getElementById('uploadError').classList.remove('active');

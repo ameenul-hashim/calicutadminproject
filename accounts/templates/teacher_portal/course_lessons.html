@@ -317,34 +317,7 @@
         border: none;
         display: block;
     }
-    #videoPlayerModal .video-wrapper .processing-card {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        background: #0f172a;
-        color: #f8fafc;
-        padding: 2rem;
-        box-sizing: border-box;
-        text-align: center;
-    }
-    #videoPlayerModal .video-wrapper .processing-card .icon { font-size: 3rem; margin-bottom: 1rem; }
-    #videoPlayerModal .video-wrapper .processing-card h3 { font-size: 1.2rem; font-weight: 700; margin: 0 0 0.5rem; color: #fbbf24; }
-    #videoPlayerModal .video-wrapper .processing-card p { font-size: 0.9rem; color: #94a3b8; margin: 0 0 1.5rem; line-height: 1.5; max-width: 360px; }
-    #videoPlayerModal .video-wrapper .processing-card .refresh-btn {
-        background: #6366f1;
-        color: white;
-        border: none;
-        padding: 0.7rem 1.5rem;
-        border-radius: 0.75rem;
-        font-weight: 700;
-        font-size: 0.9rem;
-        cursor: pointer;
-        transition: background 0.15s;
-    }
-    #videoPlayerModal .video-wrapper .processing-card .refresh-btn:hover { background: #4f46e5; }
+
 
     @media (max-width: 768px) {
         .ch-card-header { padding: 0.9rem 1rem; }
@@ -427,7 +400,7 @@
         {% if chapter.videos %}
             <div class="lesson-grid">
             {% for lesson in chapter.videos %}
-                <div class="lesson-card" data-lesson-uid="{{ lesson.uid }}" data-processing="{% if lesson.upload_status == 'PROCESSING' or lesson.youtube_upload_status == 'UPLOADING' %}true{% endif %}">
+                <div class="lesson-card" data-lesson-uid="{{ lesson.uid }}">
                     <div class="lesson-thumbnail">
                     {% if lesson.youtube_video_id %}
                         <img src="https://img.youtube.com/vi/{{ lesson.youtube_video_id }}/0.jpg" alt="{{ lesson.title }}" loading="lazy">
@@ -459,7 +432,6 @@
                             {% if lesson.status == 'APPROVED' %}<span class="badge approved">&#x2705; Approved</span>{% endif %}
                             {% if lesson.status == 'PENDING' %}<span class="badge pending">&#x23F3; Pending</span>{% endif %}
                             {% if lesson.status == 'REJECTED' %}<span class="badge rejected">&#x274C; Rejected</span>{% endif %}
-                            {% if lesson.youtube_upload_status == 'UPLOADING' or lesson.upload_status == 'PROCESSING' %}<span class="badge processing">&#x1F7E1; Processing</span>{% endif %}
                             {% if lesson.deletion_request %}
                                 {% if lesson.deletion_request.status == 'PENDING' %}
                                     <span class="badge del-pending">&#x23F3; Del. Pending</span>
@@ -470,10 +442,20 @@
                                 {% endif %}
                             {% endif %}
                         </div>
+                        {% if request.user.user_type == 'TEACHER' and lesson.youtube_video_id %}
+                        <div style="font-size:0.72rem;margin:0.4rem 0;padding:0.35rem 0.5rem;background:#f8fafc;border-radius:0.4rem;border:1px solid #e2e8f0;line-height:1.5;">
+                            <div><strong>Video ID:</strong> <code style="font-size:0.65rem;background:#e2e8f0;padding:0.05rem 0.3rem;border-radius:0.2rem;">{{ lesson.youtube_video_id }}</code></div>
+                            <div><strong>Watch URL:</strong> <a href="https://www.youtube.com/watch?v={{ lesson.youtube_video_id }}" target="_blank" rel="noopener" style="font-size:0.65rem;word-break:break-all;">https://www.youtube.com/watch?v={{ lesson.youtube_video_id }}</a></div>
+                            <div><strong>Embed URL:</strong> <code style="font-size:0.65rem;background:#e2e8f0;padding:0.05rem 0.3rem;border-radius:0.2rem;word-break:break-all;">https://www.youtube.com/embed/{{ lesson.youtube_video_id }}</code></div>
+                        </div>
+                        {% endif %}
                         <div class="lesson-actions">
                         {% if not lesson.deletion_request or lesson.deletion_request.status == 'REJECTED' %}
                             {% if lesson.video_url %}
                             <a href="{{ lesson.video_url }}" target="_blank" rel="noopener" class="rc-action open">&#x25B6; Open Video</a>
+                            {% endif %}
+                            {% if lesson.youtube_video_id %}
+                            <a href="javascript:void(0)" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}')" class="rc-action view">&#x25B6; Play Embedded</a>
                             {% endif %}
                             <a href="{% url 'edit_lesson' lesson.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                             <a href="javascript:void(0)" onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" class="rc-action delete">&#x1F5D1;&#xFE0F; Delete Request</a>
@@ -779,35 +761,7 @@ window.onYouTubeIframeAPIReady = function() {
     cbs.forEach(function(cb) { cb(); });
 };
 
-function showProcessingCard(wrapper, videoId, lessonUid) {
-    wrapper.innerHTML =
-        '<div class="processing-card">' +
-            '<div class="icon">&#x1F7E1;</div>' +
-            '<h3>Processing Video</h3>' +
-            '<p>Your video has been uploaded successfully.<br>YouTube is preparing the video for playback.<br>This may take a few moments.</p>' +
-            '<button class="refresh-btn" onclick="retryPlayVideo(\'' + videoId + '\', \'' + lessonUid + '\')">&#x1F504; Refresh Status</button>' +
-        '</div>';
-}
-function retryPlayVideo(videoId, lessonUid) {
-    var wrapper = document.getElementById('videoPlayerWrapper');
-    if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
-    wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Checking video status...</div>';
-    if (lessonUid) {
-        fetch('/api/video/check/' + lessonUid + '/')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.ready) {
-                    attemptYoutubePlay(wrapper, videoId, lessonUid);
-                } else {
-                    showProcessingCard(wrapper, videoId, lessonUid);
-                }
-            })
-            .catch(function() { attemptYoutubePlay(wrapper, videoId, lessonUid); });
-    } else {
-        attemptYoutubePlay(wrapper, videoId);
-    }
-}
-function attemptYoutubePlay(wrapper, videoId, lessonUid) {
+function playYoutubeVideo(wrapper, videoId) {
     wrapper.innerHTML = '<div id="ytplayer-el" style="width:100%;height:100%;"></div>';
     setTimeout(function() {
         try {
@@ -820,12 +774,12 @@ function attemptYoutubePlay(wrapper, videoId, lessonUid) {
                     onReady: function() {},
                     onError: function() {
                         if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
-                        showProcessingCard(wrapper, videoId, lessonUid);
+                        wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0f172a;color:#94a3b8;font-size:1rem;text-align:center;padding:2rem;box-sizing:border-box;">Unable to play this video. <a href="https://www.youtube.com/watch?v=' + videoId + '" target="_blank" rel="noopener" style="color:#6366f1;margin-left:0.3rem;">Open on YouTube</a></div>';
                     }
                 }
             });
         } catch(e) {
-            showProcessingCard(wrapper, videoId, lessonUid);
+            wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0f172a;color:#94a3b8;font-size:1rem;text-align:center;padding:2rem;box-sizing:border-box;">Unable to play this video. <a href="https://www.youtube.com/watch?v=' + videoId + '" target="_blank" rel="noopener" style="color:#6366f1;margin-left:0.3rem;">Open on YouTube</a></div>';
         }
     }, 150);
 }
@@ -881,7 +835,7 @@ function extractYoutubeId(url) {
     }
     return null;
 }
-function openVideoPlayer(type, src, lessonUid) {
+function openVideoPlayer(type, src) {
     var modal = document.getElementById('videoPlayerModal');
     var wrapper = document.getElementById('videoPlayerWrapper');
     modal.style.display = 'flex';
@@ -890,12 +844,12 @@ function openVideoPlayer(type, src, lessonUid) {
         wrapper.innerHTML = '<video src="' + src + '" controls autoplay style="width:100%;height:100%;"></video>';
     } else if (type === 'youtube') {
         wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
-        loadYTAPI(function() { attemptYoutubePlay(wrapper, src, lessonUid); });
+        loadYTAPI(function() { playYoutubeVideo(wrapper, src); });
     } else if (type === 'url') {
         var vid = extractYoutubeId(src);
         if (vid) {
             wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
-            loadYTAPI(function() { attemptYoutubePlay(wrapper, vid, lessonUid); });
+            loadYTAPI(function() { playYoutubeVideo(wrapper, vid); });
         } else {
             window.open(src, '_blank');
             closeVideoPlayer();
@@ -917,28 +871,5 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') closeVideoPlayer();
 });
 
-/* Auto-check YouTube processing status for any cards stuck in PROCESSING/UPLOADING */
-(function() {
-    var cards = document.querySelectorAll('.lesson-card[data-processing="true"]');
-    if (cards.length === 0) return;
-    cards.forEach(function(card) {
-        var uid = card.getAttribute('data-lesson-uid');
-        if (!uid) return;
-        fetch('/api/video/check/' + uid + '/')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.ready) {
-                    var badge = card.querySelector('.badge.processing');
-                    if (badge) badge.style.display = 'none';
-                    var playOverlays = card.querySelectorAll('.play-overlay');
-                    if (playOverlays.length > 0) {
-                        playOverlays.forEach(function(o) { o.style.display = 'flex'; });
-                    }
-                    card.setAttribute('data-processing', 'false');
-                }
-            })
-            .catch(function() {});
-    });
-})();
 </script>
 {% endblock %}

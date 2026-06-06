@@ -2849,7 +2849,7 @@ def youtube_upload_complete(request):
     lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
-    lesson.upload_status = 'PROCESSING'
+    lesson.upload_status = 'READY'
 
     if course_is_published:
         lesson.status = 'APPROVED'
@@ -2865,22 +2865,8 @@ def youtube_upload_complete(request):
     return JsonResponse({
         'success': True,
         'message': 'Video uploaded to YouTube successfully!',
-        'upload_status': lesson.upload_status,
         'video_id': video_id,
     })
-
-
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def video_upload_status(request, lesson_uid):
-    """Phase 3: Poll upload status for progress tracking."""
-    try:
-        lesson = Lesson.objects.get(uid=lesson_uid, course__teacher=request.user)
-        return JsonResponse({
-            'upload_status': lesson.upload_status,
-            'file_size': lesson.file_size,
-        })
-    except Lesson.DoesNotExist:
-        return JsonResponse({'error': 'Lesson not found'}, status=404)
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -2982,7 +2968,7 @@ def youtube_edit_complete(request):
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
         lesson.youtube_uploaded_at = tz.now()
-        lesson.upload_status = 'PROCESSING'
+        lesson.upload_status = 'READY'
         lesson.save(update_fields=[
             'pending_video_url', 'has_pending_edits', 'youtube_video_id',
             'youtube_upload_status', 'youtube_uploaded_at', 'upload_status',
@@ -2992,7 +2978,7 @@ def youtube_edit_complete(request):
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
         lesson.youtube_uploaded_at = tz.now()
-        lesson.upload_status = 'PROCESSING'
+        lesson.upload_status = 'READY'
         lesson.video_url = new_youtube_url
         lesson.status = 'APPROVED'
         lesson.is_approved = True
@@ -3004,7 +2990,7 @@ def youtube_edit_complete(request):
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
         lesson.youtube_uploaded_at = tz.now()
-        lesson.upload_status = 'PROCESSING'
+        lesson.upload_status = 'READY'
         lesson.video_url = new_youtube_url
         lesson.save(update_fields=[
             'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
@@ -3014,7 +3000,6 @@ def youtube_edit_complete(request):
     return JsonResponse({
         'success': True,
         'message': 'Video uploaded to YouTube successfully!',
-        'upload_status': 'PROCESSING',
         'video_id': video_id,
     })
 
@@ -3052,26 +3037,5 @@ def trigger_backup(request):
     return JsonResponse({'success': True, 'message': 'Backup started'})
 
 
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def check_youtube_video_status(request, lesson_uid):
-    """Check if a YouTube video is ready for playback.
 
-    When YouTube confirms the video is ready, writes back to the database so
-    subsequent page loads show the correct status.
-    """
-    from .utils.youtube_uploader import verify_youtube_video
-    lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
-    if not lesson.youtube_video_id:
-        return JsonResponse({'status': 'no_video', 'ready': False})
-    is_ready = verify_youtube_video(lesson.youtube_video_id)
-    if is_ready:
-        if lesson.upload_status != 'READY' or lesson.youtube_upload_status == 'UPLOADING':
-            lesson.upload_status = 'READY'
-            lesson.youtube_upload_status = 'UPLOADED'
-            lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
-    return JsonResponse({
-        'status': 'ready' if is_ready else 'processing',
-        'ready': is_ready,
-        'video_id': lesson.youtube_video_id,
-    })
 
