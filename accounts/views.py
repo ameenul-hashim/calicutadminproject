@@ -3104,6 +3104,71 @@ def youtube_edit_complete(request):
 
 
 @csrf_exempt
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def recover_lesson_view(request, lesson_uid):
+    """
+    Auto-recover a lesson whose video_id was not saved due to browser
+    disconnect, callback failure, or any other upload interruption.
+    Teacher opens lesson page → JS detects NULL youtube_video_id
+    → calls this endpoint → searches YouTube for matching video → saves if found.
+    """
+    from django.utils import timezone as tz
+    import json
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        lesson = Lesson.objects.get(uid=lesson_uid, course__teacher=request.user)
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+
+    if lesson.upload_status == 'READY' and lesson.youtube_video_id:
+        return JsonResponse({'status': 'already_ready', 'youtube_video_id': lesson.youtube_video_id})
+
+    if lesson.video_url and not lesson.youtube_video_id:
+        return JsonResponse({'status': 'url_based', 'message': 'Lesson uses a direct URL, not YouTube upload.'})
+
+    from .utils.youtube_uploader import find_latest_youtube_upload
+    recovered_id = find_latest_youtube_upload(lesson.title)
+    if not recovered_id:
+        logger.info(f"recover_lesson_view: No matching video found for lesson {lesson_uid} ('{lesson.title}')")
+        return JsonResponse({
+            'status': 'not_found',
+            'message': 'Could not find a matching video on YouTube. The upload may not have completed.',
+        })
+
+    lesson.youtube_video_id = recovered_id
+    lesson.youtube_upload_status = 'UPLOADED'
+    lesson.youtube_uploaded_at = tz.now()
+    lesson.video_url = f'https://www.youtube.com/watch?v={recovered_id}'
+    lesson.upload_status = 'READY'
+
+    course = lesson.course
+    course_is_published = course.status == 'PUBLISHED' and course.is_approved
+    if course_is_published:
+        lesson.status = 'APPROVED'
+        lesson.is_approved = True
+
+    update_fields = [
+        'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
+        'upload_status', 'video_url',
+    ]
+    if course_is_published:
+        update_fields.extend(['status', 'is_approved'])
+    lesson.save(update_fields=update_fields)
+
+    logger.info(f"recover_lesson_view: Recovered lesson {lesson_uid} → video_id={recovered_id}")
+    return JsonResponse({
+        'status': 'recovered',
+        'youtube_video_id': recovered_id,
+        'watch_url': lesson.video_url,
+        'embed_url': f'https://www.youtube.com/embed/{recovered_id}',
+        'thumbnail_url': f'https://img.youtube.com/vi/{recovered_id}/0.jpg',
+    })
+
+
+@csrf_exempt
 @ratelimit(key='ip', rate='10/hour', method='POST', block=True)
 def trigger_backup(request):
     """Triggers encrypted backup. Protected by rate limit + token auth."""
