@@ -127,9 +127,15 @@
                                 <a href="{% url 'edit_user_admin' u.id %}" class="action-link edit-link">Edit</a>
                                 
                                 {% if u.status == 'ACTIVE' %}
-                                    <a href="{% url 'toggle_user_status' u.id %}" class="action-link block-link">Block</a>
+                                    <form method="POST" action="{% url 'toggle_user_status' u.id %}" style="display:inline;margin:0;padding:0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="action-link block-link" style="background:none;border:none;cursor:pointer;font:inherit;padding:0;">Block</button>
+                                    </form>
                                 {% else %}
-                                    <a href="{% url 'toggle_user_status' u.id %}" class="action-link" style="color: #10b981;">Unblock/Accept</a>
+                                    <form method="POST" action="{% url 'toggle_user_status' u.id %}" style="display:inline;margin:0;padding:0;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="action-link" style="background:none;border:none;cursor:pointer;font:inherit;padding:0;color:#10b981;">Unblock/Accept</button>
+                                    </form>
                                 {% endif %}
                             </td>
                         </tr>

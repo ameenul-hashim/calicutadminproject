@@ -2,11 +2,14 @@ from PIL import Image
 import io
 import os
 import requests
+import logging
 from django.core.files.base import ContentFile
 from pillow_heif import register_heif_opener
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
+
+logger = logging.getLogger(__name__)
 
 # Enable HEIC support for Pillow to handle iPhone uploads
 register_heif_opener()
@@ -57,7 +60,7 @@ def convert_image_to_pdf(image_source):
             img = Image.open(image_source)
             filename = getattr(image_source, 'name', 'verification_upload.jpg')
 
-        print(f"[PDF] Pipeline: Processing {filename} ({img.width}x{img.height})")
+        logger.info(f"PDF Pipeline: Processing {filename} ({img.width}x{img.height})")
 
         # 2. Adaptive Optimization Loop
         # Goal: < 200KB (Target 180KB)
@@ -99,7 +102,7 @@ def convert_image_to_pdf(image_source):
             c.save()
             
             pdf_size = pdf_buffer.tell()
-            print(f"[STATS] Attempt {attempt+1}: Quality={current_quality}, Width={current_max_width}, Size={pdf_size/1024:.2f}KB")
+            logger.debug(f"PDF Stats Attempt {attempt+1}: Quality={current_quality}, Width={current_max_width}, Size={pdf_size/1024:.2f}KB")
             
             if pdf_size <= MAX_SIZE_BYTES:
                 final_pdf_buffer = pdf_buffer
@@ -120,6 +123,6 @@ def convert_image_to_pdf(image_source):
 
     except Exception as e:
         import traceback
-        print(f"[ERROR] PDF PIPELINE ERROR: {str(e)}")
-        print(traceback.format_exc())
+        logger.error(f"PDF PIPELINE ERROR: {str(e)}")
+        logger.error(traceback.format_exc())
         return None

@@ -8,6 +8,7 @@ import uuid
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control, never_cache
 import re
+import hmac
 import logging
 from django.views.decorators.csrf import csrf_protect, csrf_exempt
 from django.views.decorators.clickjacking import xframe_options_exempt
@@ -116,10 +117,10 @@ def create_notification(user, message):
 
 def notify_admins(message):
     from .models import CustomUser
-    from .utils.firebase_db import notif_create
-    admins = CustomUser.objects.filter(user_type='ADMIN')
-    for admin in admins:
-        notif_create(str(admin.uid), message)
+    from .utils.firebase_db import notif_create_batch
+    admin_uids = list(CustomUser.objects.filter(user_type='ADMIN').values_list('uid', flat=True))
+    if admin_uids:
+        notif_create_batch([str(uid) for uid in admin_uids], message)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def signup_view(request):
@@ -2790,7 +2791,6 @@ def init_video_upload(request):
         return JsonResponse({'error': 'Server error'}, status=500)
 
 
-@csrf_exempt
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def youtube_upload_complete(request):
     """
@@ -2929,7 +2929,6 @@ def init_youtube_edit_upload(request):
     })
 
 
-@csrf_exempt
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def youtube_edit_complete(request):
     """
@@ -3027,7 +3026,6 @@ def youtube_edit_complete(request):
     })
 
 
-@csrf_exempt
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def recover_lesson_view(request, lesson_uid):
     """
@@ -3103,7 +3101,7 @@ def trigger_backup(request):
         body = json.loads(request.body)
         token = body.get('token', '')
         expected = os.getenv('BACKUP_TOKEN', '')
-        if not expected or token != expected:
+        if not expected or not hmac.compare_digest(token, expected):
             logger.warning(f"Unauthorized backup attempt from {request.META.get('REMOTE_ADDR')}")
             return JsonResponse({'error': 'Forbidden'}, status=403)
     except:

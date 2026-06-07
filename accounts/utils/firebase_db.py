@@ -54,6 +54,24 @@ def notif_create(user_uid, message):
     return notif_uid
 
 
+def notif_create_batch(user_uids, message):
+    app = _get_app()
+    if app is None or not user_uids:
+        return []
+    now_ms = int(time.time() * 1000)
+    updates = {}
+    notif_uids = []
+    for user_uid in user_uids:
+        notif_uid = str(uuid.uuid4())
+        updates[f'/notifications/{user_uid}/{notif_uid}'] = {
+            'message': message, 'is_read': False, 'created_at': now_ms
+        }
+        notif_uids.append(notif_uid)
+    if updates:
+        db.reference('/', app=app).update(updates)
+    return notif_uids
+
+
 def notif_get_all(user_uid, limit=50, filter_keywords=None):
     app = _get_app()
     if app is None:
