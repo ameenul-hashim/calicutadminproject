@@ -590,6 +590,23 @@ def cleanup_lesson_video(sender, instance, **kwargs):
             pass
 
 
+@receiver(pre_delete, sender=CourseResource)
+def cleanup_course_resource_files(sender, instance, **kwargs):
+    """Clean up Supabase file and Cloudinary thumbnail when CourseResource is hard-deleted."""
+    try:
+        from accounts.utils.storage_manager import StorageManager
+        if instance.firebase_file_path:
+            StorageManager.delete_from_supabase_storage(instance.firebase_file_path)
+    except Exception:
+        pass
+    try:
+        if instance.thumbnail_public_id:
+            from accounts.utils.cloudinary_helpers import delete_temp_image
+            delete_temp_image(instance.thumbnail_public_id)
+    except Exception:
+        pass
+
+
 @receiver(post_save, sender=CustomUser)
 def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
     """Trigger Google Drive backup when a new signup PDF is uploaded."""

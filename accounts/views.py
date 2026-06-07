@@ -1347,6 +1347,8 @@ def add_resource(request, course_uid):
             messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
             return redirect('course_lessons', course_uid=course.uid)
             
+        uploaded_fb_path = None
+        uploaded_thumb_pid = None
         try:
             from .utils.malware_scanner import scanner
             resource_type = 'PDF'
@@ -1377,9 +1379,8 @@ def add_resource(request, course_uid):
             category_folder = category.lower() if category else 'uncategorised'
             suffix = uuid.uuid4().hex[:4]
             dest_filename = f"{safe_title}-{suffix}.{ext}"
-            # compressed_bytes is ALREADY compressed (process_pdf ran above) — only compressed saved
             dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-            fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
+            uploaded_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
             
             thumb_path = None
             thumb_public_id = None
@@ -1388,6 +1389,7 @@ def add_resource(request, course_uid):
                 t_url, t_pid = upload_image_only(thumbnail_bytes, folder="Neo Learner/course_thumbnails")
                 if t_url and t_pid:
                     thumb_path = t_url
+                    uploaded_thumb_pid = t_pid
                     thumb_public_id = t_pid
             
             chapter = request.POST.get('chapter', '')
@@ -1408,7 +1410,7 @@ def add_resource(request, course_uid):
                 chapter=chapter,
                 category=category,
                 resource_type=resource_type,
-                firebase_file_path=fb_path,
+                firebase_file_path=uploaded_fb_path,
                 backup_file_path=None,
                 thumbnail_path=thumb_path,
                 thumbnail_public_id=thumb_public_id,
@@ -1423,6 +1425,17 @@ def add_resource(request, course_uid):
         except Exception as e:
             logger.error("Resource upload error | user=%s course=%s error=%s",
                 request.user.username, course.uid, str(e))
+            if uploaded_fb_path:
+                try:
+                    StorageManager.delete_from_supabase_storage(uploaded_fb_path)
+                except Exception:
+                    pass
+            if uploaded_thumb_pid:
+                try:
+                    from accounts.utils.cloudinary_helpers import delete_temp_image
+                    delete_temp_image(uploaded_thumb_pid)
+                except Exception:
+                    pass
             messages.error(request, "An error occurred while uploading the file. Please try again.")
             
         return redirect('course_lessons', course_uid=course.uid)
@@ -1464,6 +1477,8 @@ def edit_resource(request, resource_uid):
         new_orig_size = 0
         new_comp_size = 0
 
+        uploaded_fb_path = None
+        uploaded_thumb_pid = None
         if upload_file:
             # Pre-read size gate: 10MB
             MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -1502,17 +1517,30 @@ def edit_resource(request, resource_uid):
                 dest_filename = f"{safe_title}-{suffix}.{new_ext}"
                 # compressed_bytes is already compressed — only compressed version saved
                 dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-                new_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
+                uploaded_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
+                new_fb_path = uploaded_fb_path
                 
                 if thumbnail_bytes:
                     from accounts.utils.cloudinary_helpers import upload_image_only
                     t_url, t_pid = upload_image_only(thumbnail_bytes, folder="Neo Learner/course_thumbnails")
                     if t_url and t_pid:
+                        uploaded_thumb_pid = t_pid
                         new_thumb_path = t_url
                         new_thumb_pid = t_pid
             except Exception as e:
                 logger.error("Resource edit error | user=%s resource=%s error=%s",
                     request.user.username, resource.uid, str(e))
+                if uploaded_fb_path:
+                    try:
+                        StorageManager.delete_from_supabase_storage(uploaded_fb_path)
+                    except Exception:
+                        pass
+                if uploaded_thumb_pid:
+                    try:
+                        from accounts.utils.cloudinary_helpers import delete_temp_image
+                        delete_temp_image(uploaded_thumb_pid)
+                    except Exception:
+                        pass
                 messages.error(request, "An error occurred while processing the file. Please try again.")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
