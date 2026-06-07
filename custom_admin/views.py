@@ -2830,6 +2830,35 @@ def _backup_card_stats():
     success_all = BackupLog.objects.filter(status='SUCCESS').count()
     overall_health = int((success_all / (total_all or 1)) * 100)
 
+    # Monitoring stats
+    successful_logs = BackupLog.objects.filter(status='SUCCESS', duration_seconds__isnull=False)
+    duration_values = list(successful_logs.values_list('duration_seconds', flat=True))
+    avg_duration = round(sum(duration_values) / len(duration_values), 1) if duration_values else None
+    fastest_duration = round(min(duration_values), 1) if duration_values else None
+    slowest_duration = round(max(duration_values), 1) if duration_values else None
+
+    failed_all = BackupLog.objects.filter(status='FAILED').count()
+    retry_total = BackupLog.objects.aggregate(total=Sum('retry_count'))['total'] or 0
+    storage_total = (
+        BackupLog.objects.filter(status='SUCCESS')
+        .aggregate(total=Sum('file_size'))['total'] or 0
+    )
+
+    # Next backup countdown
+    next_backup_seconds = None
+    backup_time = getattr(settings, 'BACKUP_TIME', '02:00')
+    if backup_time:
+        try:
+            from datetime import datetime as dtmod
+            hour, minute = map(int, backup_time.split(':'))
+            now_local = timezone.localtime(timezone.now())
+            next_dt = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            if next_dt <= now_local:
+                next_dt += timezone.timedelta(days=1)
+            next_backup_seconds = int((next_dt - now_local).total_seconds())
+        except Exception:
+            pass
+
     return {
         'db_last': db_last,
         'db_next_backup': db_next_backup,
@@ -2849,6 +2878,15 @@ def _backup_card_stats():
         'overall_health': overall_health,
         'total_backups': total_all,
         'successful_backups': success_all,
+        'avg_duration': avg_duration,
+        'fastest_duration': fastest_duration,
+        'slowest_duration': slowest_duration,
+        'failed_backups': failed_all,
+        'retry_total': retry_total,
+        'storage_total': storage_total,
+        'success_rate': round((success_all / (total_all or 1)) * 100, 1),
+        'failure_rate': round((failed_all / (total_all or 1)) * 100, 1) if total_all else 0,
+        'next_backup_seconds': next_backup_seconds,
     }
 
 
@@ -3029,6 +3067,45 @@ def backup_history(request):
         'status_choices': ['SUCCESS', 'FAILED', 'RUNNING', 'PENDING', 'VERIFYING', 'UPLOADING', 'RETRYING'],
     }
     return render(request, 'custom_admin/backup_history.html', context)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def backup_history_csv(request):
+    """Export backup history as CSV."""
+    import csv
+    query = request.GET.get('q', '')
+    backup_type = request.GET.get('type', '')
+    status = request.GET.get('status', '')
+
+    backups = BackupLog.objects.all().order_by('-created_at')
+    if query:
+        backups = backups.filter(Q(filename__icontains=query) | Q(sha256__icontains=query))
+    if backup_type:
+        backups = backups.filter(backup_type=backup_type)
+    if status:
+        backups = backups.filter(status=status)
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="backup_history_{timezone.now().strftime("%Y%m%d")}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Type', 'Filename', 'SHA256', 'Size (bytes)', 'Duration (s)',
+                     'Drive File ID', 'Status', 'Verify Status', 'Retry Count', 'Error'])
+    for b in backups:
+        writer.writerow([
+            b.created_at.strftime('%Y-%m-%d %H:%M:%S') if b.created_at else '',
+            b.backup_type,
+            b.filename or '',
+            b.sha256 or '',
+            b.file_size or 0,
+            b.duration_seconds or 0,
+            b.drive_file_id or '',
+            b.status,
+            b.verify_status or '',
+            b.retry_count or 0,
+            (b.error_message or '')[:200],
+        ])
+    return response
 
 
 

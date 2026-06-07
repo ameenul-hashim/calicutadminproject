@@ -74,6 +74,7 @@
         </select>
         <button type="submit">🔍 Search</button>
         <a href="{% url 'backup_history' %}" style="padding: 0.5rem 1rem; color: #64748b; text-decoration: none;">Clear</a>
+        <a href="{% url 'backup_history_csv' %}?q={{ query }}&type={{ filter_type }}&status={{ filter_status }}" style="padding: 0.5rem 1rem; background: #10b981; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">📥 CSV Export</a>
     </div>
 </form>
 

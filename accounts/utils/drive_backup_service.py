@@ -12,6 +12,15 @@ logger = logging.getLogger(__name__)
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 
+def _get_config(key, default=None):
+    """Get config from Django settings if available, fallback to env."""
+    try:
+        from django.conf import settings as s
+        return getattr(s, key, os.getenv(key, default))
+    except Exception:
+        return os.getenv(key, default)
+
+
 def _get_drive_service():
     """Build Drive service from GOOGLE_DRIVE_CREDENTIALS env var."""
     try:
@@ -78,7 +87,6 @@ def download_file(service, file_id):
     try:
         request = service.files().get_media(fileId=file_id)
         fh = io.BytesIO()
-        downloader = None
         try:
             from googleapiclient.http import MediaIoBaseDownload
             downloader = MediaIoBaseDownload(fh, request)
@@ -143,3 +151,31 @@ def run_pg_dump_fallback():
         return data, None, len(data)
     except Exception as e:
         return None, str(e), 0
+
+
+def delete_old_backups(service, folder_id, keep_count=None):
+    """Delete old backup files in a Drive folder, keeping only the most recent N.
+    Returns count of deleted files."""
+    if keep_count is None:
+        keep_count = _get_config('BACKUP_RETENTION_DAYS', 30)
+    try:
+        results = service.files().list(
+            q=f"'{folder_id}' in parents and trashed=false",
+            spaces='drive',
+            fields='files(id, name, createdTime)',
+            orderBy='createdTime'
+        ).execute()
+        files = results.get('files', [])
+        if len(files) <= keep_count:
+            return 0
+        to_delete = files[:-keep_count]
+        for f in to_delete:
+            try:
+                service.files().delete(fileId=f['id']).execute()
+                logger.info(f"Deleted old backup: {f['name']}")
+            except Exception as e:
+                logger.error(f"Failed to delete {f['name']}: {e}")
+        return len(to_delete)
+    except Exception as e:
+        logger.error(f"Retention cleanup failed: {e}")
+        return 0

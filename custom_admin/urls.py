@@ -70,6 +70,7 @@ urlpatterns = [
     path('backup-center/export-report/', views.export_backup_report, name='export_backup_report'),
     path('backup-center/restore-test/', views.run_restore_test, name='run_restore_test'),
     path('backup-center/history/', views.backup_history, name='backup_history'),
+    path('backup-center/history/csv/', views.backup_history_csv, name='backup_history_csv'),
 ]
 
 

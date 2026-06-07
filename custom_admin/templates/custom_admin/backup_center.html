@@ -207,6 +207,45 @@
         </div>
     </div>
 
+    <!-- Next Scheduled Backup (Countdown) -->
+    <div class="backup-card" id="countdown-card">
+        <div class="label">⏰ Next Scheduled Backup</div>
+        <div class="value" id="countdown-value" style="font-size: 1.5rem;">
+            {% if stats.next_backup_seconds %}
+                <span id="countdown-display">{{ stats.next_backup_seconds|default:"--" }}</span>s
+            {% else %}
+                —
+            {% endif %}
+        </div>
+        <div class="sub" id="countdown-sub">
+            {% if stats.next_backup_seconds %}
+                Until next database backup
+            {% else %}
+                No schedule configured
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Monitoring Stats -->
+    <div class="backup-card">
+        <div class="label">📈 Performance</div>
+        <div class="sub" style="margin-top: 0.5rem;">
+            Avg Duration: <strong>{{ stats.avg_duration|default:"—" }}s</strong><br>
+            Fastest: <strong>{{ stats.fastest_duration|default:"—" }}s</strong><br>
+            Slowest: <strong>{{ stats.slowest_duration|default:"—" }}s</strong>
+        </div>
+    </div>
+
+    <div class="backup-card">
+        <div class="label">📊 Stats</div>
+        <div class="sub" style="margin-top: 0.5rem;">
+            Success Rate: <strong>{{ stats.success_rate|default:"0" }}%</strong><br>
+            Failure Rate: <strong>{{ stats.failure_rate|default:"0" }}%</strong><br>
+            Total Retries: <strong>{{ stats.retry_total }}</strong><br>
+            Storage: <strong>{{ stats.storage_total|filesizeformat }}</strong>
+        </div>
+    </div>
+
     <!-- Google Drive Health -->
     <div class="backup-card">
         <div class="label">☁️ Google Drive</div>
@@ -251,6 +290,22 @@
 </div>
 
 <script>
+// Countdown timer
+(function() {
+    var seconds = {{ stats.next_backup_seconds|default:"null" }};
+    var display = document.getElementById('countdown-display');
+    if (seconds !== null && display) {
+        setInterval(function() {
+            if (seconds <= 0) { location.reload(); return; }
+            seconds--;
+            var h = Math.floor(seconds / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            var s = seconds % 60;
+            display.textContent = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + s + 's';
+        }, 1000);
+    }
+})();
+
 // Auto-refresh every 30 seconds
 setTimeout(function() {
     location.reload();

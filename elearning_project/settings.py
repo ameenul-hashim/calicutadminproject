@@ -278,6 +278,18 @@ else:
 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'noreply@neolearner.com'))
 
+# Backup Configuration
+BACKUP_ENABLED = os.getenv('BACKUP_ENABLED', 'True') == 'True'
+BACKUP_TIME = os.getenv('BACKUP_TIME', '02:00')
+BACKUP_RETENTION_DAYS = int(os.getenv('BACKUP_RETENTION_DAYS', '30'))
+BACKUP_MAX_RETRIES = int(os.getenv('BACKUP_MAX_RETRIES', '3'))
+BACKUP_VERIFY_SHA256 = os.getenv('BACKUP_VERIFY_SHA256', 'True') == 'True'
+BACKUP_RESTORE_TEST_DAY = os.getenv('BACKUP_RESTORE_TEST_DAY', 'Sunday')
+BACKUP_REPORT_EMAIL = os.getenv('BACKUP_REPORT_EMAIL', '')
+BACKUP_DATABASE_FOLDER = os.getenv('BACKUP_DATABASE_FOLDER', 'Database')
+BACKUP_SIGNUP_FOLDER = os.getenv('BACKUP_SIGNUP_FOLDER', 'Signup_Proofs')
+BACKUP_RESOURCE_FOLDER = os.getenv('BACKUP_RESOURCE_FOLDER', 'Teacher_Resources')
+
 # Production & Security Logging
 LOGGING = {
     'version': 1,

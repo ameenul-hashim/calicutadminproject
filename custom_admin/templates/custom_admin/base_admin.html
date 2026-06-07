@@ -477,7 +477,14 @@
 
                 <!-- Backup Center -->
                 <div class="nav-group">
-                    <a href="{% url 'backup_center' %}" class="nav-link {% if request.resolver_match.url_name == 'backup_center' or request.resolver_match.url_name == 'backup_history' %}active{% endif %}" style="{% if request.resolver_match.url_name == 'backup_center' or request.resolver_match.url_name == 'backup_history' %}background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);{% else %}background: rgba(245, 158, 11, 0.06); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.15);{% endif %}">💾 Backup Center</a>
+                    <a href="{% url 'backup_center' %}" class="nav-link {% if request.resolver_match.url_name == 'backup_center' or request.resolver_match.url_name == 'backup_history' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;{% if request.resolver_match.url_name == 'backup_center' or request.resolver_match.url_name == 'backup_history' %}background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);{% else %}background: rgba(245, 158, 11, 0.06); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.15);{% endif %}">
+                        <span>💾 Backup Center</span>
+                        {% if backup_failed_count > 0 %}
+                        <span style="background: #ef4444; color: white; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 700;">{{ backup_failed_count }}</span>
+                        {% elif backup_pending_count > 0 %}
+                        <span style="background: #f59e0b; color: white; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 700;">{{ backup_pending_count }}</span>
+                        {% endif %}
+                    </a>
                 </div>
 
                 <!-- 8. My Profile -->
