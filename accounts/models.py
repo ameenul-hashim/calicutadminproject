@@ -451,6 +451,50 @@ class UploadJob(models.Model):
     def __str__(self):
         return f"UploadJob {self.uid} - {self.title} ({self.get_status_display()})"
 
+
+class BackupLog(models.Model):
+    BACKUP_TYPES = (
+        ('DATABASE', 'Database Backup'),
+        ('SIGNUP_PDF', 'Signup PDF Backup'),
+        ('TEACHER_RESOURCE', 'Teacher Resource Backup'),
+    )
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('RUNNING', 'Running'),
+        ('UPLOADING', 'Uploading'),
+        ('VERIFYING', 'Verifying'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('RETRYING', 'Retrying'),
+    )
+    backup_type = models.CharField(max_length=50, choices=BACKUP_TYPES, db_index=True)
+    filename = models.CharField(max_length=500)
+    file_size = models.BigIntegerField(default=0)
+    sha256 = models.CharField(max_length=64, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    drive_file_id = models.CharField(max_length=500, blank=True, null=True)
+    drive_folder_path = models.CharField(max_length=1000, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', db_index=True)
+    duration_seconds = models.FloatField(default=0)
+    error_message = models.TextField(blank=True, null=True)
+    retry_count = models.IntegerField(default=0)
+    max_retries = models.IntegerField(default=3)
+    verify_status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('VERIFIED', 'Verified'), ('MISMATCH', 'Mismatch')], default='PENDING')
+    metadata = models.JSONField(default=dict, blank=True, help_text="Additional metadata (course_id, user_id, etc.)")
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['backup_type', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['backup_type', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.backup_type} - {self.filename} ({self.status})"
+
 # Signals for explicit image cleanup
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
