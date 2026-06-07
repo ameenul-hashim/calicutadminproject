@@ -496,7 +496,7 @@ class BackupLog(models.Model):
         return f"{self.backup_type} - {self.filename} ({self.status})"
 
 # Signals for explicit image cleanup
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete, post_save
 from django.dispatch import receiver
 from .utils.cloudinary_helpers import delete_image
 
@@ -536,5 +536,49 @@ def cleanup_lesson_video(sender, instance, **kwargs):
             instance.pending_video_file.delete(save=False)
         except Exception:
             pass
+
+
+@receiver(post_save, sender=CustomUser)
+def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
+    """Trigger Google Drive backup when a new signup PDF is uploaded."""
+    if not instance.pdf_path:
+        return
+    if not created and not kwargs.get('update_fields'):
+        return
+    try:
+        from accounts.utils.backup_trigger import backup_signup_pdf
+        from .utils.supabase_storage import get_signed_url
+        import requests
+        signed_url = get_signed_url(instance.pdf_path)
+        if signed_url:
+            resp = requests.get(signed_url, timeout=30)
+            if resp.status_code == 200:
+                backup_signup_pdf(instance.id, instance.pdf_path, resp.content)
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=CourseResource)
+def backup_teacher_resource_on_save(sender, instance, created, **kwargs):
+    """Trigger Google Drive backup when a new teacher resource is uploaded."""
+    if not instance.firebase_file_path:
+        return
+    if not created:
+        return
+    try:
+        from accounts.utils.backup_trigger import backup_teacher_resource
+        from accounts.utils.supabase_storage import get_client
+        client = get_client(use_resource_project=True)
+        if client:
+            bucket = 'resources'
+            file_bytes = client.storage.from_(bucket).download(instance.firebase_file_path)
+            if file_bytes:
+                course_title = instance.course.title if instance.course else 'Unknown'
+                backup_teacher_resource(
+                    instance.id, instance.firebase_file_path,
+                    file_bytes, course_title, instance.chapter, instance.category
+                )
+    except Exception:
+        pass
 
 
