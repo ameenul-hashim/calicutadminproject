@@ -1,8 +1,10 @@
 import os
 import re
+import json
 import logging
 import time as _time
 from django.shortcuts import render, redirect, get_object_or_404
+from django.http import HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils import timezone
@@ -10,7 +12,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
-from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog
+from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, BackupLog
 from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.supabase_storage import upload_pdf
 from accounts.utils.malware_scanner import scanner
@@ -2781,6 +2783,252 @@ def error_404(request, exception):
 
 def error_500(request):
     return render(request, '500.html', status=500)
+
+
+def _backup_card_stats():
+    """Calculate backup card stats for the backup center dashboard."""
+    now = timezone.now()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Database backup stats
+    db_last = BackupLog.objects.filter(backup_type='DATABASE', status='SUCCESS').order_by('-created_at').first()
+    db_next_backup = None
+    if db_last:
+        db_next_backup = db_last.created_at + timezone.timedelta(days=1)
+
+    # Signup PDF stats
+    signup_total = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
+    signup_today = BackupLog.objects.filter(backup_type='SIGNUP_PDF', created_at__gte=today_start).count()
+    signup_failed = BackupLog.objects.filter(backup_type='SIGNUP_PDF', status='FAILED').count()
+    signup_pending = BackupLog.objects.filter(backup_type='SIGNUP_PDF', status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
+    signup_success = BackupLog.objects.filter(backup_type='SIGNUP_PDF', status='SUCCESS').count()
+    signup_rate = (signup_success / (signup_total or 1)) * 100
+
+    # Teacher resource stats
+    resource_total = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE').count()
+    resource_today = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', created_at__gte=today_start).count()
+    resource_failed = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status='FAILED').count()
+    resource_pending = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
+    resource_success = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status='SUCCESS').count()
+    resource_rate = (resource_success / (resource_total or 1)) * 100
+
+    # Drive health check
+    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS'))
+    drive_available = False
+    drive_health = 'UNKNOWN'
+    if drive_configured:
+        try:
+            from accounts.utils.drive_backup_service import _get_drive_service
+            service = _get_drive_service()
+            drive_available = service is not None
+            drive_health = 'CONNECTED' if drive_available else 'UNAVAILABLE'
+        except Exception:
+            drive_health = 'ERROR'
+
+    # Overall health
+    total_all = BackupLog.objects.count()
+    success_all = BackupLog.objects.filter(status='SUCCESS').count()
+    overall_health = int((success_all / (total_all or 1)) * 100)
+
+    return {
+        'db_last': db_last,
+        'db_next_backup': db_next_backup,
+        'signup_total': signup_total,
+        'signup_today': signup_today,
+        'signup_failed': signup_failed,
+        'signup_pending': signup_pending,
+        'signup_rate': round(signup_rate, 1),
+        'resource_total': resource_total,
+        'resource_today': resource_today,
+        'resource_failed': resource_failed,
+        'resource_pending': resource_pending,
+        'resource_rate': round(resource_rate, 1),
+        'drive_configured': drive_configured,
+        'drive_health': drive_health,
+        'drive_available': drive_available,
+        'overall_health': overall_health,
+        'total_backups': total_all,
+        'successful_backups': success_all,
+    }
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def backup_center(request):
+    """Main Backup Center dashboard."""
+    stats = _backup_card_stats()
+
+    # Recent backup activity
+    recent = BackupLog.objects.order_by('-created_at')[:10]
+
+    # Backup type counts
+    db_count = BackupLog.objects.filter(backup_type='DATABASE').count()
+    signup_count = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
+    resource_count = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE').count()
+
+    context = {
+        'stats': stats,
+        'recent_backups': recent,
+        'db_count': db_count,
+        'signup_count': signup_count,
+        'resource_count': resource_count,
+    }
+    return render(request, 'custom_admin/backup_center.html', context)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+@ratelimit(key='user', rate='10/hour', method='POST', block=True)
+def run_database_backup(request):
+    """Manual trigger for database backup."""
+    try:
+        from django.core.management import call_command
+        from io import StringIO
+        buf = StringIO()
+        call_command('backup_database_daily', '--force', stdout=buf)
+        output = buf.getvalue()
+        messages.success(request, 'Database backup completed.')
+        logger.info(f'Manual database backup triggered by {request.user.username}')
+    except Exception as e:
+        messages.error(request, f'Database backup failed: {e}')
+        logger.error(f'Manual database backup error: {e}')
+    return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+@ratelimit(key='user', rate='10/hour', method='POST', block=True)
+def retry_failed_backups(request):
+    """Retry all failed backups."""
+    try:
+        from django.core.management import call_command
+        from io import StringIO
+        buf = StringIO()
+        call_command('backup_retry_failed', stdout=buf)
+        output = buf.getvalue()
+        messages.success(request, 'Retry initiated for failed backups.')
+        log_admin_activity(request, 'BACKUP_RETRY', details='Admin retried all failed backups')
+    except Exception as e:
+        messages.error(request, f'Retry failed: {e}')
+    return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+@ratelimit(key='user', rate='5/hour', method='POST', block=True)
+def verify_all_backups(request):
+    """Verify integrity of recent backups."""
+    try:
+        from django.core.management import call_command
+        from io import StringIO
+        buf = StringIO()
+        call_command('backup_verify_integrity', '--days=7', stdout=buf)
+        output = buf.getvalue()
+        messages.success(request, 'Backup verification complete.')
+        log_admin_activity(request, 'BACKUP_VERIFY', details='Admin triggered backup integrity verification')
+    except Exception as e:
+        messages.error(request, f'Verification failed: {e}')
+    return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+@ratelimit(key='user', rate='3/hour', method='POST', block=True)
+def run_restore_test(request):
+    """Run restore test on recent backups."""
+    try:
+        from django.core.management import call_command
+        from io import StringIO
+        buf = StringIO()
+        call_command('backup_restore_test', '--days=7', stdout=buf)
+        output = buf.getvalue()
+        messages.success(request, 'Restore test complete.')
+        log_admin_activity(request, 'BACKUP_RESTORE_TEST', details='Admin triggered restore test')
+    except Exception as e:
+        messages.error(request, f'Restore test failed: {e}')
+    return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+@ratelimit(key='user', rate='5/hour', method='POST', block=True)
+def export_backup_report(request):
+    """Export backup report as JSON."""
+    try:
+        stats = _backup_card_stats()
+        recent = BackupLog.objects.order_by('-created_at')[:50].values(
+            'backup_type', 'filename', 'file_size', 'sha256', 'status',
+            'verify_status', 'created_at', 'duration_seconds', 'retry_count', 'error_message'
+        )
+        report = {
+            'generated_at': timezone.now().isoformat(),
+            'overall_health': stats['overall_health'],
+            'total_backups': stats['total_backups'],
+            'successful_backups': stats['successful_backups'],
+            'drive_configured': stats['drive_configured'],
+            'drive_health': stats['drive_health'],
+            'database': {
+                'last_backup': stats['db_last'].filename if stats['db_last'] else None,
+                'last_backup_time': stats['db_last'].created_at.isoformat() if stats['db_last'] else None,
+            },
+            'signup_pdfs': {
+                'total': stats['signup_total'],
+                'today': stats['signup_today'],
+                'success_rate': stats['signup_rate'],
+            },
+            'teacher_resources': {
+                'total': stats['resource_total'],
+                'today': stats['resource_today'],
+                'success_rate': stats['resource_rate'],
+            },
+            'recent_backups': list(recent),
+        }
+        response = HttpResponse(
+            json.dumps(report, indent=2, default=str),
+            content_type='application/json'
+        )
+        response['Content-Disposition'] = f'attachment; filename="backup_report_{timezone.now().strftime("%Y%m%d")}.json"'
+        return response
+    except Exception as e:
+        messages.error(request, f'Report export failed: {e}')
+        return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
+def backup_history(request):
+    """Backup history with search, pagination, and filters."""
+    query = request.GET.get('q', '')
+    backup_type = request.GET.get('type', '')
+    status = request.GET.get('status', '')
+
+    backups = BackupLog.objects.all().order_by('-created_at')
+
+    if query:
+        backups = backups.filter(
+            Q(filename__icontains=query) |
+            Q(sha256__icontains=query) |
+            Q(drive_file_id__icontains=query) |
+            Q(error_message__icontains=query)
+        )
+    if backup_type:
+        backups = backups.filter(backup_type=backup_type)
+    if status:
+        backups = backups.filter(status=status)
+
+    paginator = Paginator(backups, 25)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'page_obj': page_obj,
+        'query': query,
+        'filter_type': backup_type,
+        'filter_status': status,
+        'backup_types': ['DATABASE', 'SIGNUP_PDF', 'TEACHER_RESOURCE'],
+        'status_choices': ['SUCCESS', 'FAILED', 'RUNNING', 'PENDING', 'VERIFYING', 'UPLOADING', 'RETRYING'],
+    }
+    return render(request, 'custom_admin/backup_history.html', context)
 
 
 
