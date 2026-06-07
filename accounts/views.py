@@ -113,14 +113,18 @@ def log_login_attempt(request, user, status='SUCCESS'):
 
 def create_notification(user, message):
     from .utils.firebase_db import notif_create
-    notif_create(str(user.uid), message)
+    notif_create(str(user.uid), message, notif_type='general')
 
-def notify_admins(message):
+def notify_admins(title, message, notif_type='general', action_url=''):
     from .models import CustomUser
     from .utils.firebase_db import notif_create_batch
     admin_uids = list(CustomUser.objects.filter(user_type='ADMIN').values_list('uid', flat=True))
     if admin_uids:
-        notif_create_batch([str(uid) for uid in admin_uids], message)
+        notif_create_batch([str(uid) for uid in admin_uids], title, message, notif_type, action_url)
+
+def notify_teacher(teacher_uid, title, message, notif_type='general', action_url=''):
+    from .utils.firebase_db import notif_create
+    notif_create(str(teacher_uid), title, message, notif_type, action_url)
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def signup_view(request):
@@ -220,7 +224,7 @@ def signup_view(request):
                 logger.info("Student registration complete: %s", username)
 
             messages.success(request, "Registration successful! Admin approval pending.")
-            notify_admins(f"New student: {username}.")
+            notify_admins("New Student Registration", f"New student: {username}.", 'new_student')
             return redirect('login')
 
         except Exception as e:
@@ -337,7 +341,7 @@ def teacher_signup_view(request):
                 logger.info("Teacher registration complete for %s", username)
 
             messages.success(request, "Teacher registration successful! Admin review pending.")
-            notify_admins(f"New teacher: {username}.")
+            notify_admins("New Teacher Registration", f"New teacher: {username}.", 'new_teacher')
             return redirect('teacher_login')
 
         except Exception as e:
@@ -814,7 +818,7 @@ def delete_course(request, course_uid):
             item_name=course.title
         )
         messages.success(request, "Deletion request for course sent to admin.")
-        notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete course '{course.title}'.")
+        notify_admins("Deletion Request Submitted", f"Teacher {request.user.username} requested to delete course '{course.title}'.", 'deletion_request', f"/customadmin/deletion-requests/")
         
     return redirect('my_courses')
 
@@ -893,7 +897,7 @@ def edit_course(request, course_uid):
                         course.pending_image_public_id = p_id
             
             course.save()
-            notify_admins(f"🔄 PENDING EDITS: Teacher {request.user.username} edited the approved course '{course.title}'. Changes are pending admin approval.")
+            notify_admins("Course Edits Submitted", f"Teacher {request.user.username} edited the approved course '{course.title}'.", 'course_edit', '')
             messages.success(request, f"Changes to '{course.title}' submitted for admin approval. Students will continue to see the previously approved version until approved.")
         else:
             # Course is not approved yet (draft or rejected), so overwrite main fields directly
@@ -917,7 +921,7 @@ def edit_course(request, course_uid):
             course.status = 'PENDING'
             course.is_approved = False
             course.save()
-            notify_admins(f"🔄 COURSE UPDATE: Teacher {request.user.username} updated course '{course.title}'. It is now PENDING re-approval.")
+            notify_admins("Course Updated", f"Teacher {request.user.username} updated course '{course.title}'.", 'course_edit', '')
             messages.success(request, f"Course '{course.title}' updated successfully!")
             
         return redirect('my_courses')
@@ -1179,7 +1183,7 @@ def add_lesson(request, course_uid):
             messages.success(request, f"Lesson '{title}' added and immediately available to students.")
         else:
             messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
-            notify_admins(f"NEW CONTENT: Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.")
+            notify_admins("New Lesson Added", f"Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.", 'new_lesson', '')
 
         return redirect('course_lessons', course_uid=course.uid)
     
@@ -1242,7 +1246,7 @@ def edit_lesson(request, lesson_uid):
             lesson.has_pending_edits = True
             lesson.save()
 
-            notify_admins(f"LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
+            notify_admins("Lesson Edits Submitted", f"Teacher {request.user.username} edited approved lesson '{lesson.title}'.", 'lesson_edit', '')
             messages.success(request, "Lesson edits submitted for approval! Students will continue to view the current version until approved.")
         else:
             lesson.title = title
@@ -1257,7 +1261,7 @@ def edit_lesson(request, lesson_uid):
             lesson.save()
 
             messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
-            notify_admins(f"CONTENT UPDATE: Teacher {request.user.username} updated lesson '{lesson.title}'.")
+            notify_admins("Lesson Updated", f"Teacher {request.user.username} updated lesson '{lesson.title}'.", 'lesson_edit', '')
 
         return redirect('course_lessons', course_uid=lesson.course.uid)
 
@@ -1309,7 +1313,7 @@ def delete_lesson(request, lesson_uid):
             status='PENDING',
         )
         messages.success(request, "Deletion request sent to admin. The lesson will be removed once approved.")
-        notify_admins(f"Deletion Request: Teacher {request.user.username} requested to delete lesson '{lesson.title}'.")
+        notify_admins("Deletion Request Submitted", f"Teacher {request.user.username} requested to delete lesson '{lesson.title}'.", 'deletion_request', '')
         
     return redirect('course_lessons', course_uid=course_uid)
 
@@ -1396,7 +1400,7 @@ def add_resource(request, course_uid):
                 resource_status = 'PENDING'
                 resource_approved = False
                 success_msg = f"Resource '{title}' uploaded and pending approval."
-                notify_admins(f"🆕 NEW RESOURCE: Teacher {request.user.username} uploaded a PDF for course '{course.title}'.")
+                notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
 
             CourseResource.objects.create(
                 course=course,
@@ -1562,7 +1566,7 @@ def edit_resource(request, resource_uid):
             resource.has_pending_edits = True
             resource.save()
             messages.success(request, f"Changes to resource '{title}' submitted for admin review.")
-            notify_admins(f"🔄 RESOURCE EDIT: Teacher {request.user.username} edited approved resource '{resource.title}'.")
+            notify_admins("Resource Edit Submitted", f"Teacher {request.user.username} edited approved resource '{resource.title}'.", 'resource_edit', '')
         else:
             # For PENDING or REJECTED resources, overwrite directly and set to PENDING
             # Delete old file if a new one is uploaded
@@ -1593,7 +1597,7 @@ def edit_resource(request, resource_uid):
             resource.rejection_reason = None # Clear reason on resubmission
             resource.save()
             messages.success(request, f"Resource '{title}' updated and resubmitted for approval.")
-            notify_admins(f"🆕 RESOURCE RESUBMISSION: Teacher {request.user.username} updated resource '{title}'.")
+            notify_admins("Resource Updated", f"Teacher {request.user.username} updated resource '{title}'.", 'resource_edit', '')
 
         return redirect('course_lessons', course_uid=course.uid)
 
@@ -1651,7 +1655,7 @@ def delete_resource(request, resource_uid):
     resource.status = 'DELETION_PENDING'
     resource.save()
 
-    notify_admins(f"🗑️ DELETION REQUEST: Teacher {request.user.username} requested deletion of resource '{resource.title}' in course '{resource.course.title}'.")
+    notify_admins("Deletion Request Submitted", f"Teacher {request.user.username} requested deletion of resource '{resource.title}'.", 'deletion_request', '')
     messages.success(request, f"Deletion request for '{resource.title}' submitted. Awaiting admin approval.")
     return redirect('course_lessons', course_uid=resource.course.uid)
 
@@ -1688,13 +1692,13 @@ def submit_course_approval(request, course_uid):
         # Messaging and Notifications
         if is_course_rejection_fix:
             messages.success(request, f"Course '{course.title}' has been re-submitted after rejection.")
-            notify_admins(f"🔁 COURSE RESUBMISSION: Teacher {request.user.username} fixed and re-submitted the entire course '{course.title}'.")
+            notify_admins("Course Resubmitted", f"Teacher {request.user.username} re-submitted course '{course.title}'.", 'course_edit', '')
         elif rejected_lessons.exists():
             messages.success(request, "Rejected lessons have been resubmitted for approval.")
-            notify_admins(f"🔁 LESSON RESUBMISSION: Teacher {request.user.username} resubmitted rejected lessons in course '{course.title}'.")
+            notify_admins("Lesson Resubmitted", f"Teacher {request.user.username} resubmitted lessons in course '{course.title}'.", 'lesson_edit', '')
         elif pending_lessons.exists():
             messages.success(request, "New content submitted for review.")
-            notify_admins(f"🆕 NEW CONTENT: Teacher {request.user.username} submitted new content for course '{course.title}'.")
+            notify_admins("New Content Submitted", f"Teacher {request.user.username} submitted new content for course '{course.title}'.", 'new_lesson', '')
         else:
             messages.info(request, "All content is already under review or approved.")
             
@@ -2493,7 +2497,7 @@ def teacher_analytics_view(request):
         'course_data': course_data,
         'trend_labels': enrollment_trend_labels,
         'trend_data': enrollment_trend_data,
-        'notifications': get_notifications(str(request.user.uid))[:10],
+        'notifications': (get_notifications(str(request.user.uid))[0])[:10],
         'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
     return render(request, 'teacher_portal/analytics.html', context)
@@ -2684,7 +2688,7 @@ def all_notifications(request):
     if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
         filter_keywords = ['added course', 'new content added to your course']
     
-    notifications = get_notifications(str(request.user.uid))
+    notifications, _ = get_notifications(str(request.user.uid))
     
     if filter_keywords:
         notifications = [n for n in notifications if any(kw.lower() in n['message'].lower() for kw in filter_keywords)]
@@ -2705,6 +2709,38 @@ def all_notifications(request):
         'notifications': notifications,
         'base_template': base_template
     })
+@login_required
+def firebase_notification_list(request):
+    """REST endpoint: Get paginated Firebase notifications for bell."""
+    from django.http import JsonResponse
+    from .utils.notification_helper import get_notifications
+    page = int(request.GET.get('page', 1))
+    limit = int(request.GET.get('limit', 25))
+    offset = (page - 1) * limit
+    notifs, total = get_notifications(user_uid=str(request.user.uid), limit=limit, offset=offset)
+    return JsonResponse({'notifications': notifs, 'total': total, 'page': page})
+
+
+@login_required
+@require_POST
+def firebase_notification_mark_read(request, notif_uid):
+    """REST endpoint: Mark one notification as read."""
+    from django.http import JsonResponse
+    from .utils.notification_helper import mark_read
+    mark_read(str(request.user.uid), notif_uid)
+    return JsonResponse({'status': 'ok'})
+
+
+@login_required
+@require_POST
+def firebase_notification_mark_all_read(request):
+    """REST endpoint: Mark all notifications as read."""
+    from django.http import JsonResponse
+    from .utils.notification_helper import mark_all_read
+    mark_all_read(str(request.user.uid))
+    return JsonResponse({'status': 'ok'})
+
+
 @login_required
 def get_unread_counts(request):
     from django.http import JsonResponse
@@ -3250,7 +3286,7 @@ def youtube_edit_complete(request):
             'pending_video_url', 'has_pending_edits', 'youtube_video_id',
             'youtube_upload_status', 'youtube_uploaded_at', 'upload_status',
         ])
-        notify_admins(f"LESSON EDITS PENDING: Teacher {request.user.username} edited approved lesson '{lesson.title}'. Changes pending admin approval.")
+        notify_admins("Lesson Edits Submitted", f"Teacher {request.user.username} edited approved lesson '{lesson.title}'.", 'lesson_edit', '')
     elif lesson.is_approved and course_is_published:
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'

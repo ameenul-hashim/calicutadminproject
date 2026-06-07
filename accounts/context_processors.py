@@ -21,7 +21,8 @@ def pending_counts(request):
         }
 
         from accounts.utils.notification_helper import get_notifications, get_unread_count
-        context['notifications'] = get_notifications(user_obj=user)[:10]
+        notifs, _ = get_notifications(user_obj=user)
+        context['notifications'] = notifs[:10]
         context['unread_notifications_count'] = get_unread_count(user_obj=user)
 
         if request.user.user_type == 'ADMIN':

@@ -40,31 +40,66 @@ def _get_app():
 
 
 # ============================================================
-# NOTIFICATIONS (7-day retention)
+# NOTIFICATIONS (30-day retention, structured)
+# Structure per node:
+#   title: str
+#   message: str
+#   type: str (e.g. 'course_approved', 'new_course', etc.)
+#   action_url: str
+#   is_read: bool
+#   created_at: int (ms)
+#   read_at: int (ms) or null
+#   expires_at: int (ms) or null
 # ============================================================
 
-def notif_create(user_uid, message):
+NOTIF_RETENTION_DAYS = 30
+
+def _notif_now_ms():
+    return int(time.time() * 1000)
+
+
+def _notif_expires_at():
+    return _notif_now_ms() + (NOTIF_RETENTION_DAYS * 24 * 60 * 60 * 1000)
+
+
+def notif_create(user_uid, title, message, notif_type='general', action_url=''):
     app = _get_app()
     if app is None:
         return None
     notif_uid = str(uuid.uuid4())
-    now_ms = int(time.time() * 1000)
+    now_ms = _notif_now_ms()
     ref = db.reference(f'/notifications/{user_uid}/{notif_uid}', app=app)
-    ref.set({'message': message, 'is_read': False, 'created_at': now_ms})
+    ref.set({
+        'title': title,
+        'message': message,
+        'type': notif_type,
+        'action_url': action_url,
+        'is_read': False,
+        'created_at': now_ms,
+        'read_at': None,
+        'expires_at': _notif_expires_at(),
+    })
     return notif_uid
 
 
-def notif_create_batch(user_uids, message):
+def notif_create_batch(user_uids, title, message, notif_type='general', action_url=''):
     app = _get_app()
     if app is None or not user_uids:
         return []
-    now_ms = int(time.time() * 1000)
+    now_ms = _notif_now_ms()
     updates = {}
     notif_uids = []
     for user_uid in user_uids:
         notif_uid = str(uuid.uuid4())
         updates[f'/notifications/{user_uid}/{notif_uid}'] = {
-            'message': message, 'is_read': False, 'created_at': now_ms
+            'title': title,
+            'message': message,
+            'type': notif_type,
+            'action_url': action_url,
+            'is_read': False,
+            'created_at': now_ms,
+            'read_at': None,
+            'expires_at': _notif_expires_at(),
         }
         notif_uids.append(notif_uid)
     if updates:
@@ -72,30 +107,34 @@ def notif_create_batch(user_uids, message):
     return notif_uids
 
 
-def notif_get_all(user_uid, limit=50, filter_keywords=None):
+def notif_get_all(user_uid, limit=25, offset=0):
     app = _get_app()
     if app is None:
-        return []
+        return [], 0
     ref = db.reference(f'/notifications/{user_uid}', app=app)
     data = ref.get()
     if not data:
-        return []
+        return [], 0
     notifs = []
     for nid, ndata in data.items():
-        msg = ndata.get('message', '')
-        if filter_keywords and not any(kw.lower() in msg.lower() for kw in filter_keywords):
-            continue
         notifs.append({
             'uid': nid,
-            'message': msg,
+            'title': ndata.get('title', ''),
+            'message': ndata.get('message', ''),
+            'type': ndata.get('type', 'general'),
+            'action_url': ndata.get('action_url', ''),
             'is_read': ndata.get('is_read', False),
             'created_at': ndata.get('created_at', 0),
+            'read_at': ndata.get('read_at'),
+            'expires_at': ndata.get('expires_at'),
         })
     notifs.sort(key=lambda x: x['created_at'], reverse=True)
-    return notifs[:limit]
+    total = len(notifs)
+    page = notifs[offset:offset + limit]
+    return page, total
 
 
-def notif_get_unread_count(user_uid, filter_keywords=None):
+def notif_get_unread_count(user_uid):
     app = _get_app()
     if app is None:
         return 0
@@ -105,12 +144,8 @@ def notif_get_unread_count(user_uid, filter_keywords=None):
         return 0
     count = 0
     for ndata in data.values():
-        if ndata.get('is_read', False):
-            continue
-        msg = ndata.get('message', '')
-        if filter_keywords and not any(kw.lower() in msg.lower() for kw in filter_keywords):
-            continue
-        count += 1
+        if not ndata.get('is_read', False):
+            count += 1
     return count
 
 
@@ -118,18 +153,22 @@ def notif_mark_read(user_uid, notif_uid):
     app = _get_app()
     if app is None:
         return
+    now_ms = _notif_now_ms()
     db.reference(f'/notifications/{user_uid}/{notif_uid}/is_read', app=app).set(True)
+    db.reference(f'/notifications/{user_uid}/{notif_uid}/read_at', app=app).set(now_ms)
 
 
 def notif_mark_all_read(user_uid):
     app = _get_app()
     if app is None:
         return
+    now_ms = _notif_now_ms()
     ref = db.reference(f'/notifications/{user_uid}', app=app)
     data = ref.get()
     if data:
         for nid in data:
             db.reference(f'/notifications/{user_uid}/{nid}/is_read', app=app).set(True)
+            db.reference(f'/notifications/{user_uid}/{nid}/read_at', app=app).set(now_ms)
 
 
 def notif_delete(user_uid, notif_uid):
@@ -139,21 +178,26 @@ def notif_delete(user_uid, notif_uid):
     db.reference(f'/notifications/{user_uid}/{notif_uid}', app=app).delete()
 
 
-def notif_cleanup(days=7):
+def notif_cleanup(days=NOTIF_RETENTION_DAYS):
     app = _get_app()
     if app is None:
         return 0
-    cutoff = int(time.time() * 1000) - (days * 24 * 60 * 60 * 1000)
+    cutoff = _notif_now_ms() - (days * 24 * 60 * 60 * 1000)
     ref = db.reference('/notifications', app=app)
     users = ref.get()
     if not users:
         return 0
     deleted = 0
     for user_uid, notifs in users.items():
+        to_delete = []
         for notif_uid, ndata in notifs.items():
             if ndata.get('created_at', 0) < cutoff:
-                db.reference(f'/notifications/{user_uid}/{notif_uid}', app=app).delete()
-                deleted += 1
+                to_delete.append(notif_uid)
+        for notif_uid in to_delete:
+            db.reference(f'/notifications/{user_uid}/{notif_uid}', app=app).delete()
+            deleted += 1
+        if to_delete and len(to_delete) == len(notifs):
+            db.reference(f'/notifications/{user_uid}', app=app).delete()
     return deleted
 
 

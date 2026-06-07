@@ -1,4 +1,4 @@
-RETENTION_DAYS = 7
+RETENTION_DAYS = 30
 
 
 def _uid(val):
@@ -7,12 +7,12 @@ def _uid(val):
     return str(val)
 
 
-def get_notifications(user_uid=None, limit=50, user_obj=None):
+def get_notifications(user_uid=None, limit=25, offset=0, user_obj=None):
     uid = _uid(user_uid or (user_obj.uid if user_obj else None))
     if not uid:
-        return []
+        return [], 0
     from .firebase_db import notif_get_all
-    return notif_get_all(uid, limit)
+    return notif_get_all(uid, limit, offset)
 
 
 def get_unread_count(user_uid=None, user_obj=None):

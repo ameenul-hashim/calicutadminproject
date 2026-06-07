@@ -408,6 +408,12 @@ def toggle_user_status(request, user_uid):
         messages.error(request, f"Cannot toggle user in '{user.status}' state. Only ACTIVE/BLOCKED/PENDING users can be toggled.")
         return redirect('manage_students' if user.user_type != 'TEACHER' else 'manage_teachers')
     user.save()
+    if user.user_type == 'TEACHER':
+        from accounts.utils.firebase_db import notif_create
+        if 'blocked' in msg:
+            notif_create(str(user.uid), "Account Suspended", "Your account has been suspended.", 'account_suspended', '')
+        elif 'activated' in msg or 'approved' in msg:
+            notif_create(str(user.uid), "Account Restored", "Your account has been restored.", 'account_restored', '')
     messages.success(request, f"User {user.username} has been {msg}.")
     if user.user_type == 'TEACHER':
         return redirect('manage_teachers')
@@ -836,6 +842,8 @@ def approve_course(request, course_uid):
         lesson.save()
 
     create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(course.teacher.uid), "Course Approved", f"Your course '{course.title}' has been approved.", 'course_approved', '')
     
     ApprovalLog.objects.create(
         content_type='COURSE',
@@ -876,6 +884,8 @@ def reject_course(request, course_uid):
 
         # Notify teacher: course was rejected for resubmission
         create_notification(teacher, f"❌ Your course '{course_title}' was rejected. Reason: {reason}. Please fix the issues and resubmit for approval.")
+        from accounts.utils.firebase_db import notif_create
+        notif_create(str(teacher.uid), "Course Rejected", f"Your course '{course_title}' was rejected.", 'course_rejected', '')
 
         messages.warning(request, f"Course '{course_title}' has been rejected. The teacher has been notified to resubmit.")
         return redirect('admin_content')
@@ -1123,6 +1133,9 @@ def approve_resource(request, resource_uid):
                 create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
         messages.success(request, f"Resource '{resource.title}' approved successfully.")
 
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(resource.course.teacher.uid), "Resource Approved", f"Your resource '{resource.title}' has been approved.", 'resource_approved', '')
+
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1140,6 +1153,8 @@ def reject_resource(request, resource_uid):
         resource.save()
         
         create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' was rejected. Reason: {reason}.")
+        from accounts.utils.firebase_db import notif_create
+        notif_create(str(resource.course.teacher.uid), "Resource Rejected", f"Your resource '{resource.title}' was rejected.", 'resource_rejected', '')
         messages.warning(request, f"Resource '{resource.title}' rejected.")
         return redirect('admin_view_course_content', course_uid=resource.course.uid)
     return render(request, 'custom_admin/decline_reason.html', {'lesson': resource, 'is_content': True, 'content_type': 'Resource', 'is_resource': True})
@@ -1481,7 +1496,7 @@ def delete_user_admin(request, user_uid):
 def admin_all_notifications(request):
     from accounts.utils.notification_helper import cleanup_old_notifications
     cleanup_old_notifications()
-    all_notifs = get_notifications(str(request.user.uid), limit=200)
+    all_notifs, _ = get_notifications(str(request.user.uid), limit=200)
     mark_all_read(str(request.user.uid))
     return render(request, 'custom_admin/all_notifications.html', {
         'all_notifications': all_notifs[:50],
@@ -1596,6 +1611,8 @@ def approve_deletion_request(request, request_uid):
 
     # Delete the DeletionRequest — no history saved
     del_request.delete()
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(del_request.teacher.uid), "Deletion Approved", f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been approved.", 'deletion_approved', '')
     messages.success(request, f"✅ {success_msg}")
     return redirect('manage_deletion_requests')
 
@@ -1632,7 +1649,7 @@ def reject_deletion_request(request, request_uid):
     admin_feedback = request.POST.get('admin_feedback', '').strip() or 'No reason provided.'
     # Send notification to teacher with rejection reason (via Firebase — external, not Django DB)
     from accounts.utils.firebase_db import notif_create
-    notif_create(str(del_request.teacher.uid), f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been REJECTED by admin. Reason: {admin_feedback}")
+    notif_create(str(del_request.teacher.uid), "Deletion Rejected", f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.", 'deletion_rejected', '')
     # Delete the DeletionRequest — no history saved
     del_request.delete()
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Teacher notified with reason.")
@@ -2764,7 +2781,7 @@ def backup_info_view(request):
         'total_files_count': total_files_count,
         'error_message': error_message,
         'supabase_configured': bool(supabase_url and supabase_key),
-        'notifications': get_notifications(str(request.user.uid))[:10],
+        'notifications': (get_notifications(str(request.user.uid))[0])[:10],
         'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
     return render(request, 'custom_admin/backup_info.html', context)
