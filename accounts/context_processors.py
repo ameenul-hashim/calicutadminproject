@@ -47,6 +47,11 @@ def pending_counts(request):
             context['unread_admin_notifs'] = context['unread_notifications_count']
             context['backup_failed_count'] = BackupLog.objects.filter(status='FAILED').count()
             context['backup_pending_count'] = BackupLog.objects.filter(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
+            try:
+                from accounts.utils.firebase_chat import get_unread_count as chat_unread
+                context['support_chat_unread'] = chat_unread(str(user.uid))
+            except Exception:
+                context['support_chat_unread'] = 0
 
         elif request.user.user_type == 'TEACHER':
             from accounts.models import Course
@@ -58,6 +63,11 @@ def pending_counts(request):
             context['teacher_pending_approvals'] = teacher_counts['pending']
             context['teacher_rejected_courses'] = teacher_counts['rejected']
             context['unread_teacher_notifs'] = context['unread_notifications_count']
+            try:
+                from accounts.utils.firebase_chat import get_unread_count as chat_unread
+                context['support_chat_unread'] = chat_unread(str(user.uid))
+            except Exception:
+                context['support_chat_unread'] = 0
 
         elif request.user.user_type == 'STUDENT':
             context['unread_student_notifs'] = context['unread_notifications_count']

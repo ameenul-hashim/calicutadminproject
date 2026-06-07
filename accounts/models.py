@@ -33,6 +33,12 @@ class CustomUser(AbstractUser):
     current_session_key = models.CharField(max_length=40, null=True, blank=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     totp_secret = models.CharField(max_length=32, null=True, blank=True)
+    chat_display_name = models.CharField(max_length=100, blank=True, default='')
+    chat_status = models.CharField(max_length=10, choices=[('AVAILABLE', 'Available'), ('BUSY', 'Busy'), ('OFFLINE', 'Offline')], default='AVAILABLE')
+
+    @property
+    def chat_display(self):
+        return self.chat_display_name or self.full_name or 'Support Team'
 
     @property
     def avatar_url(self):

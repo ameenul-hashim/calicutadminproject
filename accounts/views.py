@@ -2061,7 +2061,7 @@ def send_chat_message(request):
         except CustomUser.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
 
-        sender_name = 'Support Team' if is_admin else (sender.full_name or sender.username)
+        sender_name = sender.chat_display if is_admin else (sender.full_name or sender.username)
 
         from accounts.utils.firebase_chat import send_message as fb_send
         result = fb_send(sender, receiver_uid, message_text, sender_name)
@@ -2088,19 +2088,23 @@ def get_chat_messages(request, other_user_uid):
     is_teacher = user.user_type == 'TEACHER'
     is_admin = user.is_superuser or user.is_staff or user.user_type == 'ADMIN'
     if not (is_teacher or is_admin):
-        return JsonResponse({'messages': []})
+        return JsonResponse({'messages': [], 'has_more': False})
 
     try:
         other = CustomUser.objects.get(uid=other_user_uid)
     except CustomUser.DoesNotExist:
-        return JsonResponse({'messages': []})
+        return JsonResponse({'messages': [], 'has_more': False})
 
     if not ((is_teacher and (other.is_superuser or other.user_type == 'ADMIN' or other.is_staff)) or
             (is_admin and other.user_type == 'TEACHER')):
-        return JsonResponse({'messages': []})
+        return JsonResponse({'messages': [], 'has_more': False})
+
+    limit = int(request.GET.get('limit', 25))
+    offset = int(request.GET.get('offset', 0))
+    search_q = request.GET.get('search', '')
 
     from accounts.utils.firebase_chat import get_messages, mark_read
-    fb_msgs = get_messages(str(user.uid), str(other_user_uid))
+    fb_msgs, has_more = get_messages(str(user.uid), str(other_user_uid), limit=limit, offset=offset, search=search_q)
 
     mark_read(str(user.uid), str(other_user_uid))
 
@@ -2119,9 +2123,12 @@ def get_chat_messages(request, other_user_uid):
             'raw_ts': raw_ts,
             'is_me': is_me,
             'is_edited': m.get('is_edited', False),
+            'is_deleted': m.get('is_deleted', False),
+            'read_at': m.get('read_at'),
+            'edited_at': m.get('edited_at'),
         })
 
-    return JsonResponse({'messages': data})
+    return JsonResponse({'messages': data, 'has_more': has_more})
 
 @login_required
 def get_chat_list(request):
@@ -2135,19 +2142,18 @@ def get_chat_list(request):
         return JsonResponse({'users': []})
 
     if is_teacher:
-        chat_partner_filter = Q(is_superuser=True) | Q(user_type='ADMIN') | (Q(is_staff=True) & ~Q(user_type='TEACHER') & ~Q(user_type='STUDENT'))
+        chat_partner_filter = Q(user_type='ADMIN') | Q(is_superuser=True)
     else:
         chat_partner_filter = Q(user_type='TEACHER')
 
     all_partners = CustomUser.objects.filter(
         chat_partner_filter, status='ACTIVE'
-    ).exclude(uid=user.uid).only('uid', 'full_name', 'username', 'image', 'user_type')
+    ).exclude(uid=user.uid).only('uid', 'full_name', 'username', 'image', 'user_type', 'chat_display_name', 'chat_status')
 
     partner_map = {str(u.uid): u for u in all_partners}
 
     from accounts.utils.firebase_chat import get_chat_list as fb_get_chat_list, get_unread_count
     fb_rooms = fb_get_chat_list(str(user.uid))
-    fb_data = {r['other_uid']: r for r in fb_rooms}
     fb_unread = get_unread_count(str(user.uid))
 
     result = []
@@ -2158,10 +2164,13 @@ def get_chat_list(request):
         if other_uid not in partner_map:
             continue
         u = partner_map[other_uid]
-        display_name = 'Support Team' if u.user_type == 'ADMIN' else (u.full_name or u.username)
+        name = u.chat_display if u.user_type == 'ADMIN' else (u.full_name or u.username)
+        status = u.chat_status if u.user_type == 'ADMIN' else 'AVAILABLE'
         result.append({
             'uid': other_uid,
-            'name': display_name,
+            'name': name,
+            'display_name': name,
+            'status': status,
             'last_message': room.get('last_message', '') or 'No messages yet',
             'unread_count': room.get('unread_count', 0),
             'profile_photo': u.avatar_url,
@@ -2172,16 +2181,51 @@ def get_chat_list(request):
     remaining.sort(key=lambda u: (u.full_name or u.username).lower())
     for u in remaining:
         uid_str = str(u.uid)
-        display_name = 'Support Team' if u.user_type == 'ADMIN' else (u.full_name or u.username)
+        name = u.chat_display if u.user_type == 'ADMIN' else (u.full_name or u.username)
+        status = u.chat_status if u.user_type == 'ADMIN' else 'AVAILABLE'
         result.append({
             'uid': uid_str,
-            'name': display_name,
+            'name': name,
+            'display_name': name,
+            'status': status,
             'last_message': 'No messages yet',
             'unread_count': 0,
             'profile_photo': u.avatar_url,
         })
 
     return JsonResponse({'users': result})
+
+
+@login_required
+def get_online_admins(request):
+    """Return all available admins for teacher chat list. Never exposes internal IDs or usernames."""
+    if request.user.user_type != 'TEACHER':
+        return JsonResponse({'admins': []})
+    from accounts.utils.firebase_chat import get_online_admins
+    admins = get_online_admins()
+    for a in admins:
+        a.pop('uid', None)
+    return JsonResponse({'admins': admins})
+
+
+@login_required
+def admin_chat_settings(request):
+    """Admin-only view to edit chat display name, avatar, and status."""
+    if not (request.user.is_superuser or request.user.is_staff or request.user.user_type == 'ADMIN'):
+        messages.error(request, 'Access denied')
+        return redirect('dashboard')
+    user = request.user
+    if request.method == 'POST':
+        chat_display_name = request.POST.get('chat_display_name', '').strip()
+        chat_status = request.POST.get('chat_status', 'AVAILABLE')
+        if chat_display_name:
+            user.chat_display_name = chat_display_name
+        user.chat_status = chat_status
+        user.save(update_fields=['chat_display_name', 'chat_status'])
+        messages.success(request, 'Chat settings updated')
+        return redirect('admin_chat_settings')
+    return render(request, 'accounts/admin_chat_settings.html', {'admin_user': user})
+
 
 @login_required
 def mark_notification_read(request, notif_uid):

@@ -3,7 +3,7 @@ from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
 from django.utils.html import escape
-from accounts.utils.firebase_chat import send_message, edit_message, delete_message
+from accounts.utils.firebase_chat import send_message, edit_message, delete_message, mark_read
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -43,7 +43,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if action == 'send':
             message = escape(data['message'])
             receiver_uid = data['receiver_uid']
-            sender_name = 'Support Team' if is_admin_user else (sender.full_name or sender.username)
+            sender_name = sender.chat_display if is_admin_user else (sender.full_name or sender.username)
 
             result = await sync_to_async(send_message)(sender, receiver_uid, message, sender_name)
             if result is None:
@@ -62,13 +62,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'sender_name': sender_name,
                     'timestamp': ts_str,
                     'raw_ts': now_ms,
+                    'sender_status': sender.chat_status if is_admin_user else 'AVAILABLE',
                 }
             )
+
         elif action == 'edit':
             message_uid = data['message_uid']
             new_message = escape(data['message'])
-            success = await sync_to_async(edit_message)(str(sender.uid), message_uid, new_message)
+            success, error = await sync_to_async(edit_message)(str(sender.uid), message_uid, new_message)
             if success:
+                now_ms = int(datetime.now().timestamp() * 1000)
                 await self.channel_layer.group_send(
                     self.room_group_name,
                     {
@@ -78,9 +81,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'message': new_message,
                     }
                 )
+            else:
+                await self.send(text_data=json.dumps({
+                    'action': 'error',
+                    'error': error or 'Edit failed',
+                }))
+
         elif action == 'delete':
             message_uid = data['message_uid']
-            success = await sync_to_async(delete_message)(str(sender.uid), message_uid)
+            success, error = await sync_to_async(delete_message)(str(sender.uid), message_uid)
             if success:
                 await self.channel_layer.group_send(
                     self.room_group_name,
@@ -90,6 +99,35 @@ class ChatConsumer(AsyncWebsocketConsumer):
                         'message_uid': message_uid,
                     }
                 )
+            else:
+                await self.send(text_data=json.dumps({
+                    'action': 'error',
+                    'error': error or 'Delete failed',
+                }))
+
+        elif action == 'read':
+            other_uid = data.get('other_uid')
+            if other_uid:
+                await sync_to_async(mark_read)(str(sender.uid), str(other_uid))
+                await self.channel_layer.group_send(
+                    self.room_group_name,
+                    {
+                        'type': 'chat_message',
+                        'action': 'read',
+                        'reader_uid': str(sender.uid),
+                    }
+                )
+
+        elif action == 'typing':
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'chat_message',
+                    'action': 'typing',
+                    'sender_uid': str(sender.uid),
+                    'is_typing': data.get('is_typing', False),
+                }
+            )
 
     async def chat_message(self, event):
         action = event.get('action', 'send')
@@ -103,6 +141,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'sender_name': event['sender_name'],
                 'timestamp': event['timestamp'],
                 'raw_ts': event.get('raw_ts', 0),
+                'sender_status': event.get('sender_status', 'AVAILABLE'),
             }))
         elif action == 'edit':
             await self.send(text_data=json.dumps({
@@ -114,4 +153,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.send(text_data=json.dumps({
                 'action': 'delete',
                 'message_uid': event['message_uid'],
+            }))
+        elif action == 'read':
+            await self.send(text_data=json.dumps({
+                'action': 'read',
+                'reader_uid': event['reader_uid'],
+            }))
+        elif action == 'typing':
+            await self.send(text_data=json.dumps({
+                'action': 'typing',
+                'sender_uid': event['sender_uid'],
+                'is_typing': event['is_typing'],
             }))
