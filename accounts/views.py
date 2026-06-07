@@ -3,6 +3,8 @@ from django.urls import reverse
 from django.http import JsonResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, PasswordResetOTP, ChatMessage
 import uuid
 from django.contrib.auth.decorators import user_passes_test, login_required
@@ -152,12 +154,10 @@ def signup_view(request):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/signup.html', ctx)
 
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messages.error(request, "Please enter a valid email address.")
-            return render(request, 'accounts/signup.html', ctx)
-
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
+        try:
+            validate_email(email)
+        except ValidationError:
+            messages.error(request, "Please enter a valid email address (e.g., name@domain.com).")
             return render(request, 'accounts/signup.html', ctx)
 
         if (CustomUser.objects.filter(username__iexact=username).exclude(status='REJECTED').exists() or
@@ -267,12 +267,10 @@ def teacher_signup_view(request):
             return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Email format check
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messages.error(request, "Please enter a valid email address.")
-            return render(request, 'accounts/teacher_signup.html', ctx)
-
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
+        try:
+            validate_email(email)
+        except ValidationError:
+            messages.error(request, "Please enter a valid email address (e.g., name@domain.com).")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
         # Unique checks — exclude REJECTED so users can reapply
