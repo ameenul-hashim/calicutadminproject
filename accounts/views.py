@@ -2114,7 +2114,7 @@ def get_chat_messages(request, other_user_uid):
         is_me = str(m['sender_uid']) == str(user.uid)
         raw_ts = m.get('timestamp', 0)
         ts_str = dt_mod.fromtimestamp(raw_ts / 1000).strftime('%I:%M %p') if raw_ts else ''
-        data.append({
+        entry = {
             'message_uid': m['uid'],
             'sender_uid': m['sender_uid'],
             'sender_name': m.get('sender_name', ''),
@@ -2126,7 +2126,10 @@ def get_chat_messages(request, other_user_uid):
             'is_deleted': m.get('is_deleted', False),
             'read_at': m.get('read_at'),
             'edited_at': m.get('edited_at'),
-        })
+        }
+        if m.get('attachment'):
+            entry['attachment'] = m['attachment']
+        data.append(entry)
 
     return JsonResponse({'messages': data, 'has_more': has_more})
 
@@ -2171,6 +2174,7 @@ def get_chat_list(request):
             'name': name,
             'display_name': name,
             'status': status,
+            'conversation_status': room.get('status', 'OPEN'),
             'last_message': room.get('last_message', '') or 'No messages yet',
             'unread_count': room.get('unread_count', 0),
             'profile_photo': u.avatar_url,
@@ -2225,6 +2229,216 @@ def admin_chat_settings(request):
         messages.success(request, 'Chat settings updated')
         return redirect('admin_chat_settings')
     return render(request, 'accounts/admin_chat_settings.html', {'admin_user': user})
+
+
+@login_required
+@require_POST
+def upload_chat_attachment(request):
+    """Upload a chat attachment (PNG/JPG/PDF, max 5MB) and return metadata."""
+    user = request.user
+    if user.user_type not in ('TEACHER', 'ADMIN') and not user.is_superuser and not user.is_staff:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    file = request.FILES.get('file')
+    if not file:
+        return JsonResponse({'error': 'No file provided'}, status=400)
+    if file.size > 5 * 1024 * 1024:
+        return JsonResponse({'error': 'File too large (max 5 MB)'}, status=400)
+    ext = file.name.lower().rsplit('.', 1)[-1] if '.' in file.name else ''
+    if ext not in ('png', 'jpg', 'jpeg', 'pdf'):
+        return JsonResponse({'error': 'Only PNG, JPG, and PDF files are allowed'}, status=400)
+    from accounts.utils.supabase_storage import upload_chat_attachment
+    file_bytes = file.read()
+    try:
+        supabase_path = upload_chat_attachment(file_bytes, file.name, str(user.uid))
+    except ValueError as e:
+        return JsonResponse({'error': str(e)}, status=400)
+    if not supabase_path:
+        return JsonResponse({'error': 'Upload failed'}, status=500)
+    from accounts.models import ChatAttachment
+    attachment = ChatAttachment.objects.create(
+        sender=user,
+        supabase_path=supabase_path,
+        original_filename=file.name,
+        file_size=file.size,
+        mime_type=file.content_type or 'application/octet-stream',
+    )
+    return JsonResponse({
+        'status': 'success',
+        'attachment_uid': str(attachment.uid),
+        'supabase_path': supabase_path,
+        'original_filename': file.name,
+        'file_size': file.size,
+        'mime_type': file.content_type or 'application/octet-stream',
+    })
+
+
+@login_required
+def get_chat_attachment_signed_url(request, attachment_uid):
+    """Get a signed URL for a chat attachment."""
+    from accounts.models import ChatAttachment
+    from accounts.utils.supabase_storage import get_signed_url
+    try:
+        att = ChatAttachment.objects.get(uid=attachment_uid)
+    except ChatAttachment.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+    url = get_signed_url(att.supabase_path, expires_in=3600)
+    if not url:
+        return JsonResponse({'error': 'Failed to generate URL'}, status=500)
+    return JsonResponse({'url': url, 'filename': att.original_filename, 'mime_type': att.mime_type})
+
+
+@login_required
+@require_POST
+def set_conversation_status_view(request):
+    """Admin changes conversation status."""
+    user = request.user
+    if user.user_type != 'ADMIN' and not user.is_superuser and not user.is_staff:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    other_uid = request.POST.get('other_uid')
+    new_status = request.POST.get('status', 'OPEN')
+    from accounts.utils.firebase_chat import set_conversation_status, _log_audit
+    success, error = set_conversation_status(str(user.uid), other_uid, new_status)
+    if success:
+        from accounts.models import CustomUser
+        try:
+            target = CustomUser.objects.get(uid=other_uid)
+            _log_audit(user, 'CONVERSATION_STATUS', {
+                'target_teacher': str(other_uid),
+                'old_status': '?',
+                'new_status': new_status,
+            })
+        except Exception:
+            pass
+        return JsonResponse({'status': 'success', 'new_status': new_status})
+    return JsonResponse({'error': error or 'Failed'}, status=400)
+
+
+@login_required
+def export_conversation(request, other_user_uid):
+    """Export conversation as TXT/CSV/PDF. Admin only."""
+    user = request.user
+    if user.user_type != 'ADMIN' and not user.is_superuser and not user.is_staff:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    fmt = request.GET.get('format', 'txt').lower()
+    from accounts.utils.firebase_chat import get_all_messages_for_export, _log_audit
+    msgs = get_all_messages_for_export(str(user.uid), str(other_user_uid))
+    from accounts.models import CustomUser
+    try:
+        other = CustomUser.objects.get(uid=other_user_uid)
+        other_name = other.chat_display if other.user_type == 'ADMIN' else (other.full_name or other.username)
+    except CustomUser.DoesNotExist:
+        other_name = 'Unknown'
+    _log_audit(user, 'CONVERSATION_EXPORTED', {'target_teacher': str(other_user_uid), 'format': fmt})
+
+    if fmt == 'csv':
+        import csv, io
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['Timestamp', 'Sender', 'Message', 'Edited'])
+        for m in msgs:
+            writer.writerow([m['timestamp'], m['sender_name'], m['message'], 'Yes' if m['is_edited'] else 'No'])
+        csv_content = output.getvalue()
+        response = HttpResponse(csv_content, content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="chat_export_{other_name}_{datetime.now().strftime("%Y%m%d")}.csv"'
+        return response
+    elif fmt == 'pdf':
+        from reportlab.lib.pagesizes import letter
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        import io as pdfio
+        buf = pdfio.BytesIO()
+        doc = SimpleDocTemplate(buf, pagesize=letter)
+        styles = getSampleStyleSheet()
+        elements = [
+            Paragraph(f'Conversation with {other_name}', styles['Title']),
+            Spacer(1, 12),
+            Paragraph(f'Exported: {datetime.now().strftime("%Y-%m-%d %H:%M")}', styles['Normal']),
+            Spacer(1, 12),
+        ]
+        for m in msgs:
+            edited_tag = ' (edited)' if m['is_edited'] else ''
+            elements.append(Paragraph(
+                f'<b>{m["timestamp"]}</b> - <i>{m["sender_name"]}</i>{edited_tag}<br/>{m["message"]}',
+                styles['Normal']
+            ))
+            elements.append(Spacer(1, 6))
+        doc.build(elements)
+        pdf_bytes = buf.getvalue()
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        response['Content-Disposition'] = f'attachment; filename="chat_export_{other_name}_{datetime.now().strftime("%Y%m%d")}.pdf"'
+        return response
+    else:
+        lines = [f'Conversation with {other_name}', f'Exported: {datetime.now().strftime("%Y-%m-%d %H:%M")}', '']
+        for m in msgs:
+            edited_tag = ' (edited)' if m['is_edited'] else ''
+            lines.append(f'[{m["timestamp"]}] {m["sender_name"]}{edited_tag}: {m["message"]}')
+        text = '\n'.join(lines)
+        response = HttpResponse(text, content_type='text/plain; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="chat_export_{other_name}_{datetime.now().strftime("%Y%m%d")}.txt"'
+        return response
+
+
+@login_required
+def get_chat_audit_log(request):
+    """Admin sees chat audit log for a specific teacher."""
+    user = request.user
+    if user.user_type != 'ADMIN' and not user.is_superuser and not user.is_staff:
+        return JsonResponse({'error': 'Access denied'}, status=403)
+    target_uid = request.GET.get('teacher_uid', '')
+    from accounts.models import ChatAuditLog, CustomUser
+    logs = ChatAuditLog.objects.all()
+    if target_uid:
+        try:
+            target = CustomUser.objects.get(uid=target_uid)
+            logs = logs.filter(target_teacher=target)
+        except CustomUser.DoesNotExist:
+            pass
+    logs = logs[:100]
+    data = [{
+        'actor': str(l.actor),
+        'actor_name': l.actor.chat_display if l.actor.user_type == 'ADMIN' else (l.actor.full_name or l.actor.username),
+        'action': l.action,
+        'details': l.details,
+        'timestamp': l.timestamp.isoformat(),
+    } for l in logs]
+    return JsonResponse({'logs': data})
+
+
+@login_required
+def update_last_seen(request):
+    """Update the user's last_seen timestamp."""
+    if request.method == 'POST':
+        user = request.user
+        from django.utils import timezone
+        user.last_seen = timezone.now()
+        user.save(update_fields=['last_seen'])
+        return JsonResponse({'status': 'ok'})
+    return JsonResponse({'error': 'POST required'}, status=400)
+
+
+@login_required
+def get_last_seen(request, user_uid):
+    """Get last_seen info for a user."""
+    from accounts.models import CustomUser
+    from django.utils import timezone
+    try:
+        u = CustomUser.objects.get(uid=user_uid)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'error': 'Not found'}, status=404)
+    now = timezone.now()
+    result = {'is_online': u.chat_status in ('AVAILABLE', 'BUSY'), 'status': u.chat_status, 'last_seen': None}
+    if u.last_seen:
+        delta = now - u.last_seen
+        mins = int(delta.total_seconds() / 60)
+        if mins < 1:
+            result['last_seen'] = 'Just now'
+        elif mins < 60:
+            result['last_seen'] = f'{mins}m ago'
+        elif mins < 1440:
+            result['last_seen'] = f'{mins // 60}h ago'
+        else:
+            result['last_seen'] = f'{mins // 1440}d ago'
+    return JsonResponse(result)
 
 
 @login_required

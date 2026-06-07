@@ -35,6 +35,7 @@ class CustomUser(AbstractUser):
     totp_secret = models.CharField(max_length=32, null=True, blank=True)
     chat_display_name = models.CharField(max_length=100, blank=True, default='')
     chat_status = models.CharField(max_length=10, choices=[('AVAILABLE', 'Available'), ('BUSY', 'Busy'), ('OFFLINE', 'Offline')], default='AVAILABLE')
+    last_seen = models.DateTimeField(null=True, blank=True)
 
     @property
     def chat_display(self):
@@ -500,6 +501,51 @@ class BackupLog(models.Model):
 
     def __str__(self):
         return f"{self.backup_type} - {self.filename} ({self.status})"
+
+class ChatAttachment(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='chat_attachments')
+    message_uid = models.CharField(max_length=64, blank=True, null=True, db_index=True)
+    supabase_path = models.CharField(max_length=500)
+    original_filename = models.CharField(max_length=255)
+    file_size = models.IntegerField(default=0)
+    mime_type = models.CharField(max_length=100)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.file_size}b)"
+
+
+class ChatAuditLog(models.Model):
+    ACTION_CHOICES = (
+        ('MESSAGE_SENT', 'Message Sent'),
+        ('MESSAGE_EDITED', 'Message Edited'),
+        ('MESSAGE_DELETED', 'Message Deleted'),
+        ('ATTACHMENT_SENT', 'Attachment Sent'),
+        ('CONVERSATION_STATUS', 'Conversation Status Changed'),
+        ('ASSIGNMENT_CHANGED', 'Assignment Changed'),
+        ('CONVERSATION_EXPORTED', 'Conversation Exported'),
+    )
+    actor = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='chat_audit_actions')
+    target_teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_audit_targets')
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES, db_index=True)
+    details = models.JSONField(default=dict, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['action', '-timestamp']),
+            models.Index(fields=['actor', '-timestamp']),
+        ]
+
+    def __str__(self):
+        return f"{self.actor} - {self.action} at {self.timestamp}"
+
 
 # Signals for explicit image cleanup
 from django.db.models.signals import pre_delete, post_save

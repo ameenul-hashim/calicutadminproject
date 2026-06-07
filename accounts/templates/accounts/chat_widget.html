@@ -9,8 +9,8 @@
 .chat-header-title { font-weight: 700; font-size: 0.95rem; }
 .chat-header-sub { font-size: 0.7rem; opacity: 0.85; }
 .chat-body { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; background: #fafafa; }
-.chat-footer { padding: 0.75rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; flex-shrink: 0; background: white; }
-.chat-input { flex: 1; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; border-radius: 1.5rem; outline: none; font-size: 0.85rem; }
+.chat-footer { padding: 0.75rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; flex-shrink: 0; background: white; flex-wrap: wrap; }
+.chat-input { flex: 1; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; border-radius: 1.5rem; outline: none; font-size: 0.85rem; min-width: 120px; }
 .chat-input:focus { border-color: #6366f1; }
 .msg { max-width: 85%; padding: 0.6rem 0.9rem; border-radius: 1rem; font-size: 0.85rem; line-height: 1.4; position: relative; word-wrap: break-word; }
 .msg.me { align-self: flex-end; background: #6366f1; color: white; border-bottom-right-radius: 0.2rem; }
@@ -36,22 +36,52 @@
 .msg-options span { cursor: pointer; padding: 2px; }
 .chat-back { cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 2px 8px 2px 0; opacity: 0.9; }
 .chat-back:hover { opacity: 1; }
+.attachment-preview { max-width: 200px; max-height: 150px; border-radius: 0.5rem; cursor: pointer; display: block; margin-top: 0.3rem; }
+.attachment-icon { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.3rem 0.6rem; background: rgba(99,102,241,0.1); border-radius: 0.5rem; font-size: 0.75rem; margin-top: 0.3rem; cursor: pointer; }
+.attachment-icon:hover { background: rgba(99,102,241,0.2); }
+.conversation-status-bar { padding: 0.3rem 0.75rem; font-size: 0.7rem; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; }
+.status-badge { padding: 0.15rem 0.5rem; border-radius: 1rem; font-size: 0.65rem; font-weight: 600; }
+.status-badge.OPEN { background: #dbeafe; color: #2563eb; }
+.status-badge.WAITING_ADMIN { background: #fef3c7; color: #d97706; }
+.status-badge.WAITING_TEACHER { background: #e0f2fe; color: #0284c7; }
+.status-badge.RESOLVED { background: #d1fae5; color: #059669; }
+.status-badge.CLOSED { background: #e2e8f0; color: #64748b; }
+.last-seen-text { font-size: 0.65rem; color: #94a3b8; }
+.attach-btn { background: none; border: 1px solid #e2e8f0; border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1rem; flex-shrink: 0; transition: background 0.15s; }
+.attach-btn:hover { background: #f1f5f9; }
+.char-counter { font-size: 0.6rem; color: #94a3b8; text-align: right; padding: 0 0.75rem 0.25rem; }
+.char-counter.over { color: #ef4444; font-weight: 600; }
+.rate-limit-msg { font-size: 0.7rem; color: #ef4444; text-align: center; padding: 0.25rem; display: none; }
 </style>
 
 <div id="chat-widget-container">
   <div id="chat-window">
     <div class="chat-header">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <span class="chat-back" id="chat-back-btn" style="display:none;" onclick="showUserList()">‹</span>
+        <span class="chat-back" id="chat-back-btn" style="display:none;" onclick="showUserList()">&lsaquo;</span>
         <div>
           <div class="chat-header-title" id="chat-title">Support</div>
-          <div class="chat-header-sub" id="chat-subtitle">We're here to help</div>
+          <div class="chat-header-sub" id="chat-subtitle">We&rsquo;re here to help</div>
         </div>
       </div>
-      <span style="cursor:pointer; font-size:1.1rem;" onclick="toggleChat()">✕</span>
+      <span style="cursor:pointer; font-size:1.1rem;" onclick="toggleChat()">&times;</span>
     </div>
 
-    <!-- User list -->
+    <div id="conversation-status-bar" class="conversation-status-bar" style="display:none;">
+      <span id="status-display"><span class="status-badge OPEN">Open</span></span>
+      {% if request.user.user_type == 'ADMIN' or request.user.is_superuser or request.user.is_staff %}
+      <select id="status-select" onchange="changeConversationStatus(this.value)" style="font-size:0.7rem;padding:0.15rem 0.3rem;border-radius:0.3rem;border:1px solid #e2e8f0;">
+        <option value="OPEN">Open</option>
+        <option value="WAITING_ADMIN">Waiting for Admin</option>
+        <option value="WAITING_TEACHER">Waiting for Teacher</option>
+        <option value="RESOLVED">Resolved</option>
+        <option value="CLOSED">Closed</option>
+      </select>
+      {% else %}
+      <span id="status-label" class="status-badge OPEN">Open</span>
+      {% endif %}
+    </div>
+
     <div id="chat-user-list" class="chat-body">
       {% if request.user.user_type == 'ADMIN' or request.user.is_superuser or request.user.is_staff %}
       <input type="text" class="search-input" id="chat-search" placeholder="Search teachers..." oninput="filterUserList(this.value)">
@@ -59,18 +89,21 @@
       <div id="user-list-items"></div>
     </div>
 
-    <!-- Message area -->
     <div id="chat-messages" class="chat-body" style="display:none;">
       <div id="load-more-btn" class="load-more" style="display:none;" onclick="loadMoreMessages()">Load earlier messages</div>
       <div id="messages-container"></div>
       <div class="typing-indicator" id="typing-indicator">Someone is typing...</div>
     </div>
 
-    <!-- Footer -->
+    <div class="char-counter" id="char-counter"></div>
+
     <div class="chat-footer" id="chat-footer" style="display:none;">
-      <input type="text" id="chat-input-field" class="chat-input" placeholder="Type a message...">
+      <button class="attach-btn" id="attach-btn" onclick="document.getElementById('file-input').click()" title="Attach file">📎</button>
+      <input type="file" id="file-input" accept=".png,.jpg,.jpeg,.pdf" style="display:none;" onchange="uploadAttachment(this)">
+      <input type="text" id="chat-input-field" class="chat-input" placeholder="Type a message..." maxlength="2000">
       <button onclick="sendMessage()" style="background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 1.5rem; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Send</button>
     </div>
+    <div class="rate-limit-msg" id="rate-limit-msg">Too many messages &mdash; please slow down.</div>
   </div>
   <button id="chat-toggle-btn" onclick="toggleChat()">
     💬
@@ -91,6 +124,8 @@
   var messageOffset = 0;
   var hasMoreMessages = false;
   var typingTimer = null;
+  var currentAttachment = null;
+  var MAX_MSG_LEN = 2000;
 
   function updateBadge() {
     fetch('{% url "get_unread_counts" %}')
@@ -112,6 +147,23 @@
   }
   updateBadge();
   setInterval(updateBadge, 10000);
+
+  setInterval(function() {
+    fetch('/chat/update-last-seen/', {method:'POST', headers:{'X-CSRFToken': getCSRFToken()}});
+  }, 60000);
+  setTimeout(function() {
+    fetch('/chat/update-last-seen/', {method:'POST', headers:{'X-CSRFToken': getCSRFToken()}});
+  }, 5000);
+
+  function getCSRFToken() {
+    var name = 'csrftoken';
+    var cookies = document.cookie.split(';');
+    for (var i = 0; i < cookies.length; i++) {
+      var c = cookies[i].trim();
+      if (c.indexOf(name + '=') === 0) return c.substring(name.length + 1);
+    }
+    return '';
+  }
 
   window.toggleChat = function() {
     var win = document.getElementById('chat-window');
@@ -138,19 +190,29 @@
     return d.getDate() + ' ' + months[d.getMonth()];
   }
 
+  function getStatusDisplay(status) {
+    var labels = {OPEN:'Open', WAITING_ADMIN:'Waiting for Admin', WAITING_TEACHER:'Waiting for Teacher', RESOLVED:'Resolved', CLOSED:'Closed'};
+    return labels[status] || status;
+  }
+
   window.showUserList = function() {
     document.getElementById('chat-title').textContent = 'Support';
-    document.getElementById('chat-subtitle').textContent = isAdmin ? 'Teacher conversations' : 'We\'re here to help';
+    document.getElementById('chat-subtitle').textContent = isAdmin ? 'Teacher conversations' : "We're here to help";
     document.getElementById('chat-user-list').style.display = 'flex';
     document.getElementById('chat-messages').style.display = 'none';
     document.getElementById('chat-footer').style.display = 'none';
+    document.getElementById('conversation-status-bar').style.display = 'none';
+    document.getElementById('char-counter').textContent = '';
+    document.getElementById('rate-limit-msg').style.display = 'none';
     document.getElementById('chat-back-btn').style.display = 'none';
     currentReceiverUid = null;
+    currentAttachment = null;
+    document.getElementById('file-input').value = '';
     if (chatSocket) { chatSocket.close(); chatSocket = null; }
     loadUserList();
   };
 
-  window.loadUserList = function() {
+  function loadUserList() {
     fetch('/chat/list/')
       .then(function(r) { return r.json(); })
       .then(function(data) {
@@ -175,6 +237,7 @@
               '<div style="font-size:0.72rem;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px;">' +
                 (u.last_message || 'No messages yet') +
               '</div>' +
+              (u.status ? '<div class="last-seen-text">' + statusLabel(u.status) + '</div>' : '') +
             '</div>';
           item.onclick = function() { openChat(u.uid, u.display_name || u.name); };
           container.appendChild(item);
@@ -183,7 +246,14 @@
           container.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;font-size:0.85rem;">No conversations yet</div>';
         }
       });
-  };
+  }
+
+  function statusLabel(status) {
+    var s = (status || '').toLowerCase();
+    if (s === 'available') return '\\uD83D\\uDFE2 Online';
+    if (s === 'busy') return '\\uD83D\\uDFE1 Busy';
+    return '\\u26AA Offline';
+  }
 
   window.filterUserList = function(query) {
     var items = document.querySelectorAll('#user-list-items .user-list-item');
@@ -194,21 +264,47 @@
     });
   };
 
+  function updateCharCounter(text) {
+    var el = document.getElementById('char-counter');
+    var len = text.length;
+    el.textContent = len + '/' + MAX_MSG_LEN;
+    el.className = 'char-counter' + (len > MAX_MSG_LEN ? ' over' : '');
+  }
+
   window.openChat = function(userUid, userName) {
     currentReceiverUid = userUid;
     currentReceiverName = userName;
+    currentAttachment = null;
+    document.getElementById('file-input').value = '';
     document.getElementById('chat-title').textContent = userName;
     document.getElementById('chat-subtitle').textContent = '';
     document.getElementById('chat-user-list').style.display = 'none';
     document.getElementById('chat-messages').style.display = 'flex';
     document.getElementById('chat-footer').style.display = 'flex';
+    document.getElementById('conversation-status-bar').style.display = 'flex';
     document.getElementById('chat-back-btn').style.display = 'inline';
+    document.getElementById('char-counter').textContent = '';
+    document.getElementById('rate-limit-msg').style.display = 'none';
     messageOffset = 0;
     hasMoreMessages = false;
     document.getElementById('load-more-btn').style.display = 'none';
     document.getElementById('messages-container').innerHTML = '';
     document.getElementById('typing-indicator').style.display = 'none';
     loadMessages();
+    loadConversationStatus();
+
+    fetch('/chat/last-seen/' + userUid + '/')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var sub = document.getElementById('chat-subtitle');
+        if (d.is_online) {
+          sub.textContent = '\uD83D\uDFE2 Online';
+        } else if (d.last_seen) {
+          sub.textContent = 'Last seen ' + d.last_seen;
+        } else {
+          sub.textContent = '\u26AA Offline';
+        }
+      });
 
     var roomName = [currentUserUid, userUid].sort().join('_');
     var wsStart = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
@@ -219,19 +315,19 @@
     chatSocket.onmessage = function(e) {
       var data = JSON.parse(e.data);
       if (data.action === 'send') {
-        appendMessage(data.message_uid, data.message, data.sender_uid === currentUserUid, data.timestamp, false, data.raw_ts, null, null, false);
-        // Send read receipt if message from other user
+        appendMessage(data.message_uid, data.message, data.sender_uid === currentUserUid, data.timestamp, false, data.raw_ts, null, null, false, data.attachment);
         if (data.sender_uid !== currentUserUid && chatSocket.readyState === WebSocket.OPEN) {
           chatSocket.send(JSON.stringify({action:'read', other_uid: data.sender_uid}));
         }
+        updateBadge();
       } else if (data.action === 'edit') {
         var el = document.getElementById('msg-' + data.message_uid);
         if (el) {
           var txt = el.querySelector('.msg-text');
           if (txt) txt.textContent = data.message;
-          var status = el.querySelector('.msg-status');
-          if (status && status.textContent.indexOf('Edited') === -1) {
-            status.textContent = 'Edited ' + status.textContent;
+          var st = el.querySelector('.msg-status');
+          if (st && st.textContent.indexOf('Edited') === -1) {
+            st.textContent = 'Edited ' + st.textContent;
           }
         }
       } else if (data.action === 'delete') {
@@ -245,7 +341,7 @@
         }
       } else if (data.action === 'read') {
         document.querySelectorAll('.msg-status.delivered').forEach(function(el) {
-          el.textContent = '✓✓';
+          el.textContent = '\u2713\u2713 Read';
           el.className = 'msg-status read';
         });
       } else if (data.action === 'typing') {
@@ -255,6 +351,8 @@
         } else {
           indicator.style.display = 'none';
         }
+      } else if (data.action === 'status_change') {
+        updateStatusDisplay(data.status);
       }
     };
 
@@ -270,7 +368,6 @@
       }, 3000);
     };
 
-    // Send read receipt
     setTimeout(function() {
       if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
         chatSocket.send(JSON.stringify({action:'read', other_uid: userUid}));
@@ -278,7 +375,46 @@
     }, 500);
   };
 
-  window.loadMessages = function() {
+  function loadConversationStatus() {
+    if (!currentReceiverUid) return;
+    fetch('/chat/list/')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!data.users) return;
+        var u = data.users.find(function(x) { return x.uid === currentReceiverUid; });
+        if (u && u.status) {
+          updateStatusDisplay(u.status);
+        }
+      });
+  }
+
+  function updateStatusDisplay(status) {
+    var display = document.getElementById('status-display');
+    if (display) {
+      display.innerHTML = '<span class="status-badge ' + status + '">' + getStatusDisplay(status) + '</span>';
+    }
+    var sel = document.getElementById('status-select');
+    if (sel) sel.value = status;
+    var label = document.getElementById('status-label');
+    if (label) {
+      label.textContent = getStatusDisplay(status);
+      label.className = 'status-badge ' + status;
+    }
+  }
+
+  if (isAdmin) {
+    window.changeConversationStatus = function(newStatus) {
+      if (!currentReceiverUid || !chatSocket || chatSocket.readyState !== WebSocket.OPEN) return;
+      chatSocket.send(JSON.stringify({action:'status_change', status: newStatus, other_uid: currentReceiverUid}));
+      fetch('/chat/set-status/', {
+        method:'POST',
+        headers:{'Content-Type':'application/x-www-form-urlencoded', 'X-CSRFToken': getCSRFToken()},
+        body: 'other_uid=' + currentReceiverUid + '&status=' + newStatus
+      });
+    };
+  }
+
+  function loadMessages() {
     if (!currentReceiverUid) return;
     var url = '/chat/messages/' + currentReceiverUid + '/?limit=25&offset=' + messageOffset;
     fetch(url)
@@ -291,7 +427,7 @@
           if (placeholder) placeholder.remove();
         }
         if (data.messages.length === 0 && messageOffset === 0) {
-          container.innerHTML = '<div id="no-msg-placeholder" style="text-align:center;padding:2rem;color:#94a3b8;font-size:0.85rem;">💬<br>No messages yet.<br>Start a conversation!</div>';
+          container.innerHTML = '<div id="no-msg-placeholder" style="text-align:center;padding:2rem;color:#94a3b8;font-size:0.85rem;">\uD83D\uDCAC<br>No messages yet.<br>Start a conversation!</div>';
         } else {
           var lastDateLabel = null;
           data.messages.forEach(function(m) {
@@ -318,11 +454,15 @@
           document.getElementById('load-more-btn').style.display = hasMoreMessages ? 'block' : 'none';
         }
         if (messageOffset === 0) {
-          var box = document.getElementById('chat-messages');
-          box.scrollTop = box.scrollHeight;
+          autoScroll();
         }
       });
-  };
+  }
+
+  function autoScroll() {
+    var box = document.getElementById('chat-messages');
+    box.scrollTop = box.scrollHeight;
+  }
 
   window.loadMoreMessages = function() {
     messageOffset += 25;
@@ -340,9 +480,9 @@
       if (m.is_deleted) {
         statusHtml = '<span class="msg-status" style="color:#94a3b8;">Deleted</span>';
       } else if (m.read_at) {
-        statusHtml = '<span class="msg-status read" style="color:#93c5fd;">✓✓</span>';
+        statusHtml = '<span class="msg-status read" style="color:#93c5fd;">\u2713\u2713 Read</span>';
       } else {
-        statusHtml = '<span class="msg-status delivered">✓✓</span>';
+        statusHtml = '<span class="msg-status delivered">\u2713\u2713 Delivered</span>';
       }
     }
 
@@ -351,19 +491,40 @@
     var optionsHtml = '';
     if (m.is_me && !m.is_deleted) {
       optionsHtml = '<div class="msg-options">' +
-        '<span onclick="editMsg(\'' + m.message_uid + '\')" title="Edit">✏️</span>' +
-        '<span onclick="deleteMsg(\'' + m.message_uid + '\')" title="Delete">🗑️</span>' +
+        '<span onclick="editMsg(\'' + m.message_uid + '\')" title="Edit">\u270F\uFE0F</span>' +
+        '<span onclick="deleteMsg(\'' + m.message_uid + '\')" title="Delete">\uD83D\uDDD1\uFE0F</span>' +
         '</div>';
     }
 
-    div.innerHTML = '<div class="msg-text"></div>' + editedHtml +
+    var attachmentHtml = '';
+    if (m.attachment) {
+      var att = m.attachment;
+      if (att.mime_type && att.mime_type.indexOf('image/') === 0) {
+        attachmentHtml = '<img class="attachment-preview" src="" data-path="' + att.supabase_path + '" data-uid="' + (att.attachment_uid || '') + '" onclick="window.viewAttachment(this)" alt="Attachment">';
+      } else {
+        attachmentHtml = '<div class="attachment-icon" data-path="' + att.supabase_path + '" data-uid="' + (att.attachment_uid || '') + '" onclick="window.viewAttachment(this)">\uD83D\uDCC4 ' + (att.original_filename || 'File') + '</div>';
+      }
+    }
+
+    div.innerHTML = '<div class="msg-text"></div>' + attachmentHtml + editedHtml +
       '<span class="msg-time">' + statusHtml + '<span>' + (m.timestamp || '') + '</span></span>' +
       optionsHtml;
     div.querySelector('.msg-text').textContent = m.message;
     return div;
   }
 
-  function appendMessage(msgId, text, isMe, timestamp, isEdited, rawTs, readAt, editedAt, isDeleted) {
+  window.viewAttachment = function(el) {
+    var uid = el.getAttribute('data-uid');
+    if (uid) {
+      fetch('/chat/attachment/' + uid + '/signed-url/')
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          if (d.url) window.open(d.url, '_blank');
+        });
+    }
+  };
+
+  function appendMessage(msgId, text, isMe, timestamp, isEdited, rawTs, readAt, editedAt, isDeleted, attachment) {
     var container = document.getElementById('messages-container');
     var placeholder = document.getElementById('no-msg-placeholder');
     if (placeholder) placeholder.remove();
@@ -396,33 +557,66 @@
 
     var statusHtml = '';
     if (isMe) {
-      statusHtml = '<span class="msg-status delivered">✓✓</span>';
+      statusHtml = '<span class="msg-status delivered">\u2713\u2713 Delivered</span>';
     }
 
     var optionsHtml = '';
     if (isMe) {
       optionsHtml = '<div class="msg-options">' +
-        '<span onclick="editMsg(\'' + msgId + '\')" title="Edit">✏️</span>' +
-        '<span onclick="deleteMsg(\'' + msgId + '\')" title="Delete">🗑️</span>' +
+        '<span onclick="editMsg(\'' + msgId + '\')" title="Edit">\u270F\uFE0F</span>' +
+        '<span onclick="deleteMsg(\'' + msgId + '\')" title="Delete">\uD83D\uDDD1\uFE0F</span>' +
         '</div>';
     }
 
-    div.innerHTML = '<div class="msg-text"></div>' +
+    var attachmentHtml = '';
+    if (attachment) {
+      var mime = attachment.mime_type || '';
+      if (mime.indexOf('image/') === 0) {
+        attachmentHtml = '<img class="attachment-preview" src="" data-path="' + (attachment.supabase_path || '') + '" data-uid="' + (attachment.attachment_uid || '') + '" onclick="window.viewAttachment(this)" alt="Attachment">';
+      } else {
+        attachmentHtml = '<div class="attachment-icon" data-path="' + (attachment.supabase_path || '') + '" data-uid="' + (attachment.attachment_uid || '') + '" onclick="window.viewAttachment(this)">\uD83D\uDCC4 ' + (attachment.original_filename || 'File') + '</div>';
+      }
+      if (attachment.attachment_uid) {
+        fetch('/chat/attachment/' + attachment.attachment_uid + '/signed-url/')
+          .then(function(r) { return r.json(); })
+          .then(function(d) {
+            var img = div.querySelector('.attachment-preview');
+            if (img && d.url) img.src = d.url;
+          });
+      }
+    }
+
+    div.innerHTML = '<div class="msg-text"></div>' + attachmentHtml +
       (isEdited ? '<span style="font-size:0.6rem;opacity:0.7;margin-right:3px;">(edited)</span>' : '') +
       '<span class="msg-time">' + statusHtml + '<span>' + (timestamp || '') + '</span></span>' +
       optionsHtml;
     div.querySelector('.msg-text').textContent = text || '';
     container.appendChild(div);
 
-    if (wasAtBottom || isMe) box.scrollTop = box.scrollHeight;
+    if (wasAtBottom || isMe) autoScroll();
   }
 
   window.sendMessage = function() {
     var input = document.getElementById('chat-input-field');
     var text = input.value.trim();
-    if (!text || !currentReceiverUid || !chatSocket || chatSocket.readyState !== WebSocket.OPEN) return;
-    chatSocket.send(JSON.stringify({action:'send', message:text, receiver_uid: currentReceiverUid}));
+    if ((!text || text.length > MAX_MSG_LEN) && !currentAttachment) return;
+    if (!currentReceiverUid || !chatSocket || chatSocket.readyState !== WebSocket.OPEN) return;
+
+    if (text.length > MAX_MSG_LEN) {
+      document.getElementById('char-counter').className = 'char-counter over';
+      return;
+    }
+
+    var payload = {action:'send', message:text, receiver_uid: currentReceiverUid};
+    if (currentAttachment) {
+      payload.attachment = currentAttachment;
+    }
+    chatSocket.send(JSON.stringify(payload));
     input.value = '';
+    currentAttachment = null;
+    document.getElementById('file-input').value = '';
+    document.getElementById('char-counter').textContent = '';
+    updateCharCounter('');
   };
 
   document.getElementById('chat-input-field').addEventListener('keypress', function(e) {
@@ -430,8 +624,10 @@
   });
 
   document.getElementById('chat-input-field').addEventListener('input', function() {
+    var text = this.value;
+    updateCharCounter(text);
     if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
-      chatSocket.send(JSON.stringify({action:'typing', is_typing: this.value.trim().length > 0}));
+      chatSocket.send(JSON.stringify({action:'typing', is_typing: text.length > 0}));
       if (typingTimer) clearTimeout(typingTimer);
       var socket = chatSocket;
       typingTimer = setTimeout(function() {
@@ -442,6 +638,48 @@
     }
   });
 
+  window.uploadAttachment = function(input) {
+    var file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File too large (max 5 MB)');
+      input.value = '';
+      return;
+    }
+    var ext = file.name.split('.').pop().toLowerCase();
+    if (['png','jpg','jpeg','pdf'].indexOf(ext) === -1) {
+      alert('Only PNG, JPG, and PDF files are allowed');
+      input.value = '';
+      return;
+    }
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('csrfmiddlewaretoken', getCSRFToken());
+    fetch('/chat/upload-attachment/', {
+      method:'POST',
+      headers: {'X-CSRFToken': getCSRFToken()},
+      body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.status === 'success') {
+        currentAttachment = {
+          supabase_path: data.supabase_path,
+          original_filename: data.original_filename,
+          file_size: data.file_size,
+          mime_type: data.mime_type,
+          attachment_uid: data.attachment_uid,
+        };
+        document.getElementById('chat-input-field').placeholder = 'File attached - send to upload...';
+      } else {
+        alert(data.error || 'Upload failed');
+      }
+    })
+    .catch(function() {
+      alert('Upload failed');
+    });
+  };
+
   window.editMsg = function(msgId) {
     var el = document.getElementById('msg-' + msgId);
     if (!el) return;
@@ -449,6 +687,10 @@
     if (!txt) return;
     var newText = prompt('Edit message:', txt.textContent);
     if (newText && newText.trim() !== '' && newText !== txt.textContent) {
+      if (newText.length > MAX_MSG_LEN) {
+        alert('Message too long (max ' + MAX_MSG_LEN + ' characters)');
+        return;
+      }
       if (chatSocket && chatSocket.readyState === WebSocket.OPEN) {
         chatSocket.send(JSON.stringify({action:'edit', message_uid: msgId, message: newText.trim()}));
       }
