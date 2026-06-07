@@ -126,6 +126,10 @@ def notify_teacher(teacher_uid, title, message, notif_type='general', action_url
     from .utils.firebase_db import notif_create
     notif_create(str(teacher_uid), title, message, notif_type, action_url)
 
+def _is_mobile_ua(request):
+    ua = request.META.get('HTTP_USER_AGENT', '').lower()
+    return any(k in ua for k in ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone', 'opera mini', 'iemobile'])
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def signup_view(request):
     if request.user.is_authenticated:
@@ -183,6 +187,11 @@ def signup_view(request):
         file_ext = os.path.splitext(proof_file.name.lower())[1]
         if file_ext not in allowed_exts:
             messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
+            return render(request, 'accounts/signup.html', ctx)
+
+        is_image = file_ext != '.pdf'
+        if is_image and not _is_mobile_ua(request):
+            messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/signup.html', ctx)
 
         # 4. Processing File Uploads
@@ -300,6 +309,11 @@ def teacher_signup_view(request):
         file_ext = os.path.splitext(proof_file.name.lower())[1]
         if file_ext not in allowed_exts:
             messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
+            return render(request, 'accounts/teacher_signup.html', ctx)
+
+        is_image = file_ext != '.pdf'
+        if is_image and not _is_mobile_ua(request):
+            messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
         # 4. Processing File Uploads

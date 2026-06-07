@@ -93,7 +93,7 @@
                             <div id="upload-help-text" style="font-size: 0.75rem; color: #94a3b8;">PDF Document Only (Max 200KB)</div>
                         </div>
                     </label>
-                    <input type="file" name="proof_file" id="proof_file" accept=".pdf,image/*" style="display: none;" onchange="handleFileSelection(this)">
+                    <input type="file" name="proof_file" id="proof_file" accept=".pdf" style="display: none;" onchange="handleFileSelection(this)">
                 </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -127,6 +127,23 @@
     </div>
 
     <script>
+        // Device-aware upload — set accept + text on page load
+        (function() {
+            var isMobile = /mobile|android|iphone|ipad|ipod|blackberry|windows phone|opera mini|iemobile/i.test(navigator.userAgent) || window.innerWidth <= 1024;
+            var input = document.getElementById('proof_file');
+            var helpText = document.getElementById('upload-help-text');
+            var mobileField = document.getElementById('is_mobile');
+            if (isMobile) {
+                input.setAttribute('accept', '.pdf,image/*');
+                helpText.textContent = 'Upload PDF or Take Photo (Max 200KB)';
+                mobileField.value = 'true';
+            } else {
+                input.setAttribute('accept', '.pdf');
+                helpText.textContent = 'Upload PDF Only (Max 200KB)';
+                mobileField.value = 'false';
+            }
+        })();
+
         function togglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon = document.getElementById(iconId);
