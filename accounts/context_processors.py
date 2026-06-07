@@ -8,13 +8,17 @@ def pending_counts(request):
             return {}
 
         user = request.user
-        cache_key = f"pending_counts_{user.id}_{user.user_type}"
-        try:
-            cached_context = cache.get(cache_key)
-            if cached_context:
-                return cached_context
-        except Exception:
-            pass
+        is_admin = user.user_type == 'ADMIN'
+
+        # Admins always get fresh counts (no cache). Other users can use cached.
+        if not is_admin:
+            cache_key = f"pending_counts_{user.id}_{user.user_type}"
+            try:
+                cached_context = cache.get(cache_key)
+                if cached_context:
+                    return cached_context
+            except Exception:
+                pass
 
         context = {
             'is_admin_preview': request.session.get('student_view_unlocked', False)
@@ -25,7 +29,7 @@ def pending_counts(request):
         context['notifications'] = notifs[:10]
         context['unread_notifications_count'] = get_unread_count(user_obj=user)
 
-        if request.user.user_type == 'ADMIN':
+        if is_admin:
             from accounts.models import CustomUser, Course, DeletionRequest, BackupLog
             from django.db.models import Count, Q
             counts = CustomUser.objects.filter(
@@ -54,7 +58,7 @@ def pending_counts(request):
             except Exception:
                 context['support_chat_unread'] = 0
 
-        elif request.user.user_type == 'TEACHER':
+        elif user.user_type == 'TEACHER':
             from accounts.models import Course
             from django.db.models import Count, Q
             teacher_counts = Course.objects.filter(teacher=request.user).aggregate(
@@ -70,7 +74,7 @@ def pending_counts(request):
             except Exception:
                 context['support_chat_unread'] = 0
 
-        elif request.user.user_type == 'STUDENT':
+        elif user.user_type == 'STUDENT':
             context['unread_student_notifs'] = context['unread_notifications_count']
 
         # Cleanup old notifications once per hour (moved out of context processor logic)
@@ -84,10 +88,12 @@ def pending_counts(request):
             except Exception:
                 pass
 
-        try:
-            cache.set(cache_key, context, 300)
-        except Exception:
-            pass
+        # Cache for non-admin only (5 min)
+        if not is_admin:
+            try:
+                cache.set(cache_key, context, 300)
+            except Exception:
+                pass
 
         return context
     except Exception:
