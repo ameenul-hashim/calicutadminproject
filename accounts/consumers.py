@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asgiref.sync import sync_to_async
+from django.utils.html import escape
 from accounts.utils.firebase_chat import send_message, edit_message, delete_message
 
 
@@ -40,7 +41,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         is_admin_user = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
 
         if action == 'send':
-            message = data['message']
+            message = escape(data['message'])
             receiver_uid = data['receiver_uid']
             sender_name = 'Support Team' if is_admin_user else (sender.full_name or sender.username)
 
@@ -65,7 +66,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         elif action == 'edit':
             message_uid = data['message_uid']
-            new_message = data['message']
+            new_message = escape(data['message'])
             success = await sync_to_async(edit_message)(str(sender.uid), message_uid, new_message)
             if success:
                 await self.channel_layer.group_send(

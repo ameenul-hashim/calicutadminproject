@@ -3,6 +3,7 @@ Django settings for elearning_project project.
 """
 
 import os
+import hashlib
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
@@ -24,8 +25,14 @@ if SENTRY_DSN:
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev-and-build')
+SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-dev-only-key-not-for-production'
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured("SECRET_KEY environment variable is required in production")
 
 # --- Dynamic Host & CSRF Configuration (Render-compatible) ---
 # Reads from environment variables — format: comma-separated, no spaces.
@@ -64,7 +71,7 @@ INSTALLED_APPS = [
     'custom_admin',
     'cloudinary_storage',
     'cloudinary',
-    # 'axes',  # Brute-force protection (add back in production)
+    'axes',  # Brute-force protection
 ]
 
 MIDDLEWARE = [
@@ -84,11 +91,19 @@ MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
     'accounts.middleware.SlowQueryMonitorMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Axes Brute-Force Protection
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)
@@ -143,6 +158,9 @@ else:
 # Scalable Caching & Channel Layers
 REDIS_URL = os.getenv('REDIS_URL')
 
+# Derive a separate encryption key for channel layers to avoid exposing SECRET_KEY
+CHANNEL_LAYER_KEY = os.getenv('CHANNEL_ENCRYPTION_KEY') or hashlib.sha256(f"channel-layer:{SECRET_KEY}".encode()).hexdigest()[:32]
+
 if REDIS_URL:
     CACHES = {
         'default': {
@@ -155,7 +173,7 @@ if REDIS_URL:
             'BACKEND': 'channels_redis.core.RedisChannelLayer',
             'CONFIG': {
                 "hosts": [REDIS_URL],
-                "symmetric_encryption_keys": [SECRET_KEY],
+                "symmetric_encryption_keys": [CHANNEL_LAYER_KEY],
             },
         },
     }

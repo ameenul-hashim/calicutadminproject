@@ -23,6 +23,11 @@ class OTPEngine:
 
     @staticmethod
     def hash_otp(otp):
+        salt = settings.SECRET_KEY[:16]
+        return hashlib.sha256((salt + otp).encode()).hexdigest()
+
+    @staticmethod
+    def hash_otp_legacy(otp):
         return hashlib.sha256(otp.encode()).hexdigest()
 
     @classmethod
@@ -112,35 +117,41 @@ class OTPEngine:
 
     @classmethod
     def verify_otp(cls, user, raw_otp, purpose):
+        from django.db import transaction
+
         if not raw_otp:
             return False, "Please enter a valid verification code."
 
         hashed_input = cls.hash_otp(raw_otp)
+        legacy_hashed = cls.hash_otp_legacy(raw_otp)
 
-        otp_obj = EmailOTP.objects.filter(user=user, purpose=purpose, is_used=False).first()
+        with transaction.atomic():
+            otp_obj = EmailOTP.objects.select_for_update().filter(
+                user=user, purpose=purpose, is_used=False
+            ).first()
 
-        if not otp_obj:
-            return False, "No active verification code found. Please request a new one."
+            if not otp_obj:
+                return False, "No active verification code found. Please request a new one."
 
-        if otp_obj.is_expired():
-            otp_obj.is_used = True
-            otp_obj.save()
-            return False, "This code has expired. Please request a new one."
+            if otp_obj.is_expired():
+                otp_obj.is_used = True
+                otp_obj.save()
+                return False, "This code has expired. Please request a new one."
 
-        if otp_obj.attempt_count >= 5:
-            otp_obj.is_used = True
-            otp_obj.save()
-            return False, "Too many failed attempts. Please request a new code."
+            if otp_obj.attempt_count >= 5:
+                otp_obj.is_used = True
+                otp_obj.save()
+                return False, "Too many failed attempts. Please request a new code."
 
-        if otp_obj.otp_hash == hashed_input:
-            otp_obj.is_used = True
-            otp_obj.save()
-            return True, "Verification successful."
-        else:
-            otp_obj.attempt_count += 1
-            otp_obj.save()
-            remaining = 5 - otp_obj.attempt_count
-            return False, f"Invalid code. {remaining} attempts remaining."
+            if otp_obj.otp_hash == hashed_input or otp_obj.otp_hash == legacy_hashed:
+                otp_obj.is_used = True
+                otp_obj.save()
+                return True, "Verification successful."
+            else:
+                otp_obj.attempt_count += 1
+                otp_obj.save()
+                remaining = 5 - otp_obj.attempt_count
+                return False, f"Invalid code. {remaining} attempts remaining."
 
     @staticmethod
     def cleanup_old_otps():
