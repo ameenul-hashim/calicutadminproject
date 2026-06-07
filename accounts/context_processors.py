@@ -25,7 +25,7 @@ def pending_counts(request):
         context['unread_notifications_count'] = get_unread_count(user_obj=user)
 
         if request.user.user_type == 'ADMIN':
-            from accounts.models import CustomUser, Course, DeletionRequest
+            from accounts.models import CustomUser, Course, DeletionRequest, BackupLog
             from django.db.models import Count, Q
             counts = CustomUser.objects.filter(
                 Q(user_type='STUDENT', status='PENDING') |
@@ -45,6 +45,8 @@ def pending_counts(request):
             context['pending_courses_total'] = pending_courses + courses_with_updates
             context['pending_deletions_count'] = DeletionRequest.objects.filter(status='PENDING').count()
             context['unread_admin_notifs'] = context['unread_notifications_count']
+            context['backup_failed_count'] = BackupLog.objects.filter(status='FAILED').count()
+            context['backup_pending_count'] = BackupLog.objects.filter(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
 
         elif request.user.user_type == 'TEACHER':
             from accounts.models import Course

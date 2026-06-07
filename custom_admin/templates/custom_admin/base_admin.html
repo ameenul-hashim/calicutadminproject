@@ -475,9 +475,9 @@
                     <a href="{% url 'system_audit' %}" class="nav-link {% if request.resolver_match.url_name == 'system_audit' %}active{% endif %}" style="background: rgba(239, 68, 68, 0.05); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 700;">🔍 System Audit Hub</a>
                 </div>
 
-                <!-- Backup Info -->
+                <!-- Backup Center -->
                 <div class="nav-group">
-                    <a href="{% url 'backup_info' %}" class="nav-link {% if request.resolver_match.url_name == 'backup_info' %}active{% endif %}" style="{% if request.resolver_match.url_name == 'backup_info' %}background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);{% else %}background: rgba(245, 158, 11, 0.06); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.15);{% endif %}">💾 Backup Info</a>
+                    <a href="{% url 'backup_center' %}" class="nav-link {% if request.resolver_match.url_name == 'backup_center' or request.resolver_match.url_name == 'backup_history' %}active{% endif %}" style="{% if request.resolver_match.url_name == 'backup_center' or request.resolver_match.url_name == 'backup_history' %}background: rgba(245, 158, 11, 0.12); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.25);{% else %}background: rgba(245, 158, 11, 0.06); color: #d97706; border: 1px solid rgba(245, 158, 11, 0.15);{% endif %}">💾 Backup Center</a>
                 </div>
 
                 <!-- 8. My Profile -->
