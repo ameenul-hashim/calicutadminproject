@@ -2,7 +2,9 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from datetime import timedelta
 from accounts.utils.notification_helper import cleanup_old_notifications as cleanup_notifs
-from accounts.utils.firebase_db import chat_cleanup, login_history_cleanup, admin_log_cleanup
+from accounts.utils.firebase_db import run_all_cleanup, login_history_cleanup, admin_log_cleanup
+from accounts.utils.firebase_analytics import analytics_cleanup
+from accounts.utils.firebase_chat import cleanup_old_messages as support_chat_cleanup
 from accounts.models import EmailOTP
 
 
@@ -12,19 +14,20 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Starting cleanup...')
 
-        # --- Firebase RTDB cleanups (7 days) ---
+        # --- Firebase RTDB cleanups (7/30 days) ---
 
         try:
             cleanup_notifs()
-            self.stdout.write(self.style.SUCCESS('Cleaned up notifications older than 7 days.'))
+            self.stdout.write(self.style.SUCCESS('Cleaned up notifications older than 30 days.'))
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Notification cleanup error: {e}'))
 
         try:
-            deleted = chat_cleanup(7)
-            self.stdout.write(self.style.SUCCESS(f'Cleaned up {deleted} chat messages older than 7 days.'))
+            deleted = run_all_cleanup()
+            for k, v in deleted.items():
+                self.stdout.write(self.style.SUCCESS(f'  {k}: {v} cleaned'))
         except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Chat cleanup error: {e}'))
+            self.stdout.write(self.style.ERROR(f'run_all_cleanup error: {e}'))
 
         try:
             deleted = login_history_cleanup(7)
@@ -38,10 +41,21 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Admin log cleanup error: {e}'))
 
+        try:
+            deleted = support_chat_cleanup(days=30)
+            self.stdout.write(self.style.SUCCESS(f'Cleaned up {deleted} support chat messages older than 30 days.'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Support chat cleanup error: {e}'))
+
+        try:
+            deleted = analytics_cleanup(days=30)
+            self.stdout.write(self.style.SUCCESS(f'Cleaned up {deleted} analytics entries older than 30 days.'))
+        except Exception as e:
+            self.stdout.write(self.style.ERROR(f'Analytics cleanup error: {e}'))
+
         # --- PostgreSQL cleanup (5 min expiry for OTPs) ---
 
         now = timezone.now()
-        cutoff = now - timedelta(minutes=5)
         expired_otp = EmailOTP.objects.filter(expires_at__lt=now).delete()
         self.stdout.write(self.style.SUCCESS(f'Cleaned up {expired_otp[0]} expired OTPs.'))
 

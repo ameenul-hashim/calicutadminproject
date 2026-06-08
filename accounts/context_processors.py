@@ -77,16 +77,31 @@ def pending_counts(request):
         elif user.user_type == 'STUDENT':
             context['unread_student_notifs'] = context['unread_notifications_count']
 
-        # Cleanup old notifications once per hour (moved out of context processor logic)
-        cleanup_cache_key = "cleanup_notifications_last_run"
+        # Hourly cleanup of old data (notifications, analytics, support chat)
+        cleanup_cache_key = "cleanup_last_run"
         last_cleanup = cache.get(cleanup_cache_key, 0)
         if _time() - last_cleanup > 3600:
             try:
                 from accounts.utils.notification_helper import cleanup_old_notifications
                 cleanup_old_notifications()
-                cache.set(cleanup_cache_key, _time(), 7200)
             except Exception:
                 pass
+            try:
+                from accounts.utils.firebase_db import run_all_cleanup
+                run_all_cleanup()
+            except Exception:
+                pass
+            try:
+                from accounts.utils.firebase_analytics import analytics_cleanup
+                analytics_cleanup(days=30)
+            except Exception:
+                pass
+            try:
+                from accounts.utils.firebase_chat import cleanup_old_messages
+                cleanup_old_messages(days=30)
+            except Exception:
+                pass
+            cache.set(cleanup_cache_key, _time(), 7200)
 
         # Cache for non-admin only (5 min)
         if not is_admin:

@@ -2029,7 +2029,7 @@ def send_chat_message(request):
 
     from accounts.utils.firebase_chat import send_message as fb_send
     result = fb_send(str(sender.uid), receiver_uid, message_text)
-    if result is None:
+    if result is None or result[0] is None:
         return JsonResponse({'status': 'error', 'message': 'Message delivery failed'}, status=500)
 
     msg_uid, now_ms = result

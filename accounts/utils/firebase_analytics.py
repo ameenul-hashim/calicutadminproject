@@ -138,3 +138,27 @@ def get_hourly_peaks(days=30):
         for h in range(24):
             hourly[h] += day_data.get(str(h), 0)
     return hourly
+
+
+def analytics_cleanup(days=30):
+    app = _get_app()
+    if app is None:
+        return 0
+    cutoff = datetime.now(timezone.utc).date() - timedelta(days=days)
+    total = 0
+    paths = ['daily_counts', 'hourly_counts', 'active_users']
+    for subpath in paths:
+        ref = db.reference(f'/analytics/{subpath}', app=app)
+        try:
+            data = ref.get() or {}
+            for key in list(data.keys()):
+                try:
+                    d = datetime.strptime(key, '%Y-%m-%d').date()
+                    if d < cutoff:
+                        ref.child(key).delete()
+                        total += 1
+                except ValueError:
+                    pass
+        except Exception:
+            pass
+    return total
