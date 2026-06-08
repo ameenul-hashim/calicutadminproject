@@ -14,7 +14,7 @@
         <div class="otp-reveal" id="otpReveal">
             <div class="otp-reveal-label">Your Verification Code</div>
             <div class="otp-reveal-code">{{ raw_code }}</div>
-            <div class="otp-reveal-timer">This code will auto-hide in <span id="otpCountdown">20</span> seconds</div>
+            <div class="otp-reveal-timer">This code will auto-hide in <span id="otpCountdown">15</span> seconds</div>
         </div>
         {% endif %}
 
@@ -26,7 +26,7 @@
                 <div class="otp-input-wrapper">
                     <input type="text" name="code" id="code" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required autofocus placeholder="000000">
                 </div>
-                <small class="form-hint">Code expires in <span id="timerDisplay">10:00</span></small>
+                <small class="form-hint">Code expires in <span id="timerDisplay">05:00</span></small>
             </div>
 
             <button type="submit" class="btn-primary" id="submitBtn">
@@ -36,8 +36,8 @@
         </form>
 
         <div class="auth-footer">
-            <p>Didn't receive the code? 
-                <a href="{% url 'forgot_password' %}">Request again</a>
+            <p>Didn't get the code? 
+                <a href="?resend=1" id="resend-link">Resend Code</a>
             </p>
         </div>
     </div>
@@ -71,6 +71,7 @@
         font-family: 'Courier New', monospace;
     }
     .otp-reveal-timer { font-size: 13px; opacity: 0.8; margin-top: 8px; }
+    #resend-link { font-weight: 700; color: #6366f1; }
 </style>
 
 <script>
@@ -84,10 +85,10 @@
             ]
         });
 
-        // 20-second auto-dismiss for OTP reveal
+        // 15-second auto-dismiss for OTP reveal
         var otpReveal = document.getElementById('otpReveal');
         if (otpReveal) {
-            var secondsLeft = 20;
+            var secondsLeft = 15;
             var otpCountdown = document.getElementById('otpCountdown');
             var dismissTimer = setInterval(function() {
                 secondsLeft--;
@@ -100,8 +101,8 @@
             }, 1000);
         }
 
-        // Countdown timer: 10 minutes
-        var totalSeconds = 600;
+        // Countdown timer: 5 minutes
+        var totalSeconds = 300;
         var timerDisplay = document.getElementById('timerDisplay');
         var countdown = setInterval(function() {
             totalSeconds--;
@@ -117,6 +118,16 @@
                 (min < 10 ? '0' : '') + min + ':' + 
                 (sec < 10 ? '0' : '') + sec;
         }, 1000);
+
+        // Resend: confirm before redirect
+        var resendLink = document.getElementById('resend-link');
+        if (resendLink) {
+            resendLink.addEventListener('click', function(e) {
+                if (!confirm('Resend a new code? The current code will expire.')) {
+                    e.preventDefault();
+                }
+            });
+        }
 
         // Auto-submit when 6 digits entered
         var codeInput = document.getElementById('code');

@@ -2687,12 +2687,24 @@ def forgot_password(request):
     if request.method == 'POST':
         username = request.POST.get('username', '').strip()
         email = request.POST.get('email', '').strip()
-        user = None
-        if username and email:
-            user = CustomUser.objects.filter(username=username, email=email).first()
-        if not user:
-            messages.error(request, "We could not verify your details. Please try again.")
+        if not username and not email:
+            messages.error(request, "Please enter both username and email.")
             return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        user_by_username = CustomUser.objects.filter(username=username).first() if username else None
+        user_by_email = CustomUser.objects.filter(email=email).first() if email else None
+        if not user_by_username and not user_by_email:
+            messages.error(request, "Invalid credentials.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        if not user_by_username:
+            messages.error(request, "Username is incorrect.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        if not user_by_email:
+            messages.error(request, "Email is incorrect.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        if user_by_username != user_by_email:
+            messages.error(request, "Invalid credentials.")
+            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
+        user = user_by_username
         if user.is_superuser:
             messages.error(request, "Password reset is not available for this account.")
             return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
@@ -2704,7 +2716,7 @@ def forgot_password(request):
             messages.error(request, "Too many reset requests. Please try again later.")
             return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
         code = f"{secrets.randbelow(1000000):06d}"
-        expires_at = timezone.now() + timedelta(minutes=10)
+        expires_at = timezone.now() + timedelta(minutes=5)
         otp_obj = PasswordResetOTP.objects.create(
             user=user,
             otp_hash=make_password(code),
@@ -2723,6 +2735,31 @@ def verify_reset_code(request):
     user_uid = request.session.get('reset_user_uid')
     otp_id = request.session.get('reset_otp_id')
     raw_code = request.session.pop('reset_raw_code', None)
+
+    # Resend OTP — auto-generate new code, keep user in session
+    if request.GET.get('resend') and user_uid:
+        try:
+            user = CustomUser.objects.get(uid=user_uid)
+            old_expires = PasswordResetOTP.objects.filter(user=user).delete()
+            code = f"{secrets.randbelow(1000000):06d}"
+            from datetime import timedelta
+            expires_at = timezone.now() + timedelta(minutes=5)
+            otp_obj = PasswordResetOTP.objects.create(
+                user=user,
+                otp_hash=make_password(code),
+                expires_at=expires_at,
+            )
+            request.session['reset_otp_id'] = otp_obj.id
+            request.session['reset_raw_code'] = code
+            messages.success(request, "A new verification code has been generated.")
+            return redirect('verify_reset_code')
+        except Exception:
+            request.session.pop('reset_user_uid', None)
+            request.session.pop('reset_otp_id', None)
+            request.session.pop('reset_raw_code', None)
+            messages.error(request, "Could not resend code. Please request again.")
+            return redirect('forgot_password')
+
     if not user_uid or not otp_id:
         messages.error(request, "Session expired. Please restart the password reset process.")
         return redirect('forgot_password')
@@ -2752,7 +2789,6 @@ def verify_reset_code(request):
             return render(request, 'accounts/verify_reset_code.html', {'raw_code': raw_code, 'expires_at': otp_obj.expires_at})
         if check_password(raw_input, otp_obj.otp_hash):
             request.session['reset_verified'] = True
-            request.session.pop('reset_raw_code', None)
             messages.success(request, "Verification successful. Please set a new password.")
             return redirect('set_new_password')
         else:

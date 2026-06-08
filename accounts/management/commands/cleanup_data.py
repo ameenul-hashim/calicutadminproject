@@ -5,7 +5,7 @@ from accounts.utils.notification_helper import cleanup_old_notifications as clea
 from accounts.utils.firebase_db import run_all_cleanup, login_history_cleanup, admin_log_cleanup
 from accounts.utils.firebase_analytics import analytics_cleanup
 from accounts.utils.firebase_chat import cleanup_old_messages as support_chat_cleanup
-from accounts.models import EmailOTP
+from accounts.models import EmailOTP, PasswordResetOTP
 
 
 class Command(BaseCommand):
@@ -53,14 +53,24 @@ class Command(BaseCommand):
         except Exception as e:
             self.stdout.write(self.style.ERROR(f'Analytics cleanup error: {e}'))
 
-        # --- PostgreSQL cleanup (5 min expiry for OTPs) ---
+        # --- PostgreSQL cleanup ---
 
         now = timezone.now()
+
+        # EmailOTP cleanup (from OTPEngine)
         expired_otp = EmailOTP.objects.filter(expires_at__lt=now).delete()
-        self.stdout.write(self.style.SUCCESS(f'Cleaned up {expired_otp[0]} expired OTPs.'))
+        self.stdout.write(self.style.SUCCESS(f'Cleaned up {expired_otp[0]} expired EmailOTPs.'))
 
         old_used = EmailOTP.objects.filter(is_used=True, created_at__lt=now - timedelta(hours=24)).delete()
         if old_used[0]:
-            self.stdout.write(self.style.SUCCESS(f'Cleaned up {old_used[0]} old used OTPs.'))
+            self.stdout.write(self.style.SUCCESS(f'Cleaned up {old_used[0]} old used EmailOTPs.'))
+
+        # PasswordResetOTP cleanup (from forgot-password flow — 5 min expiry)
+        expired_reset = PasswordResetOTP.objects.filter(expires_at__lt=now).delete()
+        self.stdout.write(self.style.SUCCESS(f'Cleaned up {expired_reset[0]} expired PasswordResetOTPs.'))
+
+        old_reset = PasswordResetOTP.objects.filter(created_at__lt=now - timedelta(hours=1)).delete()
+        if old_reset[0]:
+            self.stdout.write(self.style.SUCCESS(f'Cleaned up {old_reset[0]} old PasswordResetOTPs.'))
 
         self.stdout.write(self.style.SUCCESS('Cleanup complete.'))
