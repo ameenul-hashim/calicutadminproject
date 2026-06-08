@@ -2344,6 +2344,8 @@ def get_chat_list(request):
 @login_required
 def mark_notification_read(request, notif_uid):
     mark_read(str(request.user.uid), notif_uid)
+    from django.core.cache import cache
+    cache.delete(f"pending_counts_{request.user.id}_{request.user.user_type}")
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({"status": "read"})
     return redirect(request.META.get('HTTP_REFERER', '/'))
@@ -2352,6 +2354,8 @@ def mark_notification_read(request, notif_uid):
 def delete_notification(request, notif_uid):
     from .utils.notification_helper import delete_notification as db_del
     db_del(str(request.user.uid), notif_uid)
+    from django.core.cache import cache
+    cache.delete(f"pending_counts_{request.user.id}_{request.user.user_type}")
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({"status": "deleted"})
     messages.success(request, "Notification deleted.")
@@ -2410,6 +2414,8 @@ def teacher_analytics_view(request):
 @login_required
 def mark_all_notifications_read(request):
     mark_all_read(str(request.user.uid))
+    from django.core.cache import cache
+    cache.delete(f"pending_counts_{request.user.id}_{request.user.user_type}")
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 @xframe_options_exempt

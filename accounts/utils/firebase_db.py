@@ -675,3 +675,24 @@ def run_all_cleanup():
         'login_history': login_history_cleanup(),
         'admin_log': admin_log_cleanup(),
     }
+
+
+def init_firebase_structure():
+    """Creates root nodes in RTDB to prevent manual setup."""
+    app = _get_app()
+    if app is None:
+        return False
+    try:
+        ref = db.reference('/', app=app)
+        existing = ref.get(shallow=True) or {}
+        updates = {}
+        for node in ['admin_activity', 'analytics', 'audit', 'login_history', 'notifications', 'support_chat', 'test_write', 'backup']:
+            if node not in existing:
+                updates[f'/{node}/_init'] = True
+        if updates:
+            ref.update(updates)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to intialize firebase structure: {e}")
+        return False
+

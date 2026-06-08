@@ -1,0 +1,3 @@
+1. Fixed a caching bug with notifications where the notification bell wouldn't show the correct unread count immediately after they were saved to Firebase. Marking notifications as read or deleting them now instantly invalidates the cache so the UI bell refreshes correctly.
+2. Added `init_firebase_structure()` function to `accounts/utils/firebase_db.py` to ensure all required root folders (`admin_activity`, `analytics`, `audit`, `login_history`, `notifications`, `support_chat`, `test_write`, `backup`) are properly structured in the Firebase RTDB if they did not exist.
+3. Addressed the user's prompt by directly fixing the Firebase and backend notification flow without fundamentally altering any existing UI/UX elements.

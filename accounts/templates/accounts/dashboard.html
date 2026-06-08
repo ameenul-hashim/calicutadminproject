@@ -439,7 +439,44 @@
                     </script>
                     {% endif %}
 
-                    <!-- Notification System Removed for Students (Objective 1) -->
+                    <!-- Notification Bell -->
+                    <div class="notification-wrapper" style="position: relative;">
+                        <button id="notifBell" onclick="toggleNotifDropdown(event)" style="background: none; border: none; font-size: 1.5rem; position: relative; cursor: pointer; padding: 5px;">
+                            🔔
+                            <span id="notif-count-badge" style="position: absolute; top: -2px; right: -2px; background: #ef4444; color: white; border-radius: 50%; width: 18px; height: 18px; font-size: 0.7rem; display: {% if unread_student_notifs > 0 %}flex{% else %}none{% endif %}; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">{{ unread_student_notifs }}</span>
+                        </button>
+                        <div id="notifDropdown" class="notif-dropdown" style="position: absolute; top: 120%; right: 0; width: 320px; background: white; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; z-index: 9999; display: none; padding: 1rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+                                <h4 style="margin: 0; font-size: 1rem; font-weight: 700;">Notifications</h4>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.75rem; color: #10b981; text-decoration: none; font-weight: 600;">Mark All Read</a>
+                                    <a href="{% url 'all_notifications' %}" style="font-size: 0.75rem; color: #0ea5e9; text-decoration: none; font-weight: 600;">View All</a>
+                                </div>
+                            </div>
+                            <div id="notif-items-container" style="max-height: 400px; overflow-y: auto;">
+                                {% for notif in notifications %}
+                                    <div style="padding: 1rem; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; color: #1e293b; {% if not notif.is_read %}background: #f5f3ff; border-left: 4px solid #0ea5e9;{% endif %} position: relative; margin-bottom: 0.5rem; border-radius: 0.75rem;">
+                                        <div style="line-height: 1.4; margin-bottom: 0.5rem;">{{ notif.message }}</div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                                            <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
+                                            <div style="display: flex; gap: 0.5rem;">
+                                                {% if not notif.is_read %}
+                                                    <a href="{% url 'mark_notification_read' notif.uid %}" style="color: #0ea5e9; font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #e0f2fe; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
+                                                {% else %}
+                                                    <a href="{% url 'delete_notification' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #fef2f2; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Delete</a>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% empty %}
+                                    <div style="text-align: center; padding: 2rem 1rem; color: #94a3b8; font-size: 0.9rem;">
+                                        <div style="font-size: 2rem; margin-bottom: 0.5rem;">📭</div>
+                                        No new notifications.
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </header>
 
@@ -573,6 +610,24 @@
     document.querySelector('.main-content').addEventListener('click', () => {
         if (window.innerWidth <= 1024) {
             closeSidebar();
+        }
+    });
+
+    // Notification Dropdown Toggle
+    function toggleNotifDropdown(event) {
+        if (event) event.stopPropagation();
+        const dropdown = document.getElementById('notifDropdown');
+        if (dropdown) dropdown.classList.toggle('active');
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+        const dropdown = document.getElementById('notifDropdown');
+        const bell = document.getElementById('notifBell');
+        if (dropdown && dropdown.classList.contains('active')) {
+            if (!dropdown.contains(event.target) && !bell.contains(event.target)) {
+                dropdown.classList.remove('active');
+            }
         }
     });
     </script>

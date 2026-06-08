@@ -97,7 +97,10 @@
         <div class="card">
             <div class="notif-header-sticky">
                 <span style="font-weight: 700; color: #475569; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em;">Notification History</span>
-                <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">{{ notifications|length }} Total</span>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{% url 'mark_all_notifications_read' %}" style="font-size: 0.8rem; color: #10b981; text-decoration: none; font-weight: 700; padding: 0.3rem 0.8rem; border: 1px solid #10b981; border-radius: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='#10b981'; this.style.color='white';" onmouseout="this.style.background='transparent'; this.style.color='#10b981';">Mark All Read</a>
+                    <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 600;">{{ notifications|length }} Total</span>
+                </div>
             </div>
             
             <div class="notif-list">

@@ -1,0 +1,3 @@
+ M accounts/templates/accounts/all_notifications.html
+ M accounts/templates/accounts/dashboard.html
+ M accounts/templates/accounts/explore_courses.html
