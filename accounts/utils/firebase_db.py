@@ -641,119 +641,7 @@ def admin_log_cleanup(days=7):
     return deleted
 
 
-# ============================================================
-# EMAIL OTP (10-minute TTL)
-# ============================================================
-
-def otp_create(user_uid, purpose, otp_hash, ip_address='', user_agent=''):
-    app = _get_app()
-    if app is None:
-        return None
-    now_ms = int(time.time() * 1000)
-    expires_ms = now_ms + (10 * 60 * 1000)  # 10 minutes
-    ref = db.reference(f'/otp/{user_uid}/{purpose}', app=app)
-    entry = {
-        'otp_hash': otp_hash,
-        'expires_at': expires_ms,
-        'attempt_count': 0,
-        'ip_address': ip_address,
-        'user_agent': user_agent,
-        'created_at': now_ms,
-        'is_used': False,
-    }
-    ref.set(entry)
-    return entry
-
-
-def otp_get_active(user_uid, purpose):
-    app = _get_app()
-    if app is None:
-        return None
-    ref = db.reference(f'/otp/{user_uid}/{purpose}', app=app)
-    data = ref.get()
-    if not data:
-        return None
-    if data.get('is_used', False):
-        return None
-    if time.time() * 1000 > data.get('expires_at', 0):
-        return None
-    return data
-
-
-def otp_mark_used(user_uid, purpose):
-    app = _get_app()
-    if app is None:
-        return
-    db.reference(f'/otp/{user_uid}/{purpose}/is_used', app=app).set(True)
-
-
-def otp_increment_attempt(user_uid, purpose):
-    app = _get_app()
-    if app is None:
-        return
-    ref = db.reference(f'/otp/{user_uid}/{purpose}/attempt_count', app=app)
-    try:
-        ref.transaction(lambda current: (current or 0) + 1)
-    except Exception:
-        pass
-
-
-def otp_invalidate_all(user_uid, purpose):
-    app = _get_app()
-    if app is None:
-        return
-    db.reference(f'/otp/{user_uid}/{purpose}/is_used', app=app).set(True)
-
-
-def otp_get_user_daily_count(user_uid):
-    app = _get_app()
-    if app is None:
-        return 0
-    ref = db.reference(f'/otp/{user_uid}', app=app)
-    data = ref.get()
-    if not data:
-        return 0
-    cutoff = int(time.time() * 1000) - (24 * 60 * 60 * 1000)
-    count = 0
-    for purpose, entry in data.items():
-        if entry.get('created_at', 0) >= cutoff:
-            count += 1
-    return count
-
-
-def otp_get_ip_hourly_count(ip_address):
-    app = _get_app()
-    if app is None:
-        return 0
-    ref = db.reference('/otp', app=app)
-    all_data = ref.get()
-    if not all_data:
-        return 0
-    cutoff = int(time.time() * 1000) - (60 * 60 * 1000)
-    count = 0
-    for user_uid, purposes in all_data.items():
-        for purpose, entry in purposes.items():
-            if entry.get('ip_address') == ip_address and entry.get('created_at', 0) >= cutoff:
-                count += 1
-    return count
-
-
-def otp_cleanup(minutes=10):
-    app = _get_app()
-    if app is None:
-        return 0
-    cutoff = int(time.time() * 1000) - (minutes * 60 * 1000)
-    ref = db.reference('/otp', app=app)
-    all_data = ref.get()
-    if not all_data:
-        return 0
-    deleted = 0
-    for user_uid, purposes in all_data.items():
-        for purpose, entry in purposes.items():
-            if entry.get('created_at', 0) < cutoff:
-                db.reference(f'/otp/{user_uid}/{purpose}', app=app).delete()
-                deleted += 1
-    return deleted
+# (Email OTP uses PostgreSQL EmailOTP model — no Firebase path needed)
 
 
 # ============================================================
@@ -766,5 +654,4 @@ def run_all_cleanup():
         'chat': chat_cleanup(),
         'login_history': login_history_cleanup(),
         'admin_log': admin_log_cleanup(),
-        'otp': otp_cleanup(),
     }
