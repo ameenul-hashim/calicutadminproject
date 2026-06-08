@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
+from django.core.cache import cache
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
 from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, BackupLog
@@ -23,6 +24,8 @@ from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.conf import settings
 from django.core.paginator import Paginator
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 from django_ratelimit.decorators import ratelimit
 
 def log_admin_activity(request, action, target_user=None, details=""):
@@ -439,14 +442,10 @@ def create_student_admin(request):
             })
 
         # 2. Email Format Check
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messages.error(request, "The email address you entered is not in a valid format.")
-            return render(request, 'custom_admin/create_student.html', {
-                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
-            })
-
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
+        try:
+            validate_email(email)
+        except ValidationError:
+            messages.error(request, "Please enter a valid email address (e.g., name@domain.com).")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -552,14 +551,10 @@ def create_teacher_admin(request):
             })
 
         # 2. Email Format Check
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            messages.error(request, "The email address you entered is not in a valid format.")
-            return render(request, 'custom_admin/create_teacher.html', {
-                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
-            })
-
-        if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
-            messages.error(request, "Please enter a valid email address with a proper domain (e.g., name@domain.com).")
+        try:
+            validate_email(email)
+        except ValidationError:
+            messages.error(request, "Please enter a valid email address (e.g., name@domain.com).")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -651,6 +646,11 @@ def analytics_view(request):
     from django.db.models import Count, Q, Sum
     from accounts.models import CourseResource
 
+    cache_key = 'admin_analytics_data'
+    cached = cache.get(cache_key)
+    if cached:
+        return render(request, 'custom_admin/analytics.html', cached)
+
     # ===== CARD METRICS =====
     active_users = CustomUser.objects.filter(status='ACTIVE').count()
     active_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
@@ -734,6 +734,7 @@ def analytics_view(request):
         'pending_students_count': pending_students_count,
         'pending_teachers_count': pending_teachers_count,
     }
+    cache.set(cache_key, context, 60)
     return render(request, 'custom_admin/analytics.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -940,13 +941,16 @@ def edit_user_admin(request, user_uid):
                 messages.error(request, "This username is already taken by another user.")
             elif CustomUser.objects.filter(email=email).exclude(uid=user_uid).exists():
                 messages.error(request, "This email is already registered to another account.")
-            elif not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-                messages.error(request, "The email address you entered is not in a valid format.")
             elif password and (password != confirm_password):
                 messages.error(request, "The new passwords you entered do not match.")
             elif password and (len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password)):
                 messages.error(request, "Password must be 8+ characters and include at least one uppercase letter, one lowercase letter, and one special character.")
             else:
+                try:
+                    validate_email(email)
+                except ValidationError:
+                    messages.error(request, "Please enter a valid email address (e.g., name@domain.com).")
+                    return render(request, 'custom_admin/edit_user.html', {'edit_user': user})
                 user.username = username
                 user.email = email
                 if password:
