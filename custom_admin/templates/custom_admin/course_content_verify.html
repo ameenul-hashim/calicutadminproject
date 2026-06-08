@@ -25,14 +25,11 @@
 
     {% if course_deletion_request %}
     <div style="background: #fef2f2; border-radius: 1rem; border: 2px solid #fecaca; padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-            <span style="font-size: 1.5rem;">🗑️</span>
-            <div>
+        <div style="display: flex; align-items: center; gap: 0.75rem; flex: 1; min-width: 200px;">
+            <span style="font-size: 1.5rem; flex-shrink: 0;">🗑️</span>
+            <div style="min-width: 0;">
                 <div style="font-weight: 700; color: #991b1b;">Course Delete Request Pending</div>
-                <div style="font-size: 0.85rem; color: #b91c1c;">Teacher <strong>{{ course_deletion_request.teacher.full_name|default:course_deletion_request.teacher.username }}</strong> requested full deletion of this course and all its content.</div>
-                {% if course_deletion_request.reason %}
-                <div style="font-size: 0.8rem; color: #9f1239; margin-top: 0.25rem;">Reason: {{ course_deletion_request.reason }}</div>
-                {% endif %}
+                <div style="font-size: 0.85rem; color: #b91c1c;">Teacher <strong>{{ course_deletion_request.teacher.full_name|default:course_deletion_request.teacher.username }}</strong> requested full deletion of this course and all its content.{% if course_deletion_request.reason %} <span style="color: #9f1239; font-weight: 500;">Reason: {{ course_deletion_request.reason }}</span>{% endif %}</div>
             </div>
         </div>
         <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
@@ -91,6 +88,7 @@
     </div>
 </div>
 
+{% if not course_deletion_request %}
 <!-- Tab Navigation -->
 <div style="display: flex; gap: 1rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 2rem;">
     <button onclick="switchTab('approved')" id="tab-btn-approved" style="padding: 1rem 1.5rem; border: none; background: none; font-weight: 700; color: #4f46e5; border-bottom: 3px solid #4f46e5; cursor: pointer; transition: all 0.2s;">
@@ -469,7 +467,13 @@
         {% endif %}
     {% endfor %}
 </div>
-
+{% else %}
+<div style="text-align: center; padding: 4rem; background: #f8fafc; border-radius: 1rem; border: 2px dashed #e2e8f0; margin-top: 1rem;">
+    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🗑️</div>
+    <p style="color: #94a3b8; font-size: 1.1rem; font-weight: 600;">This course has a pending deletion request.</p>
+    <p style="color: #94a3b8; font-size: 0.9rem;">Review the request above and approve or reject it. Content is hidden until resolved.</p>
+</div>
+{% endif %}
 
 <!-- Secure Delete Modal -->
 <div id="secureDeleteModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
