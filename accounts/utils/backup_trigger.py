@@ -87,7 +87,7 @@ def _do_backup_signup_pdf(user_id, pdf_path, pdf_bytes):
     from accounts.utils.drive_backup_service import (
         _get_drive_service, ensure_folder_path
     )
-    if _get_config('BACKUP_ENABLED', 'True') is not True:
+    if _get_config('BACKUP_ENABLED', 'True') != 'True':
         logger.info('Backup disabled by BACKUP_ENABLED=False')
         return
     now = datetime.now()
@@ -132,7 +132,7 @@ def _do_backup_teacher_resource(resource_id, supabase_path, file_bytes, course_t
     from accounts.utils.drive_backup_service import (
         _get_drive_service, ensure_folder_path
     )
-    if _get_config('BACKUP_ENABLED', 'True') is not True:
+    if _get_config('BACKUP_ENABLED', 'True') != 'True':
         logger.info('Backup disabled by BACKUP_ENABLED=False')
         return
     safe_course = ''.join(c if c.isalnum() or c in ' _-' else '_' for c in (course_title or 'Unknown'))[:50]

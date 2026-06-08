@@ -119,7 +119,7 @@ class StorageManager:
             res_id = get_or_create_folder("Resources_Backup", p_id=root_id)
             
             media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=resource.mime_type, resumable=True)
-            original_filename = f"ORIGINAL_{resource.uid}_{resource.title}.{resource.file_extension}"
+            original_filename = f"ORIGINAL_{resource.uid}_{resource.title}.{resource.file_extension or 'pdf'}"
             file_drive = service.files().create(
                 body={'name': original_filename, 'parents': [res_id]},
                 media_body=media,
