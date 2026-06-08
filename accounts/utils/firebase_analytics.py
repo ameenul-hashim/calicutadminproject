@@ -63,6 +63,42 @@ def log_visit_async(user):
     threading.Thread(target=log_visit, args=(user,), daemon=True).start()
 
 
+def log_active_user(user):
+    app = _get_app()
+    if app is None:
+        return
+    uid = str(user.uid)
+    date_key = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    ref = db.reference(f'/analytics/active_users/{date_key}/{uid}', app=app)
+    try:
+        ref.set(True)
+    except Exception:
+        pass
+
+
+def log_active_user_async(user):
+    threading.Thread(target=log_active_user, args=(user,), daemon=True).start()
+
+
+def get_daily_active_user_counts(days=30):
+    app = _get_app()
+    if app is None:
+        return {}
+    today = datetime.now(timezone.utc).date()
+    result = {}
+    for i in range(days):
+        d = today - timedelta(days=i)
+        key = d.strftime('%Y-%m-%d')
+        ref = db.reference(f'/analytics/active_users/{key}', app=app)
+        try:
+            data = ref.get() or {}
+            count = len(data) if isinstance(data, dict) else 0
+            result[key] = count
+        except Exception:
+            result[key] = 0
+    return result
+
+
 def get_daily_visits(days=30):
     app = _get_app()
     if app is None:

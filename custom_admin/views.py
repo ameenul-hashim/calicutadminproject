@@ -669,22 +669,26 @@ def analytics_view(request):
     user_status_data = [user_status_counts[s.lower()] for s in status_vals]
     teacher_status_data = [teacher_status_counts[s.lower()] for s in status_vals]
 
-    # ===== DAILY ACTIVE USERS (from Firebase LoginHistory, 7 days) =====
+    # ===== DAILY ANALYTICS (from Firebase, 7 days) =====
     from datetime import timedelta, date as dt_date
     today = timezone.now().date()
-    from accounts.utils.firebase_db import login_history_get_daily_unique
-    daily_counts = login_history_get_daily_unique(days=7, status='SUCCESS')
-    week_labels = []
-    week_data = []
+    from accounts.utils.firebase_db import login_history_get_daily_total
+    from accounts.utils.firebase_analytics import get_daily_active_user_counts
+    entry_counts = login_history_get_daily_total(days=7, status='SUCCESS')
+    active_counts = get_daily_active_user_counts(days=7)
     week_ago = today - timedelta(days=6)
+    week_labels = []
+    active_data = []
+    entry_data = []
     for i in range(7):
         d = week_ago + timedelta(days=i)
         key = d.strftime('%Y-%m-%d')
         week_labels.append(d.strftime('%a'))
-        week_data.append(daily_counts.get(key, 0))
+        active_data.append(active_counts.get(key, 0))
+        entry_data.append(entry_counts.get(key, 0))
 
-    today_entries = daily_counts.get(today.strftime('%Y-%m-%d'), 0)
-    yesterday_entries = daily_counts.get((today - timedelta(days=1)).strftime('%Y-%m-%d'), 0)
+    today_entries = entry_counts.get(today.strftime('%Y-%m-%d'), 0)
+    yesterday_entries = entry_counts.get((today - timedelta(days=1)).strftime('%Y-%m-%d'), 0)
 
     # ===== PER-TEACHER UPLOADS (PDF + video count) =====
     teacher_upload_qs = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
@@ -723,7 +727,8 @@ def analytics_view(request):
         'user_status_data': user_status_data,
         'teacher_status_data': teacher_status_data,
         'week_labels': week_labels,
-        'week_data': week_data,
+        'active_data': active_data,
+        'entry_data': entry_data,
         'today_entries': today_entries,
         'yesterday_entries': yesterday_entries,
         'teacher_upload_labels': teacher_upload_labels,

@@ -109,6 +109,12 @@ class PortalSecurityMiddleware:
                 now = int(_time.time())
                 if now - last_activity > 30:
                     request.session['last_activity'] = now
+                    # Log active user to Firebase Analytics for DAU tracking
+                    try:
+                        from .utils.firebase_analytics import log_active_user_async
+                        log_active_user_async(request.user)
+                    except Exception:
+                        pass
 
             # --- Cached status check (avoids DB hit per request) ---
             if not request.user.is_superuser:

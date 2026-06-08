@@ -367,7 +367,7 @@
             labels: {{ week_labels|safe }},
             datasets: [{
                 label: 'Active Users',
-                data: {{ week_data|safe }},
+                data: {{ active_data|safe }},
                 backgroundColor: 'rgba(99,102,241,0.08)',
                 borderColor: colors.indigo,
                 borderWidth: 2.5,
@@ -396,8 +396,8 @@
         data: {
             labels: {{ week_labels|safe }},
             datasets: [{
-                label: 'Users',
-                data: {{ week_data|safe }},
+                label: 'Total Entries',
+                data: {{ entry_data|safe }},
                 backgroundColor: [
                     colors.blue, colors.blue, colors.blue, colors.blue,
                     colors.blue, colors.green, colors.amber

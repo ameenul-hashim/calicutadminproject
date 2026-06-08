@@ -485,6 +485,28 @@ def login_history_get_last(user_uid):
     return entries[0] if entries else None
 
 
+def login_history_get_daily_total(days=30, status='SUCCESS'):
+    app = _get_app()
+    if app is None:
+        return {}
+    cutoff = int(time.time() * 1000) - (days * 24 * 60 * 60 * 1000)
+    ref = db.reference('/login_history', app=app)
+    all_data = ref.get()
+    if not all_data:
+        return {}
+    daily = {}
+    for uid, user_entries in all_data.items():
+        for eid, edata in user_entries.items():
+            ts = edata.get('timestamp', 0)
+            if ts < cutoff:
+                continue
+            if edata.get('status') != status:
+                continue
+            date_key = datetime.fromtimestamp(ts / 1000, tz=timezone.utc).strftime('%Y-%m-%d')
+            daily[date_key] = daily.get(date_key, 0) + 1
+    return daily
+
+
 def login_history_get_daily_unique(days=30, status='SUCCESS'):
     app = _get_app()
     if app is None:
