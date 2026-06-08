@@ -2003,12 +2003,13 @@ def course_player(request, course_uid):
     return render(request, 'accounts/course_player.html', context)
 
 @login_required
+@csrf_exempt
 def send_chat_message(request):
     if request.method == 'POST':
         sender = request.user
         is_teacher = sender.user_type == 'TEACHER'
-        is_admin = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
-        if not (is_teacher or is_admin):
+        is_admin_user = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
+        if not sender.is_authenticated or not (is_teacher or is_admin_user):
             return JsonResponse({'status': 'error', 'message': 'Access denied'}, status=403)
 
         receiver_uid = request.POST.get('receiver_uid')
@@ -2018,14 +2019,14 @@ def send_chat_message(request):
             receiver = CustomUser.objects.get(uid=receiver_uid)
             receiver_is_valid = (
                 (is_teacher and (receiver.is_superuser or receiver.user_type == 'ADMIN' or receiver.is_staff)) or
-                (is_admin and receiver.user_type == 'TEACHER')
+                (is_admin_user and receiver.user_type == 'TEACHER')
             )
             if not receiver_is_valid:
                 return JsonResponse({'status': 'error', 'message': 'Invalid recipient'}, status=403)
         except CustomUser.DoesNotExist:
             return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
 
-        sender_name = sender.chat_display if is_admin else (sender.full_name or sender.username)
+        sender_name = sender.chat_display if is_admin_user else (sender.full_name or sender.username)
 
         from accounts.utils.firebase_chat import send_message as fb_send
         result = fb_send(str(sender.uid), receiver_uid, message_text)
@@ -2044,6 +2045,41 @@ def send_chat_message(request):
             'sender': sender_name
         })
     return JsonResponse({'status': 'error'}, status=400)
+
+
+@csrf_exempt
+def edit_chat_message(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error'}, status=400)
+    sender = request.user
+    if not sender.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=403)
+    msg_uid = request.POST.get('message_uid')
+    new_message = request.POST.get('message')
+    if not msg_uid or not new_message:
+        return JsonResponse({'status': 'error', 'message': 'Missing fields'}, status=400)
+    from accounts.utils.firebase_chat import edit_message as fb_edit
+    success, error = fb_edit(str(sender.uid), msg_uid, new_message)
+    if not success:
+        return JsonResponse({'status': 'error', 'message': error or 'Edit failed'}, status=400)
+    return JsonResponse({'status': 'success'})
+
+
+@csrf_exempt
+def delete_chat_message(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error'}, status=400)
+    sender = request.user
+    if not sender.is_authenticated:
+        return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=403)
+    msg_uid = request.POST.get('message_uid')
+    if not msg_uid:
+        return JsonResponse({'status': 'error', 'message': 'Missing message_uid'}, status=400)
+    from accounts.utils.firebase_chat import delete_message as fb_delete
+    success, error = fb_delete(str(sender.uid), msg_uid)
+    if not success:
+        return JsonResponse({'status': 'error', 'message': error or 'Delete failed'}, status=400)
+    return JsonResponse({'status': 'success'})
 
 @login_required
 @never_cache

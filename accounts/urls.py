@@ -51,6 +51,8 @@ urlpatterns = [
     path('chat/send/', views.send_chat_message, name='send_chat_message'),
     path('chat/messages/<uuid:other_user_uid>/', views.get_chat_messages, name='get_chat_messages'),
     path('chat/list/', views.get_chat_list, name='get_chat_list'),
+    path('chat/edit/', views.edit_chat_message, name='edit_chat_message'),
+    path('chat/delete/', views.delete_chat_message, name='delete_chat_message'),
     path('chat/update-last-seen/', views.update_last_seen, name='update_last_seen'),
 
     path('notification/<uuid:notif_uid>/read/', views.mark_notification_read, name='mark_notification_read'),

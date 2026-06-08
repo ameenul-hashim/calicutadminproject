@@ -39,7 +39,11 @@ class CustomUser(AbstractUser):
 
     @property
     def chat_display(self):
-        return self.chat_display_name or self.full_name or 'Support Team'
+        if self.chat_display_name:
+            return self.chat_display_name
+        if self.user_type == 'ADMIN' or self.is_superuser:
+            return 'Support Team'
+        return self.full_name or 'Support Team'
 
     @property
     def avatar_url(self):
