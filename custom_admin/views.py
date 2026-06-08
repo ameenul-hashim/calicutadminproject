@@ -8,93 +8,6 @@ from django.http import HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils import timezone
-@user_passes_test(is_admin, login_url='admin_login')
-def drive_diagnostics(request):
-    """Browser-based Google Drive backup diagnostics (no shell needed)."""
-    import os, json
-    from django.conf import settings
-    from accounts.models import BackupLog, CourseResource
-
-    lines = []
-
-    def out(msg, status=''):
-        lines.append((msg, status))
-
-    out('=== Google Drive Backup Diagnostics ===', 'header')
-
-    # 1. BACKUP_ENABLED
-    be = getattr(settings, 'BACKUP_ENABLED', None)
-    env_be = os.getenv('BACKUP_ENABLED')
-    effective = str(be) if be is not None else str(env_be or 'True')
-    out(f'BACKUP_ENABLED (settings): {be}', 'pass')
-    out(f'BACKUP_ENABLED (env): {env_be}', 'pass')
-    out(f'Backups enabled: {effective == "True"}', 'pass' if effective == 'True' else 'fail')
-
-    # 2. GOOGLE_DRIVE_CREDENTIALS
-    creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
-    if not creds:
-        out('GOOGLE_DRIVE_CREDENTIALS: NOT SET', 'fail')
-        out('Fix: Add it in Render Dashboard -> Environment', 'info')
-    else:
-        out(f'GOOGLE_DRIVE_CREDENTIALS: SET ({len(creds)} chars)', 'pass')
-        try:
-            parsed = json.loads(creds)
-            out(f'Valid JSON: Yes', 'pass')
-            out(f'Type: {parsed.get("type")}', 'pass' if parsed.get('type') == 'service_account' else 'fail')
-            out(f'Client email: {parsed.get("client_email")}', 'pass')
-            out(f'Project: {parsed.get("project_id")}', 'pass')
-            out(f'Has private_key: {bool(parsed.get("private_key"))}', 'pass')
-        except json.JSONDecodeError as e:
-            out(f'Valid JSON: No — {e}', 'fail')
-
-    # 3. Drive connection
-    if creds:
-        try:
-            parsed = json.loads(creds)
-            if parsed.get('type') == 'service_account':
-                from google.oauth2 import service_account
-                from googleapiclient.discovery import build
-                scopes = ['https://www.googleapis.com/auth/drive']
-                sa_creds = service_account.Credentials.from_service_account_info(parsed, scopes=scopes)
-                service = build('drive', 'v3', credentials=sa_creds)
-                about = service.about().get(fields='user').execute()
-                email = about.get('user', {}).get('emailAddress', 'unknown')
-                out(f'Drive connected as: {email}', 'pass')
-                q = "name='NeoLearner_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-                root = service.files().list(q=q, spaces='drive', fields='files(id, name)').execute()
-                folders = root.get('files', [])
-                if folders:
-                    out(f'Folder "NeoLearner_Backups" found: ID {folders[0]["id"]}', 'pass')
-                else:
-                    out('Folder "NeoLearner_Backups" NOT found or no access', 'fail')
-                    out(f'Share the folder with Editor access to: {parsed.get("client_email")}', 'info')
-        except Exception as e:
-            out(f'Drive connection failed: {e}', 'fail')
-
-    # 4. BackupLog
-    total = BackupLog.objects.count()
-    success = BackupLog.objects.filter(status='SUCCESS').count()
-    failed_b = BackupLog.objects.filter(status='FAILED').count()
-    out(f'BackupLog: {total} total, {success} success, {failed_b} failed', 'pass')
-    if failed_b:
-        for log in BackupLog.objects.filter(status='FAILED').order_by('-created_at')[:5]:
-            out(f'  [{log.backup_type}] {log.filename}: {log.error_message or "N/A"}', 'fail')
-
-    # 5. Resource backup_status
-    total_r = CourseResource.objects.count()
-    success_r = CourseResource.objects.filter(backup_status='SUCCESS').count()
-    failed_r = CourseResource.objects.filter(backup_status='FAILED').count()
-    out(f'Resources: {total_r} total, {success_r} backed up, {failed_r} failed', 'pass')
-
-    html = '<html><head><title>Drive Diagnostics</title><style>'
-    html += 'body{font-family:monospace;padding:20px;background:#111;color:#eee}'
-    html += '.pass{color:#0f0}.fail{color:#f00}.info{color:#ffa500}.header{color:#0ff;font-weight:bold}'
-    html += 'li{margin:4px 0}</style></head><body><h2 style="color:#0ff">Drive Backup Diagnostics</h2><ul>'
-    for msg, status in lines:
-        cls = status if status in ('pass','fail','info') else ''
-        html += f'<li class="{cls}">{msg}</li>'
-    html += '</ul></body></html>'
-    return HttpResponse(html)
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions (Firebase RTDB)."""
     try:
@@ -3192,6 +3105,87 @@ def backup_history_csv(request):
     return response
 
 
+@user_passes_test(is_admin, login_url='admin_login')
+def drive_diagnostics(request):
+    """Browser-based Google Drive backup diagnostics (no shell needed)."""
+    import os, json
+    from django.conf import settings
+    from accounts.models import BackupLog, CourseResource
 
+    lines = []
+
+    def out(msg, status=''):
+        lines.append((msg, status))
+
+    out('=== Google Drive Backup Diagnostics ===', 'header')
+
+    be = getattr(settings, 'BACKUP_ENABLED', None)
+    env_be = os.getenv('BACKUP_ENABLED')
+    effective = str(be) if be is not None else str(env_be or 'True')
+    out(f'BACKUP_ENABLED (settings): {be}', 'pass')
+    out(f'BACKUP_ENABLED (env): {env_be}', 'pass')
+    out(f'Backups enabled: {effective == "True"}', 'pass' if effective == 'True' else 'fail')
+
+    creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
+    if not creds:
+        out('GOOGLE_DRIVE_CREDENTIALS: NOT SET', 'fail')
+        out('Fix: Add it in Render Dashboard -> Environment', 'info')
+    else:
+        out(f'GOOGLE_DRIVE_CREDENTIALS: SET ({len(creds)} chars)', 'pass')
+        try:
+            parsed = json.loads(creds)
+            out(f'Valid JSON: Yes', 'pass')
+            out(f'Type: {parsed.get("type")}', 'pass' if parsed.get('type') == 'service_account' else 'fail')
+            out(f'Client email: {parsed.get("client_email")}', 'pass')
+            out(f'Project: {parsed.get("project_id")}', 'pass')
+            out(f'Has private_key: {bool(parsed.get("private_key"))}', 'pass')
+        except json.JSONDecodeError as e:
+            out(f'Valid JSON: No — {e}', 'fail')
+
+    if creds:
+        try:
+            parsed = json.loads(creds)
+            if parsed.get('type') == 'service_account':
+                from google.oauth2 import service_account
+                from googleapiclient.discovery import build
+                scopes = ['https://www.googleapis.com/auth/drive']
+                sa_creds = service_account.Credentials.from_service_account_info(parsed, scopes=scopes)
+                service = build('drive', 'v3', credentials=sa_creds)
+                about = service.about().get(fields='user').execute()
+                email = about.get('user', {}).get('emailAddress', 'unknown')
+                out(f'Drive connected as: {email}', 'pass')
+                q = "name='NeoLearner_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false"
+                root = service.files().list(q=q, spaces='drive', fields='files(id, name)').execute()
+                folders = root.get('files', [])
+                if folders:
+                    out(f'Folder "NeoLearner_Backups" found: ID {folders[0]["id"]}', 'pass')
+                else:
+                    out('Folder "NeoLearner_Backups" NOT found or no access', 'fail')
+                    out(f'Share the folder with Editor access to: {parsed.get("client_email")}', 'info')
+        except Exception as e:
+            out(f'Drive connection failed: {e}', 'fail')
+
+    total = BackupLog.objects.count()
+    success = BackupLog.objects.filter(status='SUCCESS').count()
+    failed_b = BackupLog.objects.filter(status='FAILED').count()
+    out(f'BackupLog: {total} total, {success} success, {failed_b} failed', 'pass')
+    if failed_b:
+        for log in BackupLog.objects.filter(status='FAILED').order_by('-created_at')[:5]:
+            out(f'  [{log.backup_type}] {log.filename}: {log.error_message or "N/A"}', 'fail')
+
+    total_r = CourseResource.objects.count()
+    success_r = CourseResource.objects.filter(backup_status='SUCCESS').count()
+    failed_r = CourseResource.objects.filter(backup_status='FAILED').count()
+    out(f'Resources: {total_r} total, {success_r} backed up, {failed_r} failed', 'pass')
+
+    html = '<html><head><title>Drive Diagnostics</title><style>'
+    html += 'body{font-family:monospace;padding:20px;background:#111;color:#eee}'
+    html += '.pass{color:#0f0}.fail{color:#f00}.info{color:#ffa500}.header{color:#0ff;font-weight:bold}'
+    html += 'li{margin:4px 0}</style></head><body><h2 style="color:#0ff">Drive Backup Diagnostics</h2><ul>'
+    for msg, status in lines:
+        cls = status if status in ('pass','fail','info') else ''
+        html += f'<li class="{cls}">{msg}</li>'
+    html += '</ul></body></html>'
+    return HttpResponse(html)
 
 
