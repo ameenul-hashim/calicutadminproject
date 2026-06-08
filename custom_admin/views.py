@@ -96,6 +96,7 @@ def admin_login_view(request):
                     from accounts.utils.totp_service import totp_service
                     if totp_service.verify_totp(user.totp_secret, otp_code):
                         login(request, user)
+                        cache.delete(f"last_activity_{user.id}")
                         request.session.set_expiry(0)
                         if not request.session.session_key:
                             request.session.save()
@@ -117,6 +118,7 @@ def admin_login_view(request):
             else:
                 # No 2FA configured for this admin yet
                 login(request, user)
+                cache.delete(f"last_activity_{user.id}")
                 request.session.set_expiry(0)
                 if not request.session.session_key:
                     request.session.save()
@@ -749,7 +751,6 @@ def content_management_view(request):
     courses = courses.order_by('-created_at')
 
     # Pagination
-    from django.core.paginator import Paginator
     paginator = Paginator(courses, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
