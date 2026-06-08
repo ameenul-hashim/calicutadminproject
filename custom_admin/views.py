@@ -48,7 +48,7 @@ def create_notification(user, message):
         return
     Notification.objects.create(user=user, message=message)
 
-@user_passes_test(is_admin, login_url='admin_login')
+@user_passes_test(lambda u: u.is_authenticated and (u.is_superuser or u.user_type == 'ADMIN' or (u.is_staff and u.user_type != 'TEACHER')), login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_student_view_auth(request):
     # Direct access as requested - no password required for admin switching
