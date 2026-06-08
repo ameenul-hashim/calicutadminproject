@@ -93,15 +93,15 @@
 
 <!-- Tab Navigation -->
 <div style="display: flex; gap: 1rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 2rem;">
-    <button onclick="switchTab('pending')" id="tab-btn-pending" style="padding: 1rem 1.5rem; border: none; background: none; font-weight: 700; color: #4f46e5; border-bottom: 3px solid #4f46e5; cursor: pointer; transition: all 0.2s;">
-        ⏳ Pending Content
-    </button>
-    <button onclick="switchTab('approved')" id="tab-btn-approved" style="padding: 1rem 1.5rem; border: none; background: none; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s;">
+    <button onclick="switchTab('approved')" id="tab-btn-approved" style="padding: 1rem 1.5rem; border: none; background: none; font-weight: 700; color: #4f46e5; border-bottom: 3px solid #4f46e5; cursor: pointer; transition: all 0.2s;">
         ✅ Approved Content
+    </button>
+    <button onclick="switchTab('pending')" id="tab-btn-pending" style="padding: 1rem 1.5rem; border: none; background: none; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; cursor: pointer; transition: all 0.2s;">
+        ⏳ Pending Content
     </button>
 </div>
 
-<div id="pending-content">
+<div id="pending-content" style="display: none;">
     {% for chapter in chapters %}
         {% if chapter.has_pending %}
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
@@ -338,7 +338,7 @@
     {% endfor %}
 </div>
 
-<div id="approved-content" style="display: none;">
+<div id="approved-content">
     {% for chapter in chapters %}
         {% if chapter.has_approved %}
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
@@ -593,9 +593,9 @@
             var body = h.nextElementSibling;
             body.style.display = 'none';
         });
-        var firstPending = document.querySelector('#pending-content .admin-chapter-header');
-        if (firstPending) {
-            firstPending.click();
+        var firstApproved = document.querySelector('#approved-content .admin-chapter-header');
+        if (firstApproved) {
+            firstApproved.click();
         }
     });
 
