@@ -8,6 +8,26 @@ from django.http import HttpResponse
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
+from django.db.models import Sum, Q, Count
+from django.db.models.functions import ExtractMonth
+from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, BackupLog
+from accounts.utils.cloudinary_helpers import update_image
+from accounts.utils.supabase_storage import upload_pdf
+from accounts.utils.malware_scanner import scanner
+from accounts.utils.notification_helper import get_notifications, get_unread_count, mark_all_read
+from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.cache import cache_control
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_POST
+from django.conf import settings
+from django.core.paginator import Paginator
+from django_ratelimit.decorators import ratelimit
+
+def is_admin(user):
+    return user.is_authenticated and (user.is_superuser or user.user_type == 'ADMIN' or (user.is_staff and user.user_type != 'TEACHER'))
+
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions (Firebase RTDB)."""
     try:
@@ -31,7 +51,7 @@ def create_notification(user, message):
         return
     Notification.objects.create(user=user, message=message)
 
-@user_passes_test(lambda u: u.is_authenticated and (u.is_superuser or u.user_type == 'ADMIN' or (u.is_staff and u.user_type != 'TEACHER')), login_url='admin_login')
+@user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def admin_student_view_auth(request):
     # Direct access as requested - no password required for admin switching
