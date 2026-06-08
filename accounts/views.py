@@ -2461,9 +2461,11 @@ def firebase_notification_mark_all_read(request):
     return JsonResponse({'status': 'ok'})
 
 
+@csrf_exempt
 @require_POST
-@login_required
 def update_last_seen(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'status': 'ok'})
     request.user.last_seen = timezone.now()
     request.user.save(update_fields=['last_seen'])
     return JsonResponse({'status': 'ok'})
