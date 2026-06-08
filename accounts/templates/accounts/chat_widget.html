@@ -188,14 +188,17 @@
           if (m.is_me && m.read_at) timeDiv.innerHTML += '<span style="font-size:0.65rem;">&#10003;&#10003;</span>';
           div.appendChild(timeDiv);
           if (m.is_me && !m.is_deleted) {
-            const opts = document.createElement('div');
-            opts.className = 'msg-options';
-            opts.innerHTML = '<span class="edit-msg" title="Edit">&#9998;</span><span class="del-msg" title="Delete">&#128465;</span>';
-            const editSpan = opts.querySelector('.edit-msg');
-            const delSpan = opts.querySelector('.del-msg');
-            editSpan.onclick = (e) => { e.stopPropagation(); editMessage(m.message_uid, m.message); };
-            delSpan.onclick = (e) => { e.stopPropagation(); deleteMessage(m.message_uid); };
-            div.appendChild(opts);
+            const withinWindow = m.raw_ts && (Date.now() - m.raw_ts) <= 1800 * 1000;
+            if (withinWindow) {
+              const opts = document.createElement('div');
+              opts.className = 'msg-options';
+              opts.innerHTML = '<span class="edit-msg" title="Edit">&#9998;</span><span class="del-msg" title="Delete">&#128465;</span>';
+              const editSpan = opts.querySelector('.edit-msg');
+              const delSpan = opts.querySelector('.del-msg');
+              editSpan.onclick = (e) => { e.stopPropagation(); editMessage(m.message_uid, m.message); };
+              delSpan.onclick = (e) => { e.stopPropagation(); deleteMessage(m.message_uid); };
+              div.appendChild(opts);
+            }
           }
         }
         fragment.appendChild(div);

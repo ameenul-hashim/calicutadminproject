@@ -166,6 +166,12 @@
         </div>
     </footer>
 
+    {% if user.is_authenticated %}
+        {% if user.user_type == 'TEACHER' or user.user_type == 'ADMIN' or user.is_superuser or user.is_staff %}
+            {% include 'accounts/chat_widget.html' %}
+        {% endif %}
+    {% endif %}
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

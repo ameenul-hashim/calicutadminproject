@@ -2271,8 +2271,8 @@ def get_chat_messages(request, other_user_uid):
             'timestamp': ts_str,
             'raw_ts': raw_ts,
             'is_me': is_me,
-            'is_edited': m.get('is_edited', False),
-            'is_deleted': m.get('is_deleted', False),
+            'is_edited': m.get('edited_at') is not None,
+            'is_deleted': m.get('deleted', False),
             'read_at': m.get('read_at'),
             'edited_at': m.get('edited_at'),
         })

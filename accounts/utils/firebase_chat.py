@@ -8,8 +8,8 @@ from .firebase_db import _get_app as _get_firebase_app
 
 logger = logging.getLogger(__name__)
 
-EDIT_WINDOW_SECONDS = 3600
-DELETE_WINDOW_SECONDS = 3600
+EDIT_WINDOW_SECONDS = 1800
+DELETE_WINDOW_SECONDS = 1800
 RETENTION_DAYS = 30
 PAGE_SIZE = 25
 MAX_MESSAGE_LENGTH = 2000
@@ -180,7 +180,7 @@ def edit_message(user_uid, msg_uid, new_message):
         return False, 'Message already deleted'
     msg_time = mdata.get('created_at', 0)
     if now_ms - msg_time > EDIT_WINDOW_SECONDS * 1000:
-        return False, 'Edit window expired (1 hour)'
+        return False, 'Edit window expired (30 minutes)'
     sanitized = _sanitize_text(new_message)
     mref.update({'message': sanitized, 'edited_at': now_ms})
     return True, None
@@ -204,7 +204,7 @@ def delete_message(user_uid, msg_uid):
         return False, 'Message already deleted'
     msg_time = mdata.get('created_at', 0)
     if now_ms - msg_time > DELETE_WINDOW_SECONDS * 1000:
-        return False, 'Delete window expired (1 hour)'
+        return False, 'Delete window expired (30 minutes)'
     mref.update({'deleted': True, 'edited_at': now_ms})
     return True, None
 
@@ -236,7 +236,7 @@ def get_chat_list(user_uid, user_type):
     result = []
     if user_type == 'TEACHER':
         from accounts.models import CustomUser
-        admins = CustomUser.objects.filter(user_type='ADMIN', status='ACTIVE').only('uid', 'full_name')
+        admins = CustomUser.objects.filter(user_type='ADMIN', status='ACTIVE').only('uid', 'full_name', 'chat_display_name')
         for admin in admins:
             admin_str = str(admin.uid)
             path = _conversation_path(admin_str, user_str)
@@ -260,7 +260,7 @@ def get_chat_list(user_uid, user_type):
             last_msg = msgs[0] if msgs else None
             result.append({
                 'other_uid': admin_str,
-                'other_name': admin.full_name,
+                'other_name': admin.chat_display,
                 'last_message': last_msg['message'] if last_msg else '',
                 'last_timestamp': last_msg['created_at'] if last_msg else 0,
                 'last_sender_uid': last_msg['sender_uid'] if last_msg else '',
