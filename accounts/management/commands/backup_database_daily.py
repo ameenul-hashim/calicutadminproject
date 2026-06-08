@@ -25,7 +25,7 @@ class Command(BaseCommand):
         force = options.get('force', False)
         skip_retention = options.get('skip_retention', False)
 
-        if _get_config('BACKUP_ENABLED', 'True') != 'True':
+        if str(_get_config('BACKUP_ENABLED', 'True')) != 'True':
             self.stdout.write(self.style.WARNING('Backup disabled by BACKUP_ENABLED=False'))
             return
 
