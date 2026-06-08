@@ -25,9 +25,6 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django_ratelimit.decorators import ratelimit
 
-def is_admin(user):
-    return user.is_authenticated and (user.is_superuser or user.user_type == 'ADMIN' or (user.is_staff and user.user_type != 'TEACHER'))
-
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions (Firebase RTDB)."""
     try:
