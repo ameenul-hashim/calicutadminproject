@@ -2152,6 +2152,7 @@ def course_player(request, course_uid):
     return render(request, 'accounts/course_player.html', context)
 
 @login_required
+@login_required
 @require_POST
 def send_chat_message(request):
     sender = request.user
@@ -2183,7 +2184,7 @@ def send_chat_message(request):
 
     msg_uid, now_ms = result
     from datetime import datetime
-    ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
+    ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%b %d, %I:%M %p')
 
     return JsonResponse({
         'status': 'success',
@@ -2194,11 +2195,10 @@ def send_chat_message(request):
     })
 
 
+@login_required
 @require_POST
 def edit_chat_message(request):
     sender = request.user
-    if not sender.is_authenticated:
-        return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=403)
     msg_uid = request.POST.get('message_uid')
     new_message = request.POST.get('message')
     if not msg_uid or not new_message:
@@ -2210,11 +2210,10 @@ def edit_chat_message(request):
     return JsonResponse({'status': 'success'})
 
 
+@login_required
 @require_POST
 def delete_chat_message(request):
     sender = request.user
-    if not sender.is_authenticated:
-        return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=403)
     msg_uid = request.POST.get('message_uid')
     if not msg_uid:
         return JsonResponse({'status': 'error', 'message': 'Missing message_uid'}, status=400)
@@ -2262,7 +2261,7 @@ def get_chat_messages(request, other_user_uid):
     for m in fb_msgs:
         is_me = str(m['sender_uid']) == str(user.uid)
         raw_ts = m.get('created_at', 0)
-        ts_str = dt_mod.fromtimestamp(raw_ts / 1000).strftime('%I:%M %p') if raw_ts else ''
+        ts_str = dt_mod.fromtimestamp(raw_ts / 1000).strftime('%b %d, %I:%M %p') if raw_ts else ''
         sender_name = _resolve_name(m['sender_uid'])
         data.append({
             'message_uid': m['uid'],

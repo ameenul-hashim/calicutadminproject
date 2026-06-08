@@ -8,8 +8,8 @@ from .firebase_db import _get_app as _get_firebase_app
 
 logger = logging.getLogger(__name__)
 
-EDIT_WINDOW_SECONDS = 1800
-DELETE_WINDOW_SECONDS = 1800
+EDIT_WINDOW_SECONDS = 3600
+DELETE_WINDOW_SECONDS = 3600
 RETENTION_DAYS = 30
 PAGE_SIZE = 25
 MAX_MESSAGE_LENGTH = 2000
@@ -98,11 +98,19 @@ def get_messages(user_uid, other_uid, limit=PAGE_SIZE, offset=0, search=None):
     if not data:
         return [], False
     msgs = []
+    current_uid = str(user_uid)
     for mid, mdata in data.items():
+        sender_uid = mdata.get('sender_uid')
+        deleted_by_sender = mdata.get('deleted_by_sender', False)
+        deleted_by_receiver = mdata.get('deleted_by_receiver', False)
+        is_sender = sender_uid == current_uid
+        # Per-user visibility: hide if the current user deleted it
+        if (is_sender and deleted_by_sender) or (not is_sender and deleted_by_receiver):
+            continue
         if mdata.get('deleted', False):
             msgs.append({
                 'uid': mid,
-                'sender_uid': mdata.get('sender_uid'),
+                'sender_uid': sender_uid,
                 'message': 'This message was deleted.',
                 'created_at': mdata.get('created_at', 0),
                 'is_read': mdata.get('is_read', False),
@@ -115,7 +123,7 @@ def get_messages(user_uid, other_uid, limit=PAGE_SIZE, offset=0, search=None):
                 continue
             msgs.append({
                 'uid': mid,
-                'sender_uid': mdata.get('sender_uid'),
+                'sender_uid': sender_uid,
                 'message': msg_text,
                 'created_at': mdata.get('created_at', 0),
                 'is_read': mdata.get('is_read', False),
@@ -180,7 +188,7 @@ def edit_message(user_uid, msg_uid, new_message):
         return False, 'Message already deleted'
     msg_time = mdata.get('created_at', 0)
     if now_ms - msg_time > EDIT_WINDOW_SECONDS * 1000:
-        return False, 'Edit window expired (30 minutes)'
+        return False, 'Edit window expired (1 hour)'
     sanitized = _sanitize_text(new_message)
     mref.update({'message': sanitized, 'edited_at': now_ms})
     return True, None
@@ -204,8 +212,13 @@ def delete_message(user_uid, msg_uid):
         return False, 'Message already deleted'
     msg_time = mdata.get('created_at', 0)
     if now_ms - msg_time > DELETE_WINDOW_SECONDS * 1000:
-        return False, 'Delete window expired (30 minutes)'
-    mref.update({'deleted': True, 'edited_at': now_ms})
+        return False, 'Delete window expired (1 hour)'
+    # Per-user deletion: hide from sender only, other user still sees it
+    is_sender = mdata.get('sender_uid') == str(user_uid)
+    if is_sender:
+        mref.update({'deleted_by_sender': True, 'edited_at': now_ms})
+    else:
+        mref.update({'deleted_by_receiver': True, 'edited_at': now_ms})
     return True, None
 
 
@@ -246,15 +259,22 @@ def get_chat_list(user_uid, user_type):
             msgs = []
             unread = 0
             for mid, mdata in msgs_data.items():
+                sender_uid = mdata.get('sender_uid')
+                deleted_by_sender = mdata.get('deleted_by_sender', False)
+                deleted_by_receiver = mdata.get('deleted_by_receiver', False)
+                # Skip messages hidden from current user (teacher)
+                is_sender = sender_uid == user_str
+                if (is_sender and deleted_by_sender) or (not is_sender and deleted_by_receiver):
+                    continue
                 created_at = mdata.get('created_at', 0)
                 msg_text = mdata.get('message', '') if not mdata.get('deleted', False) else 'This message was deleted.'
                 msgs.append({
                     'uid': mid,
                     'created_at': created_at,
-                    'sender_uid': mdata.get('sender_uid'),
+                    'sender_uid': sender_uid,
                     'message': msg_text,
                 })
-                if mdata.get('sender_uid') == admin_str and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                if sender_uid == admin_str and not mdata.get('is_read', False) and not mdata.get('deleted', False):
                     unread += 1
             msgs.sort(key=lambda x: x['created_at'], reverse=True)
             last_msg = msgs[0] if msgs else None
@@ -279,15 +299,22 @@ def get_chat_list(user_uid, user_type):
             msgs = []
             unread = 0
             for mid, mdata in msgs_data.items():
+                sender_uid = mdata.get('sender_uid')
+                deleted_by_sender = mdata.get('deleted_by_sender', False)
+                deleted_by_receiver = mdata.get('deleted_by_receiver', False)
+                is_sender = sender_uid == user_str
+                # Skip messages hidden from current user (admin)
+                if (is_sender and deleted_by_sender) or (not is_sender and deleted_by_receiver):
+                    continue
                 created_at = mdata.get('created_at', 0)
                 msg_text = mdata.get('message', '') if not mdata.get('deleted', False) else 'This message was deleted.'
                 msgs.append({
                     'uid': mid,
                     'created_at': created_at,
-                    'sender_uid': mdata.get('sender_uid'),
+                    'sender_uid': sender_uid,
                     'message': msg_text,
                 })
-                if mdata.get('sender_uid') == teacher_uid and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                if sender_uid == teacher_uid and not mdata.get('is_read', False) and not mdata.get('deleted', False):
                     unread += 1
             msgs.sort(key=lambda x: x['created_at'], reverse=True)
             last_msg = msgs[0] if msgs else None
@@ -319,7 +346,10 @@ def get_unread_count(user_uid, user_type):
             if not msgs_data:
                 continue
             for mdata in msgs_data.values():
-                if mdata.get('sender_uid') == str(admin.uid) and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                sender_uid = mdata.get('sender_uid')
+                if mdata.get('deleted_by_sender', False) or mdata.get('deleted_by_receiver', False):
+                    continue
+                if sender_uid == str(admin.uid) and not mdata.get('is_read', False) and not mdata.get('deleted', False):
                     total += 1
     else:
         teachers = db.reference(f'/support_chat/{user_str}', app=app).get(shallow=True)
@@ -331,7 +361,10 @@ def get_unread_count(user_uid, user_type):
             if not msgs_data:
                 continue
             for mdata in msgs_data.values():
-                if mdata.get('sender_uid') == teacher_uid and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                sender_uid = mdata.get('sender_uid')
+                if mdata.get('deleted_by_sender', False) or mdata.get('deleted_by_receiver', False):
+                    continue
+                if sender_uid == teacher_uid and not mdata.get('is_read', False) and not mdata.get('deleted', False):
                     total += 1
     return total
 
