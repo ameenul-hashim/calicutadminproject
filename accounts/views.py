@@ -85,6 +85,8 @@ def validate_avatar_url(url):
 def log_login_attempt(request, user, status='SUCCESS'):
     """Audit helper for login tracking. All data → Firebase RTDB only."""
     import threading
+    import logging
+    _logger = logging.getLogger(__name__)
     try:
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
@@ -102,23 +104,23 @@ def log_login_attempt(request, user, status='SUCCESS'):
                 try:
                     from .utils.firebase_audit import log_security_event
                     log_security_event('FAILED_LOGIN', f'Failed login for {user.username}', username=user.username, ip=ip)
-                except Exception:
-                    pass
+                except Exception as e:
+                    _logger.error("Firebase audit log error: %s", e)
             threading.Thread(target=_async_firebase_log, daemon=True).start()
         else:
             def _async_analytics():
                 try:
                     from .utils.firebase_analytics import log_visit
                     log_visit(user)
-                except Exception:
-                    pass
+                except Exception as e:
+                    _logger.error("Firebase analytics log error: %s", e)
             threading.Thread(target=_async_analytics, daemon=True).start()
-    except Exception:
-        pass
+    except Exception as e:
+        _logger.error("Login history Firebase write failed: %s", e)
 
 def create_notification(user, message):
     from .utils.firebase_db import notif_create
-    notif_create(str(user.uid), message, notif_type='general')
+    notif_create(str(user.uid), "Notification", message, notif_type='general')
 
 def notify_admins(title, message, notif_type='general', action_url=''):
     from .models import CustomUser
@@ -2672,28 +2674,6 @@ import secrets
 from django.contrib.auth.hashers import make_password, check_password
 
 
-def send_reset_code_email(user, code):
-    from django.core.mail import EmailMultiAlternatives
-    from django.template.loader import render_to_string
-    from django.utils import timezone
-    subject = 'NeoLearn Password Reset Verification Code'
-    context = {
-        'user': user,
-        'otp': code,
-        'expiry': '10',
-    }
-    html_content = render_to_string('emails/password_reset_code.html', context)
-    text_content = f'Hello {user.full_name or user.username},\n\nYour verification code is: {code}\n\nThis code expires in 10 minutes.\n\nIf you did not request a password reset, ignore this email.\n\nNeoLearn Team'
-    msg = EmailMultiAlternatives(subject, text_content, settings.DEFAULT_FROM_EMAIL, [user.email])
-    msg.attach_alternative(html_content, 'text/html')
-    try:
-        msg.send()
-        return True
-    except Exception as e:
-        logger.error("Failed to send password reset email: %s", str(e))
-        return False
-
-
 @csrf_protect
 def forgot_password(request):
     user_type = request.GET.get('type', 'student').upper()
@@ -2723,15 +2703,10 @@ def forgot_password(request):
             otp_hash=make_password(code),
             expires_at=expires_at,
         )
-        email_sent = send_reset_code_email(user, code)
-        if not email_sent:
-            otp_obj.delete()
-            messages.error(request, "Unable to send verification email. Please try again later.")
-            return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
         PasswordResetOTP.objects.filter(user=user, expires_at__gt=timezone.now()).exclude(id=otp_obj.id).delete()
         request.session['reset_user_uid'] = str(user.uid)
         request.session['reset_otp_id'] = otp_obj.id
-        messages.success(request, "A verification code has been sent to your registered email.")
+        request.session['reset_raw_code'] = code
         return redirect('verify_reset_code')
     return render(request, 'accounts/forgot_password.html', {'user_type': user_type})
 
@@ -2740,6 +2715,7 @@ def forgot_password(request):
 def verify_reset_code(request):
     user_uid = request.session.get('reset_user_uid')
     otp_id = request.session.get('reset_otp_id')
+    raw_code = request.session.pop('reset_raw_code', None)
     if not user_uid or not otp_id:
         messages.error(request, "Session expired. Please restart the password reset process.")
         return redirect('forgot_password')
@@ -2760,15 +2736,16 @@ def verify_reset_code(request):
             request.session.pop('reset_otp_id', None)
             messages.error(request, "Too many failed attempts. Please request a new code.")
             return redirect('forgot_password')
-        raw_code = request.POST.get('code', '').strip()
-        if not raw_code or not raw_code.isdigit() or len(raw_code) != 6:
+        raw_input = request.POST.get('code', '').strip()
+        if not raw_input or not raw_input.isdigit() or len(raw_input) != 6:
             otp_obj.attempts += 1
             otp_obj.save()
             remaining = 5 - otp_obj.attempts
             messages.error(request, f"Invalid code. {remaining} attempt(s) remaining.")
-            return render(request, 'accounts/verify_reset_code.html')
-        if check_password(raw_code, otp_obj.otp_hash):
+            return render(request, 'accounts/verify_reset_code.html', {'raw_code': raw_code, 'expires_at': otp_obj.expires_at})
+        if check_password(raw_input, otp_obj.otp_hash):
             request.session['reset_verified'] = True
+            request.session.pop('reset_raw_code', None)
             messages.success(request, "Verification successful. Please set a new password.")
             return redirect('set_new_password')
         else:
@@ -2781,8 +2758,8 @@ def verify_reset_code(request):
                 messages.error(request, "Too many failed attempts. Please request a new code.")
                 return redirect('forgot_password')
             messages.error(request, f"Invalid code. {remaining} attempt(s) remaining.")
-            return render(request, 'accounts/verify_reset_code.html')
-    return render(request, 'accounts/verify_reset_code.html')
+            return render(request, 'accounts/verify_reset_code.html', {'raw_code': raw_code, 'expires_at': otp_obj.expires_at})
+    return render(request, 'accounts/verify_reset_code.html', {'raw_code': raw_code, 'expires_at': otp_obj.expires_at})
 
 
 @csrf_protect

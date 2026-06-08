@@ -7,14 +7,22 @@
                 <i class="fas fa-shield-alt"></i>
             </div>
             <h2>Verify Code</h2>
-            <p>A 6-digit verification code has been sent to your registered email.</p>
+            <p>Enter the 6-digit verification code shown below.</p>
         </div>
+
+        {% if raw_code %}
+        <div class="otp-reveal" id="otpReveal">
+            <div class="otp-reveal-label">Your Verification Code</div>
+            <div class="otp-reveal-code">{{ raw_code }}</div>
+            <div class="otp-reveal-timer">This code will auto-hide in <span id="otpCountdown">20</span> seconds</div>
+        </div>
+        {% endif %}
 
         <form method="POST" class="auth-form" id="codeForm" novalidate>
             {% include 'includes/validation_engine.html' %}
             {% csrf_token %}
             <div class="form-group">
-                <label for="code">Verification Code</label>
+                <label for="code">Enter Code</label>
                 <div class="otp-input-wrapper">
                     <input type="text" name="code" id="code" maxlength="6" pattern="\d{6}" inputmode="numeric" autocomplete="one-time-code" required autofocus placeholder="000000">
                 </div>
@@ -52,6 +60,17 @@
         70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
         100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
     }
+    .otp-reveal {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 12px; padding: 20px; text-align: center;
+        margin-bottom: 20px; color: white;
+    }
+    .otp-reveal-label { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+    .otp-reveal-code {
+        font-size: 42px; font-weight: 800; letter-spacing: 8px;
+        font-family: 'Courier New', monospace;
+    }
+    .otp-reveal-timer { font-size: 13px; opacity: 0.8; margin-top: 8px; }
 </style>
 
 <script>
@@ -64,6 +83,22 @@
                 }}
             ]
         });
+
+        // 20-second auto-dismiss for OTP reveal
+        var otpReveal = document.getElementById('otpReveal');
+        if (otpReveal) {
+            var secondsLeft = 20;
+            var otpCountdown = document.getElementById('otpCountdown');
+            var dismissTimer = setInterval(function() {
+                secondsLeft--;
+                if (secondsLeft <= 0) {
+                    clearInterval(dismissTimer);
+                    otpReveal.style.display = 'none';
+                    return;
+                }
+                otpCountdown.textContent = secondsLeft;
+            }, 1000);
+        }
 
         // Countdown timer: 10 minutes
         var totalSeconds = 600;
