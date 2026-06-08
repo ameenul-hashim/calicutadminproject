@@ -260,7 +260,7 @@
   }
 
   function getCSRF() {
-    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    const m = document.cookie.match(/neolearner_csrftoken=([^;]+)/);
     return m ? m[1] : '';
   }
 

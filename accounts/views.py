@@ -2003,54 +2003,50 @@ def course_player(request, course_uid):
     return render(request, 'accounts/course_player.html', context)
 
 @login_required
-@csrf_exempt
+@require_POST
 def send_chat_message(request):
-    if request.method == 'POST':
-        sender = request.user
-        is_teacher = sender.user_type == 'TEACHER'
-        is_admin_user = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
-        if not sender.is_authenticated or not (is_teacher or is_admin_user):
-            return JsonResponse({'status': 'error', 'message': 'Access denied'}, status=403)
+    sender = request.user
+    is_teacher = sender.user_type == 'TEACHER'
+    is_admin_user = sender.is_superuser or sender.is_staff or sender.user_type == 'ADMIN'
+    if not sender.is_authenticated or not (is_teacher or is_admin_user):
+        return JsonResponse({'status': 'error', 'message': 'Access denied'}, status=403)
 
-        receiver_uid = request.POST.get('receiver_uid')
-        message_text = request.POST.get('message')
+    receiver_uid = request.POST.get('receiver_uid')
+    message_text = request.POST.get('message')
 
-        try:
-            receiver = CustomUser.objects.get(uid=receiver_uid)
-            receiver_is_valid = (
-                (is_teacher and (receiver.is_superuser or receiver.user_type == 'ADMIN' or receiver.is_staff)) or
-                (is_admin_user and receiver.user_type == 'TEACHER')
-            )
-            if not receiver_is_valid:
-                return JsonResponse({'status': 'error', 'message': 'Invalid recipient'}, status=403)
-        except CustomUser.DoesNotExist:
-            return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
+    try:
+        receiver = CustomUser.objects.get(uid=receiver_uid)
+        receiver_is_valid = (
+            (is_teacher and (receiver.is_superuser or receiver.user_type == 'ADMIN' or receiver.is_staff)) or
+            (is_admin_user and receiver.user_type == 'TEACHER')
+        )
+        if not receiver_is_valid:
+            return JsonResponse({'status': 'error', 'message': 'Invalid recipient'}, status=403)
+    except CustomUser.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': 'User not found'}, status=404)
 
-        sender_name = sender.chat_display if is_admin_user else (sender.full_name or sender.username)
+    sender_name = sender.chat_display if is_admin_user else (sender.full_name or sender.username)
 
-        from accounts.utils.firebase_chat import send_message as fb_send
-        result = fb_send(str(sender.uid), receiver_uid, message_text)
-        if result is None:
-            return JsonResponse({'status': 'error', 'message': 'Message delivery failed'}, status=500)
+    from accounts.utils.firebase_chat import send_message as fb_send
+    result = fb_send(str(sender.uid), receiver_uid, message_text)
+    if result is None:
+        return JsonResponse({'status': 'error', 'message': 'Message delivery failed'}, status=500)
 
-        msg_uid, now_ms = result
-        from datetime import datetime
-        ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
+    msg_uid, now_ms = result
+    from datetime import datetime
+    ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%I:%M %p')
 
-        return JsonResponse({
-            'status': 'success',
-            'message_uid': msg_uid,
-            'message': message_text,
-            'timestamp': ts_str,
-            'sender': sender_name
-        })
-    return JsonResponse({'status': 'error'}, status=400)
+    return JsonResponse({
+        'status': 'success',
+        'message_uid': msg_uid,
+        'message': message_text,
+        'timestamp': ts_str,
+        'sender': sender_name
+    })
 
 
-@csrf_exempt
+@require_POST
 def edit_chat_message(request):
-    if request.method != 'POST':
-        return JsonResponse({'status': 'error'}, status=400)
     sender = request.user
     if not sender.is_authenticated:
         return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=403)
@@ -2065,10 +2061,8 @@ def edit_chat_message(request):
     return JsonResponse({'status': 'success'})
 
 
-@csrf_exempt
+@require_POST
 def delete_chat_message(request):
-    if request.method != 'POST':
-        return JsonResponse({'status': 'error'}, status=400)
     sender = request.user
     if not sender.is_authenticated:
         return JsonResponse({'status': 'error', 'message': 'Not authenticated'}, status=403)
@@ -2497,9 +2491,9 @@ def firebase_notification_mark_all_read(request):
     return JsonResponse({'status': 'ok'})
 
 
-@csrf_exempt
-@require_POST
 def update_last_seen(request):
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error'}, status=405)
     if not request.user.is_authenticated:
         return JsonResponse({'status': 'ok'})
     request.user.last_seen = timezone.now()

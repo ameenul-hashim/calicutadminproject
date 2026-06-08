@@ -201,7 +201,7 @@ SESSION_COOKIE_NAME = 'neolearner_sessionid'
 # Enterprise CSRF Hardening: Store token in session to prevent subdomain clashes
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_NAME = 'neolearner_csrftoken'
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
 # Password validation
