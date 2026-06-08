@@ -35,7 +35,7 @@ _PUBLIC_URL_NAMES = frozenset([
     'home', 'login', 'signup', 'teacher_login', 'teacher_signup',
     'admin_login', 'forgot_password', 'verify_reset_code', 'set_new_password',
     'verify_otp', 'reset_password', 'logout', 'admin_logout',
-    'student_view_auth', 'teacher_view_auth', 'health_check', 'status_page',
+    'student_view_auth', 'teacher_view_auth', 'health_check', 'firebase_health_check', 'status_page',
     'trigger_backup', 'dismiss_updates',
 ])
 
