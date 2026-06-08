@@ -66,9 +66,8 @@
             {% csrf_token %}
             
             {% if otp_required %}
-                <!-- 2FA STEP -->
+                <!-- 2FA STEP — password is NEVER exposed to the template -->
                 <input type="hidden" name="username" value="{{ username }}">
-                <input type="hidden" name="password" value="{{ password }}">
                 <input type="hidden" name="otp_step" value="true">
                 
                 <div class="text-center mb-6">

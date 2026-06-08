@@ -15,13 +15,25 @@ key: str = os.getenv("SUPABASE_KEY")
 bucket_name: str = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
 video_bucket: str = os.getenv("SUPABASE_VIDEO_BUCKET", bucket_name)
 
-# Initialize client
+# Initialize main client (proof PDFs, general storage)
 supabase: Client = None
 if url and key:
     try:
         supabase = create_client(url, key)
     except Exception as e:
         logger.error(f"Supabase Client Init Error: {e}")
+
+# Resource-specific Supabase (teacher-uploaded course materials)
+resource_url: str = os.getenv("RESOURCE_SUPABASE_URL")
+resource_key: str = os.getenv("RESOURCE_SUPABASE_SERVICE_ROLE_KEY") or os.getenv("RESOURCE_SUPABASE_ANON_KEY")
+resource_bucket_name: str = os.getenv("RESOURCE_SUPABASE_BUCKET", "resources")
+
+resource_supabase: Client = None
+if resource_url and resource_key:
+    try:
+        resource_supabase = create_client(resource_url, resource_key)
+    except Exception as e:
+        logger.error(f"Resource Supabase Client Init Error: {e}")
 
 def validate_pdf(file_content, filename=None):
     """
@@ -208,7 +220,15 @@ def upload_video_to_supabase(video_file, lesson_uid):
 # === Functions required by storage_manager.py ===
 
 def get_client(use_resource_project=True):
-    """Returns the shared Supabase client instance."""
+    """Returns the appropriate Supabase client instance.
+    - use_resource_project=True  → Resource Supabase (teacher-uploaded course materials)
+    - use_resource_project=False → Main Supabase (proof PDFs, general storage)
+    """
+    if use_resource_project:
+        if not resource_supabase:
+            logger.warning("Resource Supabase client not initialized")
+            return None
+        return resource_supabase
     if not supabase:
         logger.warning("Supabase client not initialized")
         return None

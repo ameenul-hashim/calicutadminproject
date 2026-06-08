@@ -24,8 +24,14 @@ if SENTRY_DSN:
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-fallback-key-for-dev-and-build')
+SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = 'django-insecure-dev-only-key-not-for-production'
+    else:
+        from django.core.exceptions import ImproperlyConfigured
+        raise ImproperlyConfigured("SECRET_KEY environment variable is required in production")
 
 # --- Dynamic Host & CSRF Configuration (Render-compatible) ---
 # Reads from environment variables — format: comma-separated, no spaces.
@@ -59,12 +65,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',
     'accounts',
     'custom_admin',
     'cloudinary_storage',
     'cloudinary',
-    # 'axes',  # Brute-force protection (add back in production)
+    'axes',  # Brute-force protection
 ]
 
 MIDDLEWARE = [
@@ -84,11 +89,19 @@ MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
     'accounts.middleware.SlowQueryMonitorMiddleware',
+    'axes.middleware.AxesMiddleware',
 ]
 
 AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
+
+# Axes Brute-Force Protection
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)
@@ -115,7 +128,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'elearning_project.wsgi.application'
-ASGI_APPLICATION = 'elearning_project.asgi.application'
+
 
 # SSL/Proxy Configuration for Render
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -140,7 +153,7 @@ else:
     }
 
 
-# Scalable Caching & Channel Layers
+
 REDIS_URL = os.getenv('REDIS_URL')
 
 if REDIS_URL:
@@ -150,27 +163,13 @@ if REDIS_URL:
             'LOCATION': REDIS_URL,
         }
     }
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                "hosts": [REDIS_URL],
-                "symmetric_encryption_keys": [SECRET_KEY],
-            },
-        },
-    }
 else:
-    # Fallback to local memory for both cache and channels if Redis is not provided
+    # Fallback to local memory for cache if Redis is not provided
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
             'LOCATION': 'unique-snowflake',
         }
-    }
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
     }
 
 if not DEBUG:
@@ -202,7 +201,7 @@ SESSION_COOKIE_NAME = 'neolearner_sessionid'
 # Enterprise CSRF Hardening: Store token in session to prevent subdomain clashes
 CSRF_USE_SESSIONS = True
 CSRF_COOKIE_NAME = 'neolearner_csrftoken'
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 SESSION_COOKIE_HTTPONLY = True
 
 # Password validation
@@ -259,6 +258,18 @@ else:
     EMAIL_TIMEOUT = 10  # 10 second timeout to avoid hanging
 
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', os.getenv('EMAIL_HOST_USER', 'noreply@neolearner.com'))
+
+# Backup Configuration
+BACKUP_ENABLED = os.getenv('BACKUP_ENABLED', 'True') == 'True'
+BACKUP_TIME = os.getenv('BACKUP_TIME', '02:00')
+BACKUP_RETENTION_DAYS = int(os.getenv('BACKUP_RETENTION_DAYS', '30'))
+BACKUP_MAX_RETRIES = int(os.getenv('BACKUP_MAX_RETRIES', '3'))
+BACKUP_VERIFY_SHA256 = os.getenv('BACKUP_VERIFY_SHA256', 'True') == 'True'
+BACKUP_RESTORE_TEST_DAY = os.getenv('BACKUP_RESTORE_TEST_DAY', 'Sunday')
+BACKUP_REPORT_EMAIL = os.getenv('BACKUP_REPORT_EMAIL', '')
+BACKUP_DATABASE_FOLDER = os.getenv('BACKUP_DATABASE_FOLDER', 'Database')
+BACKUP_SIGNUP_FOLDER = os.getenv('BACKUP_SIGNUP_FOLDER', 'Signup_Proofs')
+BACKUP_RESOURCE_FOLDER = os.getenv('BACKUP_RESOURCE_FOLDER', 'Teacher_Resources')
 
 # Production & Security Logging
 LOGGING = {

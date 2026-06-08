@@ -1,0 +1,147 @@
+{% extends "custom_admin/base_admin.html" %}
+{% block title %}Backup History | Neo Learner{% endblock %}
+{% block extra_css %}
+<style>
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .filter-bar input, .filter-bar select {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 0.85rem;
+        background: white;
+    }
+    .filter-bar button {
+        padding: 0.5rem 1rem;
+        background: #6366f1;
+        color: white;
+        border: none;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.6rem;
+        border-radius: 9999px;
+        font-weight: 700;
+        font-size: 0.7rem;
+    }
+    .status-badge.success { background: #dcfce7; color: #166534; }
+    .status-badge.failed { background: #fee2e2; color: #991b1b; }
+    .status-badge.running, .status-badge.uploading, .status-badge.verifying, .status-badge.retrying { background: #dbeafe; color: #1e40af; }
+    .status-badge.pending { background: #fef9c3; color: #854d0e; }
+    .verify-badge.verified { color: #10b981; }
+    .verify-badge.mismatch { color: #ef4444; }
+    .verify-badge.pending { color: #f59e0b; }
+</style>
+{% endblock %}
+
+{% block header_title %}📋 Backup History{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1rem;">
+    <div style="font-size: 0.85rem; color: #64748b;">
+        <a href="{% url 'admin_dashboard' %}" style="color: #6366f1; text-decoration: none;">Dashboard</a>
+        <span style="margin: 0 0.4rem;">›</span>
+        <a href="{% url 'backup_center' %}" style="color: #6366f1; text-decoration: none;">Backup Center</a>
+        <span style="margin: 0 0.4rem;">›</span>
+        <span style="color: #0f172a; font-weight: 600;">History</span>
+    </div>
+</div>
+
+<form method="GET" action="{% url 'backup_history' %}">
+    <div class="filter-bar">
+        <input type="text" name="q" placeholder="Search filename, SHA256..." value="{{ query }}" style="min-width: 200px;">
+        <select name="type">
+            <option value="">All Types</option>
+            {% for bt in backup_types %}
+            <option value="{{ bt }}" {% if filter_type == bt %}selected{% endif %}>{{ bt }}</option>
+            {% endfor %}
+        </select>
+        <select name="status">
+            <option value="">All Status</option>
+            {% for sc in status_choices %}
+            <option value="{{ sc }}" {% if filter_status == sc %}selected{% endif %}>{{ sc }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit">🔍 Search</button>
+        <a href="{% url 'backup_history' %}" style="padding: 0.5rem 1rem; color: #64748b; text-decoration: none;">Clear</a>
+        <a href="{% url 'backup_history_csv' %}?q={{ query }}&type={{ filter_type }}&status={{ filter_status }}" style="padding: 0.5rem 1rem; background: #10b981; color: white; border-radius: 0.5rem; text-decoration: none; font-weight: 600; font-size: 0.85rem;">📥 CSV Export</a>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Filename</th>
+                <th>SHA256</th>
+                <th>Size</th>
+                <th>Duration</th>
+                <th>Drive ID</th>
+                <th>Status</th>
+                <th>Verify</th>
+                <th>Retry</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for backup in page_obj %}
+            <tr>
+                <td style="white-space: nowrap;">{{ backup.created_at|date:"Y-m-d H:i" }}</td>
+                <td><span class="status-badge" style="background: #e0f2fe; color: #0369a1;">{{ backup.get_backup_type_display }}</span></td>
+                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">{{ backup.filename }}</td>
+                <td style="font-family: monospace; font-size: 0.75rem;">{{ backup.sha256|default:"—"|truncatechars:16 }}</td>
+                <td>{{ backup.file_size|filesizeformat|default:"—" }}</td>
+                <td>{{ backup.duration_seconds|floatformat:1 }}s</td>
+                <td style="font-family: monospace; font-size: 0.7rem;">{{ backup.drive_file_id|default:"—"|truncatechars:20 }}</td>
+                <td><span class="status-badge {{ backup.status|lower }}">{{ backup.get_status_display }}</span></td>
+                <td>
+                    <span class="verify-badge {{ backup.verify_status|lower }}">
+                        {% if backup.verify_status == 'VERIFIED' %}✅{% elif backup.verify_status == 'MISMATCH' %}❌{% else %}⏳{% endif %}
+                        {{ backup.get_verify_status_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if backup.status == 'FAILED' and backup.retry_count < backup.max_retries %}
+                    <form method="POST" action="{% url 'retry_failed_backups' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" style="background: none; border: none; color: #6366f1; cursor: pointer; font-size: 0.75rem; text-decoration: underline;">Retry ({{ backup.retry_count }}/{{ backup.max_retries }})</button>
+                    </form>
+                    {% else %}
+                    <span style="font-size: 0.75rem; color: #94a3b8;">{{ backup.retry_count }}/{{ backup.max_retries }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="10" style="text-align: center; padding: 2rem; color: #94a3b8;">No backups found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.paginator.num_pages > 1 %}
+<div style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 1.5rem;">
+    {% if page_obj.has_previous %}
+    <a href="?page=1{% if query %}&q={{ query }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}" style="padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; text-decoration: none; color: #64748b;">&laquo;</a>
+    <a href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}" style="padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; text-decoration: none; color: #64748b;">&lsaquo;</a>
+    {% endif %}
+    <span style="padding: 0.5rem 0.75rem; color: #64748b;">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+    {% if page_obj.has_next %}
+    <a href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}" style="padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; text-decoration: none; color: #64748b;">&rsaquo;</a>
+    <a href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}{% if filter_type %}&type={{ filter_type }}{% endif %}{% if filter_status %}&status={{ filter_status }}{% endif %}" style="padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.5rem; text-decoration: none; color: #64748b;">&raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

@@ -55,11 +55,23 @@ urlpatterns = [
     path('notifications/', views.admin_all_notifications, name='admin_all_notifications'),
     path('enterprise-monitor/', views.enterprise_monitor, name='enterprise_monitor'),
     path('system-audit/', views.system_audit_view, name='system_audit'),
+    path('enterprise-audit-report/', views.enterprise_audit_report, name='enterprise_audit_report'),
     path('master-audit-summary/', views.master_audit_summary_view, name='master_audit_summary'),
     path('secure-pdf-access/<uuid:user_uid>/', views.proxy_pdf_access, name='proxy_pdf_access'),
     path('deleted-courses/', views.deleted_courses_view, name='deleted_courses'),
     path('course/restore/<uuid:course_uid>/', views.admin_restore_course, name='admin_restore_course'),
     path('course/permanent-delete/secure/<uuid:course_uid>/', views.admin_permanent_delete_course_secure, name='admin_permanent_delete_course_secure'),
+
+    # Backup Center
+    path('backup-center/', views.backup_center, name='backup_center'),
+    path('backup-center/run-database-backup/', views.run_database_backup, name='run_database_backup'),
+    path('backup-center/retry-failed/', views.retry_failed_backups, name='retry_failed_backups'),
+    path('backup-center/verify-all/', views.verify_all_backups, name='verify_all_backups'),
+    path('backup-center/export-report/', views.export_backup_report, name='export_backup_report'),
+    path('backup-center/restore-test/', views.run_restore_test, name='run_restore_test'),
+    path('backup-center/history/', views.backup_history, name='backup_history'),
+    path('backup-center/history/csv/', views.backup_history_csv, name='backup_history_csv'),
+    path('drive-diagnostics/', views.drive_diagnostics, name='drive_diagnostics'),
 ]
 
 

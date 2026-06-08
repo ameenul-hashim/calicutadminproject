@@ -8,24 +8,29 @@ def pending_counts(request):
             return {}
 
         user = request.user
-        cache_key = f"pending_counts_{user.id}_{user.user_type}"
-        try:
-            cached_context = cache.get(cache_key)
-            if cached_context:
-                return cached_context
-        except Exception:
-            pass
+        is_admin = user.user_type == 'ADMIN'
+
+        # Admins always get fresh counts (no cache). Other users can use cached.
+        if not is_admin:
+            cache_key = f"pending_counts_{user.id}_{user.user_type}"
+            try:
+                cached_context = cache.get(cache_key)
+                if cached_context:
+                    return cached_context
+            except Exception:
+                pass
 
         context = {
             'is_admin_preview': request.session.get('student_view_unlocked', False)
         }
 
         from accounts.utils.notification_helper import get_notifications, get_unread_count
-        context['notifications'] = get_notifications(user_obj=user)[:10]
+        notifs, _ = get_notifications(user_obj=user)
+        context['notifications'] = notifs[:10]
         context['unread_notifications_count'] = get_unread_count(user_obj=user)
 
-        if request.user.user_type == 'ADMIN':
-            from accounts.models import CustomUser, Course, DeletionRequest
+        if is_admin:
+            from accounts.models import CustomUser, Course, DeletionRequest, BackupLog
             from django.db.models import Count, Q
             counts = CustomUser.objects.filter(
                 Q(user_type='STUDENT', status='PENDING') |
@@ -45,8 +50,15 @@ def pending_counts(request):
             context['pending_courses_total'] = pending_courses + courses_with_updates
             context['pending_deletions_count'] = DeletionRequest.objects.filter(status='PENDING').count()
             context['unread_admin_notifs'] = context['unread_notifications_count']
+            context['backup_failed_count'] = BackupLog.objects.filter(status='FAILED').count()
+            context['backup_pending_count'] = BackupLog.objects.filter(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
+            try:
+                from accounts.utils.firebase_chat import get_unread_count as chat_unread
+                context['support_chat_unread'] = chat_unread(str(user.uid), user.user_type)
+            except Exception:
+                context['support_chat_unread'] = 0
 
-        elif request.user.user_type == 'TEACHER':
+        elif user.user_type == 'TEACHER':
             from accounts.models import Course
             from django.db.models import Count, Q
             teacher_counts = Course.objects.filter(teacher=request.user).aggregate(
@@ -56,25 +68,47 @@ def pending_counts(request):
             context['teacher_pending_approvals'] = teacher_counts['pending']
             context['teacher_rejected_courses'] = teacher_counts['rejected']
             context['unread_teacher_notifs'] = context['unread_notifications_count']
+            try:
+                from accounts.utils.firebase_chat import get_unread_count as chat_unread
+                context['support_chat_unread'] = chat_unread(str(user.uid), user.user_type)
+            except Exception:
+                context['support_chat_unread'] = 0
 
-        elif request.user.user_type == 'STUDENT':
+        elif user.user_type == 'STUDENT':
             context['unread_student_notifs'] = context['unread_notifications_count']
 
-        # Cleanup old notifications once per hour (moved out of context processor logic)
-        cleanup_cache_key = "cleanup_notifications_last_run"
+        # Hourly cleanup of old data (notifications, analytics, support chat)
+        cleanup_cache_key = "cleanup_last_run"
         last_cleanup = cache.get(cleanup_cache_key, 0)
         if _time() - last_cleanup > 3600:
             try:
                 from accounts.utils.notification_helper import cleanup_old_notifications
                 cleanup_old_notifications()
-                cache.set(cleanup_cache_key, _time(), 7200)
             except Exception:
                 pass
+            try:
+                from accounts.utils.firebase_db import run_all_cleanup
+                run_all_cleanup()
+            except Exception:
+                pass
+            try:
+                from accounts.utils.firebase_analytics import analytics_cleanup
+                analytics_cleanup(days=30)
+            except Exception:
+                pass
+            try:
+                from accounts.utils.firebase_chat import cleanup_old_messages
+                cleanup_old_messages(days=30)
+            except Exception:
+                pass
+            cache.set(cleanup_cache_key, _time(), 7200)
 
-        try:
-            cache.set(cache_key, context, 300)
-        except Exception:
-            pass
+        # Cache for non-admin only (5 min)
+        if not is_admin:
+            try:
+                cache.set(cache_key, context, 300)
+            except Exception:
+                pass
 
         return context
     except Exception:

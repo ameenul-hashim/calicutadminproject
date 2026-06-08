@@ -1,0 +1,314 @@
+{% extends "custom_admin/base_admin.html" %}
+{% block title %}Backup Center | Neo Learner{% endblock %}
+{% block extra_css %}
+<style>
+    .backup-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+    .backup-card {
+        background: white;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        border: 1px solid #e2e8f0;
+        transition: all 0.2s;
+    }
+    .backup-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+    }
+    .backup-card .label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.5rem;
+    }
+    .backup-card .value {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: #0f172a;
+    }
+    .backup-card .sub {
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-top: 0.25rem;
+    }
+    .health-ring {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        font-size: 2rem;
+        font-weight: 800;
+        color: white;
+    }
+    .health-ring.green { background: conic-gradient(#10b981 0% {{ stats.overall_health }}%, #e2e8f0 {{ stats.overall_health }}% 100%); }
+    .health-ring.yellow { background: conic-gradient(#f59e0b 0% {{ stats.overall_health }}%, #e2e8f0 {{ stats.overall_health }}% 100%); }
+    .health-ring.red { background: conic-gradient(#ef4444 0% {{ stats.overall_health }}%, #e2e8f0 {{ stats.overall_health }}% 100%); }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+    .status-badge.success { background: #dcfce7; color: #166534; }
+    .status-badge.failed { background: #fee2e2; color: #991b1b; }
+    .status-badge.running, .status-badge.uploading, .status-badge.verifying { background: #dbeafe; color: #1e40af; }
+    .status-badge.pending { background: #fef9c3; color: #854d0e; }
+    .action-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.6rem 1.2rem;
+        border-radius: 0.75rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+    .action-btn.primary { background: #6366f1; color: white; }
+    .action-btn.primary:hover { background: #4f46e5; }
+    .action-btn.success { background: #10b981; color: white; }
+    .action-btn.success:hover { background: #059669; }
+    .action-btn.warning { background: #f59e0b; color: white; }
+    .action-btn.warning:hover { background: #d97706; }
+    .action-btn.danger { background: #ef4444; color: white; }
+    .action-btn.danger:hover { background: #dc2626; }
+    .action-btn.outline { background: white; color: #64748b; border: 1px solid #e2e8f0; }
+    .action-btn.outline:hover { background: #f8fafc; }
+
+    .activity-feed {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .activity-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .backup-health-header { text-align: center; padding: 2rem; }
+</style>
+{% endblock %}
+
+{% block header_title %}💾 Backup Center{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 1rem;">
+    <div style="font-size: 0.85rem; color: #64748b;">
+        <a href="{% url 'admin_dashboard' %}" style="color: #6366f1; text-decoration: none;">Dashboard</a>
+        <span style="margin: 0 0.4rem;">›</span>
+        <span style="color: #0f172a; font-weight: 600;">Backup Center</span>
+    </div>
+</div>
+
+<!-- Overall Health -->
+<div class="backup-card" style="text-align: center; margin-bottom: 1.5rem;">
+    <div class="label">Overall Backup Health</div>
+    <div class="health-ring {% if stats.overall_health >= 90 %}green{% elif stats.overall_health >= 50 %}yellow{% else %}red{% endif %}" style="position: relative;">
+        <div style="position: absolute; width: 90px; height: 90px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; flex-direction: column;">
+            <span style="font-size: 1.75rem; font-weight: 800; color: {% if stats.overall_health >= 90 %}#10b981{% elif stats.overall_health >= 50 %}#f59e0b{% else %}#ef4444{% endif %};">{{ stats.overall_health }}%</span>
+        </div>
+    </div>
+    <div style="margin-top: 0.75rem;">
+        <span style="font-size: 0.9rem; color: #64748b;">{{ stats.successful_backups }} / {{ stats.total_backups }} successful</span>
+    </div>
+</div>
+
+<!-- Action Buttons -->
+<div class="action-bar">
+    <form method="POST" action="{% url 'run_database_backup' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="action-btn primary">🔄 Backup Database Now</button>
+    </form>
+    <form method="POST" action="{% url 'retry_failed_backups' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="action-btn warning">🔁 Retry Failed</button>
+    </form>
+    <form method="POST" action="{% url 'verify_all_backups' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="action-btn success">✅ Verify Backups</button>
+    </form>
+    <form method="POST" action="{% url 'run_restore_test' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="action-btn outline">🧪 Restore Test</button>
+    </form>
+    <form method="POST" action="{% url 'export_backup_report' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="action-btn outline">📊 Export Report</button>
+    </form>
+    <a href="{% url 'backup_history' %}" class="action-btn outline">📋 Full History</a>
+</div>
+
+<!-- Stats Cards -->
+<div class="backup-grid">
+    <!-- Database Backup -->
+    <div class="backup-card">
+        <div class="label">🗄️ Database Backup</div>
+        <div class="value">{{ db_count }}</div>
+        <div class="sub">
+            {% if stats.db_last %}
+                Last: {{ stats.db_last.created_at|timesince }} ago
+                <br>Size: {{ stats.db_last.file_size|filesizeformat }}
+                <br>SHA256: {{ stats.db_last.sha256|default:"—"|truncatechars:16 }}
+            {% else %}
+                Never backed up
+            {% endif %}
+        </div>
+        <div style="margin-top: 0.5rem;">
+            {% if stats.db_last %}
+                <span class="status-badge success">📁 Drive: {{ stats.db_last.drive_file_id|truncatechars:12 }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Signup PDF Backup -->
+    <div class="backup-card">
+        <div class="label">📄 Signup PDF Backup</div>
+        <div class="value">{{ stats.signup_total }}</div>
+        <div class="sub">
+            {{ stats.signup_today }} today
+            <br>Failed: {{ stats.signup_failed }}
+            <br>Pending: {{ stats.signup_pending }}
+            <br>Success Rate: {{ stats.signup_rate }}%
+        </div>
+    </div>
+
+    <!-- Teacher Resource Backup -->
+    <div class="backup-card">
+        <div class="label">📚 Teacher Resource Backup</div>
+        <div class="value">{{ stats.resource_total }}</div>
+        <div class="sub">
+            {{ stats.resource_today }} today
+            <br>Failed: {{ stats.resource_failed }}
+            <br>Pending: {{ stats.resource_pending }}
+            <br>Success Rate: {{ stats.resource_rate }}%
+        </div>
+    </div>
+
+    <!-- Next Scheduled Backup (Countdown) -->
+    <div class="backup-card" id="countdown-card">
+        <div class="label">⏰ Next Scheduled Backup</div>
+        <div class="value" id="countdown-value" style="font-size: 1.5rem;">
+            {% if stats.next_backup_seconds %}
+                <span id="countdown-display">{{ stats.next_backup_seconds|default:"--" }}</span>s
+            {% else %}
+                —
+            {% endif %}
+        </div>
+        <div class="sub" id="countdown-sub">
+            {% if stats.next_backup_seconds %}
+                Until next database backup
+            {% else %}
+                No schedule configured
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Monitoring Stats -->
+    <div class="backup-card">
+        <div class="label">📈 Performance</div>
+        <div class="sub" style="margin-top: 0.5rem;">
+            Avg Duration: <strong>{{ stats.avg_duration|default:"—" }}s</strong><br>
+            Fastest: <strong>{{ stats.fastest_duration|default:"—" }}s</strong><br>
+            Slowest: <strong>{{ stats.slowest_duration|default:"—" }}s</strong>
+        </div>
+    </div>
+
+    <div class="backup-card">
+        <div class="label">📊 Stats</div>
+        <div class="sub" style="margin-top: 0.5rem;">
+            Success Rate: <strong>{{ stats.success_rate|default:"0" }}%</strong><br>
+            Failure Rate: <strong>{{ stats.failure_rate|default:"0" }}%</strong><br>
+            Total Retries: <strong>{{ stats.retry_total }}</strong><br>
+            Storage: <strong>{{ stats.storage_total|filesizeformat }}</strong>
+        </div>
+    </div>
+
+    <!-- Google Drive Health -->
+    <div class="backup-card">
+        <div class="label">☁️ Google Drive</div>
+        <div class="value" style="font-size: 1.25rem;">
+            {% if stats.drive_health == 'CONNECTED' %}
+                <span style="color: #10b981;">✅ Connected</span>
+            {% elif stats.drive_configured %}
+                <span style="color: #f59e0b;">⚠️ {{ stats.drive_health }}</span>
+            {% else %}
+                <span style="color: #ef4444;">❌ Not Configured</span>
+            {% endif %}
+        </div>
+        <div class="sub">
+            {% if stats.drive_configured %}
+                Service account configured
+            {% else %}
+                Set GOOGLE_DRIVE_CREDENTIALS env var
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="backup-card">
+    <div class="label" style="margin-bottom: 1rem;">Recent Backup Activity</div>
+    <div class="activity-feed">
+        {% for backup in recent_backups %}
+        <div class="activity-item">
+            <div>
+                <strong>{{ backup.get_backup_type_display }}</strong>
+                <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.15rem;">{{ backup.filename }}</div>
+            </div>
+            <div style="text-align: right;">
+                <span class="status-badge {{ backup.status|lower }}">{{ backup.get_status_display }}</span>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.15rem;">{{ backup.created_at|timesince }} ago</div>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 2rem; color: #94a3b8;">No backups yet. Click "Backup Database Now" to start.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<script>
+// Countdown timer
+(function() {
+    var seconds = {{ stats.next_backup_seconds|default:"null" }};
+    var display = document.getElementById('countdown-display');
+    if (seconds !== null && display) {
+        setInterval(function() {
+            if (seconds <= 0) { location.reload(); return; }
+            seconds--;
+            var h = Math.floor(seconds / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            var s = seconds % 60;
+            display.textContent = (h > 0 ? h + 'h ' : '') + (m > 0 ? m + 'm ' : '') + s + 's';
+        }, 1000);
+    }
+})();
+
+// Auto-refresh every 30 seconds
+setTimeout(function() {
+    location.reload();
+}, 30000);
+</script>
+{% endblock %}

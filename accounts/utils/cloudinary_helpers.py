@@ -1,7 +1,10 @@
 import cloudinary.uploader
 import cloudinary.api
 import cloudinary
+import logging
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 # Explicitly configure cloudinary for use in helper functions
 if hasattr(settings, 'CLOUDINARY_STORAGE'):
@@ -30,7 +33,7 @@ def upload_temp_image(image_file):
         )
         return result.get('secure_url'), result.get('public_id')
     except Exception as e:
-        print(f"❌ Cloudinary Temp Upload Error: {str(e)}")
+        logger.error(f"Cloudinary Temp Upload Error: {str(e)}")
         return None, None
 
 def delete_temp_image(public_id):
@@ -40,10 +43,10 @@ def delete_temp_image(public_id):
     try:
         if public_id:
             cloudinary.uploader.destroy(public_id)
-            print(f"🗑️ Deleted temp image: {public_id}")
+            logger.info(f"Deleted temp image: {public_id}")
             return True
     except Exception as e:
-        print(f"❌ Cloudinary Delete Error: {str(e)}")
+        logger.error(f"Cloudinary Delete Error: {str(e)}")
     return False
 
 def delete_image(instance):
@@ -55,16 +58,16 @@ def delete_image(instance):
         # 1. Clean Main Image (User Profile or Course Thumbnail)
         if hasattr(instance, 'image_public_id') and instance.image_public_id:
             cloudinary.uploader.destroy(instance.image_public_id)
-            print(f"🗑️ Deleted Cloudinary Image: {instance.image_public_id}")
+            logger.info(f"Deleted Cloudinary Image: {instance.image_public_id}")
 
         # 2. Clean Legacy PDF Proof from Cloudinary if exists
         if hasattr(instance, 'pdf_public_id') and instance.pdf_public_id:
             cloudinary.uploader.destroy(instance.pdf_public_id, resource_type="raw")
-            print(f"🗑️ Deleted Legacy Cloudinary PDF: {instance.pdf_public_id}")
+            logger.info(f"Deleted Legacy Cloudinary PDF: {instance.pdf_public_id}")
             
         return True
     except Exception as e:
-        print(f"❌ Cloudinary Cleanup Error: {str(e)}")
+        logger.error(f"Cloudinary Cleanup Error: {str(e)}")
         return False
 
 def upload_image_only(image_file, folder="Neo Learner/uploads"):
@@ -77,7 +80,7 @@ def upload_image_only(image_file, folder="Neo Learner/uploads"):
             return None, None
         import uuid
         unique_id = f"img_{uuid.uuid4()}"
-        print(f"☁️ Uploading image only to Cloudinary (Folder: {folder})...")
+        logger.info(f"Uploading image only to Cloudinary (Folder: {folder})...")
         result = cloudinary.uploader.upload(
             image_file,
             public_id=unique_id,
@@ -88,7 +91,7 @@ def upload_image_only(image_file, folder="Neo Learner/uploads"):
         )
         return result.get('secure_url'), result.get('public_id')
     except Exception as e:
-        print(f"❌ Cloudinary Upload Only Error: {str(e)}")
+        logger.error(f"Cloudinary Upload Only Error: {str(e)}")
         return None, None
 
 def update_image(instance, image_file, folder="Neo Learner/uploads"):
@@ -99,7 +102,7 @@ def update_image(instance, image_file, folder="Neo Learner/uploads"):
     """
     try:
         if not image_file:
-            print(f"⚠️ No image file provided for {instance}")
+            logger.warning(f"No image file provided for {instance}")
             return False
 
         # 0. Handle Lazy Objects (e.g. request.user)
@@ -107,21 +110,21 @@ def update_image(instance, image_file, folder="Neo Learner/uploads"):
         if isinstance(instance, SimpleLazyObject):
             from django.contrib.auth import get_user_model
             instance = get_user_model().objects.get(pk=instance.pk)
-            print(f"🔄 Resolved LazyObject to real user: {instance.username}")
+            logger.info(f"Resolved LazyObject to real user: {instance.username}")
 
         # 1. Cleanup Old Image first
         if hasattr(instance, 'image_public_id') and instance.image_public_id:
             try:
                 cloudinary.uploader.destroy(instance.image_public_id)
-                print(f"🗑️ Cleaned up old image: {instance.image_public_id}")
+                logger.info(f"Cleaned up old image: {instance.image_public_id}")
             except Exception as cleanup_err:
-                print(f"⚠️ Non-critical cleanup error: {str(cleanup_err)}")
+                logger.warning(f"Non-critical cleanup error: {str(cleanup_err)}")
 
         # 2. Upload New Image
         import uuid
         unique_id = f"img_{uuid.uuid4()}"
         
-        print(f"☁️ Uploading image to Cloudinary (Folder: {folder})...")
+        logger.info(f"Uploading image to Cloudinary (Folder: {folder})...")
         result = cloudinary.uploader.upload(
             image_file,
             public_id=unique_id,
@@ -150,18 +153,17 @@ def update_image(instance, image_file, folder="Neo Learner/uploads"):
             # Save the entire instance to ensure database persistence
             instance.save()
             
-            print(f"✅ Successfully updated Image for {instance}")
-            print(f"🔗 URL: {instance.image}")
+            logger.info(f"Successfully updated Image for {instance}")
+            logger.debug(f"Image URL: {instance.image}")
             return True
         else:
-            print(f"❌ Cloudinary returned empty result for {instance}")
+            logger.error(f"Cloudinary returned empty result for {instance}")
             return False
 
     except Exception as e:
         import traceback
-        print(f"❌ Cloudinary Update Error: {str(e)}")
-        print(traceback.format_exc())
-        return False
+        logger.error(f"Cloudinary Update Error: {str(e)}")
+        logger.error(traceback.format_exc())
         return False
 
 def approve_user(user, approved_by=None):
@@ -177,10 +179,10 @@ def approve_user(user, approved_by=None):
         from django.utils import timezone
         user.approved_at = timezone.now()
         user.save()
-        print(f"✅ User {user.username} approved.")
+        logger.info(f"User {user.username} approved.")
         return True
     except Exception as e:
-        print(f"❌ approve_user Error: {str(e)}")
+        logger.error(f"approve_user Error: {str(e)}")
         return False
 
 def reject_user_and_clean(user, rejected_by=None):
@@ -193,32 +195,31 @@ def reject_user_and_clean(user, rejected_by=None):
         if hasattr(user, 'image_public_id') and user.image_public_id:
             try:
                 cloudinary.uploader.destroy(user.image_public_id)
-                print(f"🗑️ Deleted Cloudinary image: {user.image_public_id}")
+                logger.info(f"Deleted Cloudinary image: {user.image_public_id}")
             except Exception as e:
-                print(f"⚠️ Could not delete Cloudinary image: {e}")
+                logger.warning(f"Could not delete Cloudinary image: {e}")
 
         if hasattr(user, 'pdf_public_id') and user.pdf_public_id:
             try:
                 cloudinary.uploader.destroy(user.pdf_public_id, resource_type="image")
-                print(f"🗑️ Deleted Cloudinary proof: {user.pdf_public_id}")
+                logger.info(f"Deleted Cloudinary proof: {user.pdf_public_id}")
             except Exception as e:
-                print(f"⚠️ Could not delete Cloudinary proof image: {e}")
+                logger.warning(f"Could not delete Cloudinary proof image: {e}")
 
         # 2. Delete Supabase PDF if exists
         if hasattr(user, 'pdf_path') and user.pdf_path:
             try:
                 from accounts.utils.supabase_storage import delete_pdf
                 delete_pdf(user.pdf_path)
-                print(f"🗑️ Deleted Supabase PDF: {user.pdf_path}")
+                logger.info(f"Deleted Supabase PDF: {user.pdf_path}")
             except Exception as e:
-                print(f"⚠️ Could not delete Supabase PDF: {e}")
+                logger.warning(f"Could not delete Supabase PDF: {e}")
 
         # 3. Permanently delete user record
         username = user.username
         user.delete()
-        print(f"✅ User {username} permanently deleted.")
+        logger.info(f"User {username} permanently deleted.")
         return True
     except Exception as e:
-        print(f"❌ reject_user_and_clean Error: {str(e)}")
+        logger.error(f"reject_user_and_clean Error: {str(e)}")
         return False
-

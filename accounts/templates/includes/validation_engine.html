@@ -56,7 +56,7 @@
 
 <script>
     const Validation = {
-        email: (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+        email: (email) => /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(email),
         phone: (phone) => /^[0-9]{10}$/.test(phone),
         password: (pass) => {
             let score = 0;

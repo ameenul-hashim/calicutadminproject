@@ -277,7 +277,7 @@ def run_backup():
         if not health["Google Drive"] or not health["Supabase Storage"]:
             raise RuntimeError(f"Critical API health check failed: {health}")
 
-        root_id = get_or_create_folder(service, "Neo Learner_Backups")
+        root_id = get_or_create_folder(service, "NeoLearner_Backups")
         db_folder_id = get_or_create_folder(service, "database", parent_id=root_id)
         pdf_root_id = get_or_create_folder(service, "pdfs", parent_id=root_id)
 

@@ -3,6 +3,10 @@
 
 {% block title %}Manage Content | Neo Learner{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
+{% endblock %}
+
 {% block page_header %}
 <div style="width: 100%;">
     <div style="margin-bottom: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
@@ -479,9 +483,7 @@
                 </div>
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
-                    {% if res.status == 'APPROVED' or res.status == 'PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
-                    {% endif %}
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
                         {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
@@ -531,9 +533,7 @@
                 </div>
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
-                    {% if res.status == 'APPROVED' or res.status == 'PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
-                    {% endif %}
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
                         {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
@@ -583,9 +583,7 @@
                 </div>
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
-                    {% if res.status == 'APPROVED' or res.status == 'PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
-                    {% endif %}
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
                         {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
@@ -726,48 +724,7 @@
 </div>
 
 <script>
-let ytApiLoaded = false;
-let ytLoadCallbacks = [];
-let currentYTPlayer = null;
-
-function loadYTAPI(callback) {
-    if (window.YT && window.YT.Player) { callback(); return; }
-    ytLoadCallbacks.push(callback);
-    if (!ytApiLoaded) {
-        ytApiLoaded = true;
-        var tag = document.createElement('script');
-        tag.src = 'https://www.youtube.com/iframe_api';
-        document.head.appendChild(tag);
-    }
-}
-window.onYouTubeIframeAPIReady = function() {
-    var cbs = ytLoadCallbacks.slice();
-    ytLoadCallbacks = [];
-    cbs.forEach(function(cb) { cb(); });
-};
-
-function playYoutubeVideo(wrapper, videoId) {
-    wrapper.innerHTML = '<div id="ytplayer-el" style="width:100%;height:100%;"></div>';
-    setTimeout(function() {
-        try {
-            currentYTPlayer = new YT.Player('ytplayer-el', {
-                videoId: videoId,
-                height: '100%',
-                width: '100%',
-                playerVars: { autoplay: 1, rel: 0 },
-                events: {
-                    onReady: function() {},
-                    onError: function() {
-                        if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
-                        wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0f172a;color:#94a3b8;font-size:1rem;text-align:center;padding:2rem;box-sizing:border-box;">Unable to play this video. <a href="https://www.youtube.com/watch?v=' + videoId + '" target="_blank" rel="noopener" style="color:#6366f1;margin-left:0.3rem;">Open on YouTube</a></div>';
-                    }
-                }
-            });
-        } catch(e) {
-            wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;background:#0f172a;color:#94a3b8;font-size:1rem;text-align:center;padding:2rem;box-sizing:border-box;">Unable to play this video. <a href="https://www.youtube.com/watch?v=' + videoId + '" target="_blank" rel="noopener" style="color:#6366f1;margin-left:0.3rem;">Open on YouTube</a></div>';
-        }
-    }, 150);
-}
+let currentPlyr = null;
 
 function toggleChapter(header) {
     var body = header.nextElementSibling;
@@ -825,24 +782,31 @@ function openVideoPlayer(type, src) {
     var wrapper = document.getElementById('videoPlayerWrapper');
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+    if (currentPlyr) { currentPlyr.destroy(); currentPlyr = null; }
+    wrapper.innerHTML = '';
+    var plyrConfig = {
+        controls: ['play-large', 'restart', 'rewind', 'play', 'fast-forward', 'progress', 'current-time', 'duration', 'mute', 'volume', 'settings', 'pip', 'airplay', 'fullscreen'],
+        settings: ['quality', 'speed', 'loop'],
+        speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
+        autoplay: true,
+        youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+    };
     if (type === 'mp4') {
-        wrapper.innerHTML = '<video src="' + src + '" controls autoplay style="width:100%;height:100%;"></video>';
-    } else if (type === 'youtube') {
-        wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
-        loadYTAPI(function() { playYoutubeVideo(wrapper, src); });
-    } else if (type === 'url') {
-        var vid = extractYoutubeId(src);
-        if (vid) {
-            wrapper.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;font-size:1.1rem;">&#x23F3; Loading player...</div>';
-            loadYTAPI(function() { playYoutubeVideo(wrapper, vid); });
-        } else {
-            window.open(src, '_blank');
-            closeVideoPlayer();
+        wrapper.innerHTML = '<video class="plyr-player" playsinline controls style="width:100%;height:100%;"><source src="' + src + '" type="video/mp4"></video>';
+        currentPlyr = new Plyr(wrapper.querySelector('video'), plyrConfig);
+    } else if (type === 'youtube' || type === 'url') {
+        var videoId = src;
+        if (type === 'url') {
+            var extracted = extractYoutubeId(src);
+            if (extracted) { videoId = extracted; }
+            else { window.open(src, '_blank'); closeVideoPlayer(); return; }
         }
+        wrapper.innerHTML = '<div id="plyr-youtube-player" data-plyr-provider="youtube" data-plyr-embed-id="' + videoId + '" style="width:100%;height:100%;"></div>';
+        currentPlyr = new Plyr('#plyr-youtube-player', plyrConfig);
     }
 }
 function closeVideoPlayer() {
-    if (currentYTPlayer) { currentYTPlayer.destroy(); currentYTPlayer = null; }
+    if (currentPlyr) { currentPlyr.destroy(); currentPlyr = null; }
     var modal = document.getElementById('videoPlayerModal');
     var wrapper = document.getElementById('videoPlayerWrapper');
     modal.style.display = 'none';
@@ -941,4 +905,8 @@ document.addEventListener('keydown', function(e) {
 })();
 
 </script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
 {% endblock %}

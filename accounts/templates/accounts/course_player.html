@@ -54,61 +54,6 @@
         .sidebar-header { padding: 1.5rem; border-bottom: 1px solid #334155; }
         .sidebar-header h2 { margin: 0; font-size: 1.2rem; }
         
-        /* Accordion Style Sidebar */
-        .lesson-accordion { display: flex; flex-direction: column; }
-        .accordion-item { border-bottom: 1px solid #334155; }
-        
-        .accordion-header {
-            padding: 1.25rem 1.5rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            transition: background 0.2s;
-            position: relative;
-        }
-        .accordion-header:hover { background: #334155; }
-        .accordion-header.active { background: #1e293b; border-left: 4px solid var(--primary-blue); }
-        
-        .lesson-order {
-            width: 24px;
-            height: 24px;
-            background: #334155;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.75rem;
-            font-weight: 700;
-            color: #94a3b8;
-        }
-        .accordion-header.active .lesson-order { background: var(--primary-blue); color: white; }
-        
-        .accordion-header h4 { margin: 0; font-size: 0.95rem; font-weight: 500; flex: 1; }
-        .chevron { font-size: 0.8rem; color: #64748b; transition: transform 0.3s; }
-        .accordion-header.active .chevron { transform: rotate(180deg); }
-        
-        .accordion-content {
-            background: #0f172a;
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease-out;
-        }
-        .accordion-header.active + .accordion-content { max-height: 200px; }
-        
-        .sub-item {
-            padding: 0.8rem 3.5rem;
-            font-size: 0.85rem;
-            color: #94a3b8;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.8rem;
-            transition: all 0.2s;
-        }
-        .sub-item:hover { color: white; background: #1e293b; }
-        .sub-item.active { color: var(--primary-blue); font-weight: 600; background: #0f172a; }
-        
         /* Video Area */
         .video-main { flex: 1; background: #000; position: relative; display: flex; flex-direction: column; min-height: 0; }
         .video-wrapper { flex: 1; display: flex; align-items: center; justify-content: center; background: #000; overflow: hidden; position: relative; min-height: 0; z-index: 1; }
@@ -229,333 +174,183 @@
                     <h2>Course Content</h2>
                 </div>
                 
-                <!-- Tab Navigation -->
-                <div style="display: flex; border-bottom: 1px solid #334155; margin-bottom: 1rem;">
-                    <button onclick="switchTab('videos')" id="tab-videos" style="flex: 1; width: 50%; padding: 0.75rem; background: transparent; color: white; border: none; border-bottom: 2px solid #6366f1; font-weight: 600; cursor: pointer; transition: all 0.2s;">Videos</button>
-                    <button onclick="switchTab('resources')" id="tab-resources" style="flex: 1; width: 50%; padding: 0.75rem; background: transparent; color: #94a3b8; border: none; border-bottom: 2px solid transparent; font-weight: 600; cursor: pointer; transition: all 0.2s;">Resources</button>
-                </div>
-
-                <!-- Videos Section -->
-                <div id="content-videos" class="lesson-accordion">
+                <div class="unified-accordion">
                     {% for chapter in chapters %}
-                    {% with forloop.counter0 as chapter_index %}
-                    <div style="padding: 0.75rem 1.5rem 0.25rem; font-size: 0.75rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.05em; border-top: {% if not forloop.first %}1px solid #334155{% else %}none{% endif %}; margin-top: {% if not forloop.first %}0.5rem{% endif %};">
-                        {{ chapter.name }} <span style="color: #64748b; font-weight: 500;">({{ chapter.videos_count }})</span>
-                    </div>
-                    {% for lesson in chapter.videos %}
-                    <div class="accordion-item" id="lesson-{{ lesson.id }}">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
-                            <div class="lesson-order">{{ forloop.counter }}</div>
-                            <h4>{{ lesson.title }}</h4>
-                            <span class="chevron">▼</span>
+                    <div class="chapter-item">
+                        <div class="chapter-header" onclick="toggleChapter(this)">
+                            <span class="ch-icon">📂</span>
+                            <span class="ch-name">{{ chapter.name }}</span>
+                            <span class="ch-counts">{{ chapter.videos_count }}L{% if chapter.resources_count %} · {{ chapter.resources_count }}R{% endif %}</span>
+                            <span class="chevron">▶</span>
                         </div>
-                        <div class="accordion-content">
-                            {% if lesson.video_url or lesson.video_file %}
-                            <div class="sub-item video-link" 
-                                 onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}')">
-                                🎥 Watch Video
+                        <div class="chapter-body">
+                            {% if chapter.videos %}
+                            <div class="ch-section">
+                                <div class="ch-section-title">🎥 Lessons</div>
+                                {% for lesson in chapter.videos %}
+                                <div class="lesson-item" onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}')">
+                                    <div class="lesson-order">{{ forloop.counter }}</div>
+                                    <div class="lesson-title">{{ lesson.title }}</div>
+                                    {% if lesson.video_url or lesson.video_file %}
+                                    <div class="lesson-type">▶</div>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                            
+                            {% if chapter.resources %}
+                            <div class="ch-section resources-section">
+                                <div class="ch-section-title">📚 Resources</div>
+                                {% if chapter.cat_counts.ENGLISH %}
+                                <div class="res-category">
+                                    <div class="res-cat-header" onclick="toggleResCategory(this)">
+                                        <span style="color:#10b981;font-weight:700;">English ({{ chapter.cat_counts.ENGLISH }})</span>
+                                        <span class="res-chevron">▶</span>
+                                    </div>
+                                    <div class="res-cat-body">
+                                        {% for res in chapter.resources %}
+                                        {% if res.category == 'ENGLISH' %}
+                                        <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
+                                            <span class="res-icon">📄</span>
+                                            <div class="res-meta">
+                                                <div class="res-name">{{ res.title }}</div>
+                                                <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if chapter.cat_counts.MALAYALAM %}
+                                <div class="res-category">
+                                    <div class="res-cat-header" onclick="toggleResCategory(this)">
+                                        <span style="color:#3b82f6;font-weight:700;">Malayalam ({{ chapter.cat_counts.MALAYALAM }})</span>
+                                        <span class="res-chevron">▶</span>
+                                    </div>
+                                    <div class="res-cat-body">
+                                        {% for res in chapter.resources %}
+                                        {% if res.category == 'MALAYALAM' %}
+                                        <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
+                                            <span class="res-icon">📄</span>
+                                            <div class="res-meta">
+                                                <div class="res-name">{{ res.title }}</div>
+                                                <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if chapter.cat_counts.ONLINE %}
+                                <div class="res-category">
+                                    <div class="res-cat-header" onclick="toggleResCategory(this)">
+                                        <span style="color:#a855f7;font-weight:700;">Online ({{ chapter.cat_counts.ONLINE }})</span>
+                                        <span class="res-chevron">▶</span>
+                                    </div>
+                                    <div class="res-cat-body">
+                                        {% for res in chapter.resources %}
+                                        {% if res.category == 'ONLINE' %}
+                                        <div class="res-item" onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')">
+                                            <span class="res-icon">📄</span>
+                                            <div class="res-meta">
+                                                <div class="res-name">{{ res.title }}</div>
+                                                <div class="res-detail">{{ res.resource_type }} · {{ res.compressed_size|filesizeformat }}</div>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
                             {% endif %}
                         </div>
                     </div>
-                    {% endfor %}
-                    {% endwith %}
-                    {% endfor %}
-                </div>
-
-                <!-- Resources Section (Premium Glassmorphism View) -->
-                <div id="content-resources" style="display: none; height: 100%; display: flex; flex-direction: column;">
-                    <div style="flex: 1; padding: 1rem; overflow-y: auto;">
-
-                        {% with total=resource_counts.ENGLISH|add:resource_counts.MALAYALAM|add:resource_counts.ONLINE %}
-                        {% if total > 0 %}
-                        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:1rem;padding:1rem;margin-bottom:1rem;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.6rem;">
-                                <span style="font-size:0.8rem;color:#94a3b8;">Resources by Category</span>
-                                <span style="font-size:0.75rem;color:#64748b;">{{ total }} total</span>
-                            </div>
-                            <div style="display:flex;gap:4px;height:32px;border-radius:0.5rem;overflow:hidden;">
-                                {% if resource_counts.ENGLISH %}
-                                <div style="flex:{{ resource_counts.ENGLISH }};background:#10b981;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;" title="English: {{ resource_counts.ENGLISH }}">{{ resource_counts.ENGLISH }}</div>
-                                {% endif %}
-                                {% if resource_counts.MALAYALAM %}
-                                <div style="flex:{{ resource_counts.MALAYALAM }};background:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;" title="Malayalam: {{ resource_counts.MALAYALAM }}">{{ resource_counts.MALAYALAM }}</div>
-                                {% endif %}
-                                {% if resource_counts.ONLINE %}
-                                <div style="flex:{{ resource_counts.ONLINE }};background:#a855f7;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;color:#fff;" title="Online: {{ resource_counts.ONLINE }}">{{ resource_counts.ONLINE }}</div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% endwith %}
-
-                        {% for chapter in chapters %}
-                        {% if chapter.resources_count > 0 %}
-                        <div style="margin-bottom:0.75rem;background:rgba(255,255,255,0.02);border-radius:1rem;overflow:hidden;border:1px solid rgba(255,255,255,0.06);">
-                            <div onclick="toggleResChapter(this)" style="padding:0.85rem 1rem;display:flex;align-items:center;gap:0.75rem;cursor:pointer;user-select:none;">
-                                <span class="res-toggle-icon" style="transform:rotate(90deg);transition:transform 0.25s;font-size:0.8rem;color:#94a3b8;">▶</span>
-                                <span style="font-size:0.9rem;font-weight:700;color:#f1f5f9;flex:1;">{{ chapter.name }}</span>
-                                <span style="font-size:0.7rem;color:#94a3b8;">
-                                    {% if chapter.cat_counts.ENGLISH %}<span style="color:#10b981;">{{ chapter.cat_counts.ENGLISH }}EN</span>{% endif %}
-                                    {% if chapter.cat_counts.MALAYALAM %}<span style="color:#3b82f6;"> {{ chapter.cat_counts.MALAYALAM }}മ</span>{% endif %}
-                                    {% if chapter.cat_counts.ONLINE %}<span style="color:#a855f7;"> {{ chapter.cat_counts.ONLINE }}On</span>{% endif %}
-                                </span>
-                            </div>
-                            <div class="res-chapter-body" style="border-top:1px solid rgba(255,255,255,0.05);">
-                                {% if chapter.cat_counts.ENGLISH %}
-                                <div style="padding:0.5rem 1rem;background:rgba(16,185,129,0.05);border-bottom:1px solid rgba(255,255,255,0.04);">
-                                    <div style="font-size:0.75rem;font-weight:700;color:#10b981;margin-bottom:0.4rem;">📄 English ({{ chapter.cat_counts.ENGLISH }})</div>
-                                    {% for res in chapter.resources %}
-                                    {% if res.category == 'ENGLISH' %}
-                                    <div onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.6rem;border-radius:0.5rem;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(16,185,129,0.1)'" onmouseout="this.style.background='transparent'">
-                                        <span style="font-size:1.1rem;">📄</span>
-                                        <div style="flex:1;min-width:0;">
-                                            <div style="font-size:0.8rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ res.title }}</div>
-                                            <div style="font-size:0.65rem;color:#10b981;">{{ res.resource_type }} • {{ res.compressed_size|filesizeformat }}</div>
-                                        </div>
-                                        <span style="font-size:0.7rem;color:#64748b;">→</span>
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                                {% if chapter.cat_counts.MALAYALAM %}
-                                <div style="padding:0.5rem 1rem;background:rgba(59,130,246,0.05);border-bottom:1px solid rgba(255,255,255,0.04);">
-                                    <div style="font-size:0.75rem;font-weight:700;color:#3b82f6;margin-bottom:0.4rem;">📕 Malayalam ({{ chapter.cat_counts.MALAYALAM }})</div>
-                                    {% for res in chapter.resources %}
-                                    {% if res.category == 'MALAYALAM' %}
-                                    <div onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.6rem;border-radius:0.5rem;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(59,130,246,0.1)'" onmouseout="this.style.background='transparent'">
-                                        <span style="font-size:1.1rem;">📄</span>
-                                        <div style="flex:1;min-width:0;">
-                                            <div style="font-size:0.8rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ res.title }}</div>
-                                            <div style="font-size:0.65rem;color:#3b82f6;">{{ res.resource_type }} • {{ res.compressed_size|filesizeformat }}</div>
-                                        </div>
-                                        <span style="font-size:0.7rem;color:#64748b;">→</span>
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                                {% if chapter.cat_counts.ONLINE %}
-                                <div style="padding:0.5rem 1rem;background:rgba(168,85,247,0.05);">
-                                    <div style="font-size:0.75rem;font-weight:700;color:#a855f7;margin-bottom:0.4rem;">💻 Online ({{ chapter.cat_counts.ONLINE }})</div>
-                                    {% for res in chapter.resources %}
-                                    {% if res.category == 'ONLINE' %}
-                                    <div onclick="openResourcePDF('{{ res.uid }}','{{ res.title|escapejs }}')" style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0.6rem;border-radius:0.5rem;cursor:pointer;transition:background 0.2s;" onmouseover="this.style.background='rgba(168,85,247,0.1)'" onmouseout="this.style.background='transparent'">
-                                        <span style="font-size:1.1rem;">📄</span>
-                                        <div style="flex:1;min-width:0;">
-                                            <div style="font-size:0.8rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ res.title }}</div>
-                                            <div style="font-size:0.65rem;color:#a855f7;">{{ res.resource_type }} • {{ res.compressed_size|filesizeformat }}</div>
-                                        </div>
-                                        <span style="font-size:0.7rem;color:#64748b;">→</span>
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                        {% empty %}
-                        <div style="text-align:center;padding:3rem 1rem;color:#64748b;">
-                            <div style="font-size:2rem;margin-bottom:0.5rem;">📂</div>
-                            No resources yet.
-                        </div>
-                        {% endfor %}
-
+                    {% empty %}
+                    <div style="text-align:center;padding:3rem 1rem;color:#64748b;">
+                        <div style="font-size:2rem;margin-bottom:0.5rem;">📂</div>
+                        No content yet.
                     </div>
+                    {% endfor %}
                 </div>
-
+                
                 <style>
-                    .glass-folder-card:hover { 
-                        transform: translateY(-4px); 
-                        box-shadow: 0 0 20px rgba(16, 185, 129, 0.1); 
-                        background: rgba(16, 185, 129, 0.2);
+                    .unified-accordion { display: flex; flex-direction: column; }
+                    .chapter-item { border-bottom: 1px solid #334155; }
+                    .chapter-header {
+                        padding: 0.9rem 1.5rem; cursor: pointer; display: flex; align-items: center;
+                        gap: 0.65rem; transition: background 0.2s; user-select: none;
                     }
-                    .resource-glass-card {
-                        background: rgba(255, 255, 255, 0.03);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 1rem;
-                        padding: 1rem;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        text-align: center;
-                        cursor: pointer;
-                        transition: all 0.3s;
-                        aspect-ratio: 1/1;
+                    .chapter-header:hover { background: #334155; }
+                    .chapter-header.active { background: #1e293b; border-left: 4px solid #0ea5e9; }
+                    .ch-icon { font-size: 1rem; flex-shrink: 0; }
+                    .ch-name { flex: 1; font-size: 0.85rem; font-weight: 600; color: #f1f5f9; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                    .ch-counts { font-size: 0.65rem; color: #64748b; flex-shrink: 0; white-space: nowrap; }
+                    .chapter-header .chevron { font-size: 0.65rem; color: #475569; transition: transform 0.25s; flex-shrink: 0; }
+                    .chapter-header.active .chevron { transform: rotate(90deg); }
+                    
+                    .chapter-body { background: #0f172a; display: none; }
+                    .chapter-header.active + .chapter-body { display: block; }
+                    
+                    .ch-section { padding: 0.25rem 0; }
+                    .ch-section-title {
+                        padding: 0.5rem 1.5rem 0.25rem; font-size: 0.68rem; font-weight: 700;
+                        color: #6366f1; text-transform: uppercase; letter-spacing: 0.04em;
                     }
-                    .resource-glass-card:hover {
-                        background: rgba(16, 185, 129, 0.1);
-                        border-color: rgba(16, 185, 129, 0.3);
-                        transform: translateY(-4px);
-                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+                    .resources-section { border-top: 1px solid #1e293b; margin-top: 0.25rem; padding-top: 0.25rem; }
+                    
+                    .lesson-item {
+                        padding: 0.6rem 1.5rem 0.6rem 2rem; display: flex; align-items: center;
+                        gap: 0.6rem; cursor: pointer; transition: all 0.2s; color: #94a3b8;
                     }
-                    .resource-glass-card.pending {
-                        background: rgba(244, 63, 94, 0.05);
-                        border-color: rgba(244, 63, 94, 0.1);
-                        cursor: not-allowed;
+                    .lesson-item:hover { color: #f1f5f9; background: rgba(255,255,255,0.03); }
+                    .lesson-item.active { color: #0ea5e9; background: rgba(14,165,233,0.08); }
+                    
+                    .lesson-order {
+                        width: 20px; height: 20px; background: #334155; border-radius: 50%;
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 0.65rem; font-weight: 700; color: #64748b; flex-shrink: 0;
                     }
+                    .lesson-item.active .lesson-order { background: #0ea5e9; color: white; }
+                    .lesson-title { flex: 1; font-size: 0.82rem; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                    .lesson-type { font-size: 0.6rem; color: #475569; flex-shrink: 0; }
+                    
+                    .res-category { margin: 0.1rem 0; border-radius: 0.4rem; overflow: hidden; }
+                    .res-cat-header {
+                        padding: 0.4rem 1.5rem 0.4rem 2rem; display: flex; align-items: center;
+                        gap: 0.5rem; cursor: pointer; transition: background 0.15s; user-select: none;
+                        font-size: 0.72rem;
+                    }
+                    .res-cat-header:hover { background: rgba(255,255,255,0.04); }
+                    .res-cat-header .res-chevron { font-size: 0.55rem; color: #475569; transition: transform 0.2s; flex-shrink: 0; }
+                    .res-cat-header.active .res-chevron { transform: rotate(90deg); }
+                    .res-cat-body { display: none; }
+                    .res-cat-header.active + .res-cat-body { display: block; }
+                    .res-group { margin: 0.15rem 0; }
+                    .res-group-title { padding: 0.35rem 1.5rem 0.15rem 2rem; font-size: 0.68rem; font-weight: 700; }
+                    .res-item {
+                        padding: 0.35rem 1.5rem 0.35rem 2rem; display: flex; align-items: center;
+                        gap: 0.5rem; cursor: pointer; transition: background 0.2s;
+                    }
+                    .res-item:hover { background: rgba(255,255,255,0.02); }
+                    .res-icon { font-size: 0.85rem; flex-shrink: 0; }
+                    .res-meta { flex: 1; min-width: 0; }
+                    .res-name { font-size: 0.78rem; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                    .res-detail { font-size: 0.62rem; color: #64748b; }
                 </style>
-
+                
                 <script>
-                    // ---------- RESOURCE CHAPTER TOGGLE ----------
-                    function toggleResChapter(header) {
-                        var body = header.nextElementSibling;
-                        var icon = header.querySelector('.res-toggle-icon');
-                        if (body.style.display === 'none') {
-                            body.style.display = 'block';
-                            icon.style.transform = 'rotate(90deg)';
-                        } else {
-                            body.style.display = 'none';
-                            icon.style.transform = 'rotate(0deg)';
-                        }
-                    }
-
-                    // ---------- TAB NAVIGATION ----------
-                    function switchTab(tab, pushHistory) {
-                        const videoTab = document.getElementById('tab-videos');
-                        const resourceTab = document.getElementById('tab-resources');
-                        const videoContent = document.getElementById('content-videos');
-                        const resourceContent = document.getElementById('content-resources');
-                        if (tab === 'videos') {
-                            videoTab.style.color = 'white';
-                            videoTab.style.borderBottom = '2px solid #6366f1';
-                            resourceTab.style.color = '#94a3b8';
-                            resourceTab.style.borderBottom = '2px solid transparent';
-                            videoContent.style.display = 'block';
-                            resourceContent.style.display = 'none';
-                        } else if (tab === 'resources') {
-                            resourceTab.style.color = 'white';
-                            resourceTab.style.borderBottom = '2px solid #10b981';
-                            videoTab.style.color = '#94a3b8';
-                            videoTab.style.borderBottom = '2px solid transparent';
-                            resourceContent.style.display = 'flex';
-                            videoContent.style.display = 'none';
-                        }
-                    }
-                    .resource-glass-card {
-                        background: rgba(255, 255, 255, 0.03);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 1rem;
-                        padding: 1rem;
-                        display: flex;
-                        flex-direction: column;
-                        align-items: center;
-                        justify-content: center;
-                        text-align: center;
-                        cursor: pointer;
-                        transition: all 0.3s;
-                        aspect-ratio: 1/1;
-                    }
-                    .resource-glass-card:hover {
-                        background: rgba(16, 185, 129, 0.1);
-                        border-color: rgba(16, 185, 129, 0.3);
-                        transform: translateY(-4px);
-                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-                    }
-                    .resource-glass-card.pending {
-                        background: rgba(244, 63, 94, 0.05);
-                        border-color: rgba(244, 63, 94, 0.1);
-                        cursor: not-allowed;
-                    }
-                </style>
-
-                <!-- Hidden data div to store the resources as JSON -->
-                <script type="application/json" id="resources-data">
-                    [
-                        {% for resource in approved_resources %}
-                        {
-                            "uid": "{{ resource.uid }}",
-                            "title": "{{ resource.title|escapejs }}",
-                            "category": "{{ resource.category }}",
-                            "type": "{{ resource.resource_type }}",
-                            "size": "{{ resource.compressed_size|filesizeformat }}",
-                            "chapter": "{{ resource.chapter|default:''|escapejs }}"
-                        }{% if not forloop.last %},{% endif %}
-                        {% endfor %}
-                    ]
-            </script>
-
-
-            <script>
-                // ---------- TAB NAVIGATION ----------
-                function switchTab(tab, pushHistory) {
-                    const videoTab = document.getElementById('tab-videos');
-                    const resourceTab = document.getElementById('tab-resources');
-                    const videoContent = document.getElementById('content-videos');
-                    const resourceContent = document.getElementById('content-resources');
-                    if (tab === 'videos') {
-                        videoTab.style.color = 'white';
-                        videoTab.style.borderBottom = '2px solid #6366f1';
-                        resourceTab.style.color = '#94a3b8';
-                        resourceTab.style.borderBottom = '2px solid transparent';
-                        videoContent.style.display = 'block';
-                        resourceContent.style.display = 'none';
-                    } else if (tab === 'resources') {
-                        resourceTab.style.color = 'white';
-                        resourceTab.style.borderBottom = '2px solid #10b981';
-                        videoTab.style.color = '#94a3b8';
-                        videoTab.style.borderBottom = '2px solid transparent';
-                        resourceContent.style.display = 'flex';
-                        videoContent.style.display = 'none';
-                        if (pushHistory !== false) {
-                            history.pushState({view:'resources-categories'}, '', window.location.pathname + '#resources');
-                        }
-                    }
-                }
-
-                // ---------- RESOURCE NAVIGATION ----------
-                function showResourceCategory(category, pushHistory) {
-                    const titles = { 'ENGLISH': 'English', 'MALAYALAM': 'Malayalam', 'ONLINE': 'Online' };
-                    document.getElementById('active-category-name').textContent = titles[category] || category;
-                    activeCategory = category;
-
-                    const rawData = document.getElementById('resources-data').textContent;
-                    let allResources = [];
-                    try { allResources = JSON.parse(rawData); } catch(e) { console.error(e); }
-
-                    const filtered = allResources.filter(r => r.category === category);
-                    const container = document.getElementById('category-items-container');
-                    container.innerHTML = '';
-
-                    if (filtered.length === 0) {
-                        container.innerHTML = `<div style="text-align:center;padding:3rem 1rem;color:#64748b;">No resources yet.</div>`;
-                    } else {
-                        filtered.forEach(r => {
-                            const chapterLabel = r.chapter ? `<span style="color:#94a3b8;">${r.chapter}</span> • ` : '';
-                            container.innerHTML += `
-                                <div onclick="openResourcePDF('${r.uid}','${r.title}')" style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:1rem;padding:1rem 1.25rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:all 0.25s;" onmouseover="this.style.background='rgba(16,185,129,0.1)';this.style.borderColor='rgba(16,185,129,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.04)';this.style.borderColor='rgba(255,255,255,0.08)'">
-                                    <div style="width:44px;height:44px;background:rgba(16,185,129,0.15);border-radius:0.6rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.3rem;">📄</div>
-                                    <div style="flex:1;min-width:0;">
-                                        <div style="font-size:0.9rem;font-weight:600;color:#f1f5f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</div>
-                                        <div style="font-size:0.72rem;color:#10b981;margin-top:0.2rem;">${chapterLabel}${r.type} • ${r.size}</div>
-                                    </div>
-                                    <span style="color:#10b981;font-size:0.85rem;font-weight:600;flex-shrink:0;">Open ›</span>
-                                </div>`;
+                    function toggleChapter(header) {
+                        var isActive = header.classList.contains('active');
+                        document.querySelectorAll('.chapter-header').forEach(function(h) {
+                            if (h !== header) h.classList.remove('active');
                         });
+                        header.classList.toggle('active');
                     }
-
-                    document.getElementById('resources-categories-view').style.display = 'none';
-                    document.getElementById('resources-list-view').style.display = 'flex';
-                    // Scroll resource list to top
-                    document.getElementById('category-items-container').scrollTop = 0;
-                    if (pushHistory !== false) {
-                        history.pushState({view:'resources-folder', category:category}, '', window.location.pathname + '#folder-' + category.toLowerCase());
-                    }
-                }
-
-                function backToCategories() {
-                    // Delegate to history.back() — popstate handler updates UI
-                    history.back();
-                }
-
-                function openResourcePDF(uid, title) {
-                    window.location.href = '/resource/' + uid + '/view/';
-                }
-            </script>
-
+                </script>
             </aside>
 
 
@@ -616,8 +411,6 @@
     <script>
     let player = null;
     // ---------- NAVIGATION STATE ----------
-    let activeCategory = null;
-    let savedScrollPos = 0;
     let currentPDFUid = null;
     let currentPDFTitle = null;
     let _pdfLoadTimer = null;
@@ -742,27 +535,6 @@
     }
 
 
-    function toggleAccordion(header) {
-        const isActive = header.classList.contains('active');
-        document.querySelectorAll('.accordion-header').forEach(h => {
-            h.classList.remove('active');
-        });
-        if (!isActive) {
-            header.classList.add('active');
-            // Auto-scroll sidebar so the active lesson is visible
-            setTimeout(() => {
-                const sidebar = document.querySelector('.content-sidebar');
-                if (sidebar) {
-                    const headerRect = header.getBoundingClientRect();
-                    const sidebarRect = sidebar.getBoundingClientRect();
-                    if (headerRect.bottom > sidebarRect.bottom || headerRect.top < sidebarRect.top) {
-                        header.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    }
-                }
-            }, 100);
-        }
-    }
-
     function getYouTubeId(url) {
         if (!url) return null;
         const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/;
@@ -776,10 +548,10 @@
             togglePlayerSidebar();
         }
 
-        document.querySelectorAll('.sub-item').forEach(item => item.classList.remove('active'));
+        document.querySelectorAll('.lesson-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
 
-        // Scroll sidebar so the active sub-item is visible
+        // Scroll sidebar so the active lesson is visible
         setTimeout(() => {
             const sidebar = document.querySelector('.content-sidebar');
             if (sidebar && window.innerWidth > 1024) {
@@ -873,57 +645,29 @@
     });
 
     window.onload = function() {
-        // Seed base history state so back-button doesn't exit the app
         history.replaceState({view:'player'}, '');
-        const firstHeader = document.querySelector('.accordion-header');
+        var firstHeader = document.querySelector('.chapter-header');
         if (firstHeader) {
-            firstHeader.click();
-            setTimeout(() => {
-                const firstSubItem = firstHeader.parentElement.querySelector('.sub-item');
-                if (firstSubItem) firstSubItem.click();
+            firstHeader.classList.add('active');
+            setTimeout(function() {
+                var firstLesson = firstHeader.parentElement.querySelector('.lesson-item');
+                if (firstLesson) firstLesson.click();
             }, 150);
         }
     };
 
     // ---------- POPSTATE HANDLER (Android back button) ----------
     window.addEventListener('popstate', function(e) {
-        const state = e.state;
-        const overlay = document.getElementById('pdf-overlay');
-
-        // 1. If PDF overlay is visible — close it and restore list
+        var overlay = document.getElementById('pdf-overlay');
         if (overlay && overlay.classList.contains('pdf-active')) {
             overlay.classList.remove('pdf-active');
             document.body.style.overflow = '';
-            const frame = document.getElementById('pdf-frame');
+            var frame = document.getElementById('pdf-frame');
             if (frame) { frame.src = ''; frame.style.display = 'none'; }
             if (_pdfLoadTimer) { clearTimeout(_pdfLoadTimer); _pdfLoadTimer = null; }
             document.getElementById('pdf-loading').style.display = 'flex';
             document.getElementById('pdf-error').style.display = 'none';
             currentPDFUid = null; currentPDFTitle = null;
-            // Restore scroll position in resource list
-            setTimeout(() => {
-                const c = document.getElementById('category-items-container');
-                if (c && savedScrollPos) c.scrollTop = savedScrollPos;
-            }, 60);
-            return;
-        }
-
-        if (!state) return;
-
-        // 2. Returning from folder to categories
-        if (state.view === 'resources-categories') {
-            document.getElementById('resources-list-view').style.display = 'none';
-            document.getElementById('resources-categories-view').style.display = 'block';
-            savedScrollPos = 0;
-            return;
-        }
-
-        // 3. Returning from resources tab to player
-        if (state.view === 'player') {
-            document.getElementById('resources-list-view').style.display = 'none';
-            document.getElementById('resources-categories-view').style.display = 'block';
-            switchTab('videos', false);
-            return;
         }
     });
 
@@ -973,6 +717,14 @@
     function retryPDF() {
         if (!currentPDFUid) return;
         _showPDFOverlay(currentPDFUid, currentPDFTitle);
+    }
+
+    function toggleResCategory(header) {
+        header.classList.toggle('active');
+    }
+
+    function openResourcePDF(uid, title) {
+        window.location.href = '/resource/' + uid + '/view/';
     }
     </script>
 

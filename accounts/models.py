@@ -33,6 +33,17 @@ class CustomUser(AbstractUser):
     current_session_key = models.CharField(max_length=40, null=True, blank=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     totp_secret = models.CharField(max_length=32, null=True, blank=True)
+    chat_display_name = models.CharField(max_length=100, blank=True, default='')
+    chat_status = models.CharField(max_length=10, choices=[('AVAILABLE', 'Available'), ('BUSY', 'Busy'), ('OFFLINE', 'Offline')], default='AVAILABLE')
+    last_seen = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def chat_display(self):
+        if self.chat_display_name:
+            return self.chat_display_name
+        if self.user_type == 'ADMIN' or self.is_superuser:
+            return 'Support Team'
+        return self.full_name or 'Support Team'
 
     @property
     def avatar_url(self):
@@ -173,10 +184,6 @@ class CourseResource(models.Model):
     )
     RESOURCE_TYPE_CHOICES = (
         ('PDF', 'PDF Document'),
-        ('DOCX', 'Word Document'),
-        ('PPTX', 'PowerPoint Presentation'),
-        ('XLSX', 'Excel Spreadsheet'),
-        ('TXT', 'Text File'),
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='resources')
     title = models.CharField(max_length=255)
@@ -451,8 +458,97 @@ class UploadJob(models.Model):
     def __str__(self):
         return f"UploadJob {self.uid} - {self.title} ({self.get_status_display()})"
 
+
+class BackupLog(models.Model):
+    BACKUP_TYPES = (
+        ('DATABASE', 'Database Backup'),
+        ('SIGNUP_PDF', 'Signup PDF Backup'),
+        ('TEACHER_RESOURCE', 'Teacher Resource Backup'),
+    )
+    STATUS_CHOICES = (
+        ('PENDING', 'Pending'),
+        ('RUNNING', 'Running'),
+        ('UPLOADING', 'Uploading'),
+        ('VERIFYING', 'Verifying'),
+        ('SUCCESS', 'Success'),
+        ('FAILED', 'Failed'),
+        ('RETRYING', 'Retrying'),
+    )
+    backup_type = models.CharField(max_length=50, choices=BACKUP_TYPES, db_index=True)
+    filename = models.CharField(max_length=500)
+    file_size = models.BigIntegerField(default=0)
+    sha256 = models.CharField(max_length=64, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    drive_file_id = models.CharField(max_length=500, blank=True, null=True)
+    drive_folder_path = models.CharField(max_length=1000, blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', db_index=True)
+    duration_seconds = models.FloatField(default=0)
+    error_message = models.TextField(blank=True, null=True)
+    retry_count = models.IntegerField(default=0)
+    max_retries = models.IntegerField(default=3)
+    verify_status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('VERIFIED', 'Verified'), ('MISMATCH', 'Mismatch')], default='PENDING')
+    metadata = models.JSONField(default=dict, blank=True, help_text="Additional metadata (course_id, user_id, etc.)")
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['backup_type', '-created_at']),
+            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['backup_type', 'status']),
+        ]
+
+    def __str__(self):
+        return f"{self.backup_type} - {self.filename} ({self.status})"
+
+class ChatAttachment(models.Model):
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    sender = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='chat_attachments')
+    message_uid = models.CharField(max_length=64, blank=True, null=True, db_index=True)
+    supabase_path = models.CharField(max_length=500)
+    original_filename = models.CharField(max_length=255)
+    file_size = models.IntegerField(default=0)
+    mime_type = models.CharField(max_length=100)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.original_filename} ({self.file_size}b)"
+
+
+class ChatAuditLog(models.Model):
+    ACTION_CHOICES = (
+        ('MESSAGE_SENT', 'Message Sent'),
+        ('MESSAGE_EDITED', 'Message Edited'),
+        ('MESSAGE_DELETED', 'Message Deleted'),
+        ('ATTACHMENT_SENT', 'Attachment Sent'),
+        ('CONVERSATION_STATUS', 'Conversation Status Changed'),
+        ('ASSIGNMENT_CHANGED', 'Assignment Changed'),
+        ('CONVERSATION_EXPORTED', 'Conversation Exported'),
+    )
+    actor = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='chat_audit_actions')
+    target_teacher = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_audit_targets')
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES, db_index=True)
+    details = models.JSONField(default=dict, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['action', '-timestamp']),
+            models.Index(fields=['actor', '-timestamp']),
+        ]
+
+    def __str__(self):
+        return f"{self.actor} - {self.action} at {self.timestamp}"
+
+
 # Signals for explicit image cleanup
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete, post_save
 from django.dispatch import receiver
 from .utils.cloudinary_helpers import delete_image
 
@@ -499,5 +595,66 @@ def cleanup_lesson_video(sender, instance, **kwargs):
             delete_youtube_video(instance.youtube_video_id)
         except Exception:
             pass
+
+
+@receiver(pre_delete, sender=CourseResource)
+def cleanup_course_resource_files(sender, instance, **kwargs):
+    """Clean up Supabase file and Cloudinary thumbnail when CourseResource is hard-deleted."""
+    try:
+        from accounts.utils.storage_manager import StorageManager
+        if instance.firebase_file_path:
+            StorageManager.delete_from_supabase_storage(instance.firebase_file_path)
+    except Exception:
+        pass
+    try:
+        if instance.thumbnail_public_id:
+            from accounts.utils.cloudinary_helpers import delete_temp_image
+            delete_temp_image(instance.thumbnail_public_id)
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=CustomUser)
+def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
+    """Trigger Google Drive backup when a new signup PDF is uploaded."""
+    if not instance.pdf_path:
+        return
+    if not created and not kwargs.get('update_fields'):
+        return
+    try:
+        from accounts.utils.backup_trigger import backup_signup_pdf
+        from .utils.supabase_storage import get_signed_url
+        import requests
+        signed_url = get_signed_url(instance.pdf_path)
+        if signed_url:
+            resp = requests.get(signed_url, timeout=30)
+            if resp.status_code == 200:
+                backup_signup_pdf(instance.id, instance.pdf_path, resp.content)
+    except Exception:
+        pass
+
+
+@receiver(post_save, sender=CourseResource)
+def backup_teacher_resource_on_save(sender, instance, created, **kwargs):
+    """Trigger Google Drive backup when a new teacher resource is uploaded."""
+    if not instance.firebase_file_path:
+        return
+    if not created:
+        return
+    try:
+        from accounts.utils.backup_trigger import backup_teacher_resource
+        from accounts.utils.supabase_storage import get_client
+        client = get_client(use_resource_project=True)
+        if client:
+            bucket = 'resources'
+            file_bytes = client.storage.from_(bucket).download(instance.firebase_file_path)
+            if file_bytes:
+                course_title = instance.course.title if instance.course else 'Unknown'
+                backup_teacher_resource(
+                    instance.id, instance.firebase_file_path,
+                    file_bytes, course_title, instance.chapter, instance.category
+                )
+    except Exception:
+        pass
 
 

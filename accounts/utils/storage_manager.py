@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 # Use the shared Supabase clients and helpers from supabase_storage (single source of truth)
 from accounts.utils.supabase_storage import supabase, get_client, _do_upload
 
+def _get_resource_bucket():
+    """Returns the Supabase bucket name for resource storage (second Supabase project)."""
+    return os.getenv("RESOURCE_SUPABASE_BUCKET", "resources")
+
 class StorageManager:
     @staticmethod
     def upload_to_supabase_storage(file_bytes, destination_path, content_type):
@@ -24,11 +28,8 @@ class StorageManager:
             return destination_path
             
         try:
-            parts = destination_path.split('/', 1)
-            bucket_name = parts[0]
-            file_path = parts[1] if len(parts) > 1 else destination_path
-            
-            _do_upload(client, bucket_name, file_path, file_bytes, content_type=content_type)
+            bucket_name = _get_resource_bucket()
+            _do_upload(client, bucket_name, destination_path, file_bytes, content_type=content_type)
             return destination_path
         except Exception as e:
             logger.error(f"Supabase Upload Error: {e}")
@@ -93,11 +94,9 @@ class StorageManager:
             if not client: return
             
             # 1. Download original
-            supabase_parts = original_supabase_path.split('/', 1)
-            bucket_name = supabase_parts[0]
-            p_in_b = supabase_parts[1] if len(supabase_parts) > 1 else original_supabase_path
+            bucket_name = _get_resource_bucket()
             
-            file_bytes = client.storage.from_(bucket_name).download(p_in_b)
+            file_bytes = client.storage.from_(bucket_name).download(original_supabase_path)
             if not file_bytes:
                 raise ValueError(f"Could not download original file from Supabase: {original_supabase_path}")
 
@@ -116,11 +115,11 @@ class StorageManager:
                 if p_id: file_metadata['parents'] = [p_id]
                 return service.files().create(body=file_metadata, fields='id').execute().get('id')
             
-            root_id = get_or_create_folder("Neo Learner_Backups")
+            root_id = get_or_create_folder("NeoLearner_Backups")
             res_id = get_or_create_folder("Resources_Backup", p_id=root_id)
             
             media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=resource.mime_type, resumable=True)
-            original_filename = f"ORIGINAL_{resource.uid}_{resource.title}.{resource.file_extension}"
+            original_filename = f"ORIGINAL_{resource.uid}_{resource.title}.{resource.file_extension or 'pdf'}"
             file_drive = service.files().create(
                 body={'name': original_filename, 'parents': [res_id]},
                 media_body=media,
@@ -136,7 +135,7 @@ class StorageManager:
                 # 3. CLEANUP SUPABASE (Delete original)
                 try:
                     if resource.firebase_file_path != original_supabase_path:
-                        client.storage.from_(bucket_name).remove([p_in_b])
+                        client.storage.from_(bucket_name).remove([original_supabase_path])
                         logger.info(f"Purged original file from Supabase after Drive backup: {original_supabase_path}")
                 except Exception as e:
                     logger.error(f"Cleanup of original Supabase file failed for {resource.id}: {e}")
@@ -166,10 +165,8 @@ class StorageManager:
         if not client or not file_path:
             return
         try:
-            parts = file_path.split('/', 1)
-            bucket_name = parts[0]
-            path_in_bucket = parts[1] if len(parts) > 1 else file_path
-            client.storage.from_(bucket_name).remove([path_in_bucket])
+            bucket_name = _get_resource_bucket()
+            client.storage.from_(bucket_name).remove([file_path])
         except Exception as e:
             logger.error(f"Supabase Delete Error for {file_path}: {e}")
 
@@ -179,15 +176,13 @@ class StorageManager:
         client = get_client(use_resource_project=True)
         if not client or not file_path: return None
         try:
-            parts = file_path.split('/', 1)
-            bucket_name = parts[0]
-            p_in_b = parts[1] if len(parts) > 1 else file_path
+            bucket_name = _get_resource_bucket()
             
             if expiration is None: expires_in = 7 * 24 * 60 * 60 # 1 week
             elif isinstance(expiration, timedelta): expires_in = int(expiration.total_seconds())
             else: expires_in = int(expiration) * 60
                 
-            res = client.storage.from_(bucket_name).create_signed_url(p_in_b, expires_in)
+            res = client.storage.from_(bucket_name).create_signed_url(file_path, expires_in)
             if isinstance(res, dict) and 'signedURL' in res: return res['signedURL']
             elif isinstance(res, str): return res
             return None

@@ -87,22 +87,41 @@
                     </div>
 
                     <div class="input-group">
-                        <label for="resource_type">File Type</label>
-                        <select name="resource_type" id="resource_type" required style="cursor: pointer;">
-                            <option value="PDF" {% if resource.resource_type == 'PDF' %}selected{% endif %}>📄 PDF Document</option>
-                            <option value="DOCX" {% if resource.resource_type == 'DOCX' %}selected{% endif %}>📝 Word Document (.docx)</option>
-                        </select>
-                        </select>
-                    </div>
-                    
-                    <div class="input-group">
-                        <label for="upload_file">Change File (Optional)</label>
+                        <label for="upload_file">Change PDF File (Optional)</label>
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">Current file: <span style="font-weight: 600; color: #1e293b;">{{ resource.title }} ({{ resource.file_extension|upper }})</span></p>
                         <div style="border: 2px dashed #e2e8f0; padding: 2rem; border-radius: 1rem; text-align: center; background: #f8fafc; transition: all 0.2s;" onmouseover="this.style.borderColor='#4f46e5'; this.style.background='#f5f3ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
-                            <input type="file" name="upload_file" id="upload_file" style="width: 100%; cursor: pointer;">
-                            <p style="margin-top: 1rem; font-size: 0.8rem; color: #64748b;">Upload a new file only if you want to replace the existing one.</p>
+                            <input type="file" name="upload_file" id="upload_file" accept=".pdf,application/pdf" style="width: 100%; cursor: pointer;" onchange="validatePDF(this)">
+                            <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8;" id="fileHelp">Upload a new PDF only if you want to replace the existing one. (Max 10MB)</p>
+                            <p style="margin-top: 0.3rem; font-size: 0.75rem; color: #ef4444; display: none;" id="fileError"></p>
                         </div>
                     </div>
+                    <script>
+                    function validatePDF(input) {
+                        var help = document.getElementById('fileHelp');
+                        var err = document.getElementById('fileError');
+                        var file = input.files[0];
+                        if (!file) { help.style.display = 'block'; err.style.display = 'none'; return; }
+                        var ext = file.name.split('.').pop().toLowerCase();
+                        if (ext !== 'pdf') {
+                            err.textContent = 'Only PDF files are allowed. Please select a PDF file.';
+                            err.style.display = 'block';
+                            help.style.display = 'none';
+                            input.value = '';
+                            return;
+                        }
+                        if (file.size > 10 * 1024 * 1024) {
+                            err.textContent = 'File size exceeds the 10MB limit. Please upload a smaller PDF.';
+                            err.style.display = 'block';
+                            help.style.display = 'none';
+                            input.value = '';
+                            return;
+                        }
+                        help.textContent = 'Selected: ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+                        help.style.color = '#059669';
+                        help.style.display = 'block';
+                        err.style.display = 'none';
+                    }
+                    </script>
 
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                         <button type="submit" style="background: #4f46e5; color: white; padding: 0.8rem 2rem; border-radius: 0.75rem; font-weight: 700; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(79,70,229,0.3); flex: 1; transition: all 0.2s;">

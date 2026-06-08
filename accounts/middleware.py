@@ -35,7 +35,7 @@ _PUBLIC_URL_NAMES = frozenset([
     'home', 'login', 'signup', 'teacher_login', 'teacher_signup',
     'admin_login', 'forgot_password', 'verify_reset_code', 'set_new_password',
     'verify_otp', 'reset_password', 'logout', 'admin_logout',
-    'student_view_auth', 'teacher_view_auth', 'health_check', 'status_page',
+    'student_view_auth', 'teacher_view_auth', 'health_check', 'firebase_health_check', 'status_page',
     'trigger_backup', 'dismiss_updates',
 ])
 
@@ -88,9 +88,9 @@ class PortalSecurityMiddleware:
                 else:
                     return redirect(f"{reverse('login')}?next={path}")
 
-            # --- IDLE TIMEOUT (15 min) — stored in CACHE, not session ---
+            # --- IDLE TIMEOUT (15 min) — stored in SESSION (DB-backed, shared across workers) ---
             if request.user.is_superuser or getattr(request.user, 'user_type', '') in ('ADMIN', 'TEACHER'):
-                last_activity = cache.get(f"last_activity_{request.user.id}", 0)
+                last_activity = request.session.get('last_activity', 0)
 
                 if last_activity and (_time.time() - last_activity > 900):
                     is_admin_path = (request.user.is_superuser or getattr(request.user, 'user_type', '') == 'ADMIN') or path.startswith('/customadmin/')
@@ -105,8 +105,16 @@ class PortalSecurityMiddleware:
                     messages.error(request, "Your session has expired due to inactivity. Please log in again.")
                     return redirect('admin_login' if is_admin_path else 'teacher_login')
 
-                # Write activity to CACHE (not session) — avoids session DB write
-                cache.set(f"last_activity_{request.user.id}", int(_time.time()), 1800)
+                # Write activity to SESSION (throttled: every 30s to avoid excessive DB writes)
+                now = int(_time.time())
+                if now - last_activity > 30:
+                    request.session['last_activity'] = now
+                    # Log active user to Firebase Analytics for DAU tracking
+                    try:
+                        from .utils.firebase_analytics import log_active_user_async
+                        log_active_user_async(request.user)
+                    except Exception:
+                        pass
 
             # --- Cached status check (avoids DB hit per request) ---
             # Staff users (admins) and superusers are exempt from status-based session flushing

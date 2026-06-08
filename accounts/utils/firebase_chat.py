@@ -1,207 +1,352 @@
-import os
-import json
-import time
 import uuid
-from datetime import datetime, timezone
+import re
+import time
+import logging
 from firebase_admin import db
 
-# Reuse the Firebase app from firebase_db to avoid duplicate initialization
 from .firebase_db import _get_app as _get_firebase_app
+
+logger = logging.getLogger(__name__)
+
+EDIT_WINDOW_SECONDS = 3600
+DELETE_WINDOW_SECONDS = 3600
+RETENTION_DAYS = 30
+PAGE_SIZE = 25
+MAX_MESSAGE_LENGTH = 2000
 
 
 def _get_app():
     return _get_firebase_app()
 
 
-def get_room_name(uid1, uid2):
-    parts = sorted([str(uid1), str(uid2)])
-    return f"{parts[0]}_{parts[1]}"
+def _now_ms():
+    return int(time.time() * 1000)
 
 
-def send_message(sender, receiver_uid, message_text, sender_name):
+def _sanitize_text(text):
+    text = re.sub(r'<[^>]*>', '', text)
+    return text[:MAX_MESSAGE_LENGTH]
+
+
+def _resolve_admin_teacher(uid1, uid2):
+    from accounts.models import CustomUser
+    u1 = CustomUser.objects.filter(uid=uid1).only('user_type').first()
+    u2 = CustomUser.objects.filter(uid=uid2).only('user_type').first()
+    admin = str(uid1) if (u1 and u1.user_type == 'ADMIN') else str(uid2)
+    teacher = str(uid2) if admin == str(uid1) else str(uid1)
+    return admin, teacher
+
+
+def _conversation_path(admin_uid, teacher_uid):
+    return f'/support_chat/{admin_uid}/{teacher_uid}'
+
+
+def get_admin_uid_by_name(display_name):
+    from accounts.models import CustomUser
+    admin = CustomUser.objects.filter(
+        user_type='ADMIN', status='ACTIVE', full_name=display_name
+    ).only('uid').first()
+    if admin:
+        return str(admin.uid)
+    admin = CustomUser.objects.filter(
+        user_type='ADMIN', status='ACTIVE', chat_display=display_name
+    ).only('uid').first()
+    if admin:
+        return str(admin.uid)
+    return None
+
+
+def send_message(sender_uid, receiver_uid, message_text):
     app = _get_app()
     if app is None:
-        return None
+        return None, 0
     msg_uid = str(uuid.uuid4())
-    now_ms = int(time.time() * 1000)
-    room = get_room_name(sender.uid, receiver_uid)
-
-    msg_ref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}')
+    now_ms = _now_ms()
+    sanitized = _sanitize_text(message_text)
+    if not sanitized:
+        return None, 0
+    admin_uid, teacher_uid = _resolve_admin_teacher(sender_uid, receiver_uid)
+    path = _conversation_path(admin_uid, teacher_uid)
+    msg_ref = db.reference(f'{path}/messages/{msg_uid}', app=app)
     msg_ref.set({
-        'sender_uid': str(sender.uid),
+        'sender_uid': str(sender_uid),
         'receiver_uid': str(receiver_uid),
-        'sender_name': sender_name,
-        'message': message_text,
-        'timestamp': now_ms,
-        'is_edited': False,
-        'is_deleted': False,
+        'message': sanitized,
+        'created_at': now_ms,
         'is_read': False,
+        'deleted': False,
+        'edited_at': None,
     })
-
-    meta_ref = db.reference(f'/chat_rooms/{room}/metadata')
-    meta_ref.update({
-        'participants': {str(sender.uid): True, str(receiver_uid): True},
-        'last_message': message_text,
-        'last_timestamp': now_ms,
-        'last_sender_uid': str(sender.uid),
-    })
-
     return msg_uid, now_ms
 
 
-def get_messages(user_uid, other_user_uid, limit=500):
+def get_messages(user_uid, other_uid, limit=PAGE_SIZE, offset=0, search=None):
     app = _get_app()
     if app is None:
-        return []
-    room = get_room_name(user_uid, other_user_uid)
-    ref = db.reference(f'/chat_rooms/{room}/messages')
-    data = ref.get()
+        return [], False
+    admin_uid, teacher_uid = _resolve_admin_teacher(user_uid, other_uid)
+    path = _conversation_path(admin_uid, teacher_uid)
+    data = db.reference(f'{path}/messages', app=app).get()
     if not data:
-        return []
+        return [], False
     msgs = []
     for mid, mdata in data.items():
-        if mdata.get('is_deleted', False):
-            continue
-        msgs.append({
-            'uid': mid,
-            'sender_uid': mdata.get('sender_uid'),
-            'sender_name': mdata.get('sender_name', ''),
-            'message': mdata.get('message', ''),
-            'timestamp': mdata.get('timestamp', 0),
-            'is_edited': mdata.get('is_edited', False),
-            'is_deleted': False,
-        })
-    msgs.sort(key=lambda x: x['timestamp'])
-    return msgs[-limit:]
+        if mdata.get('deleted', False):
+            msgs.append({
+                'uid': mid,
+                'sender_uid': mdata.get('sender_uid'),
+                'message': 'This message was deleted.',
+                'created_at': mdata.get('created_at', 0),
+                'is_read': mdata.get('is_read', False),
+                'deleted': True,
+                'edited_at': mdata.get('edited_at'),
+            })
+        else:
+            msg_text = mdata.get('message', '')
+            if search and search.lower() not in msg_text.lower():
+                continue
+            msgs.append({
+                'uid': mid,
+                'sender_uid': mdata.get('sender_uid'),
+                'message': msg_text,
+                'created_at': mdata.get('created_at', 0),
+                'is_read': mdata.get('is_read', False),
+                'deleted': False,
+                'edited_at': mdata.get('edited_at'),
+            })
+    msgs.sort(key=lambda x: x['created_at'])
+    total = len(msgs)
+    start = total - offset - limit
+    if start < 0:
+        start = 0
+    end = total - offset
+    if end > total:
+        end = total
+    page = msgs[start:end]
+    has_more = start > 0
+    return page, has_more
 
 
-def edit_message(sender_uid, msg_uid, new_message):
+def _find_conversation_path_by_msg(user_uid, msg_uid):
     app = _get_app()
     if app is None:
-        return False
-    rooms_ref = db.reference('/chat_rooms')
-    data = rooms_ref.get(shallow=True)
-    if not data:
-        return False
-    for room in data:
-        msg_ref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}')
-        mdata = msg_ref.get()
-        if mdata and mdata.get('sender_uid') == str(sender_uid):
-            msg_ref.update({'message': new_message, 'is_edited': True})
-            return True
-    return False
-
-
-def delete_message(sender_uid, msg_uid):
-    app = _get_app()
-    if app is None:
-        return False
-    rooms_ref = db.reference('/chat_rooms')
-    data = rooms_ref.get(shallow=True)
-    if not data:
-        return False
-    for room in data:
-        msg_ref = db.reference(f'/chat_rooms/{room}/messages/{msg_uid}')
-        mdata = msg_ref.get()
-        if mdata and mdata.get('sender_uid') == str(sender_uid):
-            msg_ref.update({'is_deleted': True})
-            return True
-    return False
-
-
-def get_chat_list(user_uid):
-    app = _get_app()
-    if app is None:
-        return []
-    ref = db.reference('/chat_rooms')
-    data = ref.get()
-    if not data:
-        return []
+        return None
+    from accounts.models import CustomUser
     user_str = str(user_uid)
-    rooms = []
-    for room, room_data in data.items():
-        meta = room_data.get('metadata', {})
-        participants = meta.get('participants', {})
-        if user_str not in participants:
-            continue
-        others = [p for p in participants if p != user_str]
-        if not others:
-            continue
-        other_uid = others[0]
-        msgs = room_data.get('messages', {})
-        unread = 0
-        for m in msgs.values():
-            if (m.get('sender_uid') == other_uid
-                    and not m.get('is_read', False)
-                    and not m.get('is_deleted', False)):
-                unread += 1
-        rooms.append({
-            'other_uid': other_uid,
-            'last_message': meta.get('last_message', ''),
-            'last_timestamp': meta.get('last_timestamp', 0),
-            'last_sender_uid': meta.get('last_sender_uid', ''),
-            'unread_count': unread,
-        })
-    rooms.sort(key=lambda x: x.get('last_timestamp', 0), reverse=True)
-    return rooms
+    user = CustomUser.objects.filter(uid=user_uid).only('user_type').first()
+    if not user:
+        return None
+    if user.user_type == 'ADMIN':
+        teachers = db.reference(f'/support_chat/{user_str}', app=app).get(shallow=True)
+        if teachers:
+            for teacher_uid in teachers:
+                if db.reference(
+                    f'/support_chat/{user_str}/{teacher_uid}/messages/{msg_uid}', app=app
+                ).get():
+                    return f'/support_chat/{user_str}/{teacher_uid}'
+    else:
+        admins = CustomUser.objects.filter(user_type='ADMIN', status='ACTIVE').only('uid')
+        for admin in admins:
+            if db.reference(
+                f'/support_chat/{admin.uid}/{user_str}/messages/{msg_uid}', app=app
+            ).get():
+                return f'/support_chat/{admin.uid}/{user_str}'
+    return None
 
 
-def mark_read(user_uid, other_user_uid):
+def edit_message(user_uid, msg_uid, new_message):
+    app = _get_app()
+    if app is None:
+        return False, 'Firebase unavailable'
+    now_ms = _now_ms()
+    path = _find_conversation_path_by_msg(user_uid, msg_uid)
+    if not path:
+        return False, 'Message not found'
+    mref = db.reference(f'{path}/messages/{msg_uid}', app=app)
+    mdata = mref.get()
+    if not mdata:
+        return False, 'Message not found'
+    if mdata.get('sender_uid') != str(user_uid):
+        return False, 'Cannot edit another user message'
+    if mdata.get('deleted', False):
+        return False, 'Message already deleted'
+    msg_time = mdata.get('created_at', 0)
+    if now_ms - msg_time > EDIT_WINDOW_SECONDS * 1000:
+        return False, 'Edit window expired (1 hour)'
+    sanitized = _sanitize_text(new_message)
+    mref.update({'message': sanitized, 'edited_at': now_ms})
+    return True, None
+
+
+def delete_message(user_uid, msg_uid):
+    app = _get_app()
+    if app is None:
+        return False, 'Firebase unavailable'
+    now_ms = _now_ms()
+    path = _find_conversation_path_by_msg(user_uid, msg_uid)
+    if not path:
+        return False, 'Message not found'
+    mref = db.reference(f'{path}/messages/{msg_uid}', app=app)
+    mdata = mref.get()
+    if not mdata:
+        return False, 'Message not found'
+    if mdata.get('sender_uid') != str(user_uid):
+        return False, 'Cannot delete another user message'
+    if mdata.get('deleted', False):
+        return False, 'Message already deleted'
+    msg_time = mdata.get('created_at', 0)
+    if now_ms - msg_time > DELETE_WINDOW_SECONDS * 1000:
+        return False, 'Delete window expired (1 hour)'
+    mref.update({'deleted': True, 'edited_at': now_ms})
+    return True, None
+
+
+def mark_read(user_uid, other_uid):
     app = _get_app()
     if app is None:
         return
-    room = get_room_name(user_uid, other_user_uid)
-    ref = db.reference(f'/chat_rooms/{room}/messages')
+    now_ms = _now_ms()
+    admin_uid, teacher_uid = _resolve_admin_teacher(user_uid, other_uid)
+    path = _conversation_path(admin_uid, teacher_uid)
+    ref = db.reference(f'{path}/messages', app=app)
     data = ref.get()
     if not data:
         return
     updates = {}
     for mid, mdata in data.items():
-        if (mdata.get('sender_uid') == str(other_user_uid)
-                and not mdata.get('is_read', False)):
+        if mdata.get('sender_uid') == str(other_uid) and not mdata.get('is_read', False):
             updates[f'{mid}/is_read'] = True
     if updates:
         ref.update(updates)
 
 
-def get_unread_count(user_uid):
+def get_chat_list(user_uid, user_type):
     app = _get_app()
     if app is None:
-        return 0
-    ref = db.reference('/chat_rooms')
-    data = ref.get()
-    if not data:
+        return []
+    user_str = str(user_uid)
+    result = []
+    if user_type == 'TEACHER':
+        from accounts.models import CustomUser
+        admins = CustomUser.objects.filter(user_type='ADMIN', status='ACTIVE').only('uid', 'full_name')
+        for admin in admins:
+            admin_str = str(admin.uid)
+            path = _conversation_path(admin_str, user_str)
+            msgs_data = db.reference(f'{path}/messages', app=app).get()
+            if not msgs_data:
+                continue
+            msgs = []
+            unread = 0
+            for mid, mdata in msgs_data.items():
+                created_at = mdata.get('created_at', 0)
+                msg_text = mdata.get('message', '') if not mdata.get('deleted', False) else 'This message was deleted.'
+                msgs.append({
+                    'uid': mid,
+                    'created_at': created_at,
+                    'sender_uid': mdata.get('sender_uid'),
+                    'message': msg_text,
+                })
+                if mdata.get('sender_uid') == admin_str and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                    unread += 1
+            msgs.sort(key=lambda x: x['created_at'], reverse=True)
+            last_msg = msgs[0] if msgs else None
+            result.append({
+                'other_uid': admin_str,
+                'other_name': admin.full_name,
+                'last_message': last_msg['message'] if last_msg else '',
+                'last_timestamp': last_msg['created_at'] if last_msg else 0,
+                'last_sender_uid': last_msg['sender_uid'] if last_msg else '',
+                'unread_count': unread,
+            })
+    else:
+        teachers = db.reference(f'/support_chat/{user_str}', app=app).get(shallow=True)
+        if not teachers:
+            return []
+        from accounts.models import CustomUser
+        for teacher_uid in teachers:
+            path = _conversation_path(user_str, teacher_uid)
+            msgs_data = db.reference(f'{path}/messages', app=app).get()
+            if not msgs_data:
+                continue
+            msgs = []
+            unread = 0
+            for mid, mdata in msgs_data.items():
+                created_at = mdata.get('created_at', 0)
+                msg_text = mdata.get('message', '') if not mdata.get('deleted', False) else 'This message was deleted.'
+                msgs.append({
+                    'uid': mid,
+                    'created_at': created_at,
+                    'sender_uid': mdata.get('sender_uid'),
+                    'message': msg_text,
+                })
+                if mdata.get('sender_uid') == teacher_uid and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                    unread += 1
+            msgs.sort(key=lambda x: x['created_at'], reverse=True)
+            last_msg = msgs[0] if msgs else None
+            teacher_user = CustomUser.objects.filter(uid=teacher_uid).only('full_name').first()
+            result.append({
+                'other_uid': teacher_uid,
+                'other_name': teacher_user.full_name if teacher_user else 'Unknown',
+                'last_message': last_msg['message'] if last_msg else '',
+                'last_timestamp': last_msg['created_at'] if last_msg else 0,
+                'last_sender_uid': last_msg['sender_uid'] if last_msg else '',
+                'unread_count': unread,
+            })
+    result.sort(key=lambda x: x.get('last_timestamp', 0), reverse=True)
+    return result
+
+
+def get_unread_count(user_uid, user_type):
+    app = _get_app()
+    if app is None:
         return 0
     user_str = str(user_uid)
     total = 0
-    for room_data in data.values():
-        meta = room_data.get('metadata', {})
-        participants = meta.get('participants', {})
-        if user_str not in participants:
-            continue
-        msgs = room_data.get('messages', {})
-        for m in msgs.values():
-            if (m.get('sender_uid') != user_str
-                    and not m.get('is_read', False)
-                    and not m.get('is_deleted', False)):
-                total += 1
+    if user_type == 'TEACHER':
+        from accounts.models import CustomUser
+        admins = CustomUser.objects.filter(user_type='ADMIN', status='ACTIVE').only('uid')
+        for admin in admins:
+            path = _conversation_path(str(admin.uid), user_str)
+            msgs_data = db.reference(f'{path}/messages', app=app).get()
+            if not msgs_data:
+                continue
+            for mdata in msgs_data.values():
+                if mdata.get('sender_uid') == str(admin.uid) and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                    total += 1
+    else:
+        teachers = db.reference(f'/support_chat/{user_str}', app=app).get(shallow=True)
+        if not teachers:
+            return 0
+        for teacher_uid in teachers:
+            path = _conversation_path(user_str, teacher_uid)
+            msgs_data = db.reference(f'{path}/messages', app=app).get()
+            if not msgs_data:
+                continue
+            for mdata in msgs_data.values():
+                if mdata.get('sender_uid') == teacher_uid and not mdata.get('is_read', False) and not mdata.get('deleted', False):
+                    total += 1
     return total
 
 
-def cleanup_old_messages(days=7):
+def cleanup_old_messages(days=RETENTION_DAYS):
     app = _get_app()
     if app is None:
         return 0
-    cutoff = int(time.time() * 1000) - (days * 24 * 60 * 60 * 1000)
-    ref = db.reference('/chat_rooms')
-    data = ref.get()
+    cutoff = _now_ms() - (days * 24 * 60 * 60 * 1000)
+    data = db.reference('/support_chat', app=app).get()
     if not data:
         return 0
     deleted = 0
-    for room, room_data in data.items():
-        msgs = room_data.get('messages', {})
-        for mid, mdata in msgs.items():
-            if mdata.get('timestamp', 0) < cutoff:
-                db.reference(f'/chat_rooms/{room}/messages/{mid}').delete()
+    for admin_uid, teachers in data.items():
+        for teacher_uid, conv in teachers.items():
+            msgs = conv.get('messages', {})
+            if not msgs:
+                continue
+            to_delete = []
+            for msg_uid, mdata in msgs.items():
+                if mdata.get('created_at', 0) < cutoff:
+                    to_delete.append(msg_uid)
+            for msg_uid in to_delete:
+                db.reference(f'/support_chat/{admin_uid}/{teacher_uid}/messages/{msg_uid}', app=app).delete()
                 deleted += 1
     return deleted

@@ -152,11 +152,8 @@ function loadPDF() {
     pageTotal.textContent = '/ ' + pdf.numPages;
     pageInput.max = pdf.numPages;
     loadingOverlay.style.display = 'none';
-    var availW = window.innerWidth - 80;
     pdf.getPage(1).then(function(page) {
-      var vp = page.getViewport({ scale: 1 });
-      var fitZoom = Math.min(availW / vp.width, 2.0);
-      currentZoom = Math.min(Math.max(fitZoom, 0.5), 2.0);
+      currentZoom = 0.9;
       zoomLevel.textContent = Math.round(currentZoom * 100) + '%';
       renderPage(1);
     });

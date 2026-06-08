@@ -1,463 +1,272 @@
 <style>
-    #chat-widget-container {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        z-index: 9999;
-        font-family: 'Inter', sans-serif;
-    }
-    #chat-toggle-btn {
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: var(--primary-gradient, linear-gradient(135deg, #6366f1 0%, #4f46e5 100%));
-        color: white;
-        border: none;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        transition: transform 0.2s;
-    }
-    #chat-toggle-btn:hover { transform: scale(1.05); }
-    #chat-window {
-        width: 350px;
-        height: 500px;
-        background: white;
-        border-radius: 1.5rem;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        display: none;
-        flex-direction: column;
-        overflow: hidden;
-        border: 1px solid #e2e8f0;
-        margin-bottom: 15px;
-    }
-    #chat-window.active { display: flex; }
-    .chat-header {
-        padding: 1rem 1.5rem;
-        background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-    .chat-body {
-        flex: 1;
-        padding: 1rem;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-        background: #fff;
-    }
-    .chat-footer {
-        padding: 1rem;
-        border-top: 1px solid #e2e8f0;
-        display: flex;
-        gap: 0.5rem;
-    }
-    .chat-input {
-        flex: 1;
-        padding: 0.6rem 1rem;
-        border: 1px solid #e2e8f0;
-        border-radius: 1rem;
-        outline: none;
-        font-size: 0.9rem;
-    }
-    .chat-input:focus { border-color: #6366f1; }
-    .msg {
-        max-width: 80%;
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        font-size: 0.85rem;
-        line-height: 1.4;
-        position: relative;
-    }
-    .msg.me {
-        align-self: flex-end;
-        background: #6366f1;
-        color: white;
-        border-bottom-right-radius: 0.2rem;
-    }
-    .msg.other {
-        align-self: flex-start;
-        background: #f1f5f9;
-        color: #1e293b;
-        border-bottom-left-radius: 0.2rem;
-    }
-    .msg-time {
-        font-size: 0.65rem;
-        opacity: 0.7;
-        margin-top: 0.25rem;
-        display: block;
-        text-align: right;
-    }
-    .user-list-item {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid #f1f5f9;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        transition: background 0.2s;
-    }
-    .user-list-item:hover { background: #f8fafc; }
-    .unread-badge {
-        background: #ef4444;
-        color: white;
-        font-size: 0.7rem;
-        padding: 0.1rem 0.4rem;
-        border-radius: 1rem;
-        font-weight: 700;
-    }
-
-        </style>
-
+#chat-widget-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; font-family: 'Inter', sans-serif; }
+#chat-toggle-btn { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; transition: transform 0.2s; position: relative; }
+#chat-toggle-btn:hover { transform: scale(1.05); }
+#chat-unread-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; display: none; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white; }
+#chat-window { width: 380px; height: 540px; background: white; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.1); display: none; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+#chat-window.active { display: flex; }
+.chat-header { padding: 1rem 1.25rem; background: linear-gradient(135deg, #6366f1, #0ea5e9); color: white; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.chat-header-title { font-weight: 700; font-size: 0.95rem; }
+.chat-body { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; background: #fafafa; }
+.chat-footer { padding: 0.75rem; border-top: 1px solid #e2e8f0; display: flex; gap: 0.5rem; flex-shrink: 0; background: white; }
+.chat-input { flex: 1; padding: 0.6rem 1rem; border: 1px solid #e2e8f0; border-radius: 1.5rem; outline: none; font-size: 0.85rem; min-width: 120px; }
+.chat-input:focus { border-color: #6366f1; }
+.msg { max-width: 85%; padding: 0.6rem 0.9rem; border-radius: 1rem; font-size: 0.85rem; line-height: 1.4; position: relative; word-wrap: break-word; }
+.msg.me { align-self: flex-end; background: #6366f1; color: white; border-bottom-right-radius: 0.2rem; }
+.msg.other { align-self: flex-start; background: white; color: #1e293b; border-bottom-left-radius: 0.2rem; border: 1px solid #e2e8f0; }
+.msg-time { font-size: 0.6rem; opacity: 0.7; margin-top: 0.2rem; display: flex; align-items: center; gap: 0.3rem; justify-content: flex-end; }
+.user-list-item { padding: 0.7rem 0.75rem; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; align-items: center; gap: 0.65rem; transition: background 0.15s; border-radius: 0.5rem; margin-bottom: 2px; }
+.user-list-item:hover { background: #f1f5f9; }
+.avatar-sm { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; flex-shrink: 0; background: linear-gradient(135deg, #6366f1, #0ea5e9); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.95rem; }
+.unread-badge { background: #ef4444; color: white; font-size: 0.65rem; padding: 0.1rem 0.45rem; border-radius: 1rem; font-weight: 700; margin-left: auto; flex-shrink: 0; }
+.date-separator { text-align: center; font-size: 0.7rem; color: #94a3b8; font-weight: 600; padding: 0.5rem 0; }
+.load-more { text-align: center; padding: 0.5rem; font-size: 0.75rem; color: #6366f1; cursor: pointer; font-weight: 600; }
+.load-more:hover { text-decoration: underline; }
+.search-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.8rem; outline: none; box-sizing: border-box; margin-bottom: 0.5rem; }
+.search-input:focus { border-color: #6366f1; }
+.msg-options { font-size: 0.65rem; margin-top: 0.2rem; display: flex; gap: 0.4rem; justify-content: flex-end; opacity: 0; transition: opacity 0.2s; }
+.msg:hover .msg-options { opacity: 1; }
+.msg-options span { cursor: pointer; padding: 2px; }
+.chat-back { cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 2px 8px 2px 0; opacity: 0.9; }
+.chat-back:hover { opacity: 1; }
+.msg.deleted { opacity: 0.5; font-style: italic; background: #f1f5f9; color: #94a3b8; align-self: flex-start; border: 1px solid #e2e8f0; }
+.msg.edited-tag { font-size: 0.6rem; opacity: 0.6; margin-left: 0.3rem; }
+#chat-send-btn { background: #6366f1; color: white; border: none; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }
+#chat-send-btn:hover { background: #4f46e5; }
+#chat-send-btn:disabled { background: #c7d2fe; cursor: not-allowed; }
+</style>
 
 <div id="chat-widget-container">
-    <div id="chat-window">
-        <div class="chat-header">
-            <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <span id="chat-back-btn" style="cursor: pointer; display: none;">⬅️</span>
-                <strong id="chat-title">Messages</strong>
-            </div>
-            <span style="cursor: pointer;" onclick="toggleChat()">✖️</span>
-        </div>
-        <div id="chat-user-list" class="chat-body">
-            <!-- Users will be loaded here -->
-        </div>
-        <div id="chat-messages" class="chat-body" style="display: none;">
-            <!-- Messages will be loaded here -->
-        </div>
-        <div class="chat-footer" id="chat-footer" style="display: none;">
-            <input type="text" id="chat-input-field" class="chat-input">
-            <button onclick="sendMessage()" style="background: #6366f1; color: white; border: none; padding: 0.5rem 1rem; border-radius: 1rem; cursor: pointer;">Send</button>
-        </div>
+  <div id="chat-window">
+    <div class="chat-header">
+      <div id="chat-header-left">
+        <span class="chat-header-title">{% if request.user.user_type == 'TEACHER' %}Support{% else %}Messages{% endif %}</span>
+        <div class="chat-header-sub" id="chat-header-sub">Chat with {% if request.user.user_type == 'TEACHER' %}admin{% else %}teachers{% endif %}</div>
+      </div>
+      <span id="chat-close-btn" style="cursor:pointer;font-size:1.2rem;opacity:0.8;">&times;</span>
     </div>
-    <button id="chat-toggle-btn" onclick="toggleChat()">
-        💬
-        <span id="chat-unread-badge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.75rem; display: none; align-items: center; justify-content: center; font-weight: 800; border: 2px solid white;">0</span>
-    </button>
+
+    <div id="chat-user-list" style="flex:1;overflow-y:auto;padding:0.5rem;">
+      <input type="text" class="search-input" id="chat-search-input" placeholder="Search conversations..." />
+      <div id="chat-users-container"></div>
+    </div>
+
+    <div id="chat-conversation-view" style="display:none;flex-direction:column;flex:1;min-height:0;">
+      <div style="display:flex;align-items:center;padding:0.5rem 0.75rem;border-bottom:1px solid #e2e8f0;gap:0.5rem;">
+        <span class="chat-back" id="chat-back-btn">&larr;</span>
+        <div>
+          <div id="chat-partner-name" style="font-weight:600;font-size:0.9rem;"></div>
+        </div>
+      </div>
+      <div class="chat-body" id="chat-message-list"></div>
+      <div class="chat-footer">
+        <input type="text" class="chat-input" id="chat-msg-input" placeholder="Type a message..." maxlength="5000" />
+        <button id="chat-send-btn" disabled>&#10148;</button>
+      </div>
+    </div>
+  </div>
+
+  <button id="chat-toggle-btn">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    <span id="chat-unread-badge">0</span>
+  </button>
 </div>
 
 <script>
-    let currentReceiverUid = null;
-    let chatSocket = null;
-    let countsInterval = null;
+(function() {
+  const userType = '{{ request.user.user_type }}';
+  const currentUid = '{{ request.user.uid }}';
+  let selectedUid = null;
+  let messagesOffset = {};
+  let hasMore = {};
+  let chatLoaded = false;
 
-    // Polling for total unread counts (chat + notifications)
-    function pollUnreadCounts() {
-        fetch('{% url "get_unread_counts" %}')
-            .then(res => res.json())
-            .then(data => {
-                // Update chat badge
-                const chatBadge = document.getElementById('chat-unread-badge');
-                if (data.chat > 0) {
-                    chatBadge.innerText = data.chat;
-                    chatBadge.style.display = 'flex';
-                } else {
-                    chatBadge.style.display = 'none';
-                }
+  const container = document.getElementById('chat-widget-container');
+  const window = document.getElementById('chat-window');
+  const toggleBtn = document.getElementById('chat-toggle-btn');
+  const closeBtn = document.getElementById('chat-close-btn');
+  const unreadBadge = document.getElementById('chat-unread-badge');
+  const userListDiv = document.getElementById('chat-users-container');
+  const searchInput = document.getElementById('chat-search-input');
+  const convView = document.getElementById('chat-conversation-view');
+  const userListView = document.getElementById('chat-user-list');
+  const msgList = document.getElementById('chat-message-list');
+  const msgInput = document.getElementById('chat-msg-input');
+  const sendBtn = document.getElementById('chat-send-btn');
+  const backBtn = document.getElementById('chat-back-btn');
+  const partnerName = document.getElementById('chat-partner-name');
 
-                // Update notification badge (if exists in DOM)
-                const notifBadge = document.getElementById('notif-count-badge');
-                if (notifBadge) {
-                    if (data.notifications > 0) {
-                        notifBadge.innerText = data.notifications;
-                        notifBadge.style.display = 'flex';
-                    } else {
-                        notifBadge.style.display = 'none';
-                    }
-                }
-            });
-    }
+  toggleBtn.onclick = () => { window.classList.toggle('active'); if (window.classList.contains('active') && !chatLoaded) { loadChatList(); chatLoaded = true; } };
+  closeBtn.onclick = () => window.classList.remove('active');
 
-    // Start polling
-    pollUnreadCounts();
-    countsInterval = setInterval(pollUnreadCounts, 10000); // Every 10 seconds
+  function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+  }
 
-    function toggleChat() {
-        const win = document.getElementById('chat-window');
-        win.classList.toggle('active');
-        if (win.classList.contains('active')) {
-            loadUserList();
-        } else {
-            if (chatSocket) {
-                chatSocket.close();
-                chatSocket = null;
-            }
-        }
-    }
+  function fetchJson(url, opts) {
+    return fetch(url, opts).then(r => r.json());
+  }
 
-    function loadUserList() {
-        document.getElementById('chat-title').innerText = "Messages";
-        document.getElementById('chat-user-list').style.display = 'flex';
-        document.getElementById('chat-messages').style.display = 'none';
-        document.getElementById('chat-footer').style.display = 'none';
-        document.getElementById('chat-back-btn').style.display = 'none';
-        currentReceiverUid = null;
-        if (chatSocket) {
-            chatSocket.close();
-            chatSocket = null;
-        }
-
-        fetch('/chat/list/')
-            .then(res => res.json())
-            .then(data => {
-                const list = document.getElementById('chat-user-list');
-                list.innerHTML = '';
-                data.users.forEach(u => {
-                    const item = document.createElement('div');
-                    item.className = 'user-list-item';
-                    item.innerHTML = `
-                        <div style="width: 35px; height: 35px; border-radius: 50%; background: #e2e8f0; overflow: hidden;">
-                            ${u.profile_photo ? `<img src="${u.profile_photo}" style="width: 100%; height: 100%; object-fit: cover;">` : ''}
-                        </div>
-                        <div style="flex: 1;">
-                            <div style="display: flex; justify-content: space-between;">
-                                <strong style="font-size: 0.9rem;">${u.name}</strong>
-                                ${u.unread_count > 0 ? `<span class="unread-badge">${u.unread_count}</span>` : ''}
-                            </div>
-                            <div style="font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;">${u.last_message}</div>
-                        </div>
-                    `;
-                    item.onclick = () => openChat(u.uid, u.name);
-                    list.appendChild(item);
-                });
-            });
-    }
-
-    function openChat(userUid, userName) {
-        currentReceiverUid = userUid;
-        document.getElementById('chat-title').innerText = userName;
-        document.getElementById('chat-user-list').style.display = 'none';
-        document.getElementById('chat-messages').style.display = 'flex';
-        document.getElementById('chat-footer').style.display = 'flex';
-        document.getElementById('chat-back-btn').style.display = 'inline';
-        document.getElementById('chat-back-btn').onclick = loadUserList;
-
-        // Load historical messages first
-        loadMessages();
-
-        // Initialize WebSocket
-        const currentUserUid = "{{ request.user.uid }}";
-        const roomName = [currentUserUid, userUid].sort().join('_');
-        const wsStart = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
-        const wsUrl = wsStart + window.location.host + '/ws/chat/' + roomName + '/';
-
-        if (chatSocket) chatSocket.close();
-        
-        chatSocket = new WebSocket(wsUrl);
-
-        chatSocket.onmessage = function(e) {
-            const data = JSON.parse(e.data);
-            const action = data.action || 'send';
-            
-            if (action === 'send') {
-                appendMessage(data.message_uid, data.message, data.sender_uid == currentUserUid, data.timestamp, false, data.raw_ts);
-            } else if (action === 'edit') {
-                const msgDiv = document.getElementById(`msg-${data.message_uid}`);
-                if (msgDiv) {
-                    const textDiv = msgDiv.querySelector('.msg-text');
-                    if (textDiv) textDiv.innerText = data.message;
-                    if (!msgDiv.innerHTML.includes('(edited)')) {
-                        const timeSpan = msgDiv.querySelector('.msg-time');
-                        if (timeSpan) {
-                            const editedSpan = document.createElement('span');
-                            editedSpan.style = "font-size: 0.65rem; opacity: 0.7; margin-right: 5px;";
-                            editedSpan.innerText = "(edited)";
-                            msgDiv.insertBefore(editedSpan, timeSpan);
-                        }
-                    }
-                }
-            } else if (action === 'delete') {
-                const msgDiv = document.getElementById(`msg-${data.message_uid}`);
-                if (msgDiv) {
-                    msgDiv.remove();
-                    checkEmptyChat();
-                }
-            }
-        };
-
-        chatSocket.onclose = function(e) {
-            console.warn('Chat socket closed, reconnecting in 3s...');
-            setTimeout(function() {
-                if (currentReceiverUid) {
-                    openChat(currentReceiverUid, document.getElementById('chat-title').innerText);
-                }
-            }, 3000);
-        };
-
-        chatSocket.onerror = function(e) {
-            console.error('Chat socket error');
-        };
-    }
-
-    function checkEmptyChat() {
-        const box = document.getElementById('chat-messages');
-        if (box.children.length === 0) {
-            box.innerHTML = `
-                <div id="no-messages-placeholder" style="text-align: center; padding: 2rem; color: #94a3b8; font-size: 0.85rem;">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💬</div>
-                    No messages yet.<br>Start a conversation!
-                </div>
-            `;
-        }
-    }
-
-    function getDateLabel(rawTs) {
-        if (!rawTs) return '';
-        const d = new Date(rawTs);
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const yesterday = new Date(today.getTime() - 86400000);
-        const msgDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        const diffDays = Math.floor((today - msgDate) / 86400000);
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 7) {
-            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            return days[d.getDay()];
-        }
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        return `${d.getDate()} ${months[d.getMonth()]}`;
-    }
-
-    function loadMessages() {
-        if (!currentReceiverUid) return;
-        fetch(`/chat/messages/${currentReceiverUid}/`)
-            .then(res => res.json())
-            .then(data => {
-                const box = document.getElementById('chat-messages');
-                box.innerHTML = '';
-                if (data.messages.length === 0) {
-                    checkEmptyChat();
-                } else {
-                    let lastDateLabel = null;
-                    data.messages.forEach(m => {
-                        const dateLabel = getDateLabel(m.raw_ts);
-                        if (dateLabel && dateLabel !== lastDateLabel) {
-                            const sep = document.createElement('div');
-                            sep.className = 'date-separator';
-                            sep.setAttribute('data-label', dateLabel);
-                            sep.style = 'text-align: center; font-size: 0.75rem; color: #94a3b8; font-weight: 600; padding: 0.5rem 0;';
-                            sep.innerText = dateLabel;
-                            box.appendChild(sep);
-                            lastDateLabel = dateLabel;
-                        }
-                        appendMessage(m.message_uid, m.message, m.is_me, m.timestamp, m.is_edited, m.raw_ts);
-                    });
-                }
-                box.scrollTop = box.scrollHeight;
-            });
-    }
-
-    function appendMessage(msgId, text, isMe, timestamp, isEdited, rawTs) {
-        const box = document.getElementById('chat-messages');
-        const placeholder = document.getElementById('no-messages-placeholder');
-        if (placeholder) placeholder.remove();
-        
-        const wasAtBottom = box.scrollHeight - box.clientHeight <= box.scrollTop + 2;
-
-        // Insert date divider if day changed
-        if (rawTs) {
-            const dateLabel = getDateLabel(parseInt(rawTs));
-            if (dateLabel) {
-                const lastSep = box.querySelector('.date-separator:last-child');
-                const lastDate = lastSep ? lastSep.getAttribute('data-label') : null;
-                if (dateLabel !== lastDate) {
-                    const sep = document.createElement('div');
-                    sep.className = 'date-separator';
-                    sep.setAttribute('data-label', dateLabel);
-                    sep.style = 'text-align: center; font-size: 0.75rem; color: #94a3b8; font-weight: 600; padding: 0.5rem 0;';
-                    sep.innerText = dateLabel;
-                    box.appendChild(sep);
-                }
-            }
-        }
-        
-        let msgDiv = document.getElementById(`msg-${msgId}`);
-        if (!msgDiv) {
-            msgDiv = document.createElement('div');
-            msgDiv.id = `msg-${msgId}`;
-            msgDiv.className = `msg ${isMe ? 'me' : 'other'}`;
-            box.appendChild(msgDiv);
-        }
-
-        let optionsHtml = '';
-        if (isMe) {
-            optionsHtml = `
-                <div class="msg-options" style="font-size: 0.65rem; margin-top: 0.3rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                    <span style="cursor: pointer; opacity: 0.8;" onclick="editMessage('${msgId}', this)">✏️</span>
-                    <span style="cursor: pointer; opacity: 0.8;" onclick="deleteMessage('${msgId}')">🗑️</span>
-                </div>
-            `;
-        }
-
-        // We use textContent/innerText for text to avoid XSS, but we set innerHTML for the structure
-        msgDiv.innerHTML = `
-            <div class="msg-text"></div>
-            ${isEdited ? '<span style="font-size: 0.65rem; opacity: 0.7; margin-right: 5px;">(edited)</span>' : ''}
-            <span class="msg-time">${timestamp}</span>
-            ${optionsHtml}
-        `;
-        msgDiv.querySelector('.msg-text').innerText = text;
-
-        if (wasAtBottom || isMe) {
-            box.scrollTop = box.scrollHeight;
-        }
-    }
-
-    function sendMessage() {
-        const input = document.getElementById('chat-input-field');
-        const text = input.value.trim();
-        if (!text || !currentReceiverUid || !chatSocket) return;
-
-        chatSocket.send(json_dumps({
-            'action': 'send',
-            'message': text,
-            'receiver_uid': currentReceiverUid
-        }));
-        
-        input.value = '';
-    }
-
-    // Helper for JSON.stringify in Django templates
-    function json_dumps(obj) {
-        return JSON.stringify(obj);
-    }
-
-    function editMessage(msgId, btnElement) {
-        const msgDiv = document.getElementById(`msg-${msgId}`);
-        if (!msgDiv) return;
-        const textDiv = msgDiv.querySelector('.msg-text');
-        if (!textDiv) return;
-        const currentText = textDiv.innerText;
-        
-        const newText = prompt("Edit message:", currentText);
-        if (newText && newText.trim() !== "" && newText !== currentText) {
-            chatSocket.send(json_dumps({
-                'action': 'edit',
-                'message_uid': msgId,
-                'message': newText.trim()
-            }));
-        }
-    }
-
-    function deleteMessage(msgId) {
-        if (confirm("Are you sure you want to delete this message?")) {
-            chatSocket.send(json_dumps({
-                'action': 'delete',
-                'message_uid': msgId
-            }));
-        }
-    }
-
-    document.getElementById('chat-input-field').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') sendMessage();
+  function loadChatList(search) {
+    let url = '/chat/list/';
+    if (search) url += '?search=' + encodeURIComponent(search);
+    fetchJson(url).then(data => {
+      const users = data.users || [];
+      userListDiv.innerHTML = users.map(u => {
+        const initial = (u.name || '?')[0].toUpperCase();
+        const unread = u.unread_count > 0 ? `<span class="unread-badge">${u.unread_count}</span>` : '';
+        return `<div class="user-list-item" data-uid="${u.uid}">
+          <div class="avatar-sm">${initial}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:0.85rem;">${escapeHtml(u.name)}</div>
+            <div style="font-size:0.7rem;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(u.last_message)}</div>
+          </div>
+          ${unread}
+        </div>`;
+      }).join('');
+      userListDiv.querySelectorAll('.user-list-item').forEach(el => {
+        el.onclick = () => openConversation(el.dataset.uid, el.querySelector('div div')?.textContent || 'User');
+      });
     });
+  }
+
+  searchInput.oninput = function() { loadChatList(this.value); };
+
+  function openConversation(uid, displayName) {
+    selectedUid = uid;
+    partnerName.textContent = displayName;
+    userListView.style.display = 'none';
+    convView.style.display = 'flex';
+    messagesOffset[uid] = 0;
+    hasMore[uid] = true;
+    msgList.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">Loading...</div>';
+    loadMessages(uid);
+    msgInput.focus();
+    markRead(uid);
+  }
+
+  backBtn.onclick = function() {
+    selectedUid = null;
+    convView.style.display = 'none';
+    userListView.style.display = 'block';
+    loadChatList(searchInput.value);
+  };
+
+  function loadMessages(uid) {
+    const offset = messagesOffset[uid] || 0;
+    fetchJson(`/chat/messages/${uid}/?limit=25&offset=${offset}`).then(data => {
+      const msgs = data.messages || [];
+      hasMore[uid] = data.has_more || false;
+      if (offset === 0) msgList.innerHTML = '';
+      if (msgs.length === 0 && offset === 0) {
+        msgList.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">No messages yet. Say hello!</div>';
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      msgs.reverse().forEach(m => {
+        const div = document.createElement('div');
+        if (m.is_deleted) {
+          div.className = 'msg deleted';
+          div.textContent = 'This message was deleted';
+        } else {
+          div.className = m.is_me ? 'msg me' : 'msg other';
+          const content = document.createElement('div');
+          content.textContent = m.message;
+          div.appendChild(content);
+          const timeDiv = document.createElement('div');
+          timeDiv.className = 'msg-time';
+          if (m.is_edited) timeDiv.innerHTML += '<span class="edited-tag">(edited)</span>';
+          timeDiv.innerHTML += `<span>${m.timestamp}</span>`;
+          if (m.is_me && m.read_at) timeDiv.innerHTML += '<span style="font-size:0.65rem;">&#10003;&#10003;</span>';
+          div.appendChild(timeDiv);
+          if (m.is_me && !m.is_deleted) {
+            const opts = document.createElement('div');
+            opts.className = 'msg-options';
+            opts.innerHTML = '<span class="edit-msg" title="Edit">&#9998;</span><span class="del-msg" title="Delete">&#128465;</span>';
+            const editSpan = opts.querySelector('.edit-msg');
+            const delSpan = opts.querySelector('.del-msg');
+            editSpan.onclick = (e) => { e.stopPropagation(); editMessage(m.message_uid, m.message); };
+            delSpan.onclick = (e) => { e.stopPropagation(); deleteMessage(m.message_uid); };
+            div.appendChild(opts);
+          }
+        }
+        fragment.appendChild(div);
+      });
+      if (offset === 0) {
+        msgList.appendChild(fragment);
+        msgList.scrollTop = msgList.scrollHeight;
+      } else {
+        msgList.insertBefore(fragment, msgList.firstChild);
+      }
+      if (hasMore[uid]) {
+        const loadMore = document.createElement('div');
+        loadMore.className = 'load-more';
+        loadMore.textContent = 'Load older messages...';
+        loadMore.onclick = () => { messagesOffset[uid] = (messagesOffset[uid] || 0) + 25; loadMore.remove(); loadMessages(uid); };
+        msgList.insertBefore(loadMore, msgList.firstChild);
+      }
+    });
+  }
+
+  msgInput.oninput = function() { sendBtn.disabled = !this.value.trim(); };
+  msgInput.onkeydown = function(e) { if (e.key === 'Enter' && !e.shiftKey && this.value.trim()) { e.preventDefault(); sendMessage(); } };
+  sendBtn.onclick = sendMessage;
+
+  function sendMessage() {
+    const text = msgInput.value.trim();
+    if (!text || !selectedUid) return;
+    sendBtn.disabled = true;
+    const formData = new FormData();
+    formData.append('receiver_uid', selectedUid);
+    formData.append('message', text);
+    fetchJson('/chat/send/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(data => {
+      if (data.status === 'success') {
+        msgInput.value = '';
+        sendBtn.disabled = true;
+        loadMessages(selectedUid);
+      }
+    }).catch(() => { sendBtn.disabled = false; });
+  }
+
+  function editMessage(msgUid, oldText) {
+    const newText = prompt('Edit your message:', oldText);
+    if (!newText || newText === oldText) return;
+    const formData = new FormData();
+    formData.append('message_uid', msgUid);
+    formData.append('message', newText);
+    fetchJson('/chat/edit/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => loadMessages(selectedUid));
+  }
+
+  function deleteMessage(msgUid) {
+    if (!confirm('Delete this message?')) return;
+    const formData = new FormData();
+    formData.append('message_uid', msgUid);
+    fetchJson('/chat/delete/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => loadMessages(selectedUid));
+  }
+
+  function markRead(uid) {
+    fetch(`/chat/messages/${uid}/?limit=1`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+    updateUnreadCounts();
+  }
+
+  function updateUnreadCounts() {
+    fetchJson('/unread-counts/').then(data => {
+      const count = data.chat || 0;
+      if (count > 0) { unreadBadge.style.display = 'flex'; unreadBadge.textContent = count > 99 ? '99+' : count; }
+      else unreadBadge.style.display = 'none';
+    }).catch(() => {});
+  }
+
+  function getCSRF() {
+    const el = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (el) return el.value;
+    const m = document.cookie.match(/neolearner_csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  updateUnreadCounts();
+  setInterval(updateUnreadCounts, 15000);
+})();
 </script>
-
-
