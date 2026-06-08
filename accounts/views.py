@@ -397,6 +397,99 @@ def health_check(request):
 
     return JsonResponse(health_data, status=200 if health_data["status"] == "healthy" else 503)
 
+
+def firebase_health_check(request):
+    """Production-safe Firebase RTDB connectivity test: write → read → delete."""
+    import time
+    import uuid
+    import json
+    import os
+
+    result = {
+        'status': 'running',
+        'credential_source': None,
+        'db_url': None,
+        'write': None,
+        'read': None,
+        'delete': None,
+        'error': None,
+    }
+
+    db_url = os.getenv('FIREBASE_RTDB_URL')
+    json_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
+    json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
+    result['db_url'] = db_url
+
+    if not db_url:
+        result['status'] = 'FAIL'
+        result['error'] = 'FIREBASE_RTDB_URL not set'
+        return JsonResponse(result, status=503)
+
+    if not json_str and not json_path:
+        result['status'] = 'SKIP'
+        result['error'] = 'No Firebase credentials configured'
+        return JsonResponse(result, status=200)
+
+    try:
+        import firebase_admin
+        from firebase_admin import credentials, db as rtdb
+
+        app_name = 'health_check_http'
+        try:
+            app = firebase_admin.get_app(app_name)
+        except ValueError:
+            app = None
+
+        if app is None:
+            cred = None
+            if json_str:
+                cred = credentials.Certificate(json.loads(json_str))
+                result['credential_source'] = 'FIREBASE_SERVICE_ACCOUNT_JSON'
+            elif json_path and os.path.exists(json_path):
+                cred = credentials.Certificate(json_path)
+                result['credential_source'] = f'FIREBASE_SERVICE_ACCOUNT_PATH ({json_path})'
+            elif json_path:
+                result['status'] = 'FAIL'
+                result['error'] = f'FIREBASE_SERVICE_ACCOUNT_PATH file not found at {json_path}'
+                return JsonResponse(result, status=503)
+            else:
+                result['status'] = 'FAIL'
+                result['error'] = 'No usable credentials'
+                return JsonResponse(result, status=503)
+
+            app = firebase_admin.initialize_app(cred, {'databaseURL': db_url}, name=app_name)
+
+        # Write test
+        test_uid = f'hc_{uuid.uuid4().hex[:8]}'
+        test_path = f'/health_checks/{test_uid}'
+        ref = rtdb.reference(test_path, app=app)
+        ref.set({'test': True, 'timestamp': int(time.time() * 1000)})
+        result['write'] = 'PASS'
+
+        # Read test
+        read_data = ref.get()
+        if read_data and read_data.get('test') is True:
+            result['read'] = 'PASS'
+        else:
+            result['read'] = 'FAIL'
+            result['status'] = 'FAIL'
+            result['error'] = f'Read returned unexpected data: {read_data}'
+            return JsonResponse(result, status=503)
+
+        # Delete test
+        ref.delete()
+        verify = rtdb.reference(test_path, app=app).get()
+        result['delete'] = 'PASS' if verify is None else 'PARTIAL'
+
+        result['status'] = 'PASS'
+        return JsonResponse(result, status=200)
+
+    except Exception as e:
+        result['status'] = 'FAIL'
+        result['error'] = str(e)
+        return JsonResponse(result, status=503)
+
+
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def status_page(request):
     """Public status page for stakeholders."""

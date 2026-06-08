@@ -5,6 +5,7 @@ urlpatterns = [
     path('', views.login_view, name='home'),
     path('signup/', views.signup_view, name='signup'),
     path('health/', views.health_check, name='health_check'),
+    path('health/firebase/', views.firebase_health_check, name='firebase_health_check'),
     path('status/', views.status_page, name='status_page'),
     path('login/', views.login_view, name='login'),
     path('student-view/auth/', views.student_view_auth, name='student_view_auth'),

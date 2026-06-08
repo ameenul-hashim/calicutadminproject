@@ -1,10 +1,13 @@
 import os
 import json
 import threading
+import logging
 from datetime import datetime, timedelta, timezone
 
 import firebase_admin
 from firebase_admin import credentials, db
+
+logger = logging.getLogger(__name__)
 
 _firebase_app = None
 _lock = threading.Lock()
@@ -19,21 +22,36 @@ def _get_app():
             return _firebase_app
         db_url = os.getenv('FIREBASE_RTDB_URL')
         if not db_url:
+            logger.warning('Firebase Analytics: FIREBASE_RTDB_URL not set')
             return None
         json_str = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
         json_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
+        cred_source = None
         if json_str:
-            cred = credentials.Certificate(json.loads(json_str))
+            try:
+                cred = credentials.Certificate(json.loads(json_str))
+                cred_source = 'FIREBASE_SERVICE_ACCOUNT_JSON (env var)'
+            except Exception as e:
+                logger.error(f'Firebase Analytics credential parse failed: {e}')
+                return None
         elif json_path:
             try:
                 cred = credentials.Certificate(json_path)
-            except Exception:
+                cred_source = f'FIREBASE_SERVICE_ACCOUNT_PATH ({json_path})'
+            except Exception as e:
+                logger.error(f'Firebase Analytics credential load failed from {json_path}: {e}')
                 return None
         else:
+            logger.warning('Firebase Analytics: no credentials set')
             return None
-        _firebase_app = firebase_admin.initialize_app(
-            cred, {'databaseURL': db_url}, name='analytics'
-        )
+        try:
+            _firebase_app = firebase_admin.initialize_app(
+                cred, {'databaseURL': db_url}, name='analytics'
+            )
+            logger.info(f'Firebase Analytics initialized | source={cred_source} | db_url={db_url}')
+        except Exception as e:
+            logger.error(f'Firebase Analytics initialize_app failed: {e}')
+            return None
     return _firebase_app
 
 
