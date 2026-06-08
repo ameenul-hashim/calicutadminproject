@@ -475,15 +475,7 @@
                     <a href="{% url 'system_audit' %}" class="nav-link {% if request.resolver_match.url_name == 'system_audit' %}active{% endif %}" style="background: rgba(239, 68, 68, 0.05); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); font-weight: 700;">🔍 System Audit Hub</a>
                 </div>
 
-                <!-- Support Chat -->
-                <div class="nav-group">
-                    <a href="{% url 'admin_chat_settings' %}" class="nav-link" style="display: flex; justify-content: space-between; align-items: center; background: rgba(99, 102, 241, 0.06); color: #6366f1; border: 1px solid rgba(99, 102, 241, 0.15);">
-                        <span>💬 Support Chat</span>
-                        {% if support_chat_unread > 0 %}
-                        <span style="background: #ef4444; color: white; border-radius: 9999px; padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 700;">{{ support_chat_unread }}</span>
-                        {% endif %}
-                    </a>
-                </div>
+
 
                 <!-- Backup Center -->
                 <div class="nav-group">

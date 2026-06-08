@@ -180,10 +180,6 @@ class CourseResource(models.Model):
     )
     RESOURCE_TYPE_CHOICES = (
         ('PDF', 'PDF Document'),
-        ('DOCX', 'Word Document'),
-        ('PPTX', 'PowerPoint Presentation'),
-        ('XLSX', 'Excel Spreadsheet'),
-        ('TXT', 'Text File'),
     )
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='resources')
     title = models.CharField(max_length=255)

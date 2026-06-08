@@ -3,7 +3,6 @@ Django settings for elearning_project project.
 """
 
 import os
-import hashlib
 from pathlib import Path
 from dotenv import load_dotenv
 import dj_database_url
@@ -66,7 +65,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'channels',
     'accounts',
     'custom_admin',
     'cloudinary_storage',
@@ -130,7 +128,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'elearning_project.wsgi.application'
-ASGI_APPLICATION = 'elearning_project.asgi.application'
+
 
 # SSL/Proxy Configuration for Render
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -155,11 +153,8 @@ else:
     }
 
 
-# Scalable Caching & Channel Layers
-REDIS_URL = os.getenv('REDIS_URL')
 
-# Derive a separate encryption key for channel layers to avoid exposing SECRET_KEY
-CHANNEL_LAYER_KEY = os.getenv('CHANNEL_ENCRYPTION_KEY') or hashlib.sha256(f"channel-layer:{SECRET_KEY}".encode()).hexdigest()[:32]
+REDIS_URL = os.getenv('REDIS_URL')
 
 if REDIS_URL:
     CACHES = {
@@ -168,27 +163,13 @@ if REDIS_URL:
             'LOCATION': REDIS_URL,
         }
     }
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels_redis.core.RedisChannelLayer',
-            'CONFIG': {
-                "hosts": [REDIS_URL],
-                "symmetric_encryption_keys": [CHANNEL_LAYER_KEY],
-            },
-        },
-    }
 else:
-    # Fallback to local memory for both cache and channels if Redis is not provided
+    # Fallback to local memory for cache if Redis is not provided
     CACHES = {
         'default': {
             'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
             'LOCATION': 'unique-snowflake',
         }
-    }
-    CHANNEL_LAYERS = {
-        'default': {
-            'BACKEND': 'channels.layers.InMemoryChannelLayer',
-        },
     }
 
 if not DEBUG:

@@ -247,33 +247,6 @@ def _do_upload(client, bucket_name, file_path, file_bytes, content_type="applica
         logger.error(f"Supabase _do_upload Error for {file_path}: {e}")
         raise
 
-def upload_chat_attachment(file_bytes, original_filename, sender_uid):
-    """Upload a chat attachment (PNG/JPG/PDF, max 5MB) to Supabase. Returns path or None."""
-    import uuid as _uuid
-    ext_map = {'image/png': 'png', 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'application/pdf': 'pdf'}
-    mime = None
-    if original_filename.lower().endswith('.png'): mime = 'image/png'
-    elif original_filename.lower().endswith(('.jpg','.jpeg')): mime = 'image/jpeg'
-    elif original_filename.lower().endswith('.pdf'): mime = 'application/pdf'
-    else:
-        import mimetypes
-        mime, _ = mimetypes.guess_type(original_filename)
-    if not mime or mime not in ('image/png','image/jpeg','application/pdf'):
-        raise ValueError("Only PNG, JPG, and PDF files are allowed")
-    if len(file_bytes) > 5 * 1024 * 1024:
-        raise ValueError("File too large (max 5 MB)")
-    ext = ext_map.get(mime, 'bin')
-    dest = f"chat_attachments/{sender_uid}/{_uuid.uuid4()}.{ext}"
-    client = supabase or resource_supabase
-    if not client:
-        return None
-    client.storage.from_(bucket_name).upload(
-        path=dest,
-        file=file_bytes,
-        file_options={"content-type": mime, "upsert": "true"}
-    )
-    return dest
-
 def upload_user_proof(instance, pdf_file):
     """
     High-level helper to upload a user's verification PDF to Supabase.
