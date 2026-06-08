@@ -1824,6 +1824,7 @@ def logout_view(request):
         return redirect('login')
 
 @user_passes_test(lambda u: u.is_authenticated and (u.user_type in ['STUDENT', 'TEACHER'] or getattr(u, 'is_staff', False)), login_url='login')
+@login_required
 def enroll_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, status='PUBLISHED', is_approved=True)
     

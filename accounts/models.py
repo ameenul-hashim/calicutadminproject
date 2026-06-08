@@ -47,17 +47,34 @@ class CustomUser(AbstractUser):
 
     @property
     def avatar_url(self):
-        """Returns the raw Cloudinary image URL or a fallback default."""
+        """Returns the Cloudinary image URL with auto-quality or a fallback."""
+        url = None
         if self.image:
-            return self.image.strip()
-        
-        if self.profile_photo:
+            url = self.image.strip()
+        elif self.profile_photo:
             try:
-                return self.profile_photo.url
+                url = self.profile_photo.url
             except ValueError:
                 pass
-        
-        return f"https://ui-avatars.com/api/?name={self.username}&background=random&color=fff&size=256"
+
+        if url and 'cloudinary.com' in url:
+            from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+            parsed = urlparse(url)
+            path = parsed.path
+            if '/upload/' in path:
+                parts = path.split('/upload/', 1)
+                transformations = 'f_auto,q_auto'
+                existing = parts[0]
+                if existing and not existing.endswith('image/upload'):
+                    parts[0] = existing  # keep existing transformations if any
+                path = f"{parts[0]}/upload/{transformations}/{parts[1]}"
+                parsed = parsed._replace(path=path)
+                return urlunparse(parsed)
+            return url
+
+        if not url:
+            return f"https://ui-avatars.com/api/?name={self.username}&background=random&color=fff&size=256"
+        return url
 
     @property
     def proof_pdf_url(self):

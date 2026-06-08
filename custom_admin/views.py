@@ -1305,24 +1305,17 @@ def admin_delete_course_secure(request, course_uid):
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
             
-            # 1. Cleanup all Course Resources from Supabase
+            # Soft-delete: move course and all content to recycle bin (keep files for potential restore)
+            from django.utils import timezone
+            now = timezone.now()
+            course.lessons.all().update(status='REJECTED', is_approved=False)
             from accounts.models import CourseResource
-            from accounts.utils.storage_manager import StorageManager
-            resources = CourseResource.objects.filter(course=course)
-            for res in resources:
-                if res.firebase_file_path:
-                    try:
-                        StorageManager.delete_from_supabase_storage(res.firebase_file_path)
-                        if res.thumbnail_public_id:
-                            from accounts.utils.cloudinary_helpers import delete_temp_image
-                            delete_temp_image(res.thumbnail_public_id)
-                    except Exception as e:
-                        logger.error(f"Error deleting resource {res.uid}: {e}")
-
-            # 2. Delete the course (cascades to internal models)
-            course.delete()
+            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True, deleted_at=now)
+            course.status = 'DELETED'
+            course.is_approved = False
+            course.save()
             
-            messages.success(request, f"✅ '{course_title}' and all associated storage files have been permanently purged.")
+            messages.success(request, f"✅ '{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
             return redirect('deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
