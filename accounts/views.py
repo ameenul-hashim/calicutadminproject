@@ -1070,7 +1070,7 @@ def course_lessons(request, course_uid):
     from .models import CourseResource, DeletionRequest
     from itertools import groupby
 
-    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid', 'video_file', 'youtube_video_id', 'youtube_upload_status').order_by('chapter', 'order')
+    lessons = course.lessons.all().only('id', 'title', 'order', 'status', 'is_approved', 'chapter', 'rejection_reason', 'created_at', 'video_url', 'uid', 'video_file', 'youtube_video_id', 'youtube_upload_status', 'upload_status').order_by('chapter', 'order')
     resources = course.resources.filter(is_deleted=False).only('id', 'title', 'category', 'resource_type', 'status', 'is_approved', 'chapter', 'rejection_reason', 'uid', 'compressed_size', 'thumbnail_path').order_by('-created_at')
 
     has_pending_content = lessons.filter(status='PENDING').exists() or resources.filter(status='PENDING').exists()
@@ -1115,9 +1115,9 @@ def course_lessons(request, course_uid):
         if name and name not in seen:
             seen.add(name)
             all_chapter_names.append(name)
-    # Remove empty chapter if no items
-    if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
-        all_chapter_names.remove('')
+    # Include empty chapter (Uncategorized) at the end if it has items
+    if '' in derived_chapters and (lesson_by_chapter.get('') or res_by_chapter.get('')):
+        all_chapter_names.append('')
 
     chapters_data = []
     for ch_name in all_chapter_names:
@@ -1181,8 +1181,8 @@ def rename_chapter(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     old_name = request.POST.get('old_name', '').strip()
     new_name = request.POST.get('new_name', '').strip()
-    if not old_name or not new_name:
-        messages.error(request, "Both old and new chapter names are required.")
+    if not new_name:
+        messages.error(request, "New chapter name is required.")
         return redirect('course_lessons', course_uid=course.uid)
     if old_name == new_name:
         messages.info(request, "No change — names are identical.")

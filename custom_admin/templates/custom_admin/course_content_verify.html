@@ -248,6 +248,7 @@
                                         </form>
                                     {% endif %}
                                     <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #4f46e5; color: white; padding: 0.45rem 0.7rem; border-radius: 0.4rem; font-size: 0.7rem; font-weight: 700; text-decoration: none;">View</a>
+                                    <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0.45rem 0.7rem;">Delete Permanently</button>
                                 </div>
                             </div>
                             {% endif %}{% endfor %}
@@ -284,6 +285,7 @@
                                         </form>
                                     {% endif %}
                                     <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #4f46e5; color: white; padding: 0.45rem 0.7rem; border-radius: 0.4rem; font-size: 0.7rem; font-weight: 700; text-decoration: none;">View</a>
+                                    <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0.45rem 0.7rem;">Delete Permanently</button>
                                 </div>
                             </div>
                             {% endif %}{% endfor %}
@@ -320,6 +322,7 @@
                                         </form>
                                     {% endif %}
                                     <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #4f46e5; color: white; padding: 0.45rem 0.7rem; border-radius: 0.4rem; font-size: 0.7rem; font-weight: 700; text-decoration: none;">View</a>
+                                    <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.7rem; font-weight: 700; cursor: pointer; padding: 0.45rem 0.7rem;">Delete Permanently</button>
                                 </div>
                             </div>
                             {% endif %}{% endfor %}
@@ -422,6 +425,7 @@
                                             {% csrf_token %}
                                             <button type="submit" onclick="return confirm('Suspend/Reject this resource?')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
                                         </form>
+                                        <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
                                     </div>
                                 </div>
                             {% endif %}{% endfor %}
@@ -439,6 +443,7 @@
                                             {% csrf_token %}
                                             <button type="submit" onclick="return confirm('Suspend/Reject this resource?')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
                                         </form>
+                                        <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
                                     </div>
                                 </div>
                             {% endif %}{% endfor %}
@@ -456,6 +461,7 @@
                                             {% csrf_token %}
                                             <button type="submit" onclick="return confirm('Suspend/Reject this resource?')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
                                         </form>
+                                        <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
                                     </div>
                                 </div>
                             {% endif %}{% endfor %}
