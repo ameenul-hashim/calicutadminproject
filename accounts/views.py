@@ -2252,14 +2252,21 @@ def get_chat_messages(request, other_user_uid):
 
     data = []
     from datetime import datetime as dt_mod
+    _sender_cache = {}
+    def _resolve_name(sender_uid):
+        if sender_uid not in _sender_cache:
+            u = CustomUser.objects.filter(uid=sender_uid).only('user_type', 'full_name', 'username', 'chat_display_name').first()
+            _sender_cache[sender_uid] = u.chat_display if u else ''
+        return _sender_cache[sender_uid]
     for m in fb_msgs:
         is_me = str(m['sender_uid']) == str(user.uid)
-        raw_ts = m.get('timestamp', 0)
+        raw_ts = m.get('created_at', 0)
         ts_str = dt_mod.fromtimestamp(raw_ts / 1000).strftime('%I:%M %p') if raw_ts else ''
+        sender_name = _resolve_name(m['sender_uid'])
         data.append({
             'message_uid': m['uid'],
             'sender_uid': m['sender_uid'],
-            'sender_name': m.get('sender_name', ''),
+            'sender_name': sender_name,
             'message': m['message'],
             'timestamp': ts_str,
             'raw_ts': raw_ts,

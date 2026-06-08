@@ -933,6 +933,15 @@ def edit_user_admin(request, user_uid):
                     return redirect('manage_teachers')
                 return redirect('manage_students')
 
+        elif form_type == 'chat':
+            chat_display_name = request.POST.get('chat_display_name', '').strip()
+            user.chat_display_name = chat_display_name
+            user.save(update_fields=['chat_display_name'])
+            messages.success(request, f"Chat display name updated to '{chat_display_name or 'Support Team'}'.")
+            if user.user_type == 'TEACHER':
+                return redirect('manage_teachers')
+            return redirect('manage_students')
+
         elif form_type == 'credentials':
             username = request.POST.get('username')
             email = request.POST.get('email')

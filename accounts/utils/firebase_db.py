@@ -667,9 +667,11 @@ def admin_log_cleanup(days=7):
 # ============================================================
 
 def run_all_cleanup():
+    from .firebase_chat import cleanup_old_messages as chat_v2_cleanup
     return {
         'notifications': notif_cleanup(),
-        'chat': chat_cleanup(),
+        'chat_legacy': chat_cleanup(),
+        'chat_v2': chat_v2_cleanup(),
         'login_history': login_history_cleanup(),
         'admin_log': admin_log_cleanup(),
     }

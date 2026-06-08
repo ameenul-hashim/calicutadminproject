@@ -56,6 +56,12 @@ def get_admin_uid_by_name(display_name):
     return None
 
 
+def _resolve_sender_name(sender_uid):
+    from accounts.models import CustomUser
+    u = CustomUser.objects.filter(uid=sender_uid).only('user_type', 'full_name', 'username', 'chat_display_name').first()
+    return u.chat_display if u else 'Unknown'
+
+
 def send_message(sender_uid, receiver_uid, message_text):
     app = _get_app()
     if app is None:
@@ -66,11 +72,13 @@ def send_message(sender_uid, receiver_uid, message_text):
     if not sanitized:
         return None, 0
     admin_uid, teacher_uid = _resolve_admin_teacher(sender_uid, receiver_uid)
+    sender_name = _resolve_sender_name(sender_uid)
     path = _conversation_path(admin_uid, teacher_uid)
     msg_ref = db.reference(f'{path}/messages/{msg_uid}', app=app)
     msg_ref.set({
         'sender_uid': str(sender_uid),
         'receiver_uid': str(receiver_uid),
+        'sender_name': sender_name,
         'message': sanitized,
         'created_at': now_ms,
         'is_read': False,

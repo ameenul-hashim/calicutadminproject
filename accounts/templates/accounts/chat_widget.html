@@ -165,13 +165,19 @@
         return;
       }
       const fragment = document.createDocumentFragment();
-      msgs.reverse().forEach(m => {
+      msgs.forEach(m => {
         const div = document.createElement('div');
         if (m.is_deleted) {
           div.className = 'msg deleted';
           div.textContent = 'This message was deleted';
         } else {
           div.className = m.is_me ? 'msg me' : 'msg other';
+          if (!m.is_me && m.sender_name) {
+            const nameDiv = document.createElement('div');
+            nameDiv.style.cssText = 'font-size:0.65rem;font-weight:600;opacity:0.7;margin-bottom:2px;';
+            nameDiv.textContent = m.sender_name;
+            div.appendChild(nameDiv);
+          }
           const content = document.createElement('div');
           content.textContent = m.message;
           div.appendChild(content);
@@ -196,7 +202,7 @@
       });
       if (offset === 0) {
         msgList.appendChild(fragment);
-        msgList.scrollTop = msgList.scrollHeight;
+        setTimeout(() => msgList.scrollTop = msgList.scrollHeight, 50);
       } else {
         msgList.insertBefore(fragment, msgList.firstChild);
       }
