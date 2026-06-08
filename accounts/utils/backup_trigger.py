@@ -108,7 +108,7 @@ def _do_backup_signup_pdf(user_id, pdf_path, pdf_bytes):
             log.error_message = 'Google Drive not configured'
             log.save(update_fields=['status', 'error_message', 'completed_at'])
             return
-        folder_parts = ['NeoLearn_Backups', signup_folder] + year_month.split('/')
+        folder_parts = ['NeoLearner_Backups', signup_folder] + year_month.split('/')
         folder_id = ensure_folder_path(service, folder_parts)
         log.drive_folder_path = '/'.join(folder_parts)
         log.status = 'UPLOADING'
@@ -162,7 +162,7 @@ def _do_backup_teacher_resource(resource_id, supabase_path, file_bytes, course_t
             log.error_message = 'Google Drive not configured'
             log.save(update_fields=['status', 'error_message', 'completed_at'])
             return
-        folder_parts = ['NeoLearn_Backups', resource_folder, safe_course, safe_chapter, safe_category]
+        folder_parts = ['NeoLearner_Backups', resource_folder, safe_course, safe_chapter, safe_category]
         folder_id = ensure_folder_path(service, folder_parts)
         log.drive_folder_path = '/'.join(folder_parts)
         log.status = 'UPLOADING'

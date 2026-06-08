@@ -74,13 +74,13 @@ class Command(BaseCommand):
             log.status = 'UPLOADING'
             log.save(update_fields=['status', 'file_size', 'filename'])
 
-            folder_id = ensure_folder_path(service, ['NeoLearn_Backups', db_folder])
+            folder_id = ensure_folder_path(service, ['NeoLearner_Backups', db_folder])
             drive_id, upload_error = upload_file(service, sql_bytes, filename, 'application/octet-stream', folder_id)
             if upload_error:
                 raise ValueError(f'Upload failed: {upload_error}')
 
             log.drive_file_id = drive_id
-            log.drive_folder_path = f'NeoLearn_Backups/{db_folder}'
+            log.drive_folder_path = f'NeoLearner_Backups/{db_folder}'
 
             verify_sha = _get_config('BACKUP_VERIFY_SHA256', 'True') == 'True'
             if verify_sha:

@@ -68,7 +68,7 @@ class Command(BaseCommand):
             if error:
                 raise ValueError(f'pg_dump failed: {error}')
 
-        folder_parts = ['NeoLearn_Backups', 'Database']
+        folder_parts = ['NeoLearner_Backups', 'Database']
         folder_id = ensure_folder_path(service, folder_parts)
         log.drive_folder_path = '/'.join(folder_parts)
         log.file_size = file_size
@@ -109,7 +109,7 @@ class Command(BaseCommand):
 
         file_bytes = resp.content
         year_month = log.created_at.strftime('%Y/%m')
-        folder_parts = ['NeoLearn_Backups', 'Signup_Proofs'] + year_month.split('/')
+        folder_parts = ['NeoLearner_Backups', 'Signup_Proofs'] + year_month.split('/')
         folder_id = ensure_folder_path(service, folder_parts)
         log.drive_folder_path = '/'.join(folder_parts)
         log.file_size = len(file_bytes)
@@ -147,7 +147,7 @@ class Command(BaseCommand):
         course = log.metadata.get('course', 'Unknown')
         chapter = log.metadata.get('chapter', 'General')
         category = log.metadata.get('category', 'General')
-        folder_parts = ['NeoLearn_Backups', 'Teacher_Resources', course, chapter, category]
+        folder_parts = ['NeoLearner_Backups', 'Teacher_Resources', course, chapter, category]
         folder_id = ensure_folder_path(service, folder_parts)
         log.drive_folder_path = '/'.join(folder_parts)
         log.file_size = len(file_bytes)

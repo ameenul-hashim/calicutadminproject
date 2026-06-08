@@ -60,7 +60,7 @@ from googleapiclient.http import MediaIoBaseUpload
 
 # ── PHASE 2: Folder Verification ──
 try:
-    root_id, st = ensure_folder(service, 'NeoLearn_Backups')
+    root_id, st = ensure_folder(service, 'NeoLearner_Backups')
     subs = {}
     for sf in ['Database','Signup_Proofs','Teacher_Resources','Logs','Reports']:
         fid, s = ensure_folder(service, sf, root_id)

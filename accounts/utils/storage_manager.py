@@ -115,7 +115,7 @@ class StorageManager:
                 if p_id: file_metadata['parents'] = [p_id]
                 return service.files().create(body=file_metadata, fields='id').execute().get('id')
             
-            root_id = get_or_create_folder("NeoLearn_Backups")
+            root_id = get_or_create_folder("NeoLearner_Backups")
             res_id = get_or_create_folder("Resources_Backup", p_id=root_id)
             
             media = MediaIoBaseUpload(io.BytesIO(file_bytes), mimetype=resource.mime_type, resumable=True)
