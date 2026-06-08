@@ -54,7 +54,7 @@ def pending_counts(request):
             context['backup_pending_count'] = BackupLog.objects.filter(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
             try:
                 from accounts.utils.firebase_chat import get_unread_count as chat_unread
-                context['support_chat_unread'] = chat_unread(str(user.uid))
+                context['support_chat_unread'] = chat_unread(str(user.uid), user.user_type)
             except Exception:
                 context['support_chat_unread'] = 0
 
@@ -70,7 +70,7 @@ def pending_counts(request):
             context['unread_teacher_notifs'] = context['unread_notifications_count']
             try:
                 from accounts.utils.firebase_chat import get_unread_count as chat_unread
-                context['support_chat_unread'] = chat_unread(str(user.uid))
+                context['support_chat_unread'] = chat_unread(str(user.uid), user.user_type)
             except Exception:
                 context['support_chat_unread'] = 0
 

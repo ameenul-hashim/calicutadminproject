@@ -1331,7 +1331,7 @@ def delete_lesson(request, lesson_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def add_resource(request, course_uid):
-    from .utils.pdf_processor import validate_file, process_pdf
+    from .utils.pdf_processor import validate_file
     from .utils.storage_manager import StorageManager
     from .models import CourseResource
 
@@ -1353,21 +1353,15 @@ def add_resource(request, course_uid):
             messages.error(request, "Please select a PDF file to upload.")
             return redirect('course_lessons', course_uid=course.uid)
 
-        # Pre-read size gate: 10MB raw upload limit
         MAX_UPLOAD_BYTES = 10 * 1024 * 1024
         if upload_file.size > MAX_UPLOAD_BYTES:
             messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
             return redirect('course_lessons', course_uid=course.uid)
-            
+
         uploaded_fb_path = None
-        uploaded_thumb_pid = None
         try:
             from .utils.malware_scanner import scanner
-            resource_type = 'PDF'
-            mime_type, ext = validate_file(upload_file, upload_file.name, resource_type)
-            if ext.lower() != 'pdf':
-                messages.error(request, "Only PDF files are allowed. Please select a PDF file.")
-                return redirect('course_lessons', course_uid=course.uid)
+            mime_type, ext = validate_file(upload_file, upload_file.name)
             is_infected, scan_reason = scanner.scan_file(upload_file)
             if is_infected:
                 logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
@@ -1376,11 +1370,8 @@ def add_resource(request, course_uid):
                 messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
                 return redirect('course_lessons', course_uid=course.uid)
             file_bytes = upload_file.read()
-            original_size = len(file_bytes)
-            
-            compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
-            compressed_size = len(compressed_bytes)
-            
+            file_size = len(file_bytes)
+
             import uuid
             course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
             course_slug = re.sub(r'-+', '-', course_slug)
@@ -1390,20 +1381,11 @@ def add_resource(request, course_uid):
             safe_title = safe_title[:40]
             category_folder = category.lower() if category else 'uncategorised'
             suffix = uuid.uuid4().hex[:4]
-            dest_filename = f"{safe_title}-{suffix}.{ext}"
+            dest_filename = f"{safe_title}-{suffix}.pdf"
             dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-            uploaded_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, mime_type)
-            
-            thumb_path = None
-            thumb_public_id = None
-            if thumbnail_bytes:
-                from accounts.utils.cloudinary_helpers import upload_image_only
-                t_url, t_pid = upload_image_only(thumbnail_bytes, folder="Neo Learner/course_thumbnails")
-                if t_url and t_pid:
-                    thumb_path = t_url
-                    uploaded_thumb_pid = t_pid
-                    thumb_public_id = t_pid
-            
+            uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
+            del file_bytes
+
             chapter = request.POST.get('chapter', '')
             course_is_published = course.status == 'PUBLISHED' and course.is_approved
             if course_is_published:
@@ -1421,15 +1403,13 @@ def add_resource(request, course_uid):
                 title=title,
                 chapter=chapter,
                 category=category,
-                resource_type=resource_type,
+                resource_type='PDF',
                 firebase_file_path=uploaded_fb_path,
                 backup_file_path=None,
-                thumbnail_path=thumb_path,
-                thumbnail_public_id=thumb_public_id,
-                mime_type=mime_type,
-                file_extension=ext,
-                original_size=original_size,
-                compressed_size=compressed_size,
+                mime_type='application/pdf',
+                file_extension='pdf',
+                original_size=file_size,
+                compressed_size=file_size,
                 status=resource_status,
                 is_approved=resource_approved
             )
@@ -1442,16 +1422,10 @@ def add_resource(request, course_uid):
                     StorageManager.delete_from_supabase_storage(uploaded_fb_path)
                 except Exception:
                     pass
-            if uploaded_thumb_pid:
-                try:
-                    from accounts.utils.cloudinary_helpers import delete_temp_image
-                    delete_temp_image(uploaded_thumb_pid)
-                except Exception:
-                    pass
             messages.error(request, "An error occurred while uploading the file. Please try again.")
-            
+
         return redirect('course_lessons', course_uid=course.uid)
-        
+
     chapter = request.GET.get('chapter', '')
     return render(request, 'teacher_portal/add_resource.html', {'course': course, 'chapter': chapter})
 
@@ -1477,33 +1451,20 @@ def edit_resource(request, resource_uid):
             messages.error(request, "Please select a category (English, Malayalam, or Online).")
             return redirect('edit_resource', resource_uid=resource.uid)
 
-        resource_type = 'PDF'
         is_approved = resource.status == 'APPROVED'
-
-        # If a new file is uploaded
         new_fb_path = None
-        new_thumb_path = None
-        new_thumb_pid = None
-        new_mime = None
-        new_ext = None
-        new_orig_size = 0
-        new_comp_size = 0
+        new_file_size = 0
 
-        uploaded_fb_path = None
-        uploaded_thumb_pid = None
         if upload_file:
-            # Pre-read size gate: 10MB
             MAX_UPLOAD_BYTES = 10 * 1024 * 1024
             if upload_file.size > MAX_UPLOAD_BYTES:
                 messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
                 return redirect('edit_resource', resource_uid=resource.uid)
-                
+
             try:
                 from .utils.malware_scanner import scanner
-                new_mime, new_ext = validate_file(upload_file, upload_file.name, resource_type)
-                if new_ext.lower() != 'pdf':
-                    messages.error(request, "Only PDF files are allowed. Please select a PDF file.")
-                    return redirect('edit_resource', resource_uid=resource.uid)
+                from .utils.pdf_processor import validate_file
+                new_mime, new_ext = validate_file(upload_file, upload_file.name)
                 is_infected, scan_reason = scanner.scan_file(upload_file)
                 if is_infected:
                     logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
@@ -1512,11 +1473,8 @@ def edit_resource(request, resource_uid):
                     messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
                     return redirect('edit_resource', resource_uid=resource.uid)
                 file_bytes = upload_file.read()
-                new_orig_size = len(file_bytes)
-                
-                compressed_bytes, thumbnail_bytes = process_pdf(file_bytes)
-                new_comp_size = len(compressed_bytes)
-                
+                new_file_size = len(file_bytes)
+
                 import uuid
                 course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
                 course_slug = re.sub(r'-+', '-', course_slug)
@@ -1526,19 +1484,11 @@ def edit_resource(request, resource_uid):
                 safe_title = safe_title[:40]
                 category_folder = category.lower() if category else 'uncategorised'
                 suffix = uuid.uuid4().hex[:4]
-                dest_filename = f"{safe_title}-{suffix}.{new_ext}"
-                # compressed_bytes is already compressed — only compressed version saved
+                dest_filename = f"{safe_title}-{suffix}.pdf"
                 dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-                uploaded_fb_path = StorageManager.upload_to_supabase_storage(compressed_bytes, dest_path, new_mime)
+                uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
                 new_fb_path = uploaded_fb_path
-                
-                if thumbnail_bytes:
-                    from accounts.utils.cloudinary_helpers import upload_image_only
-                    t_url, t_pid = upload_image_only(thumbnail_bytes, folder="Neo Learner/course_thumbnails")
-                    if t_url and t_pid:
-                        uploaded_thumb_pid = t_pid
-                        new_thumb_path = t_url
-                        new_thumb_pid = t_pid
+                del file_bytes
             except Exception as e:
                 logger.error("Resource edit error | user=%s resource=%s error=%s",
                     request.user.username, resource.uid, str(e))
@@ -1547,41 +1497,26 @@ def edit_resource(request, resource_uid):
                         StorageManager.delete_from_supabase_storage(uploaded_fb_path)
                     except Exception:
                         pass
-                if uploaded_thumb_pid:
-                    try:
-                        from accounts.utils.cloudinary_helpers import delete_temp_image
-                        delete_temp_image(uploaded_thumb_pid)
-                    except Exception:
-                        pass
                 messages.error(request, "An error occurred while processing the file. Please try again.")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
         course_is_published = course.status == 'PUBLISHED' and course.is_approved
 
         if course_is_published:
-            # For approved courses, save directly — no admin approval needed for edits
             if new_fb_path and resource.firebase_file_path:
                 try:
                     StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                    if resource.thumbnail_public_id:
-                        from accounts.utils.cloudinary_helpers import delete_temp_image
-                        delete_temp_image(resource.thumbnail_public_id)
                 except:
                     pass
-
             resource.title = title
             resource.category = category
-            resource.resource_type = resource_type
-
+            resource.resource_type = 'PDF'
             if new_fb_path:
                 resource.firebase_file_path = new_fb_path
-                resource.thumbnail_path = new_thumb_path
-                resource.thumbnail_public_id = new_thumb_pid
-                resource.mime_type = new_mime
-                resource.file_extension = new_ext
-                resource.original_size = new_orig_size
-                resource.compressed_size = new_comp_size
-
+                resource.mime_type = 'application/pdf'
+                resource.file_extension = 'pdf'
+                resource.original_size = new_file_size
+                resource.compressed_size = new_file_size
             resource.status = 'APPROVED'
             resource.is_approved = True
             resource.rejection_reason = None
@@ -1589,52 +1524,37 @@ def edit_resource(request, resource_uid):
             resource.save()
             messages.success(request, f"Resource '{title}' updated and immediately available to students.")
         elif is_approved:
-            # For approved resources in non-published courses, use pending fields
             resource.pending_title = title
             resource.pending_category = category
-            resource.pending_resource_type = resource_type
-            
+            resource.pending_resource_type = 'PDF'
             if new_fb_path:
                 resource.pending_firebase_file_path = new_fb_path
-                resource.pending_thumbnail_path = new_thumb_path
-                resource.pending_thumbnail_public_id = new_thumb_pid
-                resource.pending_mime_type = new_mime
-                resource.pending_file_extension = new_ext
-                resource.pending_original_size = new_orig_size
-                resource.pending_compressed_size = new_comp_size
-                
+                resource.pending_mime_type = 'application/pdf'
+                resource.pending_file_extension = 'pdf'
+                resource.pending_original_size = new_file_size
+                resource.pending_compressed_size = new_file_size
             resource.has_pending_edits = True
             resource.save()
             messages.success(request, f"Changes to resource '{title}' submitted for admin review.")
             notify_admins("Resource Edit Submitted", f"Teacher {request.user.username} edited approved resource '{resource.title}'.", 'resource_edit', '')
         else:
-            # For PENDING or REJECTED resources, overwrite directly and set to PENDING
-            # Delete old file if a new one is uploaded
             if new_fb_path and resource.firebase_file_path:
                 try:
                     StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                    if resource.thumbnail_public_id:
-                        from accounts.utils.cloudinary_helpers import delete_temp_image
-                        delete_temp_image(resource.thumbnail_public_id)
                 except:
                     pass
-                
             resource.title = title
             resource.category = category
-            resource.resource_type = resource_type
-            
+            resource.resource_type = 'PDF'
             if new_fb_path:
                 resource.firebase_file_path = new_fb_path
-                resource.thumbnail_path = new_thumb_path
-                resource.thumbnail_public_id = new_thumb_pid
-                resource.mime_type = new_mime
-                resource.file_extension = new_ext
-                resource.original_size = new_orig_size
-                resource.compressed_size = new_comp_size
-            
+                resource.mime_type = 'application/pdf'
+                resource.file_extension = 'pdf'
+                resource.original_size = new_file_size
+                resource.compressed_size = new_file_size
             resource.status = 'PENDING'
             resource.is_approved = False
-            resource.rejection_reason = None # Clear reason on resubmission
+            resource.rejection_reason = None
             resource.save()
             messages.success(request, f"Resource '{title}' updated and resubmitted for approval.")
             notify_admins("Resource Updated", f"Teacher {request.user.username} updated resource '{title}'.", 'resource_edit', '')
@@ -2108,7 +2028,7 @@ def send_chat_message(request):
         sender_name = sender.chat_display if is_admin else (sender.full_name or sender.username)
 
         from accounts.utils.firebase_chat import send_message as fb_send
-        result = fb_send(sender, receiver_uid, message_text, sender_name)
+        result = fb_send(str(sender.uid), receiver_uid, message_text)
         if result is None:
             return JsonResponse({'status': 'error', 'message': 'Message delivery failed'}, status=500)
 
@@ -2158,7 +2078,7 @@ def get_chat_messages(request, other_user_uid):
         is_me = str(m['sender_uid']) == str(user.uid)
         raw_ts = m.get('timestamp', 0)
         ts_str = dt_mod.fromtimestamp(raw_ts / 1000).strftime('%I:%M %p') if raw_ts else ''
-        entry = {
+        data.append({
             'message_uid': m['uid'],
             'sender_uid': m['sender_uid'],
             'sender_name': m.get('sender_name', ''),
@@ -2170,10 +2090,7 @@ def get_chat_messages(request, other_user_uid):
             'is_deleted': m.get('is_deleted', False),
             'read_at': m.get('read_at'),
             'edited_at': m.get('edited_at'),
-        }
-        if m.get('attachment'):
-            entry['attachment'] = m['attachment']
-        data.append(entry)
+        })
 
     return JsonResponse({'messages': data, 'has_more': has_more})
 
@@ -2195,13 +2112,12 @@ def get_chat_list(request):
 
     all_partners = CustomUser.objects.filter(
         chat_partner_filter, status='ACTIVE'
-    ).exclude(uid=user.uid).only('uid', 'full_name', 'username', 'image', 'user_type', 'chat_display_name', 'chat_status')
+    ).exclude(uid=user.uid).only('uid', 'full_name', 'username', 'image', 'user_type', 'chat_display_name')
 
     partner_map = {str(u.uid): u for u in all_partners}
 
-    from accounts.utils.firebase_chat import get_chat_list as fb_get_chat_list, get_unread_count
-    fb_rooms = fb_get_chat_list(str(user.uid))
-    fb_unread = get_unread_count(str(user.uid))
+    from accounts.utils.firebase_chat import get_chat_list as fb_get_chat_list
+    fb_rooms = fb_get_chat_list(str(user.uid), user.user_type)
 
     result = []
     seen = set()
@@ -2212,13 +2128,9 @@ def get_chat_list(request):
             continue
         u = partner_map[other_uid]
         name = u.chat_display if u.user_type == 'ADMIN' else (u.full_name or u.username)
-        status = u.chat_status if u.user_type == 'ADMIN' else 'AVAILABLE'
         result.append({
             'uid': other_uid,
             'name': name,
-            'display_name': name,
-            'status': status,
-            'conversation_status': room.get('status', 'OPEN'),
             'last_message': room.get('last_message', '') or 'No messages yet',
             'unread_count': room.get('unread_count', 0),
             'profile_photo': u.avatar_url,
@@ -2230,12 +2142,9 @@ def get_chat_list(request):
     for u in remaining:
         uid_str = str(u.uid)
         name = u.chat_display if u.user_type == 'ADMIN' else (u.full_name or u.username)
-        status = u.chat_status if u.user_type == 'ADMIN' else 'AVAILABLE'
         result.append({
             'uid': uid_str,
             'name': name,
-            'display_name': name,
-            'status': status,
             'last_message': 'No messages yet',
             'unread_count': 0,
             'profile_photo': u.avatar_url,
@@ -2244,245 +2153,7 @@ def get_chat_list(request):
     return JsonResponse({'users': result})
 
 
-@login_required
-def get_online_admins(request):
-    """Return all available admins for teacher chat list. Never exposes internal IDs or usernames."""
-    if request.user.user_type != 'TEACHER':
-        return JsonResponse({'admins': []})
-    from accounts.utils.firebase_chat import get_online_admins
-    admins = get_online_admins()
-    for a in admins:
-        a.pop('uid', None)
-    return JsonResponse({'admins': admins})
 
-
-@login_required
-def admin_chat_settings(request):
-    """Admin-only view to edit chat display name, avatar, and status."""
-    if not (request.user.is_superuser or request.user.is_staff or request.user.user_type == 'ADMIN'):
-        messages.error(request, 'Access denied')
-        return redirect('dashboard')
-    user = request.user
-    if request.method == 'POST':
-        chat_display_name = request.POST.get('chat_display_name', '').strip()
-        chat_status = request.POST.get('chat_status', 'AVAILABLE')
-        if chat_display_name:
-            user.chat_display_name = chat_display_name
-        user.chat_status = chat_status
-        user.save(update_fields=['chat_display_name', 'chat_status'])
-        messages.success(request, 'Chat settings updated')
-        return redirect('admin_chat_settings')
-    return render(request, 'accounts/admin_chat_settings.html', {'admin_user': user})
-
-
-@login_required
-@require_POST
-def upload_chat_attachment(request):
-    """Upload a chat attachment (PNG/JPG/PDF, max 5MB) and return metadata."""
-    user = request.user
-    if user.user_type not in ('TEACHER', 'ADMIN') and not user.is_superuser and not user.is_staff:
-        return JsonResponse({'error': 'Access denied'}, status=403)
-    file = request.FILES.get('file')
-    if not file:
-        return JsonResponse({'error': 'No file provided'}, status=400)
-    if file.size > 5 * 1024 * 1024:
-        return JsonResponse({'error': 'File too large (max 5 MB)'}, status=400)
-    ext = file.name.lower().rsplit('.', 1)[-1] if '.' in file.name else ''
-    if ext not in ('png', 'jpg', 'jpeg', 'pdf'):
-        return JsonResponse({'error': 'Only PNG, JPG, and PDF files are allowed'}, status=400)
-    from accounts.utils.supabase_storage import upload_chat_attachment
-    file_bytes = file.read()
-    try:
-        supabase_path = upload_chat_attachment(file_bytes, file.name, str(user.uid))
-    except ValueError as e:
-        return JsonResponse({'error': str(e)}, status=400)
-    if not supabase_path:
-        return JsonResponse({'error': 'Upload failed'}, status=500)
-    from accounts.models import ChatAttachment
-    attachment = ChatAttachment.objects.create(
-        sender=user,
-        supabase_path=supabase_path,
-        original_filename=file.name,
-        file_size=file.size,
-        mime_type=file.content_type or 'application/octet-stream',
-    )
-    return JsonResponse({
-        'status': 'success',
-        'attachment_uid': str(attachment.uid),
-        'supabase_path': supabase_path,
-        'original_filename': file.name,
-        'file_size': file.size,
-        'mime_type': file.content_type or 'application/octet-stream',
-    })
-
-
-@login_required
-def get_chat_attachment_signed_url(request, attachment_uid):
-    """Get a signed URL for a chat attachment."""
-    from accounts.models import ChatAttachment
-    from accounts.utils.supabase_storage import get_signed_url
-    try:
-        att = ChatAttachment.objects.get(uid=attachment_uid)
-    except ChatAttachment.DoesNotExist:
-        return JsonResponse({'error': 'Not found'}, status=404)
-    url = get_signed_url(att.supabase_path, expires_in=3600)
-    if not url:
-        return JsonResponse({'error': 'Failed to generate URL'}, status=500)
-    return JsonResponse({'url': url, 'filename': att.original_filename, 'mime_type': att.mime_type})
-
-
-@login_required
-@require_POST
-def set_conversation_status_view(request):
-    """Admin changes conversation status."""
-    user = request.user
-    if user.user_type != 'ADMIN' and not user.is_superuser and not user.is_staff:
-        return JsonResponse({'error': 'Access denied'}, status=403)
-    other_uid = request.POST.get('other_uid')
-    new_status = request.POST.get('status', 'OPEN')
-    from accounts.utils.firebase_chat import set_conversation_status, _log_audit
-    success, error = set_conversation_status(str(user.uid), other_uid, new_status)
-    if success:
-        from accounts.models import CustomUser
-        try:
-            target = CustomUser.objects.get(uid=other_uid)
-            _log_audit(user, 'CONVERSATION_STATUS', {
-                'target_teacher': str(other_uid),
-                'old_status': '?',
-                'new_status': new_status,
-            })
-        except Exception:
-            pass
-        return JsonResponse({'status': 'success', 'new_status': new_status})
-    return JsonResponse({'error': error or 'Failed'}, status=400)
-
-
-@login_required
-def export_conversation(request, other_user_uid):
-    """Export conversation as TXT/CSV/PDF. Admin only."""
-    user = request.user
-    if user.user_type != 'ADMIN' and not user.is_superuser and not user.is_staff:
-        return JsonResponse({'error': 'Access denied'}, status=403)
-    fmt = request.GET.get('format', 'txt').lower()
-    from accounts.utils.firebase_chat import get_all_messages_for_export, _log_audit
-    msgs = get_all_messages_for_export(str(user.uid), str(other_user_uid))
-    from accounts.models import CustomUser
-    try:
-        other = CustomUser.objects.get(uid=other_user_uid)
-        other_name = other.chat_display if other.user_type == 'ADMIN' else (other.full_name or other.username)
-    except CustomUser.DoesNotExist:
-        other_name = 'Unknown'
-    _log_audit(user, 'CONVERSATION_EXPORTED', {'target_teacher': str(other_user_uid), 'format': fmt})
-
-    if fmt == 'csv':
-        import csv, io
-        output = io.StringIO()
-        writer = csv.writer(output)
-        writer.writerow(['Timestamp', 'Sender', 'Message', 'Edited'])
-        for m in msgs:
-            writer.writerow([m['timestamp'], m['sender_name'], m['message'], 'Yes' if m['is_edited'] else 'No'])
-        csv_content = output.getvalue()
-        response = HttpResponse(csv_content, content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="chat_export_{other_name}_{datetime.now().strftime("%Y%m%d")}.csv"'
-        return response
-    elif fmt == 'pdf':
-        from reportlab.lib.pagesizes import letter
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-        from reportlab.lib.styles import getSampleStyleSheet
-        import io as pdfio
-        buf = pdfio.BytesIO()
-        doc = SimpleDocTemplate(buf, pagesize=letter)
-        styles = getSampleStyleSheet()
-        elements = [
-            Paragraph(f'Conversation with {other_name}', styles['Title']),
-            Spacer(1, 12),
-            Paragraph(f'Exported: {datetime.now().strftime("%Y-%m-%d %H:%M")}', styles['Normal']),
-            Spacer(1, 12),
-        ]
-        for m in msgs:
-            edited_tag = ' (edited)' if m['is_edited'] else ''
-            elements.append(Paragraph(
-                f'<b>{m["timestamp"]}</b> - <i>{m["sender_name"]}</i>{edited_tag}<br/>{m["message"]}',
-                styles['Normal']
-            ))
-            elements.append(Spacer(1, 6))
-        doc.build(elements)
-        pdf_bytes = buf.getvalue()
-        response = HttpResponse(pdf_bytes, content_type='application/pdf')
-        response['Content-Disposition'] = f'attachment; filename="chat_export_{other_name}_{datetime.now().strftime("%Y%m%d")}.pdf"'
-        return response
-    else:
-        lines = [f'Conversation with {other_name}', f'Exported: {datetime.now().strftime("%Y-%m-%d %H:%M")}', '']
-        for m in msgs:
-            edited_tag = ' (edited)' if m['is_edited'] else ''
-            lines.append(f'[{m["timestamp"]}] {m["sender_name"]}{edited_tag}: {m["message"]}')
-        text = '\n'.join(lines)
-        response = HttpResponse(text, content_type='text/plain; charset=utf-8')
-        response['Content-Disposition'] = f'attachment; filename="chat_export_{other_name}_{datetime.now().strftime("%Y%m%d")}.txt"'
-        return response
-
-
-@login_required
-def get_chat_audit_log(request):
-    """Admin sees chat audit log for a specific teacher."""
-    user = request.user
-    if user.user_type != 'ADMIN' and not user.is_superuser and not user.is_staff:
-        return JsonResponse({'error': 'Access denied'}, status=403)
-    target_uid = request.GET.get('teacher_uid', '')
-    from accounts.models import ChatAuditLog, CustomUser
-    logs = ChatAuditLog.objects.all()
-    if target_uid:
-        try:
-            target = CustomUser.objects.get(uid=target_uid)
-            logs = logs.filter(target_teacher=target)
-        except CustomUser.DoesNotExist:
-            pass
-    logs = logs[:100]
-    data = [{
-        'actor': str(l.actor),
-        'actor_name': l.actor.chat_display if l.actor.user_type == 'ADMIN' else (l.actor.full_name or l.actor.username),
-        'action': l.action,
-        'details': l.details,
-        'timestamp': l.timestamp.isoformat(),
-    } for l in logs]
-    return JsonResponse({'logs': data})
-
-
-@login_required
-def update_last_seen(request):
-    """Update the user's last_seen timestamp."""
-    if request.method == 'POST':
-        user = request.user
-        from django.utils import timezone
-        user.last_seen = timezone.now()
-        user.save(update_fields=['last_seen'])
-        return JsonResponse({'status': 'ok'})
-    return JsonResponse({'error': 'POST required'}, status=400)
-
-
-@login_required
-def get_last_seen(request, user_uid):
-    """Get last_seen info for a user."""
-    from accounts.models import CustomUser
-    from django.utils import timezone
-    try:
-        u = CustomUser.objects.get(uid=user_uid)
-    except CustomUser.DoesNotExist:
-        return JsonResponse({'error': 'Not found'}, status=404)
-    now = timezone.now()
-    result = {'is_online': u.chat_status in ('AVAILABLE', 'BUSY'), 'status': u.chat_status, 'last_seen': None}
-    if u.last_seen:
-        delta = now - u.last_seen
-        mins = int(delta.total_seconds() / 60)
-        if mins < 1:
-            result['last_seen'] = 'Just now'
-        elif mins < 60:
-            result['last_seen'] = f'{mins}m ago'
-        elif mins < 1440:
-            result['last_seen'] = f'{mins // 60}h ago'
-        else:
-            result['last_seen'] = f'{mins // 1440}d ago'
-    return JsonResponse(result)
 
 
 @login_required
@@ -2506,7 +2177,15 @@ def teacher_analytics_view(request):
     from django.db.models import Count
     from datetime import datetime, timedelta
     from django.utils import timezone
-    
+    from django.core.cache import cache
+
+    cache_key = f'teacher_analytics_{request.user.uid}'
+    cached = cache.get(cache_key)
+    if cached:
+        cached['notifications'] = (get_notifications(str(request.user.uid))[0])[:10]
+        cached['unread_notifications_count'] = get_unread_count(str(request.user.uid))
+        return render(request, 'teacher_portal/analytics.html', cached)
+
     # Get courses provided by this teacher
     courses = Course.objects.filter(teacher=request.user).annotate(enroll_count=Count('enrollments')).only('id', 'title').order_by('-enroll_count')
     
@@ -2537,9 +2216,10 @@ def teacher_analytics_view(request):
         'course_data': course_data,
         'trend_labels': enrollment_trend_labels,
         'trend_data': enrollment_trend_data,
-        'notifications': (get_notifications(str(request.user.uid))[0])[:10],
-        'unread_notifications_count': get_unread_count(str(request.user.uid)),
     }
+    cache.set(cache_key, context, 60)
+    context['notifications'] = (get_notifications(str(request.user.uid))[0])[:10]
+    context['unread_notifications_count'] = get_unread_count(str(request.user.uid))
     return render(request, 'teacher_portal/analytics.html', context)
 
 @login_required
@@ -2785,17 +2465,16 @@ def firebase_notification_mark_all_read(request):
 def get_unread_counts(request):
     from django.http import JsonResponse
     from .utils.notification_helper import cleanup_old_notifications
-    from accounts.utils.firebase_chat import cleanup_old_messages, get_unread_count as fb_get_unread_count
 
     cleanup_old_notifications()
-    cleanup_old_messages(7)
 
     notif_count = get_unread_count(str(request.user.uid))
 
     chat_count = 0
     can_chat = request.user.user_type == 'TEACHER' or request.user.is_superuser or request.user.is_staff or request.user.user_type == 'ADMIN'
     if can_chat:
-        chat_count = fb_get_unread_count(str(request.user.uid))
+        from accounts.utils.firebase_chat import get_unread_count as fb_get_unread_count
+        chat_count = fb_get_unread_count(str(request.user.uid), request.user.user_type)
 
     return JsonResponse({
         'notifications': notif_count,
