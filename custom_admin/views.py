@@ -22,6 +22,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.http import require_POST
 from django.conf import settings
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django_ratelimit.decorators import ratelimit
 
