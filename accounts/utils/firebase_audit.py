@@ -225,3 +225,96 @@ def get_infrastructure_status():
     except Exception:
         return {}
     return data
+
+
+def save_audit_results(results, username="system"):
+    """Save system audit results to Firebase for historical tracking"""
+    app = _get_app()
+    if app is None:
+        return
+    now = datetime.now(timezone.utc)
+    date_key = now.strftime('%Y-%m-%d')
+    try:
+        ref = db.reference(f'/audit/snapshots/{date_key}', app=app)
+        snap_id = now.strftime('%H-%M-%S')
+        ref.child(snap_id).set({
+            'timestamp': now.isoformat(),
+            'username': username,
+            'results': results,
+        })
+        # Auto-cleanup old snapshots (keep 30 days)
+        _cleanup_old_snapshots(app)
+    except Exception as e:
+        logger.error(f"Failed to save audit results: {e}")
+
+
+def _cleanup_old_snapshots(app):
+    """Remove audit snapshots older than 30 days"""
+    try:
+        ref = db.reference('/audit/snapshots', app=app)
+        data = ref.get() or {}
+        cutoff = datetime.now(timezone.utc).date() - timedelta(days=30)
+        for date_key in list(data.keys()):
+            try:
+                d = datetime.strptime(date_key, '%Y-%m-%d').date()
+                if d < cutoff:
+                    ref.child(date_key).delete()
+            except ValueError:
+                pass
+    except Exception:
+        pass
+
+
+def save_backup_info(backup_data):
+    """Save backup info to Firebase with dynamic count"""
+    app = _get_app()
+    if app is None:
+        return
+    now = datetime.now(timezone.utc)
+    date_key = now.strftime('%Y-%m-%d')
+    try:
+        ref = db.reference(f'/backup/history/{date_key}', app=app)
+        ref.push({
+            'timestamp': now.isoformat(),
+            'data': backup_data,
+        })
+        # Update aggregated counts
+        count_ref = db.reference('/backup/counts', app=app)
+        count_ref.transaction(lambda current: {
+            'total': (current or {}).get('total', 0) + 1,
+            'success': (current or {}).get('success', 0) + (1 if backup_data.get('status') == 'SUCCESS' else 0),
+            'failed': (current or {}).get('failed', 0) + (1 if backup_data.get('status') == 'FAILED' else 0),
+        })
+        _cleanup_old_backups(app)
+    except Exception as e:
+        logger.error(f"Failed to save backup info: {e}")
+
+
+def _cleanup_old_backups(app):
+    """Remove backup entries older than 30 days"""
+    try:
+        ref = db.reference('/backup/history', app=app)
+        data = ref.get() or {}
+        cutoff = datetime.now(timezone.utc).date() - timedelta(days=30)
+        for date_key in list(data.keys()):
+            try:
+                d = datetime.strptime(date_key, '%Y-%m-%d').date()
+                if d < cutoff:
+                    ref.child(date_key).delete()
+            except ValueError:
+                pass
+    except Exception:
+        pass
+
+
+def get_backup_counts():
+    """Get backup counts from Firebase"""
+    app = _get_app()
+    if app is None:
+        return {'total': 0, 'success': 0, 'failed': 0}
+    try:
+        ref = db.reference('/backup/counts', app=app)
+        data = ref.get() or {}
+        return data
+    except Exception:
+        return {'total': 0, 'success': 0, 'failed': 0}

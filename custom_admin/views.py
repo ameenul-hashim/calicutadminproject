@@ -1264,6 +1264,7 @@ def admin_view_course_content(request, course_uid):
 def storage_dashboard(request):
     from accounts.utils.storage_analytics import get_all_storage_stats
     from accounts.models import CourseResource
+    from django.db.models import Sum
 
     stats = get_all_storage_stats()
     sr = stats.get('supabase_resources', {})
@@ -1272,12 +1273,13 @@ def storage_dashboard(request):
     total_count = sr.get('total_files', 0)
     max_mb = 1000
     usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
-    avg_bytes = (sr.get('usage_bytes', 0) / total_count) if total_count else 0
+    total_compressed = resources.aggregate(s=Sum('compressed_size'))['s'] or 0
+    avg_bytes = (total_compressed / total_count) if total_count else 0
 
     return render(request, 'custom_admin/storage_dashboard.html', {
         'stats': stats,
         'resources': resources.order_by('-created_at')[:50],
-        'total_mb': round(total_mb, 2),
+        'total_mb': round(total_compressed / (1024 * 1024), 2),
         'total_count': total_count,
         'avg_bytes': round(avg_bytes),
         'usage_percent': round(usage_percent, 1),
@@ -1898,8 +1900,9 @@ def system_audit_view(request):
         ('Session CSRF', getattr(settings, 'CSRF_USE_SESSIONS', False), 'Session-based CSRF tokens'),
     ]
     try:
-        from accounts.utils.firebase_db import admin_log_get_total_count
-        sec_checks.append(('Audit Logging', admin_log_get_total_count() > 0, 'Admin activity tracked'))
+        from accounts.utils.firebase_audit import _get_app
+        audit_configured = _get_app() is not None
+        sec_checks.append(('Audit Logging', audit_configured, 'Admin activity tracked'))
     except Exception:
         sec_checks.append(('Audit Logging', False, 'Admin activity tracked'))
 
@@ -2004,6 +2007,12 @@ def system_audit_view(request):
         'supabase_usage_mb': round(supabase_usage_mb, 2),
         'supabase_limit_mb': supabase_limit_mb_val,
     }
+
+    try:
+        from accounts.utils.firebase_audit import save_audit_results
+        save_audit_results(audit_results, username=request.user.username)
+    except Exception:
+        pass
 
     return render(request, 'custom_admin/system_audit_hub.html', {
         'audit': audit_results,
@@ -2398,6 +2407,12 @@ def master_audit_summary_view(request):
     context['audit_logs'] = admin_log_get_recent(15)
     context['login_logs'] = login_history_get_recent(limit=15)
     context['firebase_events_24h'] = fb_events[:20]
+
+    try:
+        from accounts.utils.firebase_audit import save_audit_results
+        save_audit_results({'scores': context['scores'], 'siem': context['siem'], 'timestamp': str(context['timestamp'])}, username=request.user.username)
+    except Exception:
+        pass
 
     return render(request, 'custom_admin/master_audit_summary.html', context)
 
@@ -2935,6 +2950,21 @@ def backup_center(request):
         'signup_count': signup_count,
         'resource_count': resource_count,
     }
+
+    try:
+        from accounts.utils.firebase_audit import save_backup_info
+        save_backup_info({
+            'status': 'SUCCESS' if stats.get('overall_health', 0) > 80 else 'DEGRADED',
+            'overall_health': stats.get('overall_health', 0),
+            'total_backups': stats.get('total_backups', 0),
+            'successful': stats.get('successful_backups', 0),
+            'failed': stats.get('failed_backups', 0),
+            'storage_total_bytes': stats.get('storage_total', 0),
+            'drive_health': stats.get('drive_health', 'UNKNOWN'),
+        })
+    except Exception:
+        pass
+
     return render(request, 'custom_admin/backup_center.html', context)
 
 

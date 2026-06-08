@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 from django.conf import settings
 from django.db import connection, models
@@ -11,6 +12,20 @@ logger = logging.getLogger(__name__)
 SUPABASE_LIMIT_MB = 1024
 CLOUDINARY_LIMIT_MB = 25600
 DB_LIMIT_MB = 1024
+RENDER_DISK_LIMIT_MB = 512
+FB_LIMIT_MB = 1024
+
+
+def _kb(mb):
+    return round(mb * 1024, 1)
+
+
+def _enrich_kb(d):
+    d['usage_kb'] = _kb(d.get('usage_mb', 0))
+    d['remaining_kb'] = _kb(d.get('remaining_mb', 0))
+    d['limit_kb'] = _kb(d.get('limit_mb', 0))
+    d['balance_kb'] = d['remaining_kb']
+    return d
 
 
 def _init_supabase(url, key):
@@ -36,7 +51,7 @@ def _list_all_files(client, bucket, prefix=""):
 
 
 def get_supabase_signup_stats():
-    """Stats for signup proof PDFs - uses DB count as primary, Supabase list as enrichment"""
+    """Stats for signup proof PDFs - real-time Supabase API with DB fallback"""
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     bucket = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
@@ -49,8 +64,6 @@ def get_supabase_signup_stats():
     client = _init_supabase(url, key)
     total_files = total_users_with_pdf
     usage_mb = 0
-    remaining_mb = SUPABASE_LIMIT_MB
-    percent = 0
     status = 'connected'
 
     if client:
@@ -68,7 +81,7 @@ def get_supabase_signup_stats():
     percent = min((usage_mb / SUPABASE_LIMIT_MB) * 100, 100) if SUPABASE_LIMIT_MB else 0
     remaining_mb = round(max(SUPABASE_LIMIT_MB - usage_mb, 0), 2)
 
-    return {
+    result = {
         'label': 'Signup Proof PDFs',
         'status': status,
         'total_files': total_files,
@@ -77,14 +90,15 @@ def get_supabase_signup_stats():
         'percent': round(percent, 1),
         'remaining_mb': remaining_mb,
         'files': [],
-        'emoji': '📄',
+        'emoji': '\U0001f4c4',
         'color': '#6366f1',
         'description': 'Teacher verification PDFs uploaded during signup',
     }
+    return _enrich_kb(result)
 
 
 def get_supabase_resource_stats():
-    """Stats for course resources - uses DB compressed_size, enriched with Supabase if available"""
+    """Stats for course resources - real-time Supabase API with DB fallback"""
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
 
@@ -92,25 +106,45 @@ def get_supabase_resource_stats():
     resources = CourseResource.objects.filter(is_deleted=False)
     total_files = resources.count()
 
+    client = _init_supabase(url, key)
+    usage_mb = 0
+    status = 'connected'
+
+    if client:
+        try:
+            bucket = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
+            files = _list_all_files(client, bucket)
+            total_size = sum(
+                int(f.get('metadata', {}).get('size', 0))
+                for f in files if f.get('metadata')
+            )
+            usage_mb = total_size / (1024 * 1024)
+        except Exception as e:
+            logger.error(f"Supabase resource list error: {e}")
+
     total_compressed = resources.aggregate(total_size=models.Sum('compressed_size'))['total_size'] or 0
-    usage_mb = total_compressed / (1024 * 1024)
+    db_usage_mb = total_compressed / (1024 * 1024)
+    usage_mb = max(usage_mb, db_usage_mb)
+
     percent = min((usage_mb / SUPABASE_LIMIT_MB) * 100, 100) if SUPABASE_LIMIT_MB else 0
+    remaining_mb = round(max(SUPABASE_LIMIT_MB - usage_mb, 0), 2)
 
     recent = resources.select_related('course').order_by('-created_at')[:20]
 
-    return {
+    result = {
         'label': 'Course Resources',
-        'status': 'connected',
+        'status': status,
         'total_files': total_files,
         'usage_mb': round(usage_mb, 2),
         'limit_mb': SUPABASE_LIMIT_MB,
         'percent': round(percent, 1),
-        'remaining_mb': round(max(SUPABASE_LIMIT_MB - usage_mb, 0), 2),
+        'remaining_mb': remaining_mb,
         'files': recent,
-        'emoji': '📚',
+        'emoji': '\U0001f4da',
         'color': '#10b981',
         'description': 'Study materials (PDFs, DOCX, PPTX) uploaded by teachers',
     }
+    return _enrich_kb(result)
 
 
 def get_cloudinary_stats():
@@ -127,7 +161,7 @@ def get_cloudinary_stats():
         storage_limit_mb = storage.get('limit', CLOUDINARY_LIMIT_MB) / (1024 * 1024) if storage.get('limit') else CLOUDINARY_LIMIT_MB
         storage_percent = min((storage_used_mb / storage_limit_mb) * 100, 100) if storage_limit_mb else 0
 
-        return {
+        result = {
             'label': 'Cloudinary Images',
             'status': 'connected',
             'storage_used_mb': round(storage_used_mb, 2),
@@ -142,13 +176,18 @@ def get_cloudinary_stats():
             'transformations_percent': round(min((transformations.get('used', 0) / max(transformations.get('limit', 1), 1)) * 100, 100), 1),
             'total_files': usage.get('objects', {}).get('used', 0),
             'images_count': images_data.get('used', 0),
-            'emoji': '🖼️',
+            'usage_mb': round(storage_used_mb, 2),
+            'limit_mb': round(storage_limit_mb, 2),
+            'percent': round(storage_percent, 1),
+            'remaining_mb': round(max(storage_limit_mb - storage_used_mb, 0), 2),
+            'emoji': '\U0001f5bc\ufe0f',
             'color': '#f59e0b',
             'description': 'Profile photos, course thumbnails, and resource thumbnails',
         }
+        return _enrich_kb(result)
     except Exception as e:
         logger.error(f"Cloudinary stats error: {e}")
-        return {
+        result = {
             'label': 'Cloudinary Images',
             'status': 'disconnected',
             'storage_used_mb': 0,
@@ -163,10 +202,15 @@ def get_cloudinary_stats():
             'transformations_percent': 0,
             'total_files': 0,
             'images_count': 0,
-            'emoji': '🖼️',
+            'usage_mb': 0,
+            'limit_mb': CLOUDINARY_LIMIT_MB,
+            'percent': 0,
+            'remaining_mb': CLOUDINARY_LIMIT_MB,
+            'emoji': '\U0001f5bc\ufe0f',
             'color': '#f59e0b',
             'description': 'Profile photos, course thumbnails, and resource thumbnails',
         }
+        return _enrich_kb(result)
 
 
 def get_database_stats():
@@ -190,25 +234,61 @@ def get_database_stats():
         except Exception:
             usage_mb = 0
     percent = min((usage_mb / RENDER_LIMIT_MB) * 100, 100) if RENDER_LIMIT_MB else 0
-    return {
+    result = {
         'label': 'Render PostgreSQL',
         'status': 'connected',
         'usage_mb': round(usage_mb, 2),
         'limit_mb': RENDER_LIMIT_MB,
         'percent': round(percent, 1),
         'remaining_mb': round(max(RENDER_LIMIT_MB - usage_mb, 0), 2),
-        'emoji': '🐘',
+        'emoji': '\U0001f418',
         'color': '#3b82f6',
         'description': 'PostgreSQL on Render — users, courses, lessons, enrollments',
     }
+    return _enrich_kb(result)
+
+
+def get_render_disk_stats():
+    """Render ephemeral disk — 512 MB limit, tracks static files + temp usage"""
+    limit_mb = RENDER_DISK_LIMIT_MB
+    usage_mb = 0.5
+    try:
+        static_root = getattr(settings, 'STATIC_ROOT', None)
+        if static_root and os.path.exists(static_root):
+            total = 0
+            for dirpath, _, filenames in os.walk(static_root):
+                for f in filenames:
+                    fp = os.path.join(dirpath, f)
+                    try:
+                        total += os.path.getsize(fp)
+                    except Exception:
+                        pass
+            static_mb = total / (1024 * 1024)
+            usage_mb = max(usage_mb, static_mb)
+    except Exception:
+        pass
+
+    percent = min((usage_mb / limit_mb) * 100, 100) if limit_mb else 0
+    result = {
+        'label': 'Render Disk',
+        'status': 'connected',
+        'usage_mb': round(usage_mb, 2),
+        'limit_mb': limit_mb,
+        'percent': round(percent, 1),
+        'remaining_mb': round(max(limit_mb - usage_mb, 0), 2),
+        'emoji': '\U0001f4be',
+        'color': '#8b5cf6',
+        'description': 'Render ephemeral disk — static files, caches, temp uploads (512 MB free)',
+    }
+    return _enrich_kb(result)
 
 
 def get_firebase_rtdb_stats():
-    """Firebase Realtime Database stats — audit events, analytics, notifications."""
-    FB_LIMIT_MB = 1024  # Firebase free tier: 1GB
+    """Firebase Realtime Database stats — audit events, analytics, notifications, with KB"""
+    FB_LIMIT_MB = 1024
     db_url = os.getenv('FIREBASE_RTDB_URL')
     if not db_url:
-        return {
+        result = {
             'label': 'Firebase RTDB',
             'status': 'disconnected',
             'usage_mb': 0,
@@ -219,10 +299,11 @@ def get_firebase_rtdb_stats():
             'audit_count': 0,
             'analytics_days': 0,
             'security_counters': {},
-            'emoji': '🔥',
+            'emoji': '\U0001f525',
             'color': '#ef4444',
             'description': 'Real-time audit events, analytics, and security counters',
         }
+        return _enrich_kb(result)
 
     try:
         import firebase_admin
@@ -246,7 +327,7 @@ def get_firebase_rtdb_stats():
                 )
 
         if not app:
-            return {
+            result = {
                 'label': 'Firebase RTDB',
                 'status': 'disconnected',
                 'usage_mb': 0,
@@ -257,12 +338,12 @@ def get_firebase_rtdb_stats():
                 'audit_count': 0,
                 'analytics_days': 0,
                 'security_counters': {},
-                'emoji': '🔥',
+                'emoji': '\U0001f525',
                 'color': '#ef4444',
                 'description': 'Real-time audit events, analytics, and security counters',
             }
+            return _enrich_kb(result)
 
-        # Audit events count
         audit_count = 0
         audit_events_24h = 0
         try:
@@ -286,7 +367,6 @@ def get_firebase_rtdb_stats():
         except Exception:
             pass
 
-        # Security counters
         security_counters = {}
         try:
             counter_ref = rtdb.reference('/audit/counters', app=app)
@@ -300,7 +380,6 @@ def get_firebase_rtdb_stats():
         except Exception:
             pass
 
-        # Analytics days with data
         analytics_days = 0
         try:
             analytics_ref = rtdb.reference('/analytics/daily_counts', app=app)
@@ -309,12 +388,11 @@ def get_firebase_rtdb_stats():
         except Exception:
             pass
 
-        # Estimate storage (rough: each event ~200 bytes)
         estimated_bytes = (audit_count * 200) + (analytics_days * 500)
         usage_mb = estimated_bytes / (1024 * 1024)
         percent = min((usage_mb / FB_LIMIT_MB) * 100, 100) if FB_LIMIT_MB else 0
 
-        return {
+        result = {
             'label': 'Firebase RTDB',
             'status': 'connected',
             'usage_mb': round(usage_mb, 4),
@@ -325,13 +403,14 @@ def get_firebase_rtdb_stats():
             'audit_count': audit_count,
             'analytics_days': analytics_days,
             'security_counters': security_counters,
-            'emoji': '🔥',
+            'emoji': '\U0001f525',
             'color': '#ef4444',
             'description': 'Real-time audit events, analytics, and security counters',
         }
+        return _enrich_kb(result)
     except Exception as e:
         logger.error(f"Firebase RTDB stats error: {e}")
-        return {
+        result = {
             'label': 'Firebase RTDB',
             'status': 'error',
             'usage_mb': 0,
@@ -342,10 +421,11 @@ def get_firebase_rtdb_stats():
             'audit_count': 0,
             'analytics_days': 0,
             'security_counters': {},
-            'emoji': '🔥',
+            'emoji': '\U0001f525',
             'color': '#ef4444',
             'description': 'Real-time audit events, analytics, and security counters',
         }
+        return _enrich_kb(result)
 
 
 def get_all_storage_stats():
@@ -355,4 +435,5 @@ def get_all_storage_stats():
         'cloudinary': get_cloudinary_stats(),
         'database': get_database_stats(),
         'firebase_rtdb': get_firebase_rtdb_stats(),
+        'render_disk': get_render_disk_stats(),
     }
