@@ -1342,9 +1342,7 @@ def admin_delete_lesson_secure(request, lesson_uid):
                     from accounts.utils.youtube_uploader import delete_youtube_video
                     delete_youtube_video(lesson.youtube_video_id)
                 except Exception as e:
-                    logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
-                    messages.error(request, f"YouTube video deletion failed: {e}. Lesson NOT removed.")
-                    return redirect('admin_view_course_content', course_uid=course_uid)
+                    logger.warning(f"Could not delete YouTube video {lesson.youtube_video_id} (may already be gone): {e}")
             
             # Explicit file cleanup for Lesson videos (local MP4 uploads)
             if lesson.video_file:
@@ -1576,9 +1574,7 @@ def approve_deletion_request(request, request_uid):
                     from accounts.utils.youtube_uploader import delete_youtube_video
                     delete_youtube_video(lesson.youtube_video_id)
                 except Exception as e:
-                    logger.error(f"Failed to delete YouTube video {lesson.youtube_video_id}: {e}")
-                    messages.error(request, f"Failed to delete YouTube video. The request has been kept pending. Error: {e}")
-                    return redirect('manage_deletion_requests')
+                    logger.warning(f"Could not delete YouTube video {lesson.youtube_video_id} (may already be gone): {e}")
             lesson.delete()
         else:
             messages.warning(request, "Item already gone.")
