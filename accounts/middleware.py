@@ -88,9 +88,9 @@ class PortalSecurityMiddleware:
                 else:
                     return redirect(f"{reverse('login')}?next={path}")
 
-            # --- IDLE TIMEOUT (15 min) — stored in CACHE, not session ---
+            # --- IDLE TIMEOUT (15 min) — stored in SESSION (DB-backed, shared across workers) ---
             if request.user.is_superuser or getattr(request.user, 'user_type', '') in ('ADMIN', 'TEACHER'):
-                last_activity = cache.get(f"last_activity_{request.user.id}", 0)
+                last_activity = request.session.get('last_activity', 0)
 
                 if last_activity and (_time.time() - last_activity > 900):
                     is_admin_path = (request.user.is_superuser or getattr(request.user, 'user_type', '') == 'ADMIN') or path.startswith('/customadmin/')
@@ -105,8 +105,10 @@ class PortalSecurityMiddleware:
                     messages.error(request, "Your session has expired due to inactivity. Please log in again.")
                     return redirect('admin_login' if is_admin_path else 'teacher_login')
 
-                # Write activity to CACHE (not session) — avoids session DB write
-                cache.set(f"last_activity_{request.user.id}", int(_time.time()), 1800)
+                # Write activity to SESSION (throttled: every 30s to avoid excessive DB writes)
+                now = int(_time.time())
+                if now - last_activity > 30:
+                    request.session['last_activity'] = now
 
             # --- Cached status check (avoids DB hit per request) ---
             if not request.user.is_superuser:
