@@ -2461,7 +2461,14 @@ def firebase_notification_mark_all_read(request):
     return JsonResponse({'status': 'ok'})
 
 
+@require_POST
 @login_required
+def update_last_seen(request):
+    request.user.last_seen = timezone.now()
+    request.user.save(update_fields=['last_seen'])
+    return JsonResponse({'status': 'ok'})
+
+
 def get_unread_counts(request):
     from django.http import JsonResponse
     from .utils.notification_helper import cleanup_old_notifications
