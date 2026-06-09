@@ -44,6 +44,13 @@ firebase-key.json
 get_youtube_token.py
 test_youtube.py
 
+# Debug response dumps
+admin_resp.html
+admin_resp2.html
+login_response.html
+cookies.txt
+bug_report.txt
+
 # Scratch / temp scripts
 scratch/
 

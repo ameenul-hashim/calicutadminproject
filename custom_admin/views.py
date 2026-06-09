@@ -1489,6 +1489,13 @@ def delete_user_admin(request, user_uid):
             # Explicitly cleanup logs that don't cascade
             ApprovalLog.objects.filter(content_type=target_user.user_type, object_id=target_user.id).delete()
             
+            # Cleanup Firebase data before PostgreSQL delete
+            try:
+                from accounts.utils.firebase_db import cleanup_user_firebase_data
+                cleanup_user_firebase_data(target_user.uid)
+            except Exception:
+                pass
+
             target_user.delete()
             messages.success(request, f"{target_user.user_type.title()} {target_user.full_name or target_user.username} deleted successfully.")
             

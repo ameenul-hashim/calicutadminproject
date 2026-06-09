@@ -582,6 +582,14 @@ def cleanup_user_files(sender, instance, **kwargs):
         except Exception:
             pass
 
+    # 3. Cleanup Firebase RTDB data (notifications, chat, login_history, admin_activity)
+    if hasattr(instance, 'uid') and instance.uid:
+        try:
+            from .utils.firebase_db import cleanup_user_firebase_data
+            cleanup_user_firebase_data(instance.uid)
+        except Exception:
+            pass
+
 @receiver(pre_delete, sender=Course)
 def cleanup_course_image(sender, instance, **kwargs):
     delete_image(instance)

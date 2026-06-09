@@ -663,6 +663,127 @@ def admin_log_cleanup(days=7):
 
 
 # ============================================================
+# USER DATA CLEANUP (on user deletion)
+# ============================================================
+
+def cleanup_user_firebase_data(user_uid):
+    """Delete ALL Firebase data for a deleted user across all RTDB nodes.
+
+    Handles: notifications, chat_rooms, msg_index, support_chat,
+    login_history, admin_activity, analytics/daily_counts.
+    Returns dict of counts per node cleaned.
+    """
+    app = _get_app()
+    if app is None:
+        return {}
+    user_str = str(user_uid)
+    counts = {}
+
+    # 1. Notifications
+    try:
+        nref = db.reference(f'/notifications/{user_str}', app=app)
+        ndata = nref.get(shallow=True)
+        if ndata:
+            nref.delete()
+            counts['notifications'] = len(ndata)
+        else:
+            counts['notifications'] = 0
+    except Exception as e:
+        logger.error(f"Firebase cleanup notifications for {user_str}: {e}")
+        counts['notifications'] = -1
+
+    # 2. Chat rooms — find all rooms where user is a participant, delete entire room
+    try:
+        rooms_deleted = 0
+        msgs_cleaned = 0
+        all_rooms = db.reference('/chat_rooms', app=app).get()
+        if all_rooms:
+            for room_name, room_data in all_rooms.items():
+                meta = room_data.get('metadata', {})
+                participants = meta.get('participants', {})
+                if user_str in participants:
+                    # Collect msg_index entries for cleanup
+                    msgs = room_data.get('messages', {})
+                    if msgs:
+                        for mid in msgs:
+                            db.reference(f'/msg_index/{mid}', app=app).delete()
+                            msgs_cleaned += 1
+                    db.reference(f'/chat_rooms/{room_name}', app=app).delete()
+                    rooms_deleted += 1
+        counts['chat_rooms'] = rooms_deleted
+        counts['msg_index'] = msgs_cleaned
+    except Exception as e:
+        logger.error(f"Firebase cleanup chat_rooms for {user_str}: {e}")
+        counts['chat_rooms'] = -1
+        counts['msg_index'] = -1
+
+    # 3. Support chat — find entries where user is admin or teacher
+    try:
+        support_deleted = 0
+        all_support = db.reference('/support_chat', app=app).get()
+        if all_support:
+            for admin_uid, teachers in all_support.items():
+                if admin_uid == user_str:
+                    db.reference(f'/support_chat/{admin_uid}', app=app).delete()
+                    support_deleted += 1
+                elif teachers:
+                    for teacher_uid in teachers:
+                        if teacher_uid == user_str:
+                            db.reference(f'/support_chat/{admin_uid}/{teacher_uid}', app=app).delete()
+                            support_deleted += 1
+        counts['support_chat'] = support_deleted
+    except Exception as e:
+        logger.error(f"Firebase cleanup support_chat for {user_str}: {e}")
+        counts['support_chat'] = -1
+
+    # 4. Login history
+    try:
+        lref = db.reference(f'/login_history/{user_str}', app=app)
+        ldata = lref.get(shallow=True)
+        if ldata:
+            lref.delete()
+            counts['login_history'] = len(ldata)
+        else:
+            counts['login_history'] = 0
+    except Exception as e:
+        logger.error(f"Firebase cleanup login_history for {user_str}: {e}")
+        counts['login_history'] = -1
+
+    # 5. Admin activity — delete entries where admin_uid or target_user_uid matches
+    try:
+        admin_deleted = 0
+        all_admin = db.reference('/admin_activity', app=app).get()
+        if all_admin:
+            for eid, edata in all_admin.items():
+                if edata.get('admin_uid') == user_str or edata.get('target_user_uid') == user_str:
+                    db.reference(f'/admin_activity/{eid}', app=app).delete()
+                    admin_deleted += 1
+        counts['admin_activity'] = admin_deleted
+    except Exception as e:
+        logger.error(f"Firebase cleanup admin_activity for {user_str}: {e}")
+        counts['admin_activity'] = -1
+
+    # 6. Analytics daily counts — scan for user references
+    try:
+        analytics_cleaned = 0
+        all_analytics = db.reference('/analytics/daily_counts', app=app).get()
+        if all_analytics:
+            for date_key, entries in all_analytics.items():
+                if isinstance(entries, dict):
+                    to_remove = [k for k, v in entries.items() if isinstance(v, dict) and v.get('user_uid') == user_str]
+                    for k in to_remove:
+                        db.reference(f'/analytics/daily_counts/{date_key}/{k}', app=app).delete()
+                        analytics_cleaned += 1
+        counts['analytics'] = analytics_cleaned
+    except Exception as e:
+        logger.error(f"Firebase cleanup analytics for {user_str}: {e}")
+        counts['analytics'] = -1
+
+    logger.info(f"Firebase cleanup complete for user {user_str}: {counts}")
+    return counts
+
+
+# ============================================================
 # GLOBAL CLEANUP (call periodically)
 # ============================================================
 
