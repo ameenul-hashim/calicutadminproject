@@ -30,6 +30,7 @@
 | Branch | Purpose | Status |
 |:---|:---|:---|
 | `ongoing` | **PRIMARY development branch** — all active work happens here | ✅ HEAD |
+| `3-fullcorrect` | Synced mirror of `ongoing` (used for reset operations) | ✅ Active |
 | `stable-may19-rollback` | Stable rollback point (May 19 state) | 🔒 Frozen |
 
 ### Remote: `origin`
@@ -39,12 +40,14 @@ https://github.com/ameenul-hashim/calicutadminproject.git
 
 ### Branch Rules
 - **Always work on `ongoing`** — this is the only active development branch.
+- **Keep `3-fullcorrect` synced to `ongoing`** — both are identical.
 - **Never push directly to `stable-may19-rollback`** — it is a safety snapshot.
 - Deploy to Render triggers from `ongoing` pushes via GitHub auto-deploy.
 - Emergency rollback = Render manual deploy pinned to `stable-may19-rollback`.
 
 ### Recent Git History (last meaningful commits)
-- `bcf2163` — Final encoding fix for requirements (2026-05-31)
+- `12283c8` — Firebase RTDB cleanup on user deletion (Phase 6)
+- `e20eafe` — Remove reset endpoint, platform reset complete
 - `ba23686` — Implemented resource deletion workflow (2026-05-29)
 
 ---
