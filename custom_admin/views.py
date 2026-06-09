@@ -3283,7 +3283,22 @@ def reset_platform(request):
     except Exception as e:
         results['steps']['supabase'] = f'error: {e}'
 
-    # 2. Clean Cloudinary
+    # 2. Clean Firebase RTDB
+    try:
+        from firebase_admin import db
+        fb_nodes = ['notifications', 'chat_rooms', 'msg_index', 'support_chat',
+                    'login_history', 'admin_activity', 'analytics', 'audit',
+                    'backup', 'health_checks', 'test_write']
+        for node in fb_nodes:
+            try:
+                db.reference(f'/{node}').delete()
+            except Exception:
+                pass
+        results['steps']['firebase'] = 'cleaned'
+    except Exception as e:
+        results['steps']['firebase'] = f'error: {e}'
+
+    # 3. Clean Cloudinary
     try:
         import cloudinary.api
         cloudinary.api.delete_all_resources()
@@ -3292,7 +3307,7 @@ def reset_platform(request):
     except Exception as e:
         results['steps']['cloudinary'] = f'error: {e}'
 
-    # 3. Truncate all app tables CASCADE
+    # 4. Truncate all app tables CASCADE
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -3309,7 +3324,7 @@ def reset_platform(request):
         results['steps']['db_truncated'] = f'error: {e}'
         return JsonResponse(results, status=500)
 
-    # 4. Create hashim admin
+    # 5. Create hashim admin
     try:
         admin_pw = os.environ.get('ADMIN_PASSWORD', _secrets.token_urlsafe(16))
         admin_user = CustomUser.objects.create_user(
