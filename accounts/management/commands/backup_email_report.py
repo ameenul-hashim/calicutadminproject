@@ -43,7 +43,8 @@ class Command(BaseCommand):
         signup_total = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
         resource_total = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE').count()
 
-        drive_ok = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS'))
+        from accounts.utils.drive_backup_service import _load_credentials_json
+        drive_ok = _load_credentials_json()[0] is not None
 
         overall_rate = (success_all / (total_all or 1)) * 100
 

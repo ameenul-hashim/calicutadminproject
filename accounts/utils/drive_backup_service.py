@@ -13,7 +13,6 @@ SCOPES = ['https://www.googleapis.com/auth/drive']
 
 
 def _get_config(key, default=None):
-    """Get config from Django settings if available, fallback to env."""
     try:
         from django.conf import settings as s
         return getattr(s, key, os.getenv(key, default))
@@ -21,23 +20,82 @@ def _get_config(key, default=None):
         return os.getenv(key, default)
 
 
-def _get_drive_service():
-    """Build Drive service from GOOGLE_DRIVE_CREDENTIALS env var."""
+def _load_credentials_json():
+    """Load Google Drive service account JSON from all possible sources.
+    
+    Priority:
+    1. GOOGLE_DRIVE_CREDENTIALS environment variable
+    2. /etc/secrets/GOOGLE_DRIVE_CREDENTIALS (Render Secret File)
+    3. credentials.json in this utils directory
+    
+    Returns (parsed_dict, source_name) or (None, error_message).
+    Never exposes secret values in logs — only PASS/FAIL and source name.
+    """
+    source = None
+    raw = None
+
+    # 1) Environment variable
+    raw = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
+    if raw:
+        source = 'env var'
+        logger.info("GOOGLE_DRIVE_CREDENTIALS loaded from environment variable")
+
+    # 2) Render Secret File
+    if not raw:
+        secret_path = '/etc/secrets/GOOGLE_DRIVE_CREDENTIALS'
+        try:
+            if os.path.isfile(secret_path):
+                with open(secret_path, 'r') as f:
+                    raw = f.read()
+                if raw:
+                    source = 'secret file'
+                    logger.info("GOOGLE_DRIVE_CREDENTIALS loaded from Render Secret File")
+        except Exception as e:
+            logger.warning(f"Failed to read Render Secret File: {e}")
+
+    # 3) Local credentials.json (dev only)
+    if not raw:
+        local_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.json')
+        try:
+            if os.path.isfile(local_path):
+                with open(local_path, 'r') as f:
+                    raw = f.read()
+                if raw:
+                    source = 'credentials.json'
+                    logger.info("GOOGLE_DRIVE_CREDENTIALS loaded from credentials.json")
+        except Exception as e:
+            logger.warning(f"Failed to read credentials.json: {e}")
+
+    if not raw:
+        return None, 'no credential source found (checked env var, /etc/secrets/, credentials.json)'
+
     try:
-        env_creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
-        if not env_creds:
-            logger.warning("GOOGLE_DRIVE_CREDENTIALS not set")
+        parsed = json.loads(raw)
+        if not isinstance(parsed, dict):
+            return None, 'credential JSON is not a dict'
+        return parsed, source
+    except json.JSONDecodeError as e:
+        return None, f'credential JSON parse failed: {e}'
+
+
+def _get_drive_service():
+    """Build Drive service from best available credential source.
+    Returns service object or None."""
+    try:
+        parsed, source = _load_credentials_json()
+        if not parsed:
+            logger.warning(f"Google Drive credentials not available: {source}")
             return None
-        creds_dict = json.loads(env_creds)
-        if creds_dict.get('type') == 'service_account':
-            from google.oauth2 import service_account
-            from googleapiclient.discovery import build
-            creds = service_account.Credentials.from_service_account_info(
-                creds_dict, scopes=SCOPES
-            )
-            return build('drive', 'v3', credentials=creds)
-        logger.warning("GOOGLE_DRIVE_CREDENTIALS is not a service account")
-        return None
+        if parsed.get('type') != 'service_account':
+            logger.warning(f"Credential type is '{parsed.get('type')}', expected 'service_account'")
+            return None
+        from google.oauth2 import service_account
+        from googleapiclient.discovery import build
+        creds = service_account.Credentials.from_service_account_info(
+            parsed, scopes=SCOPES
+        )
+        logger.info(f"Google Drive service initialized from {source}")
+        return build('drive', 'v3', credentials=creds)
     except Exception as e:
         logger.error(f"Drive service init failed: {e}")
         return None

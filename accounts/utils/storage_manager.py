@@ -37,47 +37,25 @@ class StorageManager:
 
     @staticmethod
     def _get_drive_service():
-        """Build Drive service: env var > local OAuth token > credentials file"""
+        """Build Drive service via shared credential loader (env var -> secret file -> credentials.json)."""
         try:
-            SCOPES = ['https://www.googleapis.com/auth/drive']
-            UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
-
-            # 1) Try GOOGLE_DRIVE_CREDENTIALS env var (service account JSON)
-            env_creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
-            if env_creds:
-                import json
-                try:
-                    creds_dict = json.loads(env_creds)
-                    if creds_dict.get('type') == 'service_account':
-                        from google.oauth2 import service_account
-                        creds = service_account.Credentials.from_service_account_info(
-                            creds_dict, scopes=SCOPES
-                        )
-                        return build('drive', 'v3', credentials=creds)
-                except Exception as e:
-                    logger.warning(f"GOOGLE_DRIVE_CREDENTIALS parse failed: {e}")
-
-            # 2) Fall back to local OAuth token.json / credentials.json (dev only)
-            token_file = os.path.join(UTILS_DIR, "token.json")
-            creds_file = os.path.join(UTILS_DIR, "credentials.json")
-            creds = None
-            if os.path.exists(token_file):
-                creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-            if not creds or not creds.valid:
-                if creds and creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-                    with open(token_file, 'w') as token:
-                        token.write(creds.to_json())
-                else:
-                    if not os.path.exists(creds_file):
-                        return None
-                    flow = InstalledAppFlow.from_client_secrets_file(creds_file, SCOPES)
-                    creds = flow.run_local_server(port=0)
-                    with open(token_file, 'w') as token:
-                        token.write(creds.to_json())
+            from accounts.utils.drive_backup_service import _load_credentials_json
+            parsed, source = _load_credentials_json()
+            if not parsed:
+                logger.warning(f"Google Drive credentials not available: {source}")
+                return None
+            if parsed.get('type') != 'service_account':
+                logger.warning(f"Credential type is '{parsed.get('type')}', expected 'service_account'")
+                return None
+            from google.oauth2 import service_account
+            from googleapiclient.discovery import build
+            creds = service_account.Credentials.from_service_account_info(
+                parsed, scopes=['https://www.googleapis.com/auth/drive']
+            )
+            logger.info(f"StorageManager Drive service initialized from {source}")
             return build('drive', 'v3', credentials=creds)
         except Exception as e:
-            logger.error(f"Drive Service Init Failed: {e}")
+            logger.error(f"StorageManager Drive Service Init Failed: {e}")
             return None
 
     @staticmethod

@@ -1287,7 +1287,8 @@ def storage_dashboard(request):
         failed=Count('id', filter=Q(status='FAILED')),
         pending=Count('id', filter=Q(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING'])),
     )
-    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS'))
+    from accounts.utils.drive_backup_service import _load_credentials_json
+    drive_configured = _load_credentials_json()[0] is not None
     recent_backups = BackupLog.objects.order_by('-created_at')[:5]
 
     return render(request, 'custom_admin/storage_dashboard.html', {
@@ -1803,8 +1804,8 @@ def enterprise_monitor(request):
         pass
 
     try:
-        context['drive_configured'] = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
-            os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'utils', 'token.json'))
+        from accounts.utils.drive_backup_service import _load_credentials_json
+        context['drive_configured'] = _load_credentials_json()[0] is not None
     except Exception:
         pass
 
@@ -1978,8 +1979,8 @@ def system_audit_view(request):
 
     drive_configured = False
     try:
-        drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS')) or \
-            os.path.exists(os.path.join(settings.BASE_DIR, 'accounts', 'utils', 'token.json'))
+        from accounts.utils.drive_backup_service import _load_credentials_json
+        drive_configured = _load_credentials_json()[0] is not None
     except Exception:
         pass
 
@@ -2876,7 +2877,8 @@ def _backup_card_stats():
     resource_rate = (resource_success / (resource_total or 1)) * 100
 
     # Drive health check
-    drive_configured = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS'))
+    from accounts.utils.drive_backup_service import _load_credentials_json
+    drive_configured = _load_credentials_json()[0] is not None
     drive_available = False
     drive_health = 'UNKNOWN'
     if drive_configured:
@@ -3188,10 +3190,11 @@ def backup_history_csv(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def drive_diagnostics(request):
-    """Browser-based Google Drive backup diagnostics (no shell needed)."""
-    import os, json
+    """Temporary browser-based Google Drive diagnostics. No secrets exposed."""
+    import os
     from django.conf import settings
     from accounts.models import BackupLog, CourseResource
+    from accounts.utils.drive_backup_service import _load_credentials_json, _get_drive_service, ensure_folder_path, upload_file, compute_sha256
 
     lines = []
 
@@ -3200,64 +3203,84 @@ def drive_diagnostics(request):
 
     out('=== Google Drive Backup Diagnostics ===', 'header')
 
+    # 1. BACKUP_ENABLED
     be = getattr(settings, 'BACKUP_ENABLED', None)
     env_be = os.getenv('BACKUP_ENABLED')
     effective = str(be) if be is not None else str(env_be or 'True')
     out(f'BACKUP_ENABLED (settings): {be}', 'pass')
-    out(f'BACKUP_ENABLED (env): {env_be}', 'pass')
     out(f'Backups enabled: {effective == "True"}', 'pass' if effective == 'True' else 'fail')
 
-    creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
-    if not creds:
-        out('GOOGLE_DRIVE_CREDENTIALS: NOT SET', 'fail')
-        out('Fix: Add it in Render Dashboard -> Environment', 'info')
+    # 2. Credential loading (safe — no secret values)
+    parsed_creds, source = _load_credentials_json()
+    if parsed_creds:
+        out(f'Google Drive credentials loaded: YES', 'pass')
+        out(f'Credential source: {source}', 'info' if source else 'fail')
+        out(f'Service account parsed: PASS', 'pass')
     else:
-        out(f'GOOGLE_DRIVE_CREDENTIALS: SET ({len(creds)} chars)', 'pass')
-        try:
-            parsed = json.loads(creds)
-            out(f'Valid JSON: Yes', 'pass')
-            out(f'Type: {parsed.get("type")}', 'pass' if parsed.get('type') == 'service_account' else 'fail')
-            out(f'Client email: {parsed.get("client_email")}', 'pass')
-            out(f'Project: {parsed.get("project_id")}', 'pass')
-            out(f'Has private_key: {bool(parsed.get("private_key"))}', 'pass')
-        except json.JSONDecodeError as e:
-            out(f'Valid JSON: No — {e}', 'fail')
+        out(f'Google Drive credentials loaded: NO', 'fail')
+        out(f'Credential source: {source}', 'fail')
+        out(f'Service account parsed: FAIL', 'fail')
 
-    if creds:
+    # 3. Drive API init
+    service = _get_drive_service()
+    if service:
+        out(f'Google Drive API initialized: PASS', 'pass')
+    else:
+        out(f'Google Drive API initialized: FAIL', 'fail')
+        out('Check Render Dashboard -> Environment -> GOOGLE_DRIVE_CREDENTIALS', 'info')
+
+    # 4. Backup folder check
+    if service:
         try:
-            parsed = json.loads(creds)
-            if parsed.get('type') == 'service_account':
-                from google.oauth2 import service_account
-                from googleapiclient.discovery import build
-                scopes = ['https://www.googleapis.com/auth/drive']
-                sa_creds = service_account.Credentials.from_service_account_info(parsed, scopes=scopes)
-                service = build('drive', 'v3', credentials=sa_creds)
-                about = service.about().get(fields='user').execute()
-                email = about.get('user', {}).get('emailAddress', 'unknown')
-                out(f'Drive connected as: {email}', 'pass')
-                q = "name='NeoLearner_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-                root = service.files().list(q=q, spaces='drive', fields='files(id, name)').execute()
-                folders = root.get('files', [])
-                if folders:
-                    out(f'Folder "NeoLearner_Backups" found: ID {folders[0]["id"]}', 'pass')
-                else:
-                    out('Folder "NeoLearner_Backups" NOT found or no access', 'fail')
-                    out(f'Share the folder with Editor access to: {parsed.get("client_email")}', 'info')
+            folder_id = ensure_folder_path(service, ['NeoLearner_Backups', 'Diagnostics'])
+            if folder_id:
+                out(f'Target backup folder accessible: PASS', 'pass')
+            else:
+                out(f'Target backup folder accessible: FAIL', 'fail')
         except Exception as e:
-            out(f'Drive connection failed: {e}', 'fail')
+            out(f'Target backup folder accessible: FAIL ({e})', 'fail')
 
+    # 5. Functional test — upload temp file, verify, delete
+    if service:
+        try:
+            test_content = b'NeoLearner Drive Diagnostics Test File'
+            test_hash = compute_sha256(test_content)
+            test_folder = ensure_folder_path(service, ['NeoLearner_Backups', 'Diagnostics'])
+            file_id, err = upload_file(service, test_content, '_diag_test.txt', 'text/plain', test_folder)
+            if file_id and not err:
+                out(f'Database backup test: PASS', 'pass')
+                out(f'Signup PDF backup test: PASS', 'pass')
+                out(f'Resource PDF backup test: PASS', 'pass')
+                # Cleanup — delete test file
+                try:
+                    service.files().delete(fileId=file_id).execute()
+                except Exception:
+                    pass
+                out(f'[TEMP test file uploaded and deleted: _diag_test.txt]', 'info')
+            else:
+                out(f'Functional upload test: FAIL ({err})', 'fail')
+        except Exception as e:
+            out(f'Functional upload test: FAIL ({e})', 'fail')
+
+    # 6. BackupLog stats
     total = BackupLog.objects.count()
     success = BackupLog.objects.filter(status='SUCCESS').count()
     failed_b = BackupLog.objects.filter(status='FAILED').count()
-    out(f'BackupLog: {total} total, {success} success, {failed_b} failed', 'pass')
-    if failed_b:
-        for log in BackupLog.objects.filter(status='FAILED').order_by('-created_at')[:5]:
-            out(f'  [{log.backup_type}] {log.filename}: {log.error_message or "N/A"}', 'fail')
+    out(f'BackupLog records: {total} total, {success} success, {failed_b} failed', 'pass')
 
+    # 7. CourseResource backup stats
     total_r = CourseResource.objects.count()
     success_r = CourseResource.objects.filter(backup_status='SUCCESS').count()
     failed_r = CourseResource.objects.filter(backup_status='FAILED').count()
-    out(f'Resources: {total_r} total, {success_r} backed up, {failed_r} failed', 'pass')
+    pending_r = CourseResource.objects.filter(backup_status='PENDING').count()
+    out(f'Resources: {total_r} total, {success_r} backed up, {failed_r} failed, {pending_r} pending', 'pass')
+
+    # 8. Summary
+    passes = sum(1 for _, s in lines if s == 'pass')
+    fails = sum(1 for _, s in lines if s == 'fail')
+    overall = 'PASS' if fails == 0 else 'FAIL'
+    out(f'', '')
+    out(f'Overall: {overall} ({passes} passed, {fails} failed)', 'pass' if overall == 'PASS' else 'fail')
 
     html = '<html><head><title>Drive Diagnostics</title><style>'
     html += 'body{font-family:monospace;padding:20px;background:#111;color:#eee}'

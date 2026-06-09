@@ -35,60 +35,45 @@ class Command(BaseCommand):
         effective = str(be) if be is not None else str(env_be or 'True')
         check('Backups are ENABLED', effective == 'True')
 
-        # 2. Check GOOGLE_DRIVE_CREDENTIALS
+        # 2. Check GOOGLE_DRIVE_CREDENTIALS (all sources: env var / secret file / credentials.json)
         self.stdout.write('\n2. GOOGLE_DRIVE_CREDENTIALS:')
-        creds = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
-        if not creds:
-            check('Env var exists', False, 'GOOGLE_DRIVE_CREDENTIALS is NOT set in environment')
-            self.stdout.write(self.style.WARNING('\n   Set it on Render: Dashboard -> Environment -> Add GOOGLE_DRIVE_CREDENTIALS'))
-            self.stdout.write(self.style.WARNING('   Value must be a single-line JSON service account key'))
-            self.stdout.write('   Example format (all on one line with \\n for newlines):')
-            self.stdout.write('   {"type":"service_account","project_id":"...","private_key":"-----BEGIN PRIVATE KEY-----\\n...\\n-----END PRIVATE KEY-----\\n","client_email":"...","client_id":"...","auth_uri":"https://accounts.google.com/o/oauth2/auth","token_uri":"https://oauth2.googleapis.com/token",...}')
+        from accounts.utils.drive_backup_service import _load_credentials_json
+        parsed, source = _load_credentials_json()
+        if parsed:
+            check('Credentials loaded', True, f'Source: {source}')
+            check('Is service_account', parsed.get('type') == 'service_account', f'type={parsed.get("type")}')
+            check('Has private_key', bool(parsed.get('private_key')), 'Key present')
         else:
-            check('Env var exists', True, f'Length: {len(creds)} chars')
-            try:
-                parsed = json.loads(creds)
-                check('Valid JSON', True)
-                check('Is service_account', parsed.get('type') == 'service_account', f'type={parsed.get("type")}')
-                check('Has private_key', bool(parsed.get('private_key')), 'Key present')
-                check('Has client_email', bool(parsed.get('client_email')), f'Email: {parsed.get("client_email")}')
-                check('Has project_id', bool(parsed.get('project_id')), f'Project: {parsed.get("project_id")}')
-            except json.JSONDecodeError as e:
-                check('Valid JSON', False, f'Parse error: {e}')
-                self.stdout.write(self.style.WARNING('   Make sure your env var is valid JSON on a single line'))
+            check('Credentials loaded', False, source)
+            self.stdout.write(self.style.WARNING('\n   Set it on Render: Dashboard -> Environment -> Add GOOGLE_DRIVE_CREDENTIALS'))
+            self.stdout.write(self.style.WARNING('   Or use Render Secret Files at /etc/secrets/GOOGLE_DRIVE_CREDENTIALS'))
 
         # 3. Try connecting to Drive
         self.stdout.write('\n3. Google Drive Connection Test:')
-        if creds:
+        if parsed:
             try:
-                from google.oauth2 import service_account
-                from googleapiclient.discovery import build
-                parsed = json.loads(creds)
-                if parsed.get('type') == 'service_account':
-                    scopes = ['https://www.googleapis.com/auth/drive']
-                    sa_creds = service_account.Credentials.from_service_account_info(parsed, scopes=scopes)
-                    service = build('drive', 'v3', credentials=sa_creds)
+                from accounts.utils.drive_backup_service import _get_drive_service
+                service = _get_drive_service()
+                if service:
                     about = service.about().get(fields='user,storageQuota').execute()
                     user_info = about.get('user', {})
-                    check('Drive API connected', True, f'Authenticated as: {user_info.get("displayName", user_info.get("emailAddress", "unknown"))}')
+                    check('Drive API connected', True, 'Service account authenticated')
                     quota = about.get('storageQuota', {})
                     limit = int(quota.get('limit', 0))
                     usage = int(quota.get('usage', 0))
                     if limit:
                         pct = usage / limit * 100
                         check('Storage quota', True, f'{pct:.1f}% used ({usage//1048576}MB / {limit//1048576}MB)')
-                    # Check if root folder exists
                     q = "name='NeoLearner_Backups' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-                    root = service.files().list(q=q, spaces='drive', fields='files(id, name, parents)').execute()
+                    root = service.files().list(q=q, spaces='drive', fields='files(id, name)').execute()
                     items = root.get('files', [])
                     if items:
-                        check('Root folder "NeoLearner_Backups"', True, f'ID: {items[0]["id"]}')
+                        check('Root folder "NeoLearner_Backups"', True, 'Accessible')
                     else:
                         check('Root folder "NeoLearner_Backups"', False, 'Folder does not exist or service account has no access')
-                        self.stdout.write(self.style.WARNING('   Create the folder in Google Drive and share it with:'))
-                        self.stdout.write(self.style.WARNING(f'   {parsed.get("client_email")} (set as Editor)'))
+                        self.stdout.write(self.style.WARNING('   Create "NeoLearner_Backups" in Google Drive and share it with the service account (Editor)'))
                 else:
-                    check('Drive API connected', False, 'Credentials type is not service_account')
+                    check('Drive API connected', False, 'Service init returned None')
             except ImportError as e:
                 check('Drive API connected', False, f'Missing package: {e}')
             except Exception as e:
@@ -130,8 +115,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f'RESULT: {passed}/{total_checks} passed — Drive backup should work'))
         else:
             self.stdout.write(self.style.WARNING(f'RESULT: {passed}/{total_checks} passed — {failed} issue(s) need fixing'))
-            if not creds:
-                self.stdout.write(self.style.ERROR('  FIX: Set GOOGLE_DRIVE_CREDENTIALS env var on Render'))
+            if not parsed:
+                self.stdout.write(self.style.ERROR('  FIX: Set GOOGLE_DRIVE_CREDENTIALS (env var or /etc/secrets/ on Render)'))
             else:
                 self.stdout.write(self.style.WARNING('  FIX: Check the FAIL items above'))
 
