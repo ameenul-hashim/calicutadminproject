@@ -83,7 +83,7 @@ def admin_login_view(request):
             if not user_id:
                 messages.error(request, "Session expired. Please login again.")
                 return redirect('admin_login')
-            user = CustomUser.objects.filter(id=user_id, is_staff=True).first()
+            user = CustomUser.objects.filter(id=user_id).filter(Q(is_staff=True) | Q(user_type='ADMIN')).first()
             if not user:
                 messages.error(request, "Invalid session. Please login again.")
                 return redirect('admin_login')
@@ -153,42 +153,46 @@ def admin_dashboard(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_students(request):
-    search_query = request.GET.get('search', '')
-    status_filter = request.GET.get('status', '')
-    sort = request.GET.get('sort', 'date_desc')
-    page = request.GET.get('page', 1)
-    
-    users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
-    
-    if status_filter:
-        users = users.filter(status=status_filter)
+    try:
+        search_query = request.GET.get('search', '')
+        status_filter = request.GET.get('status', '')
+        sort = request.GET.get('sort', 'date_desc')
+        page = request.GET.get('page', 1)
         
-    if search_query:
-        users = users.filter(
-            Q(username__icontains=search_query) | 
-            Q(email__icontains=search_query) |
-            Q(full_name__icontains=search_query)
-        )
-    
-    if sort == 'name_asc':
-        users = users.order_by('full_name')
-    elif sort == 'name_desc':
-        users = users.order_by('-full_name')
-    elif sort == 'date_asc':
-        users = users.order_by('date_joined')
-    else:
-        users = users.order_by('-date_joined')
-    
-    paginator = Paginator(users, 50)
-    page_obj = paginator.get_page(page)
-    
-    return render(request, 'custom_admin/manage_students.html', {
-        'users': page_obj,
-        'search_query': search_query,
-        'status_filter': status_filter,
-        'sort': sort,
-        'page_obj': page_obj,
-    })
+        users = CustomUser.objects.filter(user_type='STUDENT').exclude(is_superuser=True)
+        
+        if status_filter:
+            users = users.filter(status=status_filter)
+            
+        if search_query:
+            users = users.filter(
+                Q(username__icontains=search_query) | 
+                Q(email__icontains=search_query) |
+                Q(full_name__icontains=search_query)
+            )
+        
+        if sort == 'name_asc':
+            users = users.order_by('full_name')
+        elif sort == 'name_desc':
+            users = users.order_by('-full_name')
+        elif sort == 'date_asc':
+            users = users.order_by('date_joined')
+        else:
+            users = users.order_by('-date_joined')
+        
+        paginator = Paginator(users, 50)
+        page_obj = paginator.get_page(page)
+        
+        return render(request, 'custom_admin/manage_students.html', {
+            'users': page_obj,
+            'search_query': search_query,
+            'status_filter': status_filter,
+            'sort': sort,
+            'page_obj': page_obj,
+        })
+    except Exception as e:
+        logger.critical(f"manage_students CRASH: {e}", exc_info=True)
+        raise
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_student_profile(request, user_uid):

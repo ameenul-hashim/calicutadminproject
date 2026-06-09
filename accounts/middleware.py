@@ -118,7 +118,7 @@ class PortalSecurityMiddleware:
 
             # --- Cached status check (avoids DB hit per request) ---
             # Staff users (admins) and superusers are exempt from status-based session flushing
-            if not request.user.is_superuser and not request.user.is_staff:
+            if not request.user.is_superuser and not request.user.is_staff and getattr(request.user, 'user_type', '') != 'ADMIN':
                 status_cache_key = f"user_status_{request.user.id}"
                 cached_status = cache.get(status_cache_key)
                 if cached_status is None:
@@ -133,7 +133,7 @@ class PortalSecurityMiddleware:
                         return redirect('login')
 
             # --- Cached profile photo constraint ---
-            if not request.user.is_superuser and request.user.user_type in ['STUDENT', 'TEACHER']:
+            if not request.user.is_superuser and request.user.user_type in ['STUDENT', 'TEACHER'] and request.user.user_type != 'ADMIN':
                 if not request.session.get('avatar_skipped'):
                     photo_cache_key = f"user_has_photo_{request.user.id}"
                     has_photo = cache.get(photo_cache_key)

@@ -1,5 +1,8 @@
+import logging
 from django.core.cache import cache
 from time import time as _time
+
+logger = logging.getLogger(__name__)
 
 
 def pending_counts(request):
@@ -111,5 +114,6 @@ def pending_counts(request):
                 pass
 
         return context
-    except Exception:
+    except Exception as e:
+        logger.critical(f"pending_counts CRASH: {e}", exc_info=True)
         return {}
