@@ -670,8 +670,8 @@ def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
             resp = requests.get(signed_url, timeout=30)
             if resp.status_code == 200:
                 backup_signup_pdf(instance.id, instance.pdf_path, resp.content)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f'Signup PDF backup trigger failed for user {instance.id}: {e}')
 
 
 @receiver(post_save, sender=CourseResource)
@@ -694,7 +694,7 @@ def backup_teacher_resource_on_save(sender, instance, created, **kwargs):
                     instance.id, instance.firebase_file_path,
                     file_bytes, course_title, instance.chapter, instance.category
                 )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f'Resource backup trigger failed for resource {instance.id}: {e}')
 
 

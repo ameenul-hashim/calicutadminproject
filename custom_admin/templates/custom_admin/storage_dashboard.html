@@ -496,6 +496,58 @@
         </div>
     </div>
 
+    <!-- Backup Health (live from BackupLog) -->
+    <div class="sd-panel" style="margin-bottom:1.5rem;">
+        <div class="sd-panel-header">
+            <h2 class="sd-panel-title">☁️ Google Drive Backup Health</h2>
+            {% if drive_configured %}
+            <span class="status-badge ok">● Configured</span>
+            {% else %}
+            <span class="status-badge off">● Not Configured</span>
+            {% endif %}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem;">
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Total Backups</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;">{{ backup_stats.total }}</p>
+            </div>
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">✅ Successful</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;color:#059669;">{{ backup_stats.success }}</p>
+            </div>
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">❌ Failed</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;color:#dc2626;">{{ backup_stats.failed }}</p>
+            </div>
+            <div>
+                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">⏳ Pending</p>
+                <p style="font-size:1.2rem;font-weight:700;margin:0;color:#d97706;">{{ backup_stats.pending }}</p>
+            </div>
+        </div>
+        {% if not drive_configured %}
+        <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:0.75rem;padding:0.75rem 1rem;font-size:0.85rem;color:#991b1b;">
+            <strong>⚠️ Google Drive not configured.</strong> Set <code style="background:#fee;padding:0.1rem 0.3rem;border-radius:4px;">GOOGLE_DRIVE_CREDENTIALS</code> env var on Render to enable automated backups.
+        </div>
+        {% endif %}
+        {% if recent_backups %}
+        <details style="margin-top:0.75rem;">
+            <summary style="cursor:pointer;font-size:0.85rem;font-weight:600;color:#64748b;">Recent backup activity (last 5)</summary>
+            <div style="margin-top:0.5rem;font-size:0.8rem;">
+                {% for b in recent_backups %}
+                <div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid #f1f5f9;">
+                    <span>{{ b.filename|truncatechars:40 }}</span>
+                    <span>
+                        {% if b.status == 'SUCCESS' %}✅{% elif b.status == 'FAILED' %}❌{% else %}⏳{% endif %}
+                        {{ b.status }}
+                    </span>
+                    <span style="color:#94a3b8;">{{ b.created_at|timesince }} ago</span>
+                </div>
+                {% endfor %}
+            </div>
+        </details>
+        {% endif %}
+    </div>
+
     <!-- Cloudinary (secondary — moved to bottom) -->
     <details style="margin-bottom:1.5rem;background:white;border-radius:1.25rem;padding:1.5rem;border:1px solid #f1f5f9;">
         <summary style="cursor:pointer;font-size:1rem;font-weight:700;color:#64748b;display:flex;align-items:center;gap:0.5rem;">

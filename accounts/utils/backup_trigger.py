@@ -126,6 +126,22 @@ def _do_backup_signup_pdf(user_id, pdf_path, pdf_bytes):
         log.save(update_fields=['status', 'error_message', 'completed_at'])
 
 
+def _update_resource_backup(resource_id, drive_id, status):
+    """Update CourseResource backup fields after Drive upload."""
+    try:
+        from accounts.models import CourseResource
+        resource = CourseResource.objects.get(id=resource_id)
+        if status == 'SUCCESS' and drive_id:
+            resource.backup_file_path = drive_id
+            resource.backup_status = 'SUCCESS'
+            resource.save(update_fields=['backup_file_path', 'backup_status'])
+        else:
+            resource.backup_status = 'FAILED'
+            resource.save(update_fields=['backup_status'])
+    except Exception as e:
+        logger.error(f'Failed to update resource {resource_id} backup status: {e}')
+
+
 def _do_backup_teacher_resource(resource_id, supabase_path, file_bytes, course_title, chapter, category):
     """Background task: backup teacher resource PDF to Google Drive."""
     from accounts.models import BackupLog
@@ -134,6 +150,7 @@ def _do_backup_teacher_resource(resource_id, supabase_path, file_bytes, course_t
     )
     if str(_get_config('BACKUP_ENABLED', 'True')) != 'True':
         logger.info('Backup disabled by BACKUP_ENABLED=False')
+        _update_resource_backup(resource_id, None, 'FAILED')
         return
     safe_course = ''.join(c if c.isalnum() or c in ' _-' else '_' for c in (course_title or 'Unknown'))[:50]
     safe_chapter = ''.join(c if c.isalnum() or c in ' _-' else '_' for c in (chapter or 'General'))[:50]
@@ -161,6 +178,7 @@ def _do_backup_teacher_resource(resource_id, supabase_path, file_bytes, course_t
             log.status = 'FAILED'
             log.error_message = 'Google Drive not configured'
             log.save(update_fields=['status', 'error_message', 'completed_at'])
+            _update_resource_backup(resource_id, None, 'FAILED')
             return
         folder_parts = ['NeoLearner_Backups', resource_folder, safe_course, safe_chapter, safe_category]
         folder_id = ensure_folder_path(service, folder_parts)
@@ -181,8 +199,11 @@ def _do_backup_teacher_resource(resource_id, supabase_path, file_bytes, course_t
         log.drive_file_id = drive_id
         log.save(update_fields=['drive_file_id'])
         _verify_and_log(log.id, file_bytes)
+        _update_resource_backup(resource_id, drive_id, 'SUCCESS')
     except Exception as e:
         log.status = 'FAILED'
         log.error_message = str(e)[:500]
         log.completed_at = datetime.now()
         log.save(update_fields=['status', 'error_message', 'completed_at'])
+        _update_resource_backup(resource_id, None, 'FAILED')
+        logger.error(f'Resource backup failed for {resource_id}: {e}')
