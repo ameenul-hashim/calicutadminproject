@@ -205,19 +205,19 @@
 {% with ss=stats.supabase_signup sr=stats.supabase_resources cl=stats.cloudinary db=stats.database fb=stats.firebase_rtdb rd=stats.render_ram %}
 <div class="p-1">
 
-    <!-- 6 Summary Cards -->
-    <div class="sd-grid">
+    <!-- 5 Main Summary Cards (real-time core services) -->
+    <div class="sd-grid" style="grid-template-columns:repeat(5,1fr);">
         <!-- Supabase Signup -->
         <div class="sd-card">
             <div class="accent-bar" style="background: {{ ss.color }};"></div>
             <h3>{{ ss.emoji }} {{ ss.label }}</h3>
             <p class="big-value">{{ ss.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text">{{ ss.total_files }} files · {{ ss.remaining_mb }} MB free</p>
-            <p class="kb-text">{{ ss.usage_mb }} MB of {{ ss.limit_mb }} MB</p>
+            <p class="sub-text">{{ ss.total_files }} files · <strong>{{ ss.remaining_mb }} MB free</strong></p>
+            <p class="kb-text">{{ ss.usage_mb }} MB of {{ ss.limit_mb }} MB limit</p>
             <div class="bar-wrap">
                 <div class="bar-fill" style="width: {{ ss.percent }}%; background: {{ ss.color }};"></div>
             </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ ss.percent }}% used</p>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ ss.percent }}% used · {{ ss.remaining_mb }} MB balance</p>
         </div>
 
         <!-- Supabase Resources -->
@@ -225,25 +225,12 @@
             <div class="accent-bar" style="background: {{ sr.color }};"></div>
             <h3>{{ sr.emoji }} {{ sr.label }}</h3>
             <p class="big-value">{{ sr.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text">{{ sr.total_files }} files · {{ sr.remaining_mb }} MB free</p>
-            <p class="kb-text">{{ sr.usage_mb }} MB of {{ sr.limit_mb }} MB</p>
+            <p class="sub-text">{{ sr.total_files }} files · <strong>{{ sr.remaining_mb }} MB free</strong></p>
+            <p class="kb-text">{{ sr.usage_mb }} MB of {{ sr.limit_mb }} MB limit</p>
             <div class="bar-wrap">
                 <div class="bar-fill" style="width: {{ sr.percent }}%; background: {{ sr.color }};"></div>
             </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ sr.percent }}% used</p>
-        </div>
-
-        <!-- Cloudinary -->
-        <div class="sd-card">
-            <div class="accent-bar" style="background: {{ cl.color }};"></div>
-            <h3>{{ cl.emoji }} {{ cl.label }}</h3>
-            <p class="big-value">{{ cl.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text">{{ cl.total_files }} files · {{ cl.remaining_mb }} MB free</p>
-            <p class="kb-text">{{ cl.usage_mb }} MB of {{ cl.limit_mb }} MB</p>
-            <div class="bar-wrap">
-                <div class="bar-fill" style="width: {{ cl.percent }}%; background: {{ cl.color }};"></div>
-            </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ cl.percent }}% used</p>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ sr.percent }}% used · {{ sr.remaining_mb }} MB balance</p>
         </div>
 
         <!-- Database -->
@@ -251,12 +238,12 @@
             <div class="accent-bar" style="background: {{ db.color }};"></div>
             <h3>{{ db.emoji }} {{ db.label }}</h3>
             <p class="big-value">{{ db.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text">{{ db.remaining_mb }} MB free</p>
-            <p class="kb-text">{{ db.usage_mb }} MB of {{ db.limit_mb }} MB</p>
+            <p class="sub-text"><strong>{{ db.remaining_mb }} MB free</strong></p>
+            <p class="kb-text">{{ db.usage_mb }} MB of {{ db.limit_mb }} MB limit</p>
             <div class="bar-wrap">
                 <div class="bar-fill" style="width: {{ db.percent }}%; background: {{ db.color }};"></div>
             </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ db.percent }}% used</p>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ db.percent }}% used · {{ db.remaining_mb }} MB balance</p>
         </div>
 
         <!-- Firebase RTDB -->
@@ -264,12 +251,12 @@
             <div class="accent-bar" style="background: {{ fb.color }};"></div>
             <h3>{{ fb.emoji }} {{ fb.label }}</h3>
             <p class="big-value">{{ fb.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text">{{ fb.audit_count }} events · {{ fb.remaining_mb }} MB free</p>
-            <p class="kb-text">{{ fb.usage_mb }} MB of {{ fb.limit_mb }} MB</p>
+            <p class="sub-text">{{ fb.audit_count }} events · <strong>{{ fb.remaining_mb }} MB free</strong></p>
+            <p class="kb-text">{{ fb.usage_mb }} MB of {{ fb.limit_mb }} MB limit</p>
             <div class="bar-wrap">
                 <div class="bar-fill" style="width: {{ fb.percent }}%; background: {{ fb.color }};"></div>
             </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ fb.percent }}% used</p>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ fb.percent }}% used · {{ fb.remaining_mb }} MB balance</p>
         </div>
 
         <!-- Render RAM -->
@@ -277,12 +264,12 @@
             <div class="accent-bar" style="background: {{ rd.color }};"></div>
             <h3>{{ rd.emoji }} {{ rd.label }}</h3>
             <p class="big-value">{{ rd.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text">{{ rd.remaining_mb }} MB free</p>
-            <p class="kb-text">{{ rd.usage_mb }} MB of {{ rd.limit_mb }} MB</p>
+            <p class="sub-text"><strong>{{ rd.remaining_mb }} MB free</strong></p>
+            <p class="kb-text">{{ rd.usage_mb }} MB of {{ rd.limit_mb }} MB total</p>
             <div class="bar-wrap">
                 <div class="bar-fill" style="width: {{ rd.percent }}%; background: {{ rd.color }};"></div>
             </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ rd.percent }}% used</p>
+            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ rd.percent }}% used · {{ rd.remaining_mb }} MB balance</p>
         </div>
     </div>
 
@@ -290,7 +277,7 @@
     <div class="sd-charts-grid">
         <div class="sd-panel">
             <div class="sd-panel-header">
-                <h2 class="sd-panel-title">📊 Storage Comparison (KB Used)</h2>
+                <h2 class="sd-panel-title">📊 Storage Comparison (MB Used)</h2>
             </div>
             <div style="height: 250px;">
                 <canvas id="storageBarChart"></canvas>
@@ -399,51 +386,8 @@
         </div>
     </div>
 
-    <!-- Third Row: Cloudinary + Database + Firebase + Render Disk Details -->
+    <!-- Third Row: Database + Firebase + Render RAM Details -->
     <div class="sd-detail-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
-        <div class="sd-panel">
-            <div class="sd-panel-header">
-                <h2 class="sd-panel-title"><span class="dot" style="background:{{ cl.color }};"></span> {{ cl.emoji }} Cloudinary</h2>
-                {% if cl.status == 'connected' %}
-                <span class="status-badge ok">● Live</span>
-                {% else %}
-                <span class="status-badge off">● Offline</span>
-                {% endif %}
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Storage Used</span>
-                <span class="stat-value">{{ cl.storage_used_mb }} MB</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Storage Limit</span>
-                <span class="stat-value">{{ cl.storage_limit_mb }} MB</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Free</span>
-                <span class="stat-value">{{ cl.storage_remaining_mb }} MB</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Credits</span>
-                <span class="stat-value">{{ cl.credits_used }} / {{ cl.credits_limit }} ({{ cl.credits_percent }}%)</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Transformations</span>
-                <span class="stat-value">{{ cl.transformations_used }} / {{ cl.transformations_limit }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Total Objects</span>
-                <span class="stat-value">{{ cl.total_files }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Images</span>
-                <span class="stat-value">{{ cl.images_count }}</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Description</span>
-                <span class="stat-value sd-muted">{{ cl.description }}</span>
-            </div>
-        </div>
-
         <div class="sd-panel">
             <div class="sd-panel-header">
                 <h2 class="sd-panel-title"><span class="dot" style="background:{{ db.color }};"></span> {{ db.emoji }} Database</h2>
@@ -552,6 +496,27 @@
         </div>
     </div>
 
+    <!-- Cloudinary (secondary — moved to bottom) -->
+    <details style="margin-bottom:1.5rem;background:white;border-radius:1.25rem;padding:1.5rem;border:1px solid #f1f5f9;">
+        <summary style="cursor:pointer;font-size:1rem;font-weight:700;color:#64748b;display:flex;align-items:center;gap:0.5rem;">
+            🖼️ Cloudinary Images <span style="font-size:0.8rem;font-weight:400;color:#94a3b8;">({{ cl.usage_mb }} MB used · {{ cl.remaining_mb }} MB free)</span>
+        </summary>
+        <div style="margin-top:1rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div>
+                <div class="stat-row"><span class="stat-label">Storage Used</span><span class="stat-value">{{ cl.storage_used_mb }} MB</span></div>
+                <div class="stat-row"><span class="stat-label">Storage Limit</span><span class="stat-value">{{ cl.storage_limit_mb }} MB</span></div>
+                <div class="stat-row"><span class="stat-label">Free</span><span class="stat-value">{{ cl.storage_remaining_mb }} MB</span></div>
+                <div class="stat-row"><span class="stat-label">Credits</span><span class="stat-value">{{ cl.credits_used }} / {{ cl.credits_limit }} ({{ cl.credits_percent }}%)</span></div>
+            </div>
+            <div>
+                <div class="stat-row"><span class="stat-label">Transformations</span><span class="stat-value">{{ cl.transformations_used }} / {{ cl.transformations_limit }}</span></div>
+                <div class="stat-row"><span class="stat-label">Total Objects</span><span class="stat-value">{{ cl.total_files }}</span></div>
+                <div class="stat-row"><span class="stat-label">Images</span><span class="stat-value">{{ cl.images_count }}</span></div>
+                <div class="stat-row"><span class="stat-label">Status</span><span class="stat-value">{% if cl.status == 'connected' %}✅ Live{% else %}⛔ Offline{% endif %}</span></div>
+            </div>
+        </div>
+    </details>
+
     <!-- Compressed Resources Summary -->
     <div class="sd-panel" style="margin-bottom:1.5rem;">
         <div class="sd-panel-header">
@@ -652,62 +617,49 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 (function() {
-    const ss_usage = {{ stats.supabase_signup.usage_mb }};
-    const sr_usage = {{ stats.supabase_resources.usage_mb }};
-    const cl_usage = {{ stats.cloudinary.usage_mb }};
-    const db_usage = {{ stats.database.usage_mb }};
-    const fb_usage = {{ stats.firebase_rtdb.usage_mb }};
-    const rd_usage = {{ stats.render_ram.usage_mb }};
+    const ss_u = {{ stats.supabase_signup.usage_mb }};
+    const sr_u = {{ stats.supabase_resources.usage_mb }};
+    const db_u = {{ stats.database.usage_mb }};
+    const fb_u = {{ stats.firebase_rtdb.usage_mb }};
+    const rd_u = {{ stats.render_ram.usage_mb }};
+    const cl_u = {{ stats.cloudinary.usage_mb }};
 
-    const ss_rem = {{ stats.supabase_signup.remaining_mb }};
-    const sr_rem = {{ stats.supabase_resources.remaining_mb }};
-    const cl_rem = {{ stats.cloudinary.remaining_mb }};
-    const db_rem = {{ stats.database.remaining_mb }};
-    const fb_rem = {{ stats.firebase_rtdb.remaining_mb }};
-    const rd_rem = {{ stats.render_ram.remaining_mb }};
+    const ss_r = {{ stats.supabase_signup.remaining_mb }};
+    const sr_r = {{ stats.supabase_resources.remaining_mb }};
+    const db_r = {{ stats.database.remaining_mb }};
+    const fb_r = {{ stats.firebase_rtdb.remaining_mb }};
+    const rd_r = {{ stats.render_ram.remaining_mb }};
 
-    const ss_pct = {{ stats.supabase_signup.percent }};
-    const sr_pct = {{ stats.supabase_resources.percent }};
-    const cl_pct = {{ stats.cloudinary.percent }};
-    const db_pct = {{ stats.database.percent }};
-    const fb_pct = {{ stats.firebase_rtdb.percent }};
-    const rd_pct = {{ stats.render_ram.percent }};
+    const ss_p = {{ stats.supabase_signup.percent }};
+    const sr_p = {{ stats.supabase_resources.percent }};
+    const db_p = {{ stats.database.percent }};
+    const fb_p = {{ stats.firebase_rtdb.percent }};
+    const rd_p = {{ stats.render_ram.percent }};
 
     function fmtMB(v) { return v.toFixed(1) + ' MB'; }
+
+    const mainLabels = ['Signup Proofs', 'Course Resources', 'Render DB', 'Firebase RTDB', 'Render RAM'];
+    const mainUsage = [ss_u, sr_u, db_u, fb_u, rd_u];
+    const mainRem   = [ss_r, sr_r, db_r, fb_r, rd_r];
+    const mainPct   = [ss_p, sr_p, db_p, fb_p, rd_p];
+    const mainColors = ['#6366f1', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'];
 
     // 1. Storage Comparison Bar Chart (MB)
     new Chart(document.getElementById('storageBarChart'), {
         type: 'bar',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Render DB', 'Firebase RTDB', 'Render RAM'],
-            datasets: [{
-                label: 'MB Used',
-                data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage, rd_usage],
-                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6'],
-                borderRadius: 6,
-                barPercentage: 0.5,
-            }]
+            labels: mainLabels,
+            datasets: [{ label: 'MB Used', data: mainUsage, backgroundColor: mainColors, borderRadius: 6, barPercentage: 0.5 }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             scales: {
                 x: { grid: { display: false } },
-                y: {
-                    border: { display: false },
-                    beginAtZero: true,
-                    title: { display: true, text: 'Megabytes (MB)' }
-                }
+                y: { border: { display: false }, beginAtZero: true, title: { display: true, text: 'MB' } }
             },
             plugins: {
                 legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return fmtMB(ctx.parsed.y);
-                        }
-                    }
-                }
+                tooltip: { callbacks: { label: function(ctx) { return fmtMB(ctx.parsed.y); } } }
             }
         }
     });
@@ -716,29 +668,14 @@
     new Chart(document.getElementById('storageDoughnut'), {
         type: 'doughnut',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Render DB', 'Firebase RTDB', 'Render RAM'],
-            datasets: [{
-                data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage, rd_usage],
-                backgroundColor: ['#6366f1', '#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6'],
-                borderWidth: 0,
-                cutout: '65%'
-            }]
+            labels: mainLabels,
+            datasets: [{ data: mainUsage, backgroundColor: mainColors, borderWidth: 0, cutout: '65%' }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { boxWidth: 12, padding: 12, font: { size: 11 } }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return ctx.label + ': ' + fmtMB(ctx.parsed);
-                        }
-                    }
-                }
+                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+                tooltip: { callbacks: { label: function(ctx) { return ctx.label + ': ' + fmtMB(ctx.parsed); } } }
             }
         }
     });
@@ -747,38 +684,21 @@
     new Chart(document.getElementById('usedFreeChart'), {
         type: 'bar',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Render DB', 'Firebase RTDB', 'Render RAM'],
+            labels: mainLabels,
             datasets: [
-                {
-                    label: 'Used MB',
-                    data: [ss_usage, sr_usage, cl_usage, db_usage, fb_usage, rd_usage],
-                    backgroundColor: '#6366f1',
-                    borderRadius: 4,
-                },
-                {
-                    label: 'Free MB',
-                    data: [ss_rem, sr_rem, cl_rem, db_rem, fb_rem, rd_rem],
-                    backgroundColor: '#d1fae5',
-                    borderRadius: 4,
-                }
+                { label: 'Used MB', data: mainUsage, backgroundColor: '#6366f1', borderRadius: 4 },
+                { label: 'Free MB', data: mainRem, backgroundColor: '#d1fae5', borderRadius: 4 }
             ]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             scales: {
                 x: { grid: { display: false }, stacked: true },
                 y: { stacked: true, beginAtZero: true, title: { display: true, text: 'MB' } }
             },
             plugins: {
                 legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 10 } } },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return ctx.dataset.label + ': ' + fmtMB(ctx.parsed.y);
-                        }
-                    }
-                }
+                tooltip: { callbacks: { label: function(ctx) { return ctx.dataset.label + ': ' + fmtMB(ctx.parsed.y); } } }
             }
         }
     });
@@ -787,25 +707,14 @@
     new Chart(document.getElementById('supabasePie'), {
         type: 'pie',
         data: {
-            labels: ['Signup PDFs (' + fmtMB(ss_usage) + ')', 'Course Resources (' + fmtMB(sr_usage) + ')'],
-            datasets: [{
-                data: [ss_usage, sr_usage],
-                backgroundColor: ['#6366f1', '#10b981'],
-                borderWidth: 0,
-            }]
+            labels: ['Signup PDFs (' + fmtMB(ss_u) + ')', 'Course Resources (' + fmtMB(sr_u) + ')'],
+            datasets: [{ data: [ss_u, sr_u], backgroundColor: ['#6366f1', '#10b981'], borderWidth: 0 }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
+            responsive: true, maintainAspectRatio: false,
             plugins: {
                 legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 10 } } },
-                tooltip: {
-                    callbacks: {
-                        label: function(ctx) {
-                            return ctx.label;
-                        }
-                    }
-                }
+                tooltip: { callbacks: { label: function(ctx) { return ctx.label; } } }
             }
         }
     });
@@ -814,18 +723,11 @@
     new Chart(document.getElementById('usagePercentChart'), {
         type: 'bar',
         data: {
-            labels: ['Signup Proofs', 'Course Resources', 'Cloudinary', 'Render DB', 'Firebase RTDB', 'Render RAM'],
+            labels: mainLabels,
             datasets: [{
                 label: 'Usage %',
-                data: [ss_pct, sr_pct, cl_pct, db_pct, fb_pct, rd_pct],
-                backgroundColor: [
-                    ss_pct > 80 ? '#ef4444' : ss_pct > 60 ? '#f59e0b' : '#6366f1',
-                    sr_pct > 80 ? '#ef4444' : sr_pct > 60 ? '#f59e0b' : '#10b981',
-                    cl_pct > 80 ? '#ef4444' : cl_pct > 60 ? '#f59e0b' : '#f59e0b',
-                    db_pct > 80 ? '#ef4444' : db_pct > 60 ? '#f59e0b' : '#3b82f6',
-                    fb_pct > 80 ? '#ef4444' : fb_pct > 60 ? '#f59e0b' : '#ef4444',
-                    rd_pct > 80 ? '#ef4444' : rd_pct > 60 ? '#f59e0b' : '#8b5cf6',
-                ],
+                data: mainPct,
+                backgroundColor: mainPct.map(function(p) { return p > 80 ? '#ef4444' : p > 60 ? '#f59e0b' : '#6366f1'; }),
                 borderRadius: 6,
                 barPercentage: 0.5,
             }]
