@@ -135,6 +135,11 @@ def notif_get_all(user_uid, limit=25, offset=0):
         return [], 0
     notifs = []
     for nid, ndata in data.items():
+        ts = ndata.get('created_at')
+        if ts:
+            created_at = datetime.fromtimestamp(ts / 1000, tz=timezone.utc)
+        else:
+            created_at = datetime.now(timezone.utc)
         notifs.append({
             'uid': nid,
             'title': ndata.get('title', ''),
@@ -142,7 +147,7 @@ def notif_get_all(user_uid, limit=25, offset=0):
             'type': ndata.get('type', 'general'),
             'action_url': ndata.get('action_url', ''),
             'is_read': ndata.get('is_read', False),
-            'created_at': ndata.get('created_at', 0),
+            'created_at': created_at,
             'read_at': ndata.get('read_at'),
             'expires_at': ndata.get('expires_at'),
         })
