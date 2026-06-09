@@ -248,27 +248,51 @@ def get_database_stats():
     return _enrich_kb(result)
 
 
-def get_render_disk_stats():
-    """Render ephemeral disk — 512 MB limit, tracks static files + temp usage"""
-    limit_mb = RENDER_DISK_LIMIT_MB
-    usage_mb = 0.5
+def _dir_size_mb(path):
+    """Calculate total size of a directory in MB. Returns 0 if path doesn't exist."""
+    if not path or not os.path.exists(path):
+        return 0
     try:
-        static_root = getattr(settings, 'STATIC_ROOT', None)
-        if static_root and os.path.exists(static_root):
-            total = 0
-            for dirpath, _, filenames in os.walk(static_root):
-                for f in filenames:
-                    fp = os.path.join(dirpath, f)
-                    try:
-                        total += os.path.getsize(fp)
-                    except Exception:
-                        pass
-            static_mb = total / (1024 * 1024)
-            usage_mb = max(usage_mb, static_mb)
+        total = 0
+        for dirpath, _, filenames in os.walk(path):
+            for f in filenames:
+                try:
+                    total += os.path.getsize(os.path.join(dirpath, f))
+                except Exception:
+                    pass
+        return total / (1024 * 1024)
     except Exception:
-        pass
+        return 0
 
+
+def get_render_disk_stats():
+    """Render ephemeral disk — 512 MB limit, with per-directory breakdown sorted by size descending."""
+    limit_mb = RENDER_DISK_LIMIT_MB
+
+    base = settings.BASE_DIR
+    static_root = getattr(settings, 'STATIC_ROOT', None)
+
+    categories = [
+        ('Python venv', os.path.join(base, '.venv')),
+        ('Static files', static_root),
+        ('Git objects', os.path.join(base, '.git')),
+        ('Media uploads', os.path.join(base, 'media')),
+        ('Project cache', os.path.join(base, '__pycache__')),
+    ]
+
+    breakdown = []
+    total_measured = 0.5
+    for label, path in categories:
+        mb = _dir_size_mb(path)
+        if mb > 0:
+            breakdown.append({'label': label, 'mb': round(mb, 2), 'kb': round(mb * 1024, 1)})
+            total_measured += mb
+
+    breakdown.sort(key=lambda x: x['mb'], reverse=True)
+
+    usage_mb = max(total_measured, 0.5)
     percent = min((usage_mb / limit_mb) * 100, 100) if limit_mb else 0
+
     result = {
         'label': 'Render Disk',
         'status': 'connected',
@@ -276,9 +300,10 @@ def get_render_disk_stats():
         'limit_mb': limit_mb,
         'percent': round(percent, 1),
         'remaining_mb': round(max(limit_mb - usage_mb, 0), 2),
+        'breakdown': breakdown,
         'emoji': '\U0001f4be',
         'color': '#8b5cf6',
-        'description': 'Render ephemeral disk — static files, caches, temp uploads (512 MB free)',
+        'description': 'Render ephemeral disk — .venv, static, git, media (512 MB free tier)',
     }
     return _enrich_kb(result)
 
