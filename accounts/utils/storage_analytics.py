@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 SUPABASE_LIMIT_MB = 1024
 CLOUDINARY_LIMIT_MB = 25600
 DB_LIMIT_MB = 1024
-RENDER_DISK_LIMIT_MB = 512
+RENDER_RAM_LIMIT_MB = 512
 FB_LIMIT_MB = 1024
 
 
@@ -248,64 +248,42 @@ def get_database_stats():
     return _enrich_kb(result)
 
 
-def _dir_size_mb(path):
-    """Calculate total size of a directory in MB. Returns 0 if path doesn't exist."""
-    if not path or not os.path.exists(path):
-        return 0
+def get_render_memory_stats():
+    """Render RAM usage — reads /proc/meminfo on Linux (Render) for real-time data."""
+    limit_mb = RENDER_RAM_LIMIT_MB
+    usage_mb = 0
     try:
-        total = 0
-        for dirpath, _, filenames in os.walk(path):
-            for f in filenames:
-                try:
-                    total += os.path.getsize(os.path.join(dirpath, f))
-                except Exception:
-                    pass
-        return total / (1024 * 1024)
+        if os.path.exists('/proc/meminfo'):
+            with open('/proc/meminfo') as f:
+                data = f.read()
+            total_kb = 0
+            avail_kb = 0
+            for line in data.splitlines():
+                if line.startswith('MemTotal:'):
+                    total_kb = int(line.split()[1])
+                elif line.startswith('MemAvailable:'):
+                    avail_kb = int(line.split()[1])
+            if total_kb > 0:
+                usage_mb = (total_kb - avail_kb) / 1024
+                limit_mb = total_kb / 1024
     except Exception:
-        return 0
+        pass
 
-
-def get_render_disk_stats():
-    """Render ephemeral disk — 512 MB limit, with per-directory breakdown sorted by size descending."""
-    limit_mb = RENDER_DISK_LIMIT_MB
-
-    base = settings.BASE_DIR
-    static_root = getattr(settings, 'STATIC_ROOT', None)
-
-    categories = [
-        ('Python venv', os.path.join(base, '.venv')),
-        ('Static files', static_root),
-        ('Git objects', os.path.join(base, '.git')),
-        ('Media uploads', os.path.join(base, 'media')),
-        ('Project cache', os.path.join(base, '__pycache__')),
-    ]
-
-    breakdown = []
-    total_measured = 0.5
-    for label, path in categories:
-        mb = _dir_size_mb(path)
-        if mb > 0:
-            breakdown.append({'label': label, 'mb': round(mb, 2), 'kb': round(mb * 1024, 1)})
-            total_measured += mb
-
-    breakdown.sort(key=lambda x: x['mb'], reverse=True)
-
-    usage_mb = max(total_measured, 0.5)
+    usage_mb = max(usage_mb, 0)
     percent = min((usage_mb / limit_mb) * 100, 100) if limit_mb else 0
 
     result = {
-        'label': 'Render Disk',
+        'label': 'Render RAM',
         'status': 'connected',
-        'usage_mb': round(usage_mb, 2),
-        'limit_mb': limit_mb,
+        'usage_mb': round(usage_mb, 1),
+        'limit_mb': round(limit_mb, 1),
         'percent': round(percent, 1),
-        'remaining_mb': round(max(limit_mb - usage_mb, 0), 2),
-        'breakdown': breakdown,
-        'emoji': '\U0001f4be',
+        'remaining_mb': round(max(limit_mb - usage_mb, 0), 1),
+        'emoji': '\U0001f9f1',
         'color': '#8b5cf6',
-        'description': 'Render ephemeral disk — .venv, static, git, media (512 MB free tier)',
+        'description': 'Render RAM — 512 MB free tier, real-time from /proc/meminfo',
     }
-    return _enrich_kb(result)
+    return result
 
 
 def get_firebase_rtdb_stats():
@@ -460,5 +438,5 @@ def get_all_storage_stats():
         'cloudinary': get_cloudinary_stats(),
         'database': get_database_stats(),
         'firebase_rtdb': get_firebase_rtdb_stats(),
-        'render_disk': get_render_disk_stats(),
+        'render_ram': get_render_memory_stats(),
     }
