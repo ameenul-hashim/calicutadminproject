@@ -72,6 +72,7 @@ urlpatterns = [
     path('backup-center/history/', views.backup_history, name='backup_history'),
     path('backup-center/history/csv/', views.backup_history_csv, name='backup_history_csv'),
     path('drive-diagnostics/', views.drive_diagnostics, name='drive_diagnostics'),
+    path('reset-platform/', views.reset_platform, name='reset_platform'),
 ]
 
 
