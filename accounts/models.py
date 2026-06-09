@@ -63,7 +63,7 @@ class CustomUser(AbstractUser):
             path = parsed.path
             if '/upload/' in path:
                 parts = path.split('/upload/', 1)
-                transformations = 'f_auto,q_auto'
+                transformations = 'f_auto,q_auto:best,dpr_auto,e_sharpen'
                 existing = parts[0]
                 if existing and not existing.endswith('image/upload'):
                     parts[0] = existing  # keep existing transformations if any
@@ -134,16 +134,31 @@ class Course(models.Model):
 
     @property
     def thumbnail_url(self):
-        """Returns the raw course thumbnail URL."""
+        """Returns the course thumbnail URL with auto quality."""
+        url = None
         if self.image:
-            return self.image.strip()
-            
-        if self.thumbnail:
+            url = self.image.strip()
+        elif self.thumbnail:
             try:
-                return self.thumbnail.url
+                url = self.thumbnail.url
             except ValueError:
                 pass
-        return None
+
+        if url and 'cloudinary.com' in url:
+            from urllib.parse import urlparse, urlunparse
+            parsed = urlparse(url)
+            path = parsed.path
+            if '/upload/' in path:
+                parts = path.split('/upload/', 1)
+                transformations = 'f_auto,q_auto:best,dpr_auto,e_sharpen'
+                existing = parts[0]
+                if existing and not existing.endswith('image/upload'):
+                    parts[0] = existing
+                path = f"{parts[0]}/upload/{transformations}/{parts[1]}"
+                parsed = parsed._replace(path=path)
+                return urlunparse(parsed)
+            return url
+        return url
 
     class Meta:
         indexes = [
