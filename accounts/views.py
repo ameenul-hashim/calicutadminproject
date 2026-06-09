@@ -2346,6 +2346,9 @@ def mark_notification_read(request, notif_uid):
     mark_read(str(request.user.uid), notif_uid)
     from django.core.cache import cache
     cache.delete(f"pending_counts_{request.user.id}_{request.user.user_type}")
+    next_url = request.GET.get('next')
+    if next_url:
+        return redirect(next_url)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({"status": "read"})
     return redirect(request.META.get('HTTP_REFERER', '/'))

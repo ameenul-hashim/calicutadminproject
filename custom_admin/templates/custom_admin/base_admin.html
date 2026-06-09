@@ -536,7 +536,7 @@
                                         <div style="padding-right: 20px;">{{ notif.message }}</div>
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.3rem;">
                                             <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
-                                            <a href="{% url 'mark_notification_read' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Clear</a>
+                                            <a href="{% url 'mark_notification_read' notif.uid %}?next={% url 'admin_all_notifications' %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 600;">Clear</a>
                                         </div>
                                     </div>
                                 {% empty %}

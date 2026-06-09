@@ -199,7 +199,7 @@
                         <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
                         <div style="display: flex; gap: 0.5rem;">
                             {% if not notif.is_read %}
-                                <a href="{% url 'mark_notification_read' notif.uid %}" style="color: var(--nl-primary); font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #eef2ff; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
+<a href="{% url 'mark_notification_read' notif.uid %}?next={% url 'all_notifications' %}" style="color: var(--nl-primary); font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #eef2ff; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
                             {% else %}
                                 <a href="{% url 'delete_notification' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #fef2f2; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Delete</a>
                             {% endif %}
@@ -214,6 +214,10 @@
             {% endfor %}
         </div>
     </div>
+
+    <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99990;" onclick="closeSidebar()"></div>
+    <div class="dashboard-container">
+
 
     <div id="sidebar-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:99990;" onclick="closeSidebar()"></div>
     <div class="dashboard-container">
@@ -312,7 +316,7 @@
                                             <span style="font-size: 0.7rem; color: #94a3b8;">{{ notif.created_at|timesince }} ago</span>
                                             <div style="display: flex; gap: 0.5rem;">
                                                 {% if not notif.is_read %}
-                                                    <a href="{% url 'mark_notification_read' notif.uid %}" style="color: var(--nl-primary); font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #eef2ff; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
+                                                    <a href="{% url 'mark_notification_read' notif.uid %}?next={% url 'all_notifications' %}" style="color: var(--nl-primary); font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #eef2ff; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Mark Read</a>
                                                 {% else %}
                                                     <a href="{% url 'delete_notification' notif.uid %}" style="color: #ef4444; font-size: 0.7rem; text-decoration: none; font-weight: 700; background: #fef2f2; padding: 0.2rem 0.5rem; border-radius: 0.4rem;">Delete</a>
                                                 {% endif %}
