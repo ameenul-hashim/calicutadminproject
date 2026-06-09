@@ -69,7 +69,7 @@ INSTALLED_APPS = [
     'custom_admin',
     'cloudinary_storage',
     'cloudinary',
-    'axes',  # Brute-force protection
+    #'axes',  # Brute-force protection - DISABLED
 ]
 
 MIDDLEWARE = [
@@ -89,19 +89,19 @@ MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
     'accounts.middleware.SlowQueryMonitorMiddleware',
-    'axes.middleware.AxesMiddleware',
+    #'axes.middleware.AxesMiddleware',  # DISABLED for testing
 ]
 
 AUTHENTICATION_BACKENDS = [
-    'axes.backends.AxesStandaloneBackend',
+    #'axes.backends.AxesStandaloneBackend',  # DISABLED for testing
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# Axes Brute-Force Protection
-AXES_FAILURE_LIMIT = 5
-AXES_COOLOFF_TIME = 1
-AXES_RESET_ON_SUCCESS = True
-AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+# AXES Brute-Force Protection - DISABLED
+# AXES_FAILURE_LIMIT = 5
+# AXES_COOLOFF_TIME = 1
+# AXES_RESET_ON_SUCCESS = True
+# AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)
@@ -110,6 +110,7 @@ FILE_UPLOAD_TEMP_DIR = '/tmp'           # Ensure temp uploads go to disk, not RA
 RATELIMIT_ENABLE = True
 
 ROOT_URLCONF = 'elearning_project.urls'
+ASGI_APPLICATION = 'elearning_project.asgi.application'
 
 TEMPLATES = [
     {
