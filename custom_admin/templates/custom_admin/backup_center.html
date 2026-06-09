@@ -277,6 +277,9 @@
             <div>
                 <strong>{{ backup.get_backup_type_display }}</strong>
                 <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.15rem;">{{ backup.filename }}</div>
+                {% if backup.status == 'FAILED' and backup.error_message %}
+                <div style="font-size: 0.75rem; color: #dc2626; margin-top: 0.15rem;">{{ backup.error_message|truncatechars:100 }}</div>
+                {% endif %}
             </div>
             <div style="text-align: right;">
                 <span class="status-badge {{ backup.status|lower }}">{{ backup.get_status_display }}</span>
