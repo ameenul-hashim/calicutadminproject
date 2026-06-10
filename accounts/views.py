@@ -2036,8 +2036,8 @@ def teacher_edit_profile(request):
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
 
-    avatars = [f"/static/avatars/admin_m_{i}.png" for i in range(5)] + \
-              [f"/static/avatars/admin_f_{i}.png" for i in range(5)]
+    avatars = [f"/static/avatars/teacher_m_{i}.png" for i in range(5)] + \
+              [f"/static/avatars/teacher_f_{i}.png" for i in range(5)]
     return render(request, 'teacher_portal/edit_profile.html', {'user': request.user, 'avatars': avatars})
 
 

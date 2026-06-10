@@ -323,7 +323,10 @@
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 }
             })
-            .then(response => response.json())
+            .then(r => {
+                if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
+                return r.json();
+            })
             .then(data => {
                 if (data.status === 'success') {
                     showToast(data.message, 'success');
@@ -339,9 +342,9 @@
                     submitBtn.innerText = 'Update Avatar';
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                showToast('A connection error occurred.', 'error');
+            .catch(err => {
+                console.error('Error:', err);
+                showToast('Error: ' + err.message, 'error');
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '1';
                 submitBtn.innerText = 'Update Avatar';
