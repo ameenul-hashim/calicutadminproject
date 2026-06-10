@@ -1,214 +1,62 @@
+{% extends 'teacher_portal/base_teacher.html' %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Neo Learner - Think Beyond Learning">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" href="{% static 'images/favicon.png' %}">
-    <title>Explore Peer Courses | Teacher Portal</title>
-    <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --sidebar-width: 280px;
-            --teacher-gradient: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-        }
-        body { font-family: 'Inter', sans-serif; background: #e0f7fa; }
-        .dashboard-container { display: flex; min-height: 100vh; }
-        
-        .sidebar {
-            width: var(--sidebar-width);
-            background: white;
-            border-right: 1px solid #e2e8f0;
-            padding: 2rem 1.5rem;
-            position: fixed;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .logo-area { font-size: 1.5rem; font-weight: 800; color: #6366f1; margin-bottom: 3rem; }
-        .nav-list { list-style: none; padding: 0; flex: 1; overflow-y: auto; }
-        .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.8rem 1rem;
-            color: #64748b;
-            text-decoration: none;
-            border-radius: 0.75rem;
-            transition: all 0.2s;
-            font-weight: 500;
-            margin-bottom: 0.25rem;
-        }
-        .nav-link:hover { background: #f1f5f9; color: #6366f1; }
-        .nav-link.active { background: #eef2ff; color: #6366f1; }
-        
-        .main-content {
-            flex: 1;
-            margin-left: var(--sidebar-width);
-            padding: 2rem 3rem;
-        }
 
-        .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
-        .course-card { background: white; border-radius: 1.25rem; overflow: hidden; border: 1px solid #f1f5f9; transition: transform 0.3s, box-shadow 0.3s; position: relative; }
-        .course-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
-        
-        .thumbnail-area { height: 180px; background: #f1f5f9; position: relative; overflow: hidden; }
-        .thumbnail-area img { width: 100%; height: 100%; object-fit: cover; }
-        
-        .category-badge { position: absolute; top: 1rem; left: 1rem; background: rgba(255, 255, 255, 0.9); padding: 0.3rem 0.8rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #6366f1; backdrop-filter: blur(4px); }
-        
-        .course-info { padding: 1.5rem; }
-        .course-title { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 0 0 0.5rem 0; line-height: 1.4; }
-        .teacher-name { font-size: 0.9rem; color: #64748b; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 0.5rem; }
-        .teacher-name::before { content: '👤'; font-size: 0.8rem; }
-        
-        .course-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; padding-top: 1rem; }
-        .lesson-count { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
-        .view-details-btn { background: #eef2ff; color: #6366f1; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
-        .view-details-btn:hover { background: #6366f1; color: white; }
+{% block title %}Explore Peer Courses | Teacher Portal{% endblock %}
 
-        @media (max-width: 1024px) {
-            :root { --sidebar-width: 0px; }
-            .sidebar { transform: translateX(-100%); transition: transform 0.3s ease; z-index: 1000; width: 280px; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0; padding: 1.5rem; }
-            .mobile-toggle { display: block !important; }
-            .course-grid { grid-template-columns: 1fr; }
-        }
-
-        .mobile-toggle {
-            display: none;
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            background: white;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            z-index: 1001;
-            cursor: pointer;
-            border: 1px solid #e2e8f0;
-        }
-    
-        /* RESPONSIVE INJECTIONS */
-        @media (max-width: 1024px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0 !important; padding: 1rem !important; width: 100%; max-width: 100vw; }
-            .search-bar, .form-container, .card, .edit-card, .login-card { width: 100% !important; max-width: 100% !important; padding: 1rem !important; }
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: 1fr !important; }
-            
-            /* Forms */
-            .input-group input, .input-group select, .input-group textarea { width: 100% !important; max-width: 100% !important; }
-        }
-        @media (min-width: 768px) and (max-width: 1024px) {
-            .stats-grid, .subject-grid, .card-grid, .grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        .table-responsive, .table-container { overflow-x: auto; width: 100%; }
-        table { min-width: 62.5rem; /* 1000px */ }
-        
-        /* Video Player Responsive */
-        .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
-        video { width: 100%; height: 100%; }
-        
-        /* Django Messages Toast */
-        .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
-        }
-        </style>
-
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        corePlugins: { preflight: false }
-      }
-    </script>
-</head>
-<body>
-    <button class="mobile-toggle" onclick="document.querySelector('.sidebar').classList.toggle('active')">
-        ☰
-    </button>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="logo-area">Neo Learner <span style="font-size: 0.8rem; font-weight: 500; color: #94a3b8;">Teacher</span></div>
-            
-            <!-- Teacher Profile Quick View -->
-            <div style="background: #f8fafc; padding: 1.5rem; border-radius: 1rem; margin-bottom: 2rem; border: 1px solid #eef2ff; text-align: center;">
-                <div style="width: 70px; height: 90px; border-radius: 0.5rem; overflow: hidden; margin: 0 auto 1rem; border: 3px solid white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
-                    {% if user.avatar_url %}
-                        <img src="{{ user.avatar_url }}" style="width: 100%; height: 100%; object-fit: cover; object-position: top; image-rendering: -webkit-optimize-contrast;">
-                    {% else %}
-                        <div style="width: 100%; height: 100%; background: #6366f1; color: white; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">{{ user.username|slice:":1"|upper }}</div>
-                    {% endif %}
-                </div>
-                <h4 style="margin: 0; color: #1e293b; font-size: 0.95rem;">{{ user.full_name|default:user.username }}</h4>
-                <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.75rem;">{{ user.email }}</p>
-                <a href="{% url 'edit_profile' %}" style="display: inline-block; margin-top: 0.75rem; font-size: 0.7rem; color: #6366f1; text-decoration: none; font-weight: 600; text-transform: uppercase;">Profile</a>
-            </div>
-
-            <nav class="nav-list">
-                <a href="{% url 'teacher_dashboard' %}" class="nav-link">🏠 Dashboard</a>
-                <a href="{% url 'my_courses' %}" class="nav-link">📚 My Courses</a>
-                <a href="{% url 'teacher_explore' %}" class="nav-link active">🌐 Explore Peer Courses</a>
-                <a href="{% url 'dashboard' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
-                <a href="{% url 'profile' %}" class="nav-link">👤 My Profile</a>
-            </nav>
-            <div style="padding-top: 1rem; border-top: 1px solid #f1f5f9;">
-                <a href="{% url 'logout' %}" class="nav-link" style="color: #ef4444;">🚪 Logout</a>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <header style="margin-bottom: 2.5rem;">
-                <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b;">Explore Peer Courses</h1>
-                <p style="color: #64748b;">Browse courses shared by other educators on Neo Learner.</p>
-            </header>
-
-            <div class="course-grid">
-                {% for course in other_courses %}
-                <div class="course-card">
-                    <div class="thumbnail-area">
-                        {% if course.thumbnail_url %}
-                            <img src="{{ course.thumbnail_url }}" alt="{{ course.title }}">
-                        {% else %}
-                            <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background: var(--teacher-gradient); color: white; font-weight: 700; font-size: 2rem;">
-                                {{ course.title|slice:":2"|upper }}
-                            </div>
-                        {% endif %}
-                        <div class="category-badge">{{ course.category }}</div>
-                    </div>
-                    <div class="course-info">
-                        <h3 class="course-title">{{ course.title }}</h3>
-                        <p class="teacher-name">{{ course.teacher.full_name|default:course.teacher.username }}</p>
-                        
-                        <div class="course-footer">
-                            <span class="lesson-count">🎥 {{ course.lessons.count }} Lessons</span>
-                            <a href="{% url 'view_other_course' course.uid %}" class="view-details-btn">View Content</a>
-                        </div>
-                    </div>
-                </div>
-                {% empty %}
-                <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: white; border-radius: 1.5rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
-                    No peer courses available yet.
-                </div>
-                {% endfor %}
-            </div>
-        </main>
+{% block page_header %}
+    <div>
+        <h1 style="font-size: 1.8rem; font-weight: 700; color: #1e293b; margin: 0;">Explore Peer Courses</h1>
+        <p style="color: #64748b;">Browse courses shared by other educators on Neo Learner.</p>
     </div>
-        </main>
+{% endblock %}
+
+{% block content %}
+<style>
+    .course-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 2rem; }
+    .course-card { background: white; border-radius: 1.25rem; overflow: hidden; border: 1px solid #f1f5f9; transition: transform 0.3s, box-shadow 0.3s; position: relative; }
+    .course-card:hover { transform: translateY(-5px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+    .thumbnail-area { height: 180px; background: #f1f5f9; position: relative; overflow: hidden; }
+    .thumbnail-area img { width: 100%; height: 100%; object-fit: cover; }
+    .category-badge { position: absolute; top: 1rem; left: 1rem; background: rgba(255, 255, 255, 0.9); padding: 0.3rem 0.8rem; border-radius: 0.5rem; font-size: 0.75rem; font-weight: 600; color: #6366f1; backdrop-filter: blur(4px); }
+    .course-info { padding: 1.5rem; }
+    .course-title { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 0 0 0.5rem 0; line-height: 1.4; }
+    .teacher-name { font-size: 0.9rem; color: #64748b; margin: 0 0 1.5rem 0; display: flex; align-items: center; gap: 0.5rem; }
+    .teacher-name::before { content: '👤'; font-size: 0.8rem; }
+    .course-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f8fafc; padding-top: 1rem; }
+    .lesson-count { font-size: 0.85rem; color: #94a3b8; font-weight: 500; }
+    .view-details-btn { background: #eef2ff; color: #6366f1; padding: 0.5rem 1rem; border-radius: 0.5rem; text-decoration: none; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+    .view-details-btn:hover { background: #6366f1; color: white; }
+    @media (max-width: 640px) {
+        .course-grid { grid-template-columns: 1fr; }
+    }
+</style>
+
+<div class="course-grid">
+    {% for course in other_courses %}
+    <div class="course-card">
+        <div class="thumbnail-area">
+            {% if course.thumbnail_url %}
+                <img src="{{ course.thumbnail_url }}" alt="{{ course.title }}">
+            {% else %}
+                <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: white; font-weight: 700; font-size: 2rem;">
+                    {{ course.title|slice:":2"|upper }}
+                </div>
+            {% endif %}
+            <div class="category-badge">{{ course.category }}</div>
+        </div>
+        <div class="course-info">
+            <h3 class="course-title">{{ course.title }}</h3>
+            <p class="teacher-name">{{ course.teacher.full_name|default:course.teacher.username }}</p>
+            <div class="course-footer">
+                <span class="lesson-count">🎥 {{ course.lessons.count }} Lessons</span>
+                <a href="{% url 'view_other_course' course.uid %}" class="view-details-btn">View Content</a>
+            </div>
+        </div>
     </div>
-    
-    {% include 'accounts/chat_widget.html' %}
-    {% include 'includes/messages.html' %}
-</body>
-
-</html>
-
-
+    {% empty %}
+    <div style="grid-column: 1 / -1; text-align: center; padding: 5rem; background: white; border-radius: 1.5rem; border: 2px dashed #e2e8f0; color: #94a3b8;">
+        No peer courses available yet.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
