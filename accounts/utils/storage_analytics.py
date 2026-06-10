@@ -200,22 +200,19 @@ def get_database_stats():
     """PostgreSQL database size — Render PostgreSQL (free tier: 1GB)"""
     RENDER_LIMIT_MB = 1024
     try:
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT pg_database_size(current_database())")
-            db_size_bytes = cursor.fetchone()[0]
-        usage_mb = db_size_bytes / (1024 * 1024)
+        from accounts.models import CustomUser, Course, Lesson, CourseResource, Enrollment, Notification, ChatMessage
+        total_rows = (
+            CustomUser.objects.count() +
+            Course.objects.count() +
+            Lesson.objects.count() +
+            CourseResource.objects.count() +
+            Enrollment.objects.count() +
+            Notification.objects.count() +
+            ChatMessage.objects.count()
+        )
+        usage_mb = total_rows * 0.002
     except Exception:
-        try:
-            from accounts.models import CustomUser, Course, Lesson, CourseResource
-            total_rows = (
-                CustomUser.objects.count() +
-                Course.objects.count() +
-                Lesson.objects.count() +
-                CourseResource.objects.count()
-            )
-            usage_mb = total_rows * 0.5
-        except Exception:
-            usage_mb = 0
+        usage_mb = 0
     percent = min((usage_mb / RENDER_LIMIT_MB) * 100, 100) if RENDER_LIMIT_MB else 0
     result = {
         'label': 'Render PostgreSQL',
