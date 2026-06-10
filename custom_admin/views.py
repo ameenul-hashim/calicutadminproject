@@ -2833,3 +2833,14 @@ def backup_cron_trigger(request):
             logger.exception(f"Backup API error for type '{btype}': {e}")
             return JsonResponse({'status': 'error', 'error': 'Backup operation failed. Please try again.'}, status=500)
     return JsonResponse({'error': f'Unknown backup type: {btype}'}, status=400)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def backup_clear_activity(request):
+    """Clear all BackupLog records (recent activity history)."""
+    from accounts.models import BackupLog
+    count = BackupLog.objects.count()
+    BackupLog.objects.all().delete()
+    logger.info(f"Admin {request.user.username} cleared {count} BackupLog records")
+    messages.success(request, f'Cleared {count} backup activity records.')
+    return redirect('backup_center')

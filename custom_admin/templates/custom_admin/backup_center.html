@@ -353,6 +353,12 @@
         <div style="text-align: center; padding: 2rem; color: #94a3b8;">No backups yet. Click "Run Daily Backup Now" to start.</div>
         {% endfor %}
     </div>
+    <div style="margin-top: 1rem; text-align: right;">
+        <form method="POST" action="{% url 'backup_clear_activity' %}" style="display: inline;" onsubmit="return confirm('Clear all backup activity history? This cannot be undone.')">
+            {% csrf_token %}
+            <button type="submit" class="action-btn danger" style="padding: 0.4rem 0.8rem; font-size: 0.75rem;">Clear Activity</button>
+        </form>
+    </div>
 </div>
 
 <script>
