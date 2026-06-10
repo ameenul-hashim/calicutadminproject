@@ -1944,9 +1944,9 @@ def edit_profile(request):
                 cache.delete(photo_cache_key)
 
             if avatar_changed and not new_username and not new_password:
-                return JsonResponse({'status': 'success', 'message': '✅ Avatar updated successfully!'})
-            
-            return JsonResponse({'status': 'success', 'message': '✅ Profile updated successfully!'})
+                return JsonResponse({'status': 'success', 'message': 'Avatar updated successfully!'})
+
+            return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
     
@@ -2032,7 +2032,7 @@ def teacher_edit_profile(request):
                 request.session.pop('avatar_skipped', None)
                 photo_cache_key = f"user_has_photo_{request.user.id}"
                 cache.delete(photo_cache_key)
-            return JsonResponse({'status': 'success', 'message': '✅ Profile updated successfully!'})
+            return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
         else:
             return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
 

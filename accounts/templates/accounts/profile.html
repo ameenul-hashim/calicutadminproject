@@ -396,9 +396,9 @@
             {% include 'includes/messages.html' %}
             <div class="profile-banner"></div>
             <div class="profile-info-section">
-                <div class="profile-photo-container" onclick="location.href='{% url 'edit_profile' %}'" style="cursor: pointer;" title="Change Avatar">
-                    {% if user.avatar_url %}
-                    <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="profileDisplay">
+                <div class="profile-photo-container" onclick="location.href='{% if user.user_type == "TEACHER" %}{% url "teacher_edit_profile" %}{% else %}{% url "edit_profile" %}{% endif %}'" style="cursor: pointer;" title="Change Avatar">
+                    {% if user.image or user.profile_photo %}
+                    <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="profileDisplay" style="width:100%;height:100%;object-fit:cover;object-position:top;">
                     {% else %}
                     <div style="width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:#eef2ff; color:var(--primary); font-size:3rem; font-weight:800;"
                         id="profileDisplay">
