@@ -1267,28 +1267,14 @@ def admin_view_course_content(request, course_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def storage_dashboard(request):
     from accounts.utils.storage_analytics import get_all_storage_stats
-    from accounts.models import CourseResource, BackupLog
-    from django.db.models import Count, Q
+    from accounts.models import CourseResource
 
     stats = get_all_storage_stats()
     resources = CourseResource.objects.filter(is_deleted=False).select_related('course')
 
-    backup_stats = BackupLog.objects.aggregate(
-        total=Count('id'),
-        success=Count('id', filter=Q(status='SUCCESS')),
-        failed=Count('id', filter=Q(status='FAILED')),
-        pending=Count('id', filter=Q(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING'])),
-    )
-    from accounts.utils.drive_backup_service import _mega_configured
-    drive_configured = _mega_configured()
-    recent_backups = BackupLog.objects.order_by('-created_at')[:5]
-
     return render(request, 'custom_admin/storage_dashboard.html', {
         'stats': stats,
         'resources': resources.order_by('-created_at')[:50],
-        'backup_stats': backup_stats,
-        'drive_configured': drive_configured,
-        'recent_backups': recent_backups,
     })
 
 
