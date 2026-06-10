@@ -1865,7 +1865,7 @@ def edit_profile(request):
     url_name = request.resolver_match.url_name
     if not has_photo and url_name not in ['edit_profile', 'logout', 'student_view_auth', 'teacher_view_auth']:
         if request.user.user_type in ['STUDENT', 'TEACHER'] and not request.user.is_superuser:
-            messages.info(request, "👋 Welcome! Please select an avatar to complete your account setup.")
+            messages.info(request, "Welcome! Please select an avatar to complete your account setup.")
 
     if request.method == 'POST':
         from django.contrib.auth import update_session_auth_hash
@@ -1979,62 +1979,66 @@ def skip_avatar(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def teacher_edit_profile(request):
     if request.method == 'POST':
-        from django.contrib.auth import update_session_auth_hash
-        import re
+        try:
+            from django.contrib.auth import update_session_auth_hash
+            import re
 
-        new_username = request.POST.get('new_username', '').strip()
-        new_password = request.POST.get('new_password', '')
-        confirm_password = request.POST.get('confirm_password', '')
-        current_password = request.POST.get('current_password', '')
-        avatar_url = request.POST.get('avatar_url', '')
+            new_username = request.POST.get('new_username', '').strip()
+            new_password = request.POST.get('new_password', '')
+            confirm_password = request.POST.get('confirm_password', '')
+            current_password = request.POST.get('current_password', '')
+            avatar_url = request.POST.get('avatar_url', '')
 
-        changes_made = False
-        password_changed = False
+            changes_made = False
+            password_changed = False
 
-        # --- Username Change ---
-        if new_username and new_username != request.user.username:
-            if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
-                return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
-            request.user.username = new_username
-            changes_made = True
+            # --- Username Change ---
+            if new_username and new_username != request.user.username:
+                if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+                    return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
+                request.user.username = new_username
+                changes_made = True
 
-        # --- Password Change ---
-        if new_password:
-            if not current_password:
-                return JsonResponse({'status': 'error', 'message': 'Current password is required.'}, status=400)
-            if not request.user.check_password(current_password):
-                return JsonResponse({'status': 'error', 'message': 'Current password is incorrect.'}, status=400)
-            if new_password != confirm_password:
-                return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
-            if len(new_password) < 8:
-                return JsonResponse({'status': 'error', 'message': 'Password must be at least 8 characters.'}, status=400)
-            if not re.search(r'[A-Z]', new_password):
-                return JsonResponse({'status': 'error', 'message': 'Password needs an uppercase letter.'}, status=400)
-            if not re.search(r'[a-z]', new_password):
-                return JsonResponse({'status': 'error', 'message': 'Password needs a lowercase letter.'}, status=400)
-            if not re.search(r'[@$!%*?&#]', new_password):
-                return JsonResponse({'status': 'error', 'message': 'Password needs a special character.'}, status=400)
-            request.user.set_password(new_password)
-            changes_made = True
-            password_changed = True
+            # --- Password Change ---
+            if new_password:
+                if not current_password:
+                    return JsonResponse({'status': 'error', 'message': 'Current password is required.'}, status=400)
+                if not request.user.check_password(current_password):
+                    return JsonResponse({'status': 'error', 'message': 'Current password is incorrect.'}, status=400)
+                if new_password != confirm_password:
+                    return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
+                if len(new_password) < 8:
+                    return JsonResponse({'status': 'error', 'message': 'Password must be at least 8 characters.'}, status=400)
+                if not re.search(r'[A-Z]', new_password):
+                    return JsonResponse({'status': 'error', 'message': 'Password needs an uppercase letter.'}, status=400)
+                if not re.search(r'[a-z]', new_password):
+                    return JsonResponse({'status': 'error', 'message': 'Password needs a lowercase letter.'}, status=400)
+                if not re.search(r'[@$!%*?&#]', new_password):
+                    return JsonResponse({'status': 'error', 'message': 'Password needs a special character.'}, status=400)
+                request.user.set_password(new_password)
+                changes_made = True
+                password_changed = True
 
-        # --- Avatar Change (preset) ---
-        if avatar_url:
-            request.user.image = avatar_url
-            request.user.image_public_id = ''
-            changes_made = True
-
-        if changes_made:
-            request.user.save()
-            if password_changed:
-                update_session_auth_hash(request, request.user)
+            # --- Avatar Change (preset) ---
             if avatar_url:
-                request.session.pop('avatar_skipped', None)
-                photo_cache_key = f"user_has_photo_{request.user.id}"
-                cache.delete(photo_cache_key)
-            return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
+                request.user.image = avatar_url
+                request.user.image_public_id = ''
+                changes_made = True
+
+            if changes_made:
+                request.user.save()
+                if password_changed:
+                    update_session_auth_hash(request, request.user)
+                if avatar_url:
+                    request.session.pop('avatar_skipped', None)
+                    photo_cache_key = f"user_has_photo_{request.user.id}"
+                    cache.delete(photo_cache_key)
+                return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
+        except Exception as e:
+            logger.exception(f'Teacher profile update error: {e}')
+            return JsonResponse({'status': 'error', 'message': 'Update failed. Please try again.'}, status=500)
 
     avatars = [f"/static/avatars/teacher_m_{i}.png" for i in range(5)] + \
               [f"/static/avatars/teacher_f_{i}.png" for i in range(5)]

@@ -12,22 +12,27 @@
 
 {% block content %}
 <style>
-    .profile-edit-card {
+    .profile-edit-wrap {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .profile-col {
         background: white;
         border-radius: 1.5rem;
-        padding: 2.5rem;
+        padding: 2rem;
         border: 1px solid #e2e8f0;
-        width: 100%;
-        max-width: 100%;
         box-sizing: border-box;
     }
     .profile-header {
         text-align: center;
-        margin-bottom: 2.5rem;
+        margin-bottom: 2rem;
     }
     .profile-avatar {
-        width: 120px;
-        height: 156px;
+        width: 140px;
+        height: 182px;
         border-radius: 0.75rem;
         margin: 0 auto 1rem;
         border: 4px solid #eef2ff;
@@ -40,40 +45,6 @@
         height: 100%;
         object-fit: cover;
         object-position: top;
-    }
-    .manage-cred-btn {
-        width: 100%;
-        padding: 1rem;
-        background: #6366f1;
-        color: white;
-        border: none;
-        border-radius: 0.75rem;
-        font-size: 1rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.3s;
-        font-family: 'Inter', sans-serif;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-    }
-    .manage-cred-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 20px -5px rgba(99,102,241,0.4);
-    }
-    .manage-cred-btn.close {
-        background: #fef2f2;
-        color: #ef4444;
-    }
-    .manage-cred-btn.close:hover {
-        box-shadow: 0 10px 20px -5px rgba(239,68,68,0.2);
-    }
-    .cred-section { display: none; }
-    .cred-section.active { display: block; animation: slideDown 0.3s ease; }
-    @keyframes slideDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
     }
     .profile-name {
         font-size: 1.3rem;
@@ -89,7 +60,7 @@
         letter-spacing: 0.05em;
     }
     .field-group {
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
     }
     .field-group label {
         display: block;
@@ -100,11 +71,11 @@
     }
     .field-group input {
         width: 100%;
-        padding: 0.85rem 1.2rem;
+        padding: 0.75rem 1rem;
         border: 1.5px solid #e2e8f0;
         border-radius: 0.75rem;
         font-family: 'Inter', sans-serif;
-        font-size: 0.95rem;
+        font-size: 0.9rem;
         outline: none;
         transition: all 0.2s;
         box-sizing: border-box;
@@ -115,72 +86,55 @@
         background: white;
         box-shadow: 0 0 0 3px rgba(99,102,241,0.1);
     }
-    .field-group input:disabled {
-        background: #f1f5f9;
-        color: #64748b;
-        cursor: not-allowed;
-    }
     .field-group .hint {
         font-size: 0.75rem;
         color: #94a3b8;
         margin-top: 0.35rem;
-    }
-    .section-divider {
-        margin: 2rem 0;
-        border: 0;
-        border-top: 1.5px dashed #e2e8f0;
     }
     .section-title {
         font-size: 1rem;
         font-weight: 700;
         color: #1e293b;
         margin-bottom: 0.25rem;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
     }
     .section-desc {
         font-size: 0.8rem;
         color: #94a3b8;
-        margin-bottom: 1.5rem;
+        margin-bottom: 1.25rem;
     }
     .requirements {
         background: #fffbeb;
         border: 1px solid #fde68a;
         border-radius: 0.75rem;
-        padding: 1rem 1.25rem;
+        padding: 0.75rem 1rem;
         margin-top: 0.75rem;
     }
     .requirements p {
-        margin: 0 0 0.5rem 0;
-        font-size: 0.75rem;
+        margin: 0 0 0.35rem 0;
+        font-size: 0.72rem;
         font-weight: 600;
         color: #92400e;
     }
     .requirements ul {
         margin: 0;
-        padding-left: 1.25rem;
+        padding-left: 1.1rem;
     }
     .requirements li {
-        font-size: 0.72rem;
+        font-size: 0.7rem;
         color: #78350f;
-        margin-bottom: 0.2rem;
-        line-height: 1.5;
+        margin-bottom: 0.15rem;
+        line-height: 1.4;
     }
-    .requirements li.passed {
-        color: #059669;
-    }
-    .requirements li.failed {
-        color: #dc2626;
-    }
+    .requirements li.passed { color: #059669; }
+    .requirements li.failed { color: #dc2626; }
     .btn-save {
         width: 100%;
-        padding: 1rem;
+        padding: 0.85rem;
         background: linear-gradient(135deg, #6366f1, #4f46e5);
         color: white;
         border: none;
         border-radius: 0.75rem;
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 700;
         cursor: pointer;
         transition: all 0.3s;
@@ -211,12 +165,8 @@
         transition: all 0.3s;
         width: 0%;
     }
-    .input-with-icon {
-        position: relative;
-    }
-    .input-with-icon input {
-        padding-right: 2.5rem;
-    }
+    .input-with-icon { position: relative; }
+    .input-with-icon input { padding-right: 2.5rem; }
     .toggle-pw {
         position: absolute;
         right: 0.75rem;
@@ -229,19 +179,17 @@
         color: #94a3b8;
         padding: 0.25rem;
     }
-    .toggle-pw:hover {
-        color: #6366f1;
-    }
+    .toggle-pw:hover { color: #6366f1; }
     .avatar-grid {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 12px;
+        gap: 10px;
         justify-items: center;
-        margin-top: 1.5rem;
+        margin-top: 1.25rem;
     }
     .avatar-option {
-        width: 85px;
-        height: 110px;
+        width: 100%;
+        aspect-ratio: 1 / 1.3;
         border-radius: 0.4rem;
         cursor: pointer;
         border: 2px solid transparent;
@@ -259,120 +207,68 @@
     }
     .avatar-option:hover {
         transform: scale(1.1);
-        box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.2);
+        box-shadow: 0 10px 15px -3px rgba(99,102,241,0.2);
     }
-    .avatar-option:hover img {
-        transform: scale(1.05);
-    }
+    .avatar-option:hover img { transform: scale(1.05); }
     .avatar-option.selected {
         border-color: #6366f1;
         transform: scale(1.1);
-        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+        box-shadow: 0 0 0 4px rgba(99,102,241,0.2);
     }
-
-    /* Tablet / small laptop: 3 columns */
-    @media (min-width: 641px) and (max-width: 1023px) {
-        .profile-edit-card {
-            padding: 1.5rem;
-            max-width: 100%;
-        }
-        .avatar-grid {
-            grid-template-columns: repeat(3, 1fr) !important;
-            gap: 16px !important;
-        }
-        .avatar-option {
-            width: 100% !important;
-            height: 130px !important;
-        }
-    }
-    @media (max-width: 768px) {
-        .avatar-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 20px !important;
-        }
-        .avatar-option {
-            width: 120px !important;
-            height: 155px !important;
-        }
-    }
-    /* Laptop screens where sidebar + padding eats space */
-    @media (min-width: 1024px) and (max-width: 1366px) {
-        .profile-edit-card {
-            padding: 1.5rem 1.25rem;
-        }
-        .avatar-grid {
-            grid-template-columns: repeat(4, 1fr) !important;
-            gap: 10px !important;
-        }
-        .avatar-option {
-            width: 100% !important;
-            height: 110px !important;
-        }
+    @media (max-width: 1024px) {
+        .profile-edit-wrap { grid-template-columns: 1fr; gap: 1.5rem; }
+        .avatar-grid { grid-template-columns: repeat(4, 1fr); }
     }
     @media (max-width: 640px) {
-        .profile-edit-card {
-            padding: 1.5rem;
-            border-radius: 1rem;
-        }
-        .avatar-grid {
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 12px !important;
-        }
-        .avatar-option {
-            width: 100% !important;
-            height: 130px !important;
-        }
-        #profileForm input {
-            font-size: 16px !important;
-        }
-        .section-title { font-size: 0.9rem !important; }
+        .profile-col { padding: 1.25rem; border-radius: 1rem; }
+        .avatar-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+        .section-title { font-size: 0.9rem; }
+        .profile-avatar { width: 110px; height: 143px; }
     }
 </style>
 
-<div class="profile-edit-card">
-    <div class="profile-header">
-        <div class="profile-avatar" id="previewContainer">
-            {% if user.image or user.profile_photo %}
-                <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="previewImg">
-            {% else %}
-                <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:#6366f1;font-size:2.5rem;font-weight:800;">
-                    {{ user.username|first|upper }}
-                </div>
-            {% endif %}
+<div class="profile-edit-wrap">
+
+    <!-- ════ LEFT COLUMN: Avatar Update ════ -->
+    <div class="profile-col">
+        <div class="profile-header">
+            <div class="profile-avatar" id="previewContainer">
+                {% if user.image or user.profile_photo %}
+                    <img src="{{ user.avatar_url }}" alt="{{ user.full_name }}" id="previewImg">
+                {% else %}
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#eef2ff;color:#6366f1;font-size:2.5rem;font-weight:800;">
+                        {{ user.username|first|upper }}
+                    </div>
+                {% endif %}
+            </div>
+            <h2 class="profile-name">{{ user.full_name|default:user.username }}</h2>
+            <span class="profile-role">Instructor</span>
         </div>
-        <h2 class="profile-name">{{ user.full_name|default:user.username }}</h2>
-        <span class="profile-role">Instructor</span>
+
+        {% include 'includes/messages.html' %}
+
+        <form method="POST" id="avatarForm">
+            {% csrf_token %}
+            <div class="section-title">Choose Your Avatar</div>
+            <div class="section-desc">Select a professional avatar that best represents you.</div>
+            <div class="avatar-grid">
+                {% for avatar in avatars %}
+                <div class="avatar-option" data-url="{{ avatar }}">
+                    <img src="{{ avatar }}" alt="Avatar">
+                </div>
+                {% endfor %}
+            </div>
+            <input type="hidden" name="avatar_url" id="avatarUrlInput">
+            <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select an avatar above then click Update.</p>
+            <button type="submit" class="btn-save" id="avatarSubmitBtn">Update Profile Picture</button>
+            {% if not user.image and not user.profile_photo %}
+            <a href="{% url 'skip_avatar' %}" style="display:block;text-align:center;margin-top:1rem;color:#6366f1;font-weight:600;text-decoration:none;font-size:0.9rem;">Skip to Dashboard →</a>
+            {% endif %}
+        </form>
     </div>
 
-    {% include 'includes/messages.html' %}
-
-    <!-- ════ Form 1: Avatar Update ════ -->
-    <form method="POST" id="avatarForm">
-        {% csrf_token %}
-        <div class="section-title">🖼️ Choose Your Avatar</div>
-        <div class="section-desc">Select a professional avatar that best represents you.</div>
-        <div class="avatar-grid">
-            {% for avatar in avatars %}
-            <div class="avatar-option" data-url="{{ avatar }}">
-                <img src="{{ avatar }}" alt="Avatar">
-            </div>
-            {% endfor %}
-        </div>
-        <input type="hidden" name="avatar_url" id="avatarUrlInput">
-        <p style="font-size: 0.75rem; color: #94a3b8; margin-top: 1rem; text-align: center;">Select an avatar above then click Update.</p>
-        <button type="submit" class="btn-save" id="avatarSubmitBtn">🖼️ Update Profile Picture</button>
-        {% if not user.image and not user.profile_photo %}
-        <a href="{% url 'skip_avatar' %}" style="display:block;text-align:center;margin-top:1rem;color:#6366f1;font-weight:600;text-decoration:none;font-size:0.9rem;">Skip to Dashboard →</a>
-        {% endif %}
-    </form>
-
-    <!-- ════ Manage Credential Button ════ -->
-    <hr class="section-divider">
-    <button type="button" class="manage-cred-btn" id="toggleCredBtn" onclick="toggleCredSection()">Manage Credentials</button>
-
-    <!-- ════ Form 2: Credentials Update (collapsible) ════ -->
-    <div class="cred-section" id="credSection">
-        <hr class="section-divider">
+    <!-- ════ RIGHT COLUMN: Credentials ════ -->
+    <div class="profile-col">
         <form method="POST" id="credForm">
             {% csrf_token %}
             <div class="section-title">Change Username</div>
@@ -386,7 +282,8 @@
                 <div class="hint">Leave blank to keep your current username.</div>
             </div>
 
-            <hr class="section-divider">
+            <hr style="margin: 1.5rem 0; border: 0; border-top: 1px dashed #e2e8f0;">
+
             <div class="section-title">Change Password</div>
             <div class="section-desc">Update your login password below.</div>
 
@@ -426,25 +323,13 @@
                 <div class="hint" id="matchText"></div>
             </div>
 
-            <button type="submit" class="btn-save" id="credSubmitBtn" style="margin-top: 1.5rem;">Update Credentials</button>
+            <button type="submit" class="btn-save" id="credSubmitBtn">Update Credentials</button>
         </form>
     </div>
+
 </div>
 
 <script>
-    function toggleCredSection() {
-        const section = document.getElementById('credSection');
-        const btn = document.getElementById('toggleCredBtn');
-        section.classList.toggle('active');
-        if (section.classList.contains('active')) {
-            btn.textContent = 'Close Credentials';
-            btn.classList.add('close');
-        } else {
-            btn.textContent = 'Manage Credentials';
-            btn.classList.remove('close');
-        }
-    }
-
     const teacherOrigUsername = '{{ user.username }}';
     const teacherUsernameInput = document.getElementById('new_username');
     const teacherUsernameStatus = document.getElementById('usernameStatus');
@@ -581,14 +466,14 @@
                       'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
         })
         .then(r => {
-            if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }).catch(() => { throw new Error('Server error (HTTP ' + r.status + ')'); }); }
+            if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }) }
             return r.json();
         })
         .then(d => {
-            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_dashboard" %}', 1500); }
-            else { showToast(d.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; }
+            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_edit_profile" %}', 1500); }
+            else { showToast(d.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = 'Update Profile Picture'; }
         })
-        .catch(err => { showToast(err.message, 'error'); console.error(err); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; });
+        .catch(err => { showToast(err.message, 'error'); console.error(err); btn.disabled = false; btn.textContent = 'Update Profile Picture'; });
     });
 
     // ─── Form 2: Credentials submit ───
@@ -617,14 +502,14 @@
                       'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
         })
         .then(r => {
-            if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }).catch(() => { throw new Error('Server error (HTTP ' + r.status + ')'); }); }
+            if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }) }
             return r.json();
         })
         .then(d => {
-            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_dashboard" %}', 1500); }
-            else { showToast(d.message || 'Failed', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; }
+            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_edit_profile" %}', 1500); }
+            else { showToast(d.message || 'Failed', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = 'Update Credentials'; }
         })
-        .catch(err => { showToast(err.message, 'error'); console.error(err); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; });
+        .catch(err => { showToast(err.message, 'error'); console.error(err); credSubmitBtn.disabled = false; credSubmitBtn.textContent = 'Update Credentials'; });
     });
 
     function showToast(msg, type) {

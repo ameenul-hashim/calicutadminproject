@@ -105,7 +105,7 @@
                 {% if user.image or user.profile_photo %}
                     <img src="{{ user.avatar_url }}" alt="Current Photo" id="previewImg">
                 {% else %}
-                    <span style="font-size: 3rem;" id="previewPlaceholder">👤</span>
+                    <span style="font-size: 2.5rem; font-weight: 700; color: #6366f1;" id="previewPlaceholder">{{ user.username|first|upper }}</span>
                 {% endif %}
             </div>
 
@@ -134,7 +134,7 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <button type="submit" class="btn-save" id="avatarSubmitBtn" style="margin-top: 2rem;">🖼️ Update Avatar</button>
+            <button type="submit" class="btn-save" id="avatarSubmitBtn" style="margin-top: 2rem;">Update Avatar</button>
             {% if not user.image and not user.profile_photo %}
             <div style="text-align: center; margin-top: 0.75rem;">
                 <a href="javascript:void(0)" id="skipBtn" style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;">Skip</a>
@@ -143,76 +143,50 @@
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
         </form>
 
-        <!-- ════ Form 2: Manage Credential ════ -->
+        {% if user.user_type == 'ADMIN' or user.is_staff %}
+        <!-- ════ Form 2: Manage Credential (admin only) ════ -->
         <hr style="margin: 2rem 0; border: 0; border-top: 2px dashed #e2e8f0;">
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">Manage Credential</h3>
         <form method="POST" id="credForm">
             {% csrf_token %}
-            <h3 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">🔐 Manage Credential</h3>
-
-            <!-- Username Section -->
-            <div style="padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem; margin-bottom: 1.5rem;">
-                <h4 style="font-size: 1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Change Username</h4>
-                <p style="font-size: 0.85rem; color: #3b82f6; margin: 0 0 1rem;">Current username is <strong>@{{ user.username }}</strong></p>
-                <div class="form-group" style="margin-bottom:0;">
-                    <label for="new_username">New Username</label>
-                    <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value=""
-                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem;">
-                    <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
-                    <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Leave blank to keep current. Only letters, numbers, and @/./+/-/_ allowed.</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div style="padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem;">
+                    <h4 style="font-size: 1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">Change Username</h4>
+                    <p style="font-size: 0.85rem; color: #3b82f6; margin: 0 0 1rem;">Current: <strong>@{{ user.username }}</strong></p>
+                    <div class="form-group" style="margin-bottom:0;">
+                        <label for="new_username">New Username</label>
+                        <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value=""
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem; box-sizing: border-box;">
+                        <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
+                        <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Leave blank to keep current.</p>
+                    </div>
+                </div>
+                <div style="padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem;">
+                    <h4 style="font-size: 1rem; font-weight: 700; color: #991b1b; margin: 0 0 0.25rem;">Change Password</h4>
+                    <p style="font-size: 0.85rem; color: #dc2626; margin: 0 0 1rem;">Leave blank to keep current password.</p>
+                    <div class="form-group">
+                        <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
+                        <input type="password" id="current_password" name="current_password" placeholder="Current password"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; box-sizing: border-box;">
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">New Password</label>
+                        <input type="password" id="new_password" name="new_password" placeholder="New password"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; box-sizing: border-box;">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm New Password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm password"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; box-sizing: border-box;">
+                    </div>
+                    <div style="margin-top: 0.75rem; background: #fff; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #fecaca;">
+                        <p style="margin: 0; font-size: 0.7rem; color: #b91c1c;">Min 8 chars, Uppercase, Lowercase, Special char.</p>
+                    </div>
                 </div>
             </div>
-
-            <!-- Password Section -->
-            <div style="padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem; margin-bottom: 1.5rem;">
-                <h4 style="font-size: 1rem; font-weight: 700; color: #991b1b; margin: 0 0 0.25rem;">🔒 Change Password</h4>
-                <p style="font-size: 0.85rem; color: #dc2626; margin: 0 0 1rem;">Leave all fields blank to keep your current password.</p>
-
-                <div class="form-group">
-                    <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
-                    <div style="position: relative;">
-                        <input type="password" id="current_password" name="current_password" placeholder="Verify your identity"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                        <span onclick="togglePassword('current_password', 'eye-current')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                            <svg id="eye-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="new_password">New Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="new_password" name="new_password" placeholder="Create a strong password"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                        <span onclick="togglePassword('new_password', 'eye-new')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                            <svg id="eye-new" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </span>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="confirm_password">Confirm New Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                        <span onclick="togglePassword('confirm_password', 'eye-confirm')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                            <svg id="eye-confirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                        </span>
-                    </div>
-                </div>
-
-                <div style="margin-top: 0.75rem; background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #fecaca;">
-                    <p style="margin: 0; font-size: 0.75rem; color: #b91c1c; font-weight: 600;">Security Requirements:</p>
-                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.7rem; color: #b91c1c;">
-                        <li>Minimum 8 characters long</li>
-                        <li>At least one UPPERCASE letter</li>
-                        <li>At least one lowercase letter</li>
-                        <li>At least one SPECIAL character (!@#$%^ etc.)</li>
-                    </ul>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-save" id="credSubmitBtn">🔐 Update Credentials</button>
+            <button type="submit" class="btn-save" id="credSubmitBtn" style="margin-top:1.5rem;">Update Credentials</button>
         </form>
+        {% endif %}
     </div>
 
     <script>
@@ -303,19 +277,19 @@
             .then(d => {
                 if (d.status === 'success') {
                     showToast(d.message, 'success');
-                    setTimeout(() => window.location.href = "{% url 'dashboard' %}", 1500);
+                    setTimeout(() => window.location.href = "{% url 'edit_profile' %}", 1500);
                 } else {
                     showToast(d.message || 'Failed', 'error');
                     avatarSubmitBtn.disabled = false;
                     avatarSubmitBtn.style.opacity = '1';
-                    avatarSubmitBtn.innerText = '🖼️ Update Avatar';
+                    avatarSubmitBtn.innerText = 'Update Avatar';
                 }
             })
             .catch(err => {
                 showToast(err.message, 'error');
                 avatarSubmitBtn.disabled = false;
                 avatarSubmitBtn.style.opacity = '1';
-                avatarSubmitBtn.innerText = '🖼️ Update Avatar';
+                avatarSubmitBtn.innerText = 'Update Avatar';
             });
         });
 
@@ -365,19 +339,19 @@
             .then(d => {
                 if (d.status === 'success') {
                     showToast(d.message, 'success');
-                    setTimeout(() => window.location.href = "{% url 'dashboard' %}", 1500);
+                    setTimeout(() => window.location.href = "{% url 'edit_profile' %}", 1500);
                 } else {
                     showToast(d.message || 'Failed', 'error');
                     credSubmitBtn.disabled = false;
                     credSubmitBtn.style.opacity = '1';
-                    credSubmitBtn.innerText = '🔐 Update Credentials';
+                    credSubmitBtn.innerText = 'Update Credentials';
                 }
             })
             .catch(err => {
                 showToast(err.message, 'error');
                 credSubmitBtn.disabled = false;
                 credSubmitBtn.style.opacity = '1';
-                credSubmitBtn.innerText = '🔐 Update Credentials';
+                credSubmitBtn.innerText = 'Update Credentials';
             });
         });
 
