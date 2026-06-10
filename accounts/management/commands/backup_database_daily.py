@@ -82,7 +82,9 @@ class Command(BaseCommand):
             log.drive_file_id = drive_id
             log.drive_folder_path = f'NeoLearner_Backups/{db_folder}'
 
-            verify_sha = _get_config('BACKUP_VERIFY_SHA256', 'True') == 'True'
+            raw = _get_config('BACKUP_VERIFY_SHA256', 'True')
+            verify_sha = str(raw).lower() == 'true'
+            actual_sha256 = ''
             if verify_sha:
                 log.status = 'VERIFYING'
                 log.save(update_fields=['status'])
@@ -104,8 +106,9 @@ class Command(BaseCommand):
             log.duration_seconds = time.time() - start_time
             log.save(update_fields=['sha256', 'verify_status', 'status', 'completed_at', 'duration_seconds'])
 
+            sha_msg = f', SHA256: {actual_sha256[:16]}...' if actual_sha256 else ''
             self.stdout.write(self.style.SUCCESS(
-                f'Database backup complete: {filename} ({file_size} bytes, SHA256: {actual_sha256[:16]}...)'
+                f'Database backup complete: {filename} ({file_size} bytes{sha_msg})'
             ))
 
             if not skip_retention:
