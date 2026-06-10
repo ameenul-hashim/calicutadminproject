@@ -82,6 +82,7 @@
   let hasMore = {};
   let chatLoaded = false;
   let chatPollInterval = null;
+  let listPollInterval = null;
   let lastKnownTs = {};
 
   const container = document.getElementById('chat-widget-container');
@@ -99,8 +100,18 @@
   const backBtn = document.getElementById('chat-back-btn');
   const partnerName = document.getElementById('chat-partner-name');
 
-  toggleBtn.onclick = () => { window.classList.toggle('active'); if (window.classList.contains('active') && !chatLoaded) { loadChatList(); chatLoaded = true; } };
-  closeBtn.onclick = () => window.classList.remove('active');
+  toggleBtn.onclick = () => {
+    const opening = !window.classList.contains('active');
+    window.classList.toggle('active');
+    if (opening) {
+      chatLoaded = true;
+      loadChatList();
+      startListPolling();
+    } else {
+      stopListPolling();
+    }
+  };
+  closeBtn.onclick = () => { window.classList.remove('active'); stopListPolling(); };
 
   function formatTime(ts) {
     if (!ts) return '';
@@ -186,12 +197,26 @@
   searchInput.oninput = function() { loadChatList(this.value); };
 
   function startPolling(uid) {
-    stopPolling();
+    stopMsgPolling();
     chatPollInterval = setInterval(() => pollNewMessages(uid), 3000);
   }
 
-  function stopPolling() {
+  function stopMsgPolling() {
     if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+  }
+
+  function startListPolling() {
+    stopListPolling();
+    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 5000);
+  }
+
+  function stopListPolling() {
+    if (listPollInterval) { clearInterval(listPollInterval); listPollInterval = null; }
+  }
+
+  function stopAllPolling() {
+    stopMsgPolling();
+    stopListPolling();
   }
 
   function pollNewMessages(uid) {
@@ -235,15 +260,17 @@
     loadMessages(uid);
     msgInput.focus();
     markRead(uid);
+    stopListPolling();
     startPolling(uid);
   }
 
   backBtn.onclick = function() {
-    stopPolling();
+    stopMsgPolling();
     selectedUid = null;
     convView.style.display = 'none';
     userListView.style.display = 'block';
     loadChatList(searchInput.value);
+    startListPolling();
   };
 
   function loadMessages(uid) {
@@ -295,6 +322,7 @@
         msgInput.value = '';
         sendBtn.disabled = true;
         pollNewMessages(selectedUid);
+        setTimeout(() => loadChatList(searchInput.value), 500);
       } else {
         console.error('Send failed:', data.message || 'Unknown error');
         sendBtn.disabled = false;
@@ -343,7 +371,7 @@
   }
 
   updateUnreadCounts();
-  setInterval(updateUnreadCounts, 15000);
-  window.addEventListener('beforeunload', stopPolling);
+  setInterval(updateUnreadCounts, 5000);
+  window.addEventListener('beforeunload', stopAllPolling);
 })();
 </script>
