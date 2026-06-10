@@ -570,7 +570,7 @@
             if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_dashboard" %}', 1500); }
             else { showToast(d.message || 'Failed', 'error'); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; }
         })
-        .catch(err => { showToast('Error: ' + err.message, 'error'); console.error(err); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; });
+        .catch(err => { showToast(err.message, 'error'); console.error(err); credSubmitBtn.disabled = false; credSubmitBtn.textContent = '🔐 Update Credentials'; });
     });
 
     function showToast(msg, type) {
