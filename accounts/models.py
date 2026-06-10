@@ -493,6 +493,7 @@ class UploadJob(models.Model):
 
 class BackupLog(models.Model):
     BACKUP_TYPES = (
+        ('DAILY_FULL', 'Daily Full Backup'),
         ('DATABASE', 'Database Backup'),
         ('SIGNUP_PDF', 'Signup PDF Backup'),
         ('TEACHER_RESOURCE', 'Teacher Resource Backup'),
@@ -657,45 +658,13 @@ def cleanup_course_resource_files(sender, instance, **kwargs):
 
 @receiver(post_save, sender=CustomUser)
 def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
-    """Trigger MEGA backup when a new signup PDF is uploaded."""
-    if not instance.pdf_path:
-        return
-    if not created and not kwargs.get('update_fields'):
-        return
-    try:
-        from accounts.utils.backup_trigger import backup_signup_pdf
-        from .utils.supabase_storage import get_signed_url
-        import requests
-        signed_url = get_signed_url(instance.pdf_path)
-        if signed_url:
-            resp = requests.get(signed_url, timeout=30)
-            if resp.status_code == 200:
-                backup_signup_pdf(instance.id, instance.pdf_path, resp.content)
-    except Exception as e:
-        logger.error(f'Signup PDF backup trigger failed for user {instance.id}: {e}')
+    """(Disabled) Individual MEGA uploads are replaced by daily full backup."""
+    pass
 
 
 @receiver(post_save, sender=CourseResource)
 def backup_teacher_resource_on_save(sender, instance, created, **kwargs):
-    """Trigger MEGA backup when a new teacher resource is uploaded."""
-    if not instance.firebase_file_path:
-        return
-    if not created:
-        return
-    try:
-        from accounts.utils.backup_trigger import backup_teacher_resource
-        from accounts.utils.supabase_storage import get_client
-        client = get_client(use_resource_project=True)
-        if client:
-            bucket = 'resources'
-            file_bytes = client.storage.from_(bucket).download(instance.firebase_file_path)
-            if file_bytes:
-                course_title = instance.course.title if instance.course else 'Unknown'
-                backup_teacher_resource(
-                    instance.id, instance.firebase_file_path,
-                    file_bytes, course_title, instance.chapter, instance.category
-                )
-    except Exception as e:
-        logger.error(f'Resource backup trigger failed for resource {instance.id}: {e}')
+    """(Disabled) Individual MEGA uploads are replaced by daily full backup."""
+    pass
 
 

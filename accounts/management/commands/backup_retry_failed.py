@@ -2,8 +2,7 @@ import logging
 import time
 from django.core.management.base import BaseCommand
 from django.db.models import Q
-from accounts.models import BackupLog, CourseResource
-from accounts.utils.drive_backup_service import _get_drive_service, ensure_folder_path, upload_file, compute_sha256
+from accounts.models import BackupLog
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +11,7 @@ class Command(BaseCommand):
     help = 'Retry failed backups up to max_retries times'
 
     def add_arguments(self, parser):
-        parser.add_argument('--backup-type', type=str, choices=['DATABASE', 'SIGNUP_PDF', 'TEACHER_RESOURCE', 'ALL'],
+        parser.add_argument('--backup-type', type=str, choices=['DATABASE', 'SIGNUP_PDF', 'TEACHER_RESOURCE', 'DAILY_FULL', 'ALL'],
                             default='ALL', help='Filter by backup type')
         parser.add_argument('--dry-run', action='store_true', help='Show what would be retried')
 
@@ -44,7 +43,9 @@ class Command(BaseCommand):
             log.save(update_fields=['retry_count', 'status'])
 
             try:
-                if log.backup_type == 'DATABASE':
+                if log.backup_type == 'DAILY_FULL':
+                    self._retry_daily_full(log)
+                elif log.backup_type == 'DATABASE':
                     self._retry_database_backup(log, service)
                 elif log.backup_type == 'SIGNUP_PDF':
                     self._retry_signup_pdf_backup(log, service)
@@ -57,6 +58,23 @@ class Command(BaseCommand):
                 self.stdout.write(self.style.ERROR(f'  Failed: {e}'))
 
         self.stdout.write(self.style.SUCCESS('Retry complete'))
+
+    def _retry_daily_full(self, log):
+        from django.core.management import call_command
+        from io import StringIO
+        buf = StringIO()
+        try:
+            call_command('backup_daily_full', '--force', stdout=buf)
+            log.refresh_from_db()
+            if log.status == 'FAILED':
+                raise ValueError(log.error_message or 'Daily full backup retry failed')
+            self.stdout.write(self.style.SUCCESS('  Daily full backup retry SUCCESS'))
+        except Exception as e:
+            log.refresh_from_db()
+            log.status = 'FAILED'
+            log.error_message = str(e)[:500]
+            log.save(update_fields=['status', 'error_message'])
+            self.stdout.write(self.style.ERROR(f'  Daily full retry failed: {e}'))
 
     def _retry_database_backup(self, log, service):
         from accounts.utils.drive_backup_service import run_pg_dump, run_pg_dump_fallback

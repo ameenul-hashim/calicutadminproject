@@ -2493,27 +2493,16 @@ def _backup_card_stats():
     now = timezone.now()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Database backup stats
+    # Daily full backup stats (primary)
+    daily_full_last = BackupLog.objects.filter(backup_type='DAILY_FULL', status='SUCCESS').order_by('-created_at').first()
+    daily_full_total = BackupLog.objects.filter(backup_type='DAILY_FULL').count()
+    daily_full_failed = BackupLog.objects.filter(backup_type='DAILY_FULL', status='FAILED').count()
+    daily_full_success = BackupLog.objects.filter(backup_type='DAILY_FULL', status='SUCCESS').count()
+
+    # Legacy per-type stats (for history view)
     db_last = BackupLog.objects.filter(backup_type='DATABASE', status='SUCCESS').order_by('-created_at').first()
-    db_next_backup = None
-    if db_last:
-        db_next_backup = db_last.created_at + timezone.timedelta(days=1)
-
-    # Signup PDF stats
     signup_total = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
-    signup_today = BackupLog.objects.filter(backup_type='SIGNUP_PDF', created_at__gte=today_start).count()
-    signup_failed = BackupLog.objects.filter(backup_type='SIGNUP_PDF', status='FAILED').count()
-    signup_pending = BackupLog.objects.filter(backup_type='SIGNUP_PDF', status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
-    signup_success = BackupLog.objects.filter(backup_type='SIGNUP_PDF', status='SUCCESS').count()
-    signup_rate = (signup_success / (signup_total or 1)) * 100
-
-    # Teacher resource stats
     resource_total = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE').count()
-    resource_today = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', created_at__gte=today_start).count()
-    resource_failed = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status='FAILED').count()
-    resource_pending = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING']).count()
-    resource_success = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status='SUCCESS').count()
-    resource_rate = (resource_success / (resource_total or 1)) * 100
 
     # Drive health check (MEGA)
     from accounts.utils.drive_backup_service import _mega_configured, _get_drive_service
@@ -2563,18 +2552,13 @@ def _backup_card_stats():
             pass
 
     return {
+        'daily_full_last': daily_full_last,
+        'daily_full_total': daily_full_total,
+        'daily_full_failed': daily_full_failed,
+        'daily_full_success': daily_full_success,
         'db_last': db_last,
-        'db_next_backup': db_next_backup,
         'signup_total': signup_total,
-        'signup_today': signup_today,
-        'signup_failed': signup_failed,
-        'signup_pending': signup_pending,
-        'signup_rate': round(signup_rate, 1),
         'resource_total': resource_total,
-        'resource_today': resource_today,
-        'resource_failed': resource_failed,
-        'resource_pending': resource_pending,
-        'resource_rate': round(resource_rate, 1),
         'drive_configured': drive_configured,
         'drive_health': drive_health,
         'drive_available': drive_available,
@@ -2599,20 +2583,12 @@ def backup_center(request):
     """Main Backup Center dashboard."""
     stats = _backup_card_stats()
 
-    # Recent backup activity
+    # Recent backup activity (show all types)
     recent = BackupLog.objects.order_by('-created_at')[:10]
-
-    # Backup type counts
-    db_count = BackupLog.objects.filter(backup_type='DATABASE').count()
-    signup_count = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
-    resource_count = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE').count()
 
     context = {
         'stats': stats,
         'recent_backups': recent,
-        'db_count': db_count,
-        'signup_count': signup_count,
-        'resource_count': resource_count,
     }
 
     try:
@@ -2636,25 +2612,25 @@ def backup_center(request):
 @require_POST
 @ratelimit(key='user', rate='10/hour', method='POST', block=True)
 def run_database_backup(request):
-    """Manual trigger for database backup."""
+    """Manual trigger for daily full backup."""
     from django.core.management import call_command
     from accounts.models import BackupLog
     from io import StringIO
     try:
-        last_id = BackupLog.objects.filter(backup_type='DATABASE').values_list('id', flat=True).first() or 0
+        last_id = BackupLog.objects.filter(backup_type='DAILY_FULL').values_list('id', flat=True).first() or 0
         buf = StringIO()
-        call_command('backup_database_daily', '--force', stdout=buf)
+        call_command('backup_daily_full', '--force', stdout=buf)
         output = buf.getvalue()
-        latest = BackupLog.objects.filter(backup_type='DATABASE', id__gt=last_id).order_by('-id').first()
+        latest = BackupLog.objects.filter(backup_type='DAILY_FULL', id__gt=last_id).order_by('-id').first()
         if latest and latest.status == 'FAILED':
-            messages.error(request, 'Database backup failed. Check the logs for details.')
-            logger.error(f'Manual database backup failed: {latest.error_message}')
+            messages.error(request, 'Daily backup failed. Check the logs for details.')
+            logger.error(f'Manual daily backup failed: {latest.error_message}')
         else:
-            messages.success(request, 'Database backup completed.')
-            logger.info(f'Manual database backup triggered by {request.user.username}')
+            messages.success(request, 'Daily full backup completed.')
+            logger.info(f'Manual daily backup triggered by {request.user.username}')
     except Exception as e:
-        messages.error(request, 'Database backup could not be completed. Please try again.')
-        logger.exception(f'Manual database backup error: {e}')
+        messages.error(request, 'Daily backup could not be completed. Please try again.')
+        logger.exception(f'Manual daily backup error: {e}')
     return redirect('backup_center')
 
 
@@ -2733,20 +2709,15 @@ def export_backup_report(request):
             'successful_backups': stats['successful_backups'],
             'drive_configured': stats['drive_configured'],
             'drive_health': stats['drive_health'],
-            'database': {
-                'last_backup': stats['db_last'].filename if stats['db_last'] else None,
-                'last_backup_time': stats['db_last'].created_at.isoformat() if stats['db_last'] else None,
+            'daily_full': {
+                'last_backup': stats['daily_full_last'].filename if stats['daily_full_last'] else None,
+                'last_backup_time': stats['daily_full_last'].created_at.isoformat() if stats['daily_full_last'] else None,
+                'total': stats['daily_full_total'],
+                'successful': stats['daily_full_success'],
+                'failed': stats['daily_full_failed'],
             },
-            'signup_pdfs': {
-                'total': stats['signup_total'],
-                'today': stats['signup_today'],
-                'success_rate': stats['signup_rate'],
-            },
-            'teacher_resources': {
-                'total': stats['resource_total'],
-                'today': stats['resource_today'],
-                'success_rate': stats['resource_rate'],
-            },
+            'signup_pdfs_in_storage': stats['signup_total'],
+            'resource_files_in_storage': stats['resource_total'],
             'recent_backups': list(recent),
         }
         response = HttpResponse(
@@ -2792,7 +2763,7 @@ def backup_history(request):
         'query': query,
         'filter_type': backup_type,
         'filter_status': status,
-        'backup_types': ['DATABASE', 'SIGNUP_PDF', 'TEACHER_RESOURCE'],
+        'backup_types': ['DAILY_FULL', 'DATABASE', 'SIGNUP_PDF', 'TEACHER_RESOURCE'],
         'status_choices': ['SUCCESS', 'FAILED', 'RUNNING', 'PENDING', 'VERIFYING', 'UPLOADING', 'RETRYING'],
     }
     return render(request, 'custom_admin/backup_history.html', context)
@@ -2855,7 +2826,7 @@ def backup_cron_trigger(request):
     if btype == 'database':
         try:
             buf = StringIO()
-            call_command('backup_database_daily', stdout=buf)
+            call_command('backup_daily_full', stdout=buf)
             output = buf.getvalue()
             return JsonResponse({'status': 'ok', 'output': output[:500]})
         except Exception as e:

@@ -38,6 +38,32 @@
         color: #94a3b8;
         margin-top: 0.25rem;
     }
+    .backup-card-main {
+        grid-column: 1 / -1;
+        background: linear-gradient(135deg, #6366f1, #4f46e5);
+        color: white;
+        border: none;
+    }
+    .backup-card-main .label { color: rgba(255,255,255,0.7); }
+    .backup-card-main .value { color: white; }
+    .backup-card-main .sub { color: rgba(255,255,255,0.6); }
+    .backup-card-main .stat-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+    .backup-card-main .stat-item { text-align: center; }
+    .backup-card-main .stat-item .num {
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+    .backup-card-main .stat-item .lbl {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.7;
+    }
     .health-ring {
         width: 120px;
         height: 120px;
@@ -95,7 +121,6 @@
     .action-btn.danger:hover { background: #dc2626; }
     .action-btn.outline { background: white; color: #64748b; border: 1px solid #e2e8f0; }
     .action-btn.outline:hover { background: #f8fafc; }
-
     .activity-feed {
         max-height: 400px;
         overflow-y: auto;
@@ -108,11 +133,10 @@
         align-items: center;
     }
     .activity-item:last-child { border-bottom: none; }
-    .backup-health-header { text-align: center; padding: 2rem; }
 </style>
 {% endblock %}
 
-{% block header_title %}💾 Backup Center{% endblock %}
+{% block header_title %}Backup Center{% endblock %}
 
 {% block content %}
 <div style="margin-bottom: 1rem;">
@@ -140,76 +164,114 @@
 <div class="action-bar">
     <form method="POST" action="{% url 'run_database_backup' %}" style="display: inline;">
         {% csrf_token %}
-        <button type="submit" class="action-btn primary">🔄 Backup Database Now</button>
+        <button type="submit" class="action-btn primary">Run Daily Backup Now</button>
     </form>
     <form method="POST" action="{% url 'retry_failed_backups' %}" style="display: inline;">
         {% csrf_token %}
-        <button type="submit" class="action-btn warning">🔁 Retry Failed</button>
+        <button type="submit" class="action-btn warning">Retry Failed</button>
     </form>
     <form method="POST" action="{% url 'verify_all_backups' %}" style="display: inline;">
         {% csrf_token %}
-        <button type="submit" class="action-btn success">✅ Verify Backups</button>
+        <button type="submit" class="action-btn success">Verify Backups</button>
     </form>
     <form method="POST" action="{% url 'run_restore_test' %}" style="display: inline;">
         {% csrf_token %}
-        <button type="submit" class="action-btn outline">🧪 Restore Test</button>
+        <button type="submit" class="action-btn outline">Restore Test</button>
     </form>
     <form method="POST" action="{% url 'export_backup_report' %}" style="display: inline;">
         {% csrf_token %}
-        <button type="submit" class="action-btn outline">📊 Export Report</button>
+        <button type="submit" class="action-btn outline">Export Report</button>
     </form>
-    <a href="{% url 'backup_history' %}" class="action-btn outline">📋 Full History</a>
+    <a href="{% url 'backup_history' %}" class="action-btn outline">Full History</a>
 </div>
 
-<!-- Stats Cards -->
+<!-- Daily Full Backup Card (main) -->
 <div class="backup-grid">
-    <!-- Database Backup -->
-    <div class="backup-card">
-        <div class="label">🗄️ Database Backup</div>
-        <div class="value">{{ db_count }}</div>
-        <div class="sub">
-            {% if stats.db_last %}
-                Last: {{ stats.db_last.created_at|timesince }} ago
-                <br>Size: {{ stats.db_last.file_size|filesizeformat }}
-                <br>SHA256: {{ stats.db_last.sha256|default:"—"|truncatechars:16 }}
+    <div class="backup-card backup-card-main">
+        <div class="label">Daily Full Backup Archive</div>
+        <div style="font-size: 1.1rem; font-weight: 700; margin-top: 0.25rem;">
+            {% if stats.daily_full_last %}
+                Last: {{ stats.daily_full_last.created_at|timesince }} ago
             {% else %}
-                Never backed up
+                Never run
             {% endif %}
         </div>
-        <div style="margin-top: 0.5rem;">
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="num">{{ stats.daily_full_success }}</div>
+                <div class="lbl">Successful</div>
+            </div>
+            <div class="stat-item">
+                <div class="num">{{ stats.daily_full_failed }}</div>
+                <div class="lbl">Failed</div>
+            </div>
+            <div class="stat-item">
+                <div class="num">{{ stats.daily_full_total }}</div>
+                <div class="lbl">Total Runs</div>
+            </div>
+        </div>
+        {% if stats.daily_full_last %}
+        <div style="margin-top: 0.75rem; font-size: 0.85rem; opacity: 0.8;">
+            Archive: {{ stats.daily_full_last.filename }}<br>
+            Size: {{ stats.daily_full_last.file_size|filesizeformat }}<br>
+            Duration: {{ stats.daily_full_last.duration_seconds|floatformat:1 }}s<br>
+            SHA256: {{ stats.daily_full_last.sha256|default:"—"|truncatechars:16 }}
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Database Info -->
+    <div class="backup-card">
+        <div class="label">Database Included</div>
+        <div class="value" style="font-size: 1.25rem;">
+            {% if stats.daily_full_last %}
+                <span style="color: #10b981;">Yes</span>
+            {% else %}
+                <span style="color: #94a3b8;">—</span>
+            {% endif %}
+        </div>
+        <div class="sub">
             {% if stats.db_last %}
-                <span class="status-badge success">📁 Drive: {{ stats.db_last.drive_file_id|truncatechars:12 }}</span>
+                Last DB snapshot: {{ stats.db_last.created_at|timesince }} ago
+            {% else %}
+                No database backup yet
             {% endif %}
         </div>
     </div>
 
-    <!-- Signup PDF Backup -->
+    <!-- Signup PDFs Info -->
     <div class="backup-card">
-        <div class="label">📄 Signup PDF Backup</div>
-        <div class="value">{{ stats.signup_total }}</div>
+        <div class="label">Signup PDFs Included</div>
+        <div class="value" style="font-size: 1.25rem;">
+            {% if stats.daily_full_last %}
+                <span style="color: #10b981;">Yes</span>
+            {% else %}
+                <span style="color: #94a3b8;">—</span>
+            {% endif %}
+        </div>
         <div class="sub">
-            {{ stats.signup_today }} today
-            <br>Failed: {{ stats.signup_failed }}
-            <br>Pending: {{ stats.signup_pending }}
-            <br>Success Rate: {{ stats.signup_rate }}%
+            {{ stats.signup_total }} signup PDFs in storage
         </div>
     </div>
 
-    <!-- Teacher Resource Backup -->
+    <!-- Resources Info -->
     <div class="backup-card">
-        <div class="label">📚 Teacher Resource Backup</div>
-        <div class="value">{{ stats.resource_total }}</div>
+        <div class="label">Resource Files Included</div>
+        <div class="value" style="font-size: 1.25rem;">
+            {% if stats.daily_full_last %}
+                <span style="color: #10b981;">Yes</span>
+            {% else %}
+                <span style="color: #94a3b8;">—</span>
+            {% endif %}
+        </div>
         <div class="sub">
-            {{ stats.resource_today }} today
-            <br>Failed: {{ stats.resource_failed }}
-            <br>Pending: {{ stats.resource_pending }}
-            <br>Success Rate: {{ stats.resource_rate }}%
+            {{ stats.resource_total }} resource files in storage
         </div>
     </div>
 
-    <!-- Next Scheduled Backup (Countdown) -->
+    <!-- Next Scheduled Backup -->
     <div class="backup-card" id="countdown-card">
-        <div class="label">⏰ Next Scheduled Backup</div>
+        <div class="label">Next Scheduled Backup</div>
         <div class="value" id="countdown-value" style="font-size: 1.5rem;">
             {% if stats.next_backup_seconds %}
                 <span id="countdown-display">{{ stats.next_backup_seconds|default:"--" }}</span>s
@@ -219,16 +281,16 @@
         </div>
         <div class="sub" id="countdown-sub">
             {% if stats.next_backup_seconds %}
-                Until next database backup
+                Until next daily backup
             {% else %}
                 No schedule configured
             {% endif %}
         </div>
     </div>
 
-    <!-- Monitoring Stats -->
+    <!-- Performance -->
     <div class="backup-card">
-        <div class="label">📈 Performance</div>
+        <div class="label">Performance</div>
         <div class="sub" style="margin-top: 0.5rem;">
             Avg Duration: <strong>{{ stats.avg_duration|default:"—" }}s</strong><br>
             Fastest: <strong>{{ stats.fastest_duration|default:"—" }}s</strong><br>
@@ -236,8 +298,9 @@
         </div>
     </div>
 
+    <!-- Stats -->
     <div class="backup-card">
-        <div class="label">📊 Stats</div>
+        <div class="label">Stats</div>
         <div class="sub" style="margin-top: 0.5rem;">
             Success Rate: <strong>{{ stats.success_rate|default:"0" }}%</strong><br>
             Failure Rate: <strong>{{ stats.failure_rate|default:"0" }}%</strong><br>
@@ -246,16 +309,16 @@
         </div>
     </div>
 
-    <!-- MEGA Backup Health -->
+    <!-- MEGA Health -->
     <div class="backup-card">
-        <div class="label">☁️ MEGA Backup</div>
+        <div class="label">MEGA Backup</div>
         <div class="value" style="font-size: 1.25rem;">
             {% if stats.drive_health == 'CONNECTED' %}
-                <span style="color: #10b981;">✅ Connected</span>
+                <span style="color: #10b981;">Connected</span>
             {% elif stats.drive_configured %}
-                <span style="color: #f59e0b;">⚠️ {{ stats.drive_health }}</span>
+                <span style="color: #f59e0b;">{{ stats.drive_health }}</span>
             {% else %}
-                <span style="color: #ef4444;">❌ Not Configured</span>
+                <span style="color: #ef4444;">Not Configured</span>
             {% endif %}
         </div>
         <div class="sub">
@@ -287,13 +350,12 @@
             </div>
         </div>
         {% empty %}
-        <div style="text-align: center; padding: 2rem; color: #94a3b8;">No backups yet. Click "Backup Database Now" to start.</div>
+        <div style="text-align: center; padding: 2rem; color: #94a3b8;">No backups yet. Click "Run Daily Backup Now" to start.</div>
         {% endfor %}
     </div>
 </div>
 
 <script>
-// Countdown timer
 (function() {
     var seconds = {{ stats.next_backup_seconds|default:"null" }};
     var display = document.getElementById('countdown-display');
@@ -309,7 +371,6 @@
     }
 })();
 
-// Auto-refresh every 30 seconds
 setTimeout(function() {
     location.reload();
 }, 30000);

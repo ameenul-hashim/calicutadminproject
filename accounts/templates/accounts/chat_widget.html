@@ -34,6 +34,27 @@
 #chat-send-btn { background: #6366f1; color: white; border: none; border-radius: 50%; width: 38px; height: 38px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }
 #chat-send-btn:hover { background: #4f46e5; }
 #chat-send-btn:disabled { background: #c7d2fe; cursor: not-allowed; }
+
+/* Mobile responsiveness */
+@media (max-width: 480px) {
+    #chat-widget-container { right: 10px; bottom: 10px; }
+    #chat-window { width: calc(100vw - 20px); height: 70vh; max-height: 540px; border-radius: 1rem; }
+    #chat-toggle-btn { width: 50px; height: 50px; font-size: 1.25rem; }
+    .chat-header { padding: 0.75rem 1rem; }
+    .chat-header-title { font-size: 0.85rem; }
+    .chat-body { padding: 0.5rem; }
+    .chat-footer { padding: 0.5rem; }
+    .chat-input { font-size: 0.8rem; min-width: 80px; }
+    .msg { max-width: 90%; padding: 0.5rem 0.75rem; font-size: 0.8rem; }
+    .search-input { font-size: 0.75rem; }
+    .user-list-item { padding: 0.5rem 0.6rem; }
+    .avatar-sm { width: 34px; height: 34px; font-size: 0.8rem; }
+    #chat-unread-badge { width: 18px; height: 18px; font-size: 0.6rem; }
+}
+@media (max-width: 360px) {
+    #chat-window { width: calc(100vw - 10px); height: 75vh; }
+    #chat-widget-container { right: 5px; bottom: 5px; }
+}
 </style>
 
 <div id="chat-widget-container">
