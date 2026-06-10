@@ -1,10 +1,15 @@
 import os
 import io
+import asyncio
 import tempfile
 import logging
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
+
+# Python 3.11+ removed asyncio.coroutine; mega.py (v1.0.8) still uses it
+if not hasattr(asyncio, 'coroutine'):
+    asyncio.coroutine = lambda f: f
 
 
 def _login():
