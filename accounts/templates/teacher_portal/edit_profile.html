@@ -235,6 +235,21 @@
         box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
     }
 
+    /* Tablet / small laptop: 3 columns */
+    @media (min-width: 641px) and (max-width: 1023px) {
+        .profile-edit-card {
+            padding: 1.5rem;
+            max-width: 100%;
+        }
+        .avatar-grid {
+            grid-template-columns: repeat(3, 1fr) !important;
+            gap: 16px !important;
+        }
+        .avatar-option {
+            width: 100% !important;
+            height: 130px !important;
+        }
+    }
     @media (max-width: 768px) {
         .avatar-grid {
             grid-template-columns: repeat(2, 1fr) !important;
@@ -243,6 +258,20 @@
         .avatar-option {
             width: 120px !important;
             height: 155px !important;
+        }
+    }
+    /* Laptop screens where sidebar + padding eats space */
+    @media (min-width: 1024px) and (max-width: 1366px) {
+        .profile-edit-card {
+            padding: 1.5rem 1.25rem;
+        }
+        .avatar-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 10px !important;
+        }
+        .avatar-option {
+            width: 100% !important;
+            height: 110px !important;
         }
     }
     @media (max-width: 640px) {

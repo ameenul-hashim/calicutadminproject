@@ -55,10 +55,10 @@
         margin: 0;
     }
 
-    /* Charts Section - more compact */
+    /* Charts Section - side by side on laptop+ */
     .premium-charts-grid {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
         gap: 1.5rem;
         margin-bottom: 1.5rem;
     }
@@ -83,17 +83,23 @@
         margin: 0;
     }
 
-        /* RESPONSIVE INJECTIONS */
+        /* Laptop/Desktop: charts side by side */
+        @media (min-width: 1024px) {
+            .premium-charts-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .premium-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        /* Tablet: stacked charts, 2-col stats */
         @media (max-width: 1023px) {
-            .premium-stats-grid { grid-template-columns: 1fr !important; }
             .premium-charts-grid { grid-template-columns: 1fr !important; }
+            .premium-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
             .analytics-container { padding: 1rem !important; margin-top: 4rem !important; }
             .premium-panel { padding: 1rem !important; }
             .premium-stat-card .value { font-size: 1.5rem !important; }
             canvas { max-width: 100% !important; }
         }
-        @media (min-width: 768px) and (max-width: 1023px) {
-            .premium-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        /* Mobile: single column */
+        @media (max-width: 640px) {
+            .premium-stats-grid { grid-template-columns: 1fr !important; }
         }
         </style>
 

@@ -81,6 +81,8 @@
   let messagesOffset = {};
   let hasMore = {};
   let chatLoaded = false;
+  let chatPollInterval = null;
+  let lastKnownTs = {};
 
   const container = document.getElementById('chat-widget-container');
   const window = document.getElementById('chat-window');
@@ -100,6 +102,19 @@
   toggleBtn.onclick = () => { window.classList.toggle('active'); if (window.classList.contains('active') && !chatLoaded) { loadChatList(); chatLoaded = true; } };
   closeBtn.onclick = () => window.classList.remove('active');
 
+  function formatTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const day = d.getDate();
+    let hours = d.getHours();
+    const minutes = d.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${month} ${day}, ${hours}:${minutes} ${ampm}`;
+  }
+
   function escapeHtml(text) {
     const d = document.createElement('div');
     d.textContent = text;
@@ -108,6 +123,38 @@
 
   function fetchJson(url, opts) {
     return fetch(url, opts).then(r => r.json());
+  }
+
+  function renderMessage(m) {
+    const div = document.createElement('div');
+    div.className = m.is_me ? 'msg me' : 'msg other';
+    if (!m.is_me && m.sender_name) {
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-size:0.65rem;font-weight:600;opacity:0.7;margin-bottom:2px;';
+      nameDiv.textContent = m.sender_name;
+      div.appendChild(nameDiv);
+    }
+    const content = document.createElement('div');
+    content.textContent = m.message;
+    div.appendChild(content);
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'msg-time';
+    if (m.is_edited) timeDiv.innerHTML += '<span class="edited-tag">(edited)</span>';
+    timeDiv.innerHTML += `<span>${formatTime(m.raw_ts)}</span>`;
+    if (m.is_me && m.read_at) timeDiv.innerHTML += '<span style="font-size:0.65rem;">&#10003;&#10003;</span>';
+    div.appendChild(timeDiv);
+    if (m.is_me) {
+      const withinWindow = m.raw_ts && (Date.now() - m.raw_ts) <= 3600 * 1000;
+      const opts = document.createElement('div');
+      opts.className = 'msg-options';
+      opts.innerHTML = withinWindow ? '<span class="edit-msg" title="Edit">&#9998;</span><span class="del-msg" title="Delete">&#128465;</span>' : '';
+      const editSpan = opts.querySelector('.edit-msg');
+      const delSpan = opts.querySelector('.del-msg');
+      if (editSpan) editSpan.onclick = (e) => { e.stopPropagation(); editMessage(m.message_uid, m.message); };
+      if (delSpan) delSpan.onclick = (e) => { e.stopPropagation(); deleteMessage(m.message_uid); };
+      div.appendChild(opts);
+    }
+    return div;
   }
 
   function loadChatList(search) {
@@ -138,6 +185,44 @@
 
   searchInput.oninput = function() { loadChatList(this.value); };
 
+  function startPolling(uid) {
+    stopPolling();
+    chatPollInterval = setInterval(() => pollNewMessages(uid), 3000);
+  }
+
+  function stopPolling() {
+    if (chatPollInterval) { clearInterval(chatPollInterval); chatPollInterval = null; }
+  }
+
+  function pollNewMessages(uid) {
+    fetchJson(`/chat/messages/${uid}/?limit=10&offset=0`).then(data => {
+      const msgs = data.messages || [];
+      if (!msgs.length) return;
+      const latestTs = msgs[msgs.length - 1].raw_ts;
+      if (lastKnownTs[uid] && latestTs <= lastKnownTs[uid]) return;
+      const existing = msgList.querySelectorAll('.msg');
+      const existingIds = new Set();
+      existing.forEach(el => { const id = el.dataset.msgUid; if (id) existingIds.add(id); });
+      let hasNew = false;
+      const fragment = document.createDocumentFragment();
+      msgs.forEach(m => {
+        if (!existingIds.has(m.message_uid)) {
+          const el = renderMessage(m);
+          el.dataset.msgUid = m.message_uid;
+          fragment.appendChild(el);
+          hasNew = true;
+        }
+      });
+      if (hasNew) {
+        msgList.appendChild(fragment);
+        setTimeout(() => msgList.scrollTop = msgList.scrollHeight, 50);
+        if (msgs.length) lastKnownTs[uid] = msgs[msgs.length - 1].raw_ts;
+      }
+      const lastServer = msgs.length ? msgs[msgs.length - 1].raw_ts : 0;
+      if (lastServer > (lastKnownTs[uid] || 0)) lastKnownTs[uid] = lastServer;
+    }).catch(() => {});
+  }
+
   function openConversation(uid, displayName) {
     selectedUid = uid;
     partnerName.textContent = displayName;
@@ -145,13 +230,16 @@
     convView.style.display = 'flex';
     messagesOffset[uid] = 0;
     hasMore[uid] = true;
+    lastKnownTs[uid] = 0;
     msgList.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">Loading...</div>';
     loadMessages(uid);
     msgInput.focus();
     markRead(uid);
+    startPolling(uid);
   }
 
   backBtn.onclick = function() {
+    stopPolling();
     selectedUid = null;
     convView.style.display = 'none';
     userListView.style.display = 'block';
@@ -168,42 +256,12 @@
         msgList.innerHTML = '<div style="text-align:center;padding:2rem;color:#94a3b8;">No messages yet. Say hello!</div>';
         return;
       }
+      if (msgs.length) lastKnownTs[uid] = msgs[msgs.length - 1].raw_ts;
       const fragment = document.createDocumentFragment();
       msgs.forEach(m => {
-        const div = document.createElement('div');
-        if (m.is_deleted) {
-          div.className = 'msg deleted';
-          div.textContent = 'This message was deleted';
-        } else {
-          div.className = m.is_me ? 'msg me' : 'msg other';
-          if (!m.is_me && m.sender_name) {
-            const nameDiv = document.createElement('div');
-            nameDiv.style.cssText = 'font-size:0.65rem;font-weight:600;opacity:0.7;margin-bottom:2px;';
-            nameDiv.textContent = m.sender_name;
-            div.appendChild(nameDiv);
-          }
-          const content = document.createElement('div');
-          content.textContent = m.message;
-          div.appendChild(content);
-          const timeDiv = document.createElement('div');
-          timeDiv.className = 'msg-time';
-          if (m.is_edited) timeDiv.innerHTML += '<span class="edited-tag">(edited)</span>';
-          timeDiv.innerHTML += `<span>${m.timestamp}</span>`;
-          if (m.is_me && m.read_at) timeDiv.innerHTML += '<span style="font-size:0.65rem;">&#10003;&#10003;</span>';
-          div.appendChild(timeDiv);
-          if (m.is_me && !m.is_deleted) {
-            const withinWindow = m.raw_ts && (Date.now() - m.raw_ts) <= 3600 * 1000;
-            const opts = document.createElement('div');
-            opts.className = 'msg-options';
-            opts.innerHTML = withinWindow ? '<span class="edit-msg" title="Edit">&#9998;</span><span class="del-msg" title="Delete">&#128465;</span>' : '';
-            const editSpan = opts.querySelector('.edit-msg');
-            const delSpan = opts.querySelector('.del-msg');
-            if (editSpan) editSpan.onclick = (e) => { e.stopPropagation(); editMessage(m.message_uid, m.message); };
-            if (delSpan) delSpan.onclick = (e) => { e.stopPropagation(); deleteMessage(m.message_uid); };
-            div.appendChild(opts);
-          }
-        }
-        fragment.appendChild(div);
+        const el = renderMessage(m);
+        el.dataset.msgUid = m.message_uid;
+        fragment.appendChild(el);
       });
       if (offset === 0) {
         msgList.appendChild(fragment);
@@ -236,7 +294,7 @@
       if (data.status === 'success') {
         msgInput.value = '';
         sendBtn.disabled = true;
-        loadMessages(selectedUid);
+        pollNewMessages(selectedUid);
       } else {
         console.error('Send failed:', data.message || 'Unknown error');
         sendBtn.disabled = false;
@@ -250,14 +308,18 @@
     const formData = new FormData();
     formData.append('message_uid', msgUid);
     formData.append('message', newText);
-    fetchJson('/chat/edit/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => loadMessages(selectedUid));
+    fetchJson('/chat/edit/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => {
+      loadMessages(selectedUid);
+    });
   }
 
   function deleteMessage(msgUid) {
     if (!confirm('Delete this message?')) return;
     const formData = new FormData();
     formData.append('message_uid', msgUid);
-    fetchJson('/chat/delete/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => loadMessages(selectedUid));
+    fetchJson('/chat/delete/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => {
+      loadMessages(selectedUid);
+    });
   }
 
   function markRead(uid) {
@@ -282,5 +344,6 @@
 
   updateUnreadCounts();
   setInterval(updateUnreadCounts, 15000);
+  window.addEventListener('beforeunload', stopPolling);
 })();
 </script>
