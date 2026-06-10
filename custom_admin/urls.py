@@ -55,7 +55,7 @@ urlpatterns = [
     path('notifications/', views.admin_all_notifications, name='admin_all_notifications'),
     path('enterprise-monitor/', views.enterprise_monitor, name='enterprise_monitor'),
     path('system-audit/', views.system_audit_view, name='system_audit'),
-    path('enterprise-audit-report/', views.enterprise_audit_report, name='enterprise_audit_report'),
+
     path('master-audit-summary/', views.master_audit_summary_view, name='master_audit_summary'),
     path('secure-pdf-access/<uuid:user_uid>/', views.proxy_pdf_access, name='proxy_pdf_access'),
     path('deleted-courses/', views.deleted_courses_view, name='deleted_courses'),

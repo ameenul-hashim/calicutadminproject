@@ -251,6 +251,58 @@
                     </div>
                 </div>
             </div>
+
+            <!-- PDF Access Logs -->
+            <div class="card audit-card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-file-pdf me-2 text-danger"></i>PDF Access Audit</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="p-3 bg-light-subtle border-bottom fw-bold small">Recent 20 Accesses</div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 small">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">User</th>
+                                    <th>Document</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for log in access_logs %}
+                                <tr>
+                                    <td class="ps-4">{{ log.user.full_name|default:log.user.username }}</td>
+                                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ log.pdf_path|truncatechars:40 }}</td>
+                                    <td class="text-muted">{{ log.accessed_at|timesince }} ago</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center text-muted py-3">No PDF access records.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Blocked IPs -->
+            <div class="card audit-card border-0 shadow-sm mt-4">
+                <div class="card-header bg-white border-0 py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-shield me-2 text-danger"></i>Brute-Force Protection</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-4 bg-danger-subtle p-3 me-3">
+                            <i class="fas fa-ban text-danger fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="h4 mb-0 fw-bold text-dark">{{ blocked_ips_count }}</div>
+                            <div class="small text-muted">Blocked IPs (django-axes)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
