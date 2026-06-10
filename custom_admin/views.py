@@ -1967,8 +1967,8 @@ def system_audit_view(request):
 
     drive_configured = False
     try:
-    from accounts.utils.drive_backup_service import _mega_configured
-    drive_configured = _mega_configured()
+        from accounts.utils.drive_backup_service import _mega_configured
+        drive_configured = _mega_configured()
     except Exception:
         pass
 
