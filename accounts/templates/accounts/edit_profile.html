@@ -16,7 +16,9 @@
         .title { font-size: 1.8rem; font-weight: 800; color: #1e293b; margin-bottom: 0.5rem; text-align: center; }
         .subtitle { color: #64748b; text-align: center; margin-bottom: 2rem; font-size: 0.95rem; }
 
-        .profile-edit-wrap { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; width: 100%; justify-items: center; }
+        .profile-edit-wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; width: 100%; }
+        .profile-edit-wrap.single-col { display: flex; justify-content: center; }
+        .profile-edit-wrap.single-col .profile-col { max-width: 340px; width: 100%; }
         .profile-col { background: white; border-radius: 1.5rem; padding: 2rem; border: 1px solid #e2e8f0; box-sizing: border-box; width: 100%; }
         .profile-header { text-align: center; margin-bottom: 2rem; }
         .profile-avatar { width: 140px; height: 182px; border-radius: 0.75rem; margin: 0 auto 1rem; border: 4px solid #eef2ff; overflow: hidden; background: #f8fafc; box-shadow: 0 8px 16px -4px rgba(99,102,241,0.15); }
@@ -56,6 +58,8 @@
         
         @media (max-width: 1024px) {
             .profile-edit-wrap { grid-template-columns: 1fr; gap: 1.5rem; }
+            .profile-edit-wrap.single-col { display: block; }
+            .profile-edit-wrap.single-col .profile-col { max-width: 100%; }
             .avatar-grid { grid-template-columns: repeat(4, 1fr); }
             body { padding: 1rem; }
             .edit-card { padding: 1.5rem; max-width: 100%; }
@@ -85,7 +89,7 @@
         {% include 'includes/messages.html' %}
         {% include 'includes/validation_engine.html' %}
 
-        <div class="profile-edit-wrap">
+        <div class="profile-edit-wrap{% if user.user_type != 'ADMIN' and not user.is_staff %} single-col{% endif %}">
 
             <!-- ════ LEFT COLUMN: Avatar Update ════ -->
             <div class="profile-col">
