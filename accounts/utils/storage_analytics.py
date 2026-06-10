@@ -54,30 +54,47 @@ def get_supabase_signup_stats():
     bucket = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
 
     from accounts.models import CustomUser
-    active_qs = CustomUser.objects.filter(
+
+    active_users = CustomUser.objects.filter(
         pdf_path__isnull=False
-    ).exclude(pdf_path='').values_list('pdf_path', flat=True)
+    ).exclude(pdf_path='').values('id', 'full_name', 'username', 'user_type', 'pdf_path')
 
     from collections import defaultdict
     dirs = defaultdict(set)
-    for full_path in active_qs:
-        parts = full_path.rsplit('/', 1)
+    path_to_user = {}
+    for u in active_users:
+        fp = u['pdf_path']
+        parts = fp.rsplit('/', 1)
         if len(parts) == 2:
             dirs[parts[0]].add(parts[1])
+            path_to_user[parts[1]] = u
 
-    total_files = len(active_qs)
+    total_files = len(active_users)
     client = _init_supabase(url, key)
     usage_mb = 0
     status = 'connected'
+    file_details = []
 
     if client and dirs:
         try:
             total_size = 0
             for dirname, basenames in dirs.items():
-                files = _list_files_in_dir(client, bucket, dirname)
-                for f in files or []:
-                    if f.get('metadata') and f.get('name') in basenames:
-                        total_size += int(f['metadata'].get('size', 0))
+                items = _list_files_in_dir(client, bucket, dirname)
+                for item in items or []:
+                    nm = item.get('name')
+                    if item.get('metadata') and nm in basenames:
+                        sz = int(item['metadata'].get('size', 0))
+                        total_size += sz
+                        user = path_to_user.get(nm, {})
+                        file_details.append({
+                            'name': nm,
+                            'path': f"{dirname}/{nm}",
+                            'size_bytes': sz,
+                            'size_mb': round(sz / (1024 * 1024), 3),
+                            'teacher': user.get('full_name') or user.get('username', '?'),
+                            'user_type': user.get('user_type', '?'),
+                            'user_id': user.get('id'),
+                        })
             usage_mb = total_size / (1024 * 1024)
         except Exception as e:
             logger.error(f"Supabase signup list error: {e}")
@@ -93,7 +110,7 @@ def get_supabase_signup_stats():
         'limit_mb': SUPABASE_LIMIT_MB,
         'percent': round(percent, 1),
         'remaining_mb': remaining_mb,
-        'files': [],
+        'files': file_details,
         'emoji': '\U0001f4c4',
         'color': '#6366f1',
         'description': 'Teacher verification PDFs uploaded during signup',

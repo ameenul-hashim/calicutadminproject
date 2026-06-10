@@ -340,6 +340,30 @@
                 <span class="stat-label">Description</span>
                 <span class="stat-value sd-muted">{{ ss.description }}</span>
             </div>
+            {% if ss.files %}
+            <div style="margin-top:1rem;overflow-x:auto;border-radius:0.75rem;border:1px solid #e2e8f0;">
+                <table class="sd-table">
+                    <thead>
+                        <tr>
+                            <th>Teacher</th>
+                            <th>Type</th>
+                            <th>Filename</th>
+                            <th>Size</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in ss.files %}
+                        <tr>
+                            <td><span class="sd-file-name">{{ f.teacher }}</span></td>
+                            <td><span style="display:inline-flex;padding:0.15rem 0.5rem;border-radius:999px;font-size:0.7rem;font-weight:600;background:#eef2ff;color:#4338ca;">{{ f.user_type }}</span></td>
+                            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.8rem;color:#64748b;">{{ f.name }}</td>
+                            <td>{{ f.size_mb }} MB</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
         </div>
 
         <div class="sd-panel">
@@ -615,20 +639,27 @@
     });
 
     // 4. Supabase Breakdown Pie
-    new Chart(document.getElementById('supabasePie'), {
-        type: 'pie',
-        data: {
-            labels: ['Signup PDFs (' + fmtMB(ss_u) + ')', 'Course Resources (' + fmtMB(sr_u) + ')'],
-            datasets: [{ data: [ss_u, sr_u], backgroundColor: ['#6366f1', '#10b981'], borderWidth: 0 }]
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 10 } } },
-                tooltip: { callbacks: { label: function(ctx) { return ctx.label; } } }
+    if (ss_u > 0 || sr_u > 0) {
+        new Chart(document.getElementById('supabasePie'), {
+            type: 'pie',
+            data: {
+                labels: ['Signup PDFs (' + fmtMB(ss_u) + ')', 'Course Resources (' + fmtMB(sr_u) + ')'],
+                datasets: [{ data: [ss_u, sr_u], backgroundColor: ['#6366f1', '#10b981'], borderWidth: 0 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 10 } } },
+                    tooltip: { callbacks: { label: function(ctx) { return ctx.label; } } }
+                }
             }
-        }
-    });
+        });
+    } else {
+        var pieCanvas = document.getElementById('supabasePie');
+        var pieParent = pieCanvas.parentElement;
+        pieParent.removeChild(pieCanvas);
+        pieParent.innerHTML = '<div style="text-align:center;padding:3rem;color:#94a3b8;font-size:0.9rem;">No files uploaded to Supabase yet.</div>';
+    }
 
     // 5. Usage Percent Chart (horizontal bar)
     new Chart(document.getElementById('usagePercentChart'), {
