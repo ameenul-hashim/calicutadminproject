@@ -527,14 +527,14 @@
                       'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
         })
         .then(r => {
-            if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
+            if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }).catch(() => { throw new Error('Server error (HTTP ' + r.status + ')'); }); }
             return r.json();
         })
         .then(d => {
             if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_dashboard" %}', 1500); }
             else { showToast(d.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; }
         })
-        .catch(err => { showToast('Error: ' + err.message, 'error'); console.error(err); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; });
+        .catch(err => { showToast(err.message, 'error'); console.error(err); btn.disabled = false; btn.textContent = '🖼️ Update Profile Picture'; });
     });
 
     // ─── Form 2: Credentials submit ───
@@ -563,7 +563,7 @@
                       'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
         })
         .then(r => {
-            if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
+            if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }).catch(() => { throw new Error('Server error (HTTP ' + r.status + ')'); }); }
             return r.json();
         })
         .then(d => {

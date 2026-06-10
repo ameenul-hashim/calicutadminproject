@@ -297,7 +297,7 @@
                           'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
             })
             .then(r => {
-                if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
+                if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }).catch(() => { throw new Error('Server error (HTTP ' + r.status + ')'); }); }
                 return r.json();
             })
             .then(d => {
@@ -312,7 +312,7 @@
                 }
             })
             .catch(err => {
-                showToast('Error: ' + err.message, 'error');
+                showToast(err.message, 'error');
                 avatarSubmitBtn.disabled = false;
                 avatarSubmitBtn.style.opacity = '1';
                 avatarSubmitBtn.innerText = '🖼️ Update Avatar';
@@ -359,7 +359,7 @@
                           'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
             })
             .then(r => {
-                if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
+                if (!r.ok) { return r.json().then(d => { throw new Error(d.message || 'Request failed'); }).catch(() => { throw new Error('Server error (HTTP ' + r.status + ')'); }); }
                 return r.json();
             })
             .then(d => {
@@ -374,7 +374,7 @@
                 }
             })
             .catch(err => {
-                showToast('Error: ' + err.message, 'error');
+                showToast(err.message, 'error');
                 credSubmitBtn.disabled = false;
                 credSubmitBtn.style.opacity = '1';
                 credSubmitBtn.innerText = '🔐 Update Credentials';
