@@ -73,6 +73,25 @@ def upload_bytes(mega, file_bytes, filename, folder_path):
                 pass
 
 
+def delete_file(mega, mega_path):
+    """Delete a file from MEGA by mega:// path.
+    Returns True on success, False on failure."""
+    path = mega_path
+    if path.startswith('mega://'):
+        path = path[7:]
+    try:
+        node = mega.find(path)
+        if node is None:
+            logger.warning(f'MEGA file not found for deletion: {path}')
+            return False
+        mega.delete(node[0])
+        logger.info(f'Deleted from MEGA: {path}')
+        return True
+    except Exception as e:
+        logger.error(f'MEGA delete failed for {path}: {e}')
+        return False
+
+
 def download_file(mega, mega_path):
     """Download a file from MEGA by mega:// path.
     Returns (bytes, None) on success, (None, error) on failure."""

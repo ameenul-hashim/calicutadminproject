@@ -2835,5 +2835,27 @@ def backup_history_csv(request):
     return response
 
 
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.core.management import call_command
+from io import StringIO
 
-
+@csrf_exempt
+def backup_cron_trigger(request):
+    """Cron-job webhook — triggers daily database backup.
+    Call via GET/POST with ?token=<BACKUP_CRON_TOKEN>&type=database
+    Designed for cron-job.org / UptimeRobot frequency: daily."""
+    expected = os.getenv('BACKUP_CRON_TOKEN', '')
+    actual = request.GET.get('token') or request.POST.get('token', '')
+    if expected and actual != expected:
+        return JsonResponse({'error': 'Invalid token'}, status=403)
+    btype = request.GET.get('type') or request.POST.get('type', 'database')
+    if btype == 'database':
+        try:
+            buf = StringIO()
+            call_command('backup_database_daily', stdout=buf)
+            output = buf.getvalue()
+            return JsonResponse({'status': 'ok', 'output': output[:500]})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+    return JsonResponse({'error': f'Unknown backup type: {btype}'}, status=400)

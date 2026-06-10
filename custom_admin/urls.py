@@ -71,6 +71,9 @@ urlpatterns = [
     path('backup-center/restore-test/', views.run_restore_test, name='run_restore_test'),
     path('backup-center/history/', views.backup_history, name='backup_history'),
     path('backup-center/history/csv/', views.backup_history_csv, name='backup_history_csv'),
+
+    # Cron trigger (external scheduler — cron-job.org, UptimeRobot)
+    path('backup-center/cron-trigger/', views.backup_cron_trigger, name='backup_cron_trigger'),
 ]
 
 

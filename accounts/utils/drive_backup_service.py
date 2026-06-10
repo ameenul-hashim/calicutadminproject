@@ -102,7 +102,30 @@ def run_pg_dump_fallback():
         return None, str(e), 0
 
 
-def delete_old_backups(service, folder_id, keep_count=None):
-    """Delete old backup files in a MEGA folder (retention placeholder).
-    Returns 0 — MEGA retention cleanup requires list support."""
-    return 0
+def delete_old_backups(service, folder_path, keep_count=30):
+    """Delete old MEGA backups beyond keep_count using BackupLog.
+    Returns number of backups cleaned up."""
+    from accounts.models import BackupLog
+    from . import mega_backup_service
+    deleted = 0
+    try:
+        old_logs = BackupLog.objects.filter(
+            status='SUCCESS',
+            drive_file_id__startswith='mega://',
+        ).order_by('-created_at')
+        if old_logs.count() <= keep_count:
+            return 0
+        old_logs = list(old_logs[keep_count:])
+        for log in old_logs:
+            try:
+                ok = mega_backup_service.delete_file(service, log.drive_file_id)
+                if ok:
+                    log.status = 'CLEANED'
+                    log.save(update_fields=['status'])
+                    deleted += 1
+                    logger.info(f'Retention: cleaned old backup {log.filename}')
+            except Exception as e:
+                logger.warning(f'Retention delete failed for {log.filename}: {e}')
+    except Exception as e:
+        logger.error(f'Retention cleanup error: {e}')
+    return deleted

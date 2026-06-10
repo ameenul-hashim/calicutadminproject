@@ -505,6 +505,7 @@ class BackupLog(models.Model):
         ('SUCCESS', 'Success'),
         ('FAILED', 'Failed'),
         ('RETRYING', 'Retrying'),
+        ('CLEANED', 'Cleaned by retention'),
     )
     backup_type = models.CharField(max_length=50, choices=BACKUP_TYPES, db_index=True)
     filename = models.CharField(max_length=500)
