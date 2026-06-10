@@ -1868,87 +1868,91 @@ def edit_profile(request):
             messages.info(request, "Welcome! Please select an avatar to complete your account setup.")
 
     if request.method == 'POST':
-        from django.contrib.auth import update_session_auth_hash
-        import re
-
-        # Handle Skip — set default avatar and mark photo cache so middleware stops redirecting
-        if request.POST.get('skip'):
+        try:
+            from django.contrib.auth import update_session_auth_hash
             from django.core.cache import cache
-            if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
-                request.user.image = '/static/avatars/admin_m_0.png'
-            elif request.user.user_type == 'TEACHER':
-                request.user.image = '/static/avatars/teacher_m_0.png'
-            else:
-                request.user.image = '/static/avatars/student_m_0.png'
-            request.user.save(update_fields=['image'])
-            cache.delete(f"user_has_photo_{request.user.id}")
-            redirect_url = reverse('teacher_dashboard') if request.user.user_type == 'TEACHER' else reverse('dashboard')
-            return JsonResponse({'status': 'skip', 'redirect': redirect_url})
+            import re
 
-        changes_made = False
-        password_changed = False
-        avatar_changed = False
+            # Handle Skip — set default avatar and mark photo cache so middleware stops redirecting
+            if request.POST.get('skip'):
+                if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
+                    request.user.image = '/static/avatars/admin_m_0.png'
+                elif request.user.user_type == 'TEACHER':
+                    request.user.image = '/static/avatars/teacher_m_0.png'
+                else:
+                    request.user.image = '/static/avatars/student_m_0.png'
+                request.user.save(update_fields=['image'])
+                cache.delete(f"user_has_photo_{request.user.id}")
+                redirect_url = reverse('teacher_dashboard') if request.user.user_type == 'TEACHER' else reverse('dashboard')
+                return JsonResponse({'status': 'skip', 'redirect': redirect_url})
 
-        new_username = request.POST.get('new_username')
-        if new_username:
-            new_username = new_username.strip()
-            if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
-                return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
-            if new_username != request.user.username:
-                request.user.username = new_username
-                changes_made = True
+            changes_made = False
+            password_changed = False
+            avatar_changed = False
 
-        new_password = request.POST.get('new_password')
-        if new_password:
-            curr_pass = request.POST.get('current_password')
-            if not request.user.check_password(curr_pass):
-                return JsonResponse({'status': 'error', 'message': 'Current password is incorrect.'}, status=400)
-            
-            if len(new_password) < 8 or not any(c.isupper() for c in new_password) or not any(c.islower() for c in new_password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
-                return JsonResponse({'status': 'error', 'message': 'Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.'}, status=400)
-            
-            if new_password != request.POST.get('confirm_password'):
-                return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
+            new_username = request.POST.get('new_username')
+            if new_username:
+                new_username = new_username.strip()
+                if CustomUser.objects.filter(username=new_username).exclude(id=request.user.id).exists():
+                    return JsonResponse({'status': 'error', 'message': 'Username is already taken.'}, status=400)
+                if new_username != request.user.username:
+                    request.user.username = new_username
+                    changes_made = True
+
+            new_password = request.POST.get('new_password')
+            if new_password:
+                curr_pass = request.POST.get('current_password')
+                if not request.user.check_password(curr_pass):
+                    return JsonResponse({'status': 'error', 'message': 'Current password is incorrect.'}, status=400)
                 
-            request.user.set_password(new_password)
-            changes_made = True
-            password_changed = True
+                if len(new_password) < 8 or not any(c.isupper() for c in new_password) or not any(c.islower() for c in new_password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', new_password):
+                    return JsonResponse({'status': 'error', 'message': 'Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.'}, status=400)
+                
+                if new_password != request.POST.get('confirm_password'):
+                    return JsonResponse({'status': 'error', 'message': 'Passwords do not match.'}, status=400)
+                    
+                request.user.set_password(new_password)
+                changes_made = True
+                password_changed = True
 
-        avatar_url = request.POST.get('avatar_url')
-        if avatar_url:
-            request.user.image = avatar_url
-            changes_made = True
-            avatar_changed = True
-
-        profile_photo = request.FILES.get('profile_photo')
-        if profile_photo:
-            MAX_SIZE = 5 * 1024 * 1024
-            if profile_photo.size > MAX_SIZE:
-                return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 5MB allowed).'}, status=400)
-            
-            from .utils.cloudinary_helpers import update_image
-            if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
+            avatar_url = request.POST.get('avatar_url')
+            if avatar_url:
+                request.user.image = avatar_url
                 changes_made = True
                 avatar_changed = True
+
+            profile_photo = request.FILES.get('profile_photo')
+            if profile_photo:
+                MAX_SIZE = 5 * 1024 * 1024
+                if profile_photo.size > MAX_SIZE:
+                    return JsonResponse({'status': 'error', 'message': 'File is too large (Maximum 5MB allowed).'}, status=400)
+                
+                from .utils.cloudinary_helpers import update_image
+                if update_image(request.user, profile_photo, folder="Neo Learner/profiles"):
+                    changes_made = True
+                    avatar_changed = True
+                else:
+                    return JsonResponse({'status': 'error', 'message': 'Failed to upload photo. Please try again.'}, status=500)
+
+            if changes_made:
+                request.user.save()
+                if password_changed:
+                    update_session_auth_hash(request, request.user)
+
+                if avatar_changed:
+                    request.session.pop('avatar_skipped', None)
+                    photo_cache_key = f"user_has_photo_{request.user.id}"
+                    cache.delete(photo_cache_key)
+
+                if avatar_changed and not new_username and not new_password:
+                    return JsonResponse({'status': 'success', 'message': 'Avatar updated successfully!'})
+
+                return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
             else:
-                return JsonResponse({'status': 'error', 'message': 'Failed to upload photo. Please try again.'}, status=500)
-
-        if changes_made:
-            request.user.save()
-            if password_changed:
-                update_session_auth_hash(request, request.user)
-
-            if avatar_changed:
-                request.session.pop('avatar_skipped', None)
-                photo_cache_key = f"user_has_photo_{request.user.id}"
-                cache.delete(photo_cache_key)
-
-            if avatar_changed and not new_username and not new_password:
-                return JsonResponse({'status': 'success', 'message': 'Avatar updated successfully!'})
-
-            return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
+                return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)
+        except Exception as e:
+            logger.exception(f'Profile update error: {e}')
+            return JsonResponse({'status': 'error', 'message': 'Update failed. Please try again.'}, status=500)
     
     if getattr(request.user, 'is_staff', False) or request.user.user_type == 'ADMIN':
         # 10 Professional Admin Avatars (5 Male, 5 Female)
