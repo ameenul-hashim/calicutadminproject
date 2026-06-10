@@ -25,7 +25,10 @@
 .search-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-size: 0.8rem; outline: none; box-sizing: border-box; margin-bottom: 0.5rem; }
 .search-input:focus { border-color: #6366f1; }
 .msg-options { font-size: 0.65rem; margin-top: 0.2rem; display: flex; gap: 0.4rem; justify-content: flex-end; opacity: 0; transition: opacity 0.2s; }
-.msg:hover .msg-options { opacity: 1; }
+.msg:hover .msg-options, .msg.my .msg-options { opacity: 1; }
+@media (hover: none) and (pointer: coarse) {
+    .msg-options { opacity: 1; }
+}
 .msg-options span { cursor: pointer; padding: 2px; }
 .chat-back { cursor: pointer; font-size: 1.1rem; line-height: 1; padding: 2px 8px 2px 0; opacity: 0.9; }
 .chat-back:hover { opacity: 1; }
@@ -158,6 +161,12 @@
   }
 
   function renderMessage(m) {
+    if (m.is_deleted) {
+      const div = document.createElement('div');
+      div.className = 'msg deleted';
+      div.textContent = 'This message was deleted.';
+      return div;
+    }
     const div = document.createElement('div');
     div.className = m.is_me ? 'msg me' : 'msg other';
     if (!m.is_me && m.sender_name) {
@@ -220,7 +229,7 @@
 
   function startPolling(uid) {
     stopMsgPolling();
-    chatPollInterval = setInterval(() => pollNewMessages(uid), 1500);
+    chatPollInterval = setInterval(() => pollNewMessages(uid), 1000);
   }
 
   function stopMsgPolling() {
@@ -229,7 +238,7 @@
 
   function startListPolling() {
     stopListPolling();
-    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 3000);
+    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 2000);
   }
 
   function stopListPolling() {
@@ -242,18 +251,40 @@
   }
 
   function pollNewMessages(uid) {
-    fetchJson(`/chat/messages/${uid}/?limit=10&offset=0`).then(data => {
+    fetchJson(`/chat/messages/${uid}/?limit=25&offset=0`).then(data => {
       const msgs = data.messages || [];
       if (!msgs.length) return;
-      const latestTs = msgs[msgs.length - 1].raw_ts;
-      if (lastKnownTs[uid] && latestTs <= lastKnownTs[uid]) return;
       const existing = msgList.querySelectorAll('.msg');
-      const existingIds = new Set();
-      existing.forEach(el => { const id = el.dataset.msgUid; if (id) existingIds.add(id); });
+      const existingMap = new Map();
+      existing.forEach(el => { const id = el.dataset.msgUid; if (id) existingMap.set(id, el); });
       let hasNew = false;
+      let hasUpdate = false;
       const fragment = document.createDocumentFragment();
       msgs.forEach(m => {
-        if (!existingIds.has(m.message_uid)) {
+        const existingEl = existingMap.get(m.message_uid);
+        if (existingEl) {
+          if (m.is_deleted && !existingEl.classList.contains('deleted')) {
+            const deleted = document.createElement('div');
+            deleted.className = 'msg deleted';
+            deleted.textContent = 'This message was deleted.';
+            deleted.dataset.msgUid = m.message_uid;
+            existingEl.replaceWith(deleted);
+            hasUpdate = true;
+          } else if (m.is_edited) {
+            const content = existingEl.querySelector('.msg-content');
+            if (content && content.textContent !== m.message) {
+              content.textContent = m.message;
+              const timeDiv = existingEl.querySelector('.msg-time');
+              if (timeDiv && !timeDiv.querySelector('.edited-tag')) {
+                const tag = document.createElement('span');
+                tag.className = 'edited-tag';
+                tag.textContent = '(edited)';
+                timeDiv.insertBefore(tag, timeDiv.firstChild);
+              }
+              hasUpdate = true;
+            }
+          }
+        } else {
           const el = renderMessage(m);
           el.dataset.msgUid = m.message_uid;
           fragment.appendChild(el);
@@ -262,11 +293,11 @@
       });
       if (hasNew) {
         msgList.appendChild(fragment);
-        setTimeout(() => msgList.scrollTop = msgList.scrollHeight, 50);
-        if (msgs.length) lastKnownTs[uid] = msgs[msgs.length - 1].raw_ts;
       }
-      const lastServer = msgs.length ? msgs[msgs.length - 1].raw_ts : 0;
-      if (lastServer > (lastKnownTs[uid] || 0)) lastKnownTs[uid] = lastServer;
+      if (hasNew || hasUpdate) {
+        setTimeout(() => msgList.scrollTop = msgList.scrollHeight, 50);
+      }
+      if (msgs.length) lastKnownTs[uid] = msgs[msgs.length - 1].raw_ts;
     }).catch(() => {});
   }
 
@@ -414,7 +445,7 @@
   }
 
   updateUnreadCounts();
-  setInterval(updateUnreadCounts, 3000);
+  setInterval(updateUnreadCounts, 2000);
   window.addEventListener('beforeunload', stopAllPolling);
 })();
 </script>
