@@ -265,12 +265,6 @@
                 <a href="{% url 'teacher_explore' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_explore' %}active{% endif %}">🌐 Explore Peer Courses</a>
                 <a href="{% url 'teacher_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_deletion_requests' %}active{% endif %}">🗑️ My Deletion Requests</a>
                 <a href="{% url 'student_view_auth' %}" class="nav-link" style="color: #6366f1; background: #eef2ff;">🎓 Student View</a>
-                <a href="#" class="nav-link" onclick="event.preventDefault();toggleChat();" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>💬 Support Chat</span>
-                    {% if support_chat_unread > 0 %}
-                    <span style="background: #ef4444; color: white; border-radius: 9999px; padding: 0.1rem 0.45rem; font-size: 0.65rem; font-weight: 800;">{{ support_chat_unread }}</span>
-                    {% endif %}
-                </a>
                 <a href="{% url 'teacher_edit_profile' %}" class="nav-link {% if request.resolver_match.url_name == 'teacher_edit_profile' %}active{% endif %}">👤 Edit Profile</a>
             </nav>
             <!-- Logout -->
