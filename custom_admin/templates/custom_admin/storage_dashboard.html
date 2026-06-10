@@ -499,7 +499,7 @@
     <!-- Backup Health (live from BackupLog) -->
     <div class="sd-panel" style="margin-bottom:1.5rem;">
         <div class="sd-panel-header">
-            <h2 class="sd-panel-title">☁️ Google Drive Backup Health</h2>
+            <h2 class="sd-panel-title">☁️ MEGA Backup Health</h2>
             {% if drive_configured %}
             <span class="status-badge ok">● Configured</span>
             {% else %}
@@ -526,7 +526,7 @@
         </div>
         {% if not drive_configured %}
         <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:0.75rem;padding:0.75rem 1rem;font-size:0.85rem;color:#991b1b;">
-            <strong>⚠️ Google Drive not configured.</strong> Set <code style="background:#fee;padding:0.1rem 0.3rem;border-radius:4px;">GOOGLE_DRIVE_CREDENTIALS</code> env var on Render to enable automated backups.
+            <strong>⚠️ MEGA not configured.</strong> Set <code style="background:#fee;padding:0.1rem 0.3rem;border-radius:4px;">MEGA_EMAIL</code> and <code style="background:#fee;padding:0.1rem 0.3rem;border-radius:4px;">MEGA_PASSWORD</code> env vars on Render to enable automated backups.
         </div>
         {% endif %}
         {% if recent_backups %}
@@ -569,33 +569,6 @@
         </div>
     </details>
 
-    <!-- Compressed Resources Summary -->
-    <div class="sd-panel" style="margin-bottom:1.5rem;">
-        <div class="sd-panel-header">
-            <h2 class="sd-panel-title">📦 Compressed Course Resources</h2>
-            <span style="font-size:0.85rem;color:#64748b;">{{ total_count }} total items · {{ total_mb }} MB compressed</span>
-        </div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;">
-            <div>
-                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Compressed Size</p>
-                <p style="font-size:1.2rem;font-weight:700;margin:0;">{{ total_mb|floatformat:1 }} MB</p>
-            </div>
-            <div>
-                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Avg File Size</p>
-                <p style="font-size:1.2rem;font-weight:700;margin:0;">
-                    {% if avg_bytes %}{{ avg_bytes|filesizeformat }}{% else %}—{% endif %}
-                </p>
-            </div>
-            <div>
-                <p style="font-size:0.8rem;color:#64748b;margin:0 0 0.25rem;">Capacity Usage</p>
-                <p style="font-size:1.2rem;font-weight:700;margin:0;">{{ usage_percent|floatformat:1 }}%</p>
-            </div>
-        </div>
-        <div class="bar-wrap" style="margin-top:1rem;height:10px;">
-            <div class="bar-fill" style="width:{{ usage_percent }}%;background:{% if usage_percent > 90 %}#ef4444{% elif usage_percent > 75 %}#f59e0b{% else %}#6366f1{% endif %};"></div>
-        </div>
-    </div>
-
     <!-- Recent Resources Table -->
     <div class="sd-panel">
         <div class="sd-panel-header">
@@ -624,9 +597,7 @@
                                 {{ r.resource_type }}
                             </span>
                         </td>
-                        <td>
-                            {% if r.compressed_size %}{{ r.compressed_size|filesizeformat }}{% else %}—{% endif %}
-                        </td>
+                        <td>—</td>
                         <td>{{ r.view_count }} / {{ r.download_count }}</td>
                         <td>
                             {% if r.status == 'APPROVED' %}
