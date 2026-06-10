@@ -83,10 +83,9 @@
         margin: 0;
     }
 
-        /* Laptop/Desktop: charts side by side */
+        /* Desktop: fluid stats, side-by-side charts */
         @media (min-width: 1024px) {
             .premium-charts-grid { grid-template-columns: repeat(2, 1fr) !important; }
-            .premium-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
         }
         /* Tablet: stacked charts, 2-col stats */
         @media (max-width: 1023px) {
@@ -104,7 +103,7 @@
         </style>
 
 
-<div class="analytics-container" style="max-width: 1200px; margin: 0 auto; padding: 1rem 1.5rem;">
+<div class="analytics-container" style="width: 100%; margin: 0; padding: 1rem 1.5rem; box-sizing: border-box;">
     <a href="{% url 'teacher_dashboard' %}" class="back-btn" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem; background: white; color: #64748b; text-decoration: none; border-radius: 0.5rem; font-weight: 600; font-size: 0.8rem; border: 1px solid #e2e8f0; transition: all 0.2s; margin-bottom: 1rem;">
         ← Back to Dashboard
     </a>

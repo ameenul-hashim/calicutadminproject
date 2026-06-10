@@ -167,6 +167,7 @@
       div.appendChild(nameDiv);
     }
     const content = document.createElement('div');
+    content.className = 'msg-content';
     content.textContent = m.message;
     div.appendChild(content);
     const timeDiv = document.createElement('div');
@@ -219,7 +220,7 @@
 
   function startPolling(uid) {
     stopMsgPolling();
-    chatPollInterval = setInterval(() => pollNewMessages(uid), 3000);
+    chatPollInterval = setInterval(() => pollNewMessages(uid), 1500);
   }
 
   function stopMsgPolling() {
@@ -228,7 +229,7 @@
 
   function startListPolling() {
     stopListPolling();
-    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 5000);
+    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 3000);
   }
 
   function stopListPolling() {
@@ -357,8 +358,21 @@
     const formData = new FormData();
     formData.append('message_uid', msgUid);
     formData.append('message', newText);
-    fetchJson('/chat/edit/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => {
-      loadMessages(selectedUid);
+    fetchJson('/chat/edit/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(data => {
+      if (data.status === 'success') {
+        const el = msgList.querySelector(`[data-msg-uid="${msgUid}"]`);
+        if (el) {
+          const content = el.querySelector('.msg-content');
+          if (content) content.textContent = newText;
+          const timeDiv = el.querySelector('.msg-time');
+          if (timeDiv && !timeDiv.querySelector('.edited-tag')) {
+            const tag = document.createElement('span');
+            tag.className = 'edited-tag';
+            tag.textContent = '(edited)';
+            timeDiv.insertBefore(tag, timeDiv.firstChild);
+          }
+        }
+      }
     });
   }
 
@@ -366,8 +380,16 @@
     if (!confirm('Delete this message?')) return;
     const formData = new FormData();
     formData.append('message_uid', msgUid);
-    fetchJson('/chat/delete/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(() => {
-      loadMessages(selectedUid);
+    fetchJson('/chat/delete/', { method: 'POST', body: formData, headers: { 'X-CSRFToken': getCSRF() } }).then(data => {
+      if (data.status === 'success') {
+        const el = msgList.querySelector(`[data-msg-uid="${msgUid}"]`);
+        if (el) {
+          const deleted = document.createElement('div');
+          deleted.className = 'msg deleted';
+          deleted.textContent = 'This message was deleted.';
+          el.replaceWith(deleted);
+        }
+      }
     });
   }
 
@@ -392,7 +414,7 @@
   }
 
   updateUnreadCounts();
-  setInterval(updateUnreadCounts, 5000);
+  setInterval(updateUnreadCounts, 3000);
   window.addEventListener('beforeunload', stopAllPolling);
 })();
 </script>
