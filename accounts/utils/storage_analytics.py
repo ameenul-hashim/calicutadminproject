@@ -51,30 +51,32 @@ def _list_all_files(client, bucket, prefix=""):
 
 
 def get_supabase_signup_stats():
-    """Stats for signup proof PDFs - real-time Supabase API with DB fallback"""
+    """Stats for signup proof PDFs - real-time from active DB records only"""
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     bucket = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
 
     from accounts.models import CustomUser
-    total_users_with_pdf = CustomUser.objects.filter(
-        pdf_path__isnull=False
-    ).exclude(pdf_path='').count()
+    active_paths = set(
+        CustomUser.objects.filter(
+            pdf_path__isnull=False
+        ).exclude(pdf_path='').values_list('pdf_path', flat=True)
+    )
+    total_files = len(active_paths)
 
     client = _init_supabase(url, key)
-    total_files = total_users_with_pdf
     usage_mb = 0
     status = 'connected'
 
-    if client:
+    if client and active_paths:
         try:
             files = _list_all_files(client, bucket)
             total_size = sum(
                 int(f.get('metadata', {}).get('size', 0))
-                for f in files if f.get('metadata')
+                for f in files
+                if f.get('metadata') and f.get('name') in active_paths
             )
             usage_mb = total_size / (1024 * 1024)
-            total_files = max(len(files), total_users_with_pdf)
         except Exception as e:
             logger.error(f"Supabase signup list error: {e}")
 
@@ -98,33 +100,14 @@ def get_supabase_signup_stats():
 
 
 def get_supabase_resource_stats():
-    """Stats for course resources - real-time Supabase API with DB fallback"""
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("SUPABASE_KEY")
-
+    """Stats for course resources - real-time from active DB records only"""
     from accounts.models import CourseResource
     resources = CourseResource.objects.filter(is_deleted=False)
     total_files = resources.count()
-
-    client = _init_supabase(url, key)
-    usage_mb = 0
     status = 'connected'
 
-    if client:
-        try:
-            bucket = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
-            files = _list_all_files(client, bucket)
-            total_size = sum(
-                int(f.get('metadata', {}).get('size', 0))
-                for f in files if f.get('metadata')
-            )
-            usage_mb = total_size / (1024 * 1024)
-        except Exception as e:
-            logger.error(f"Supabase resource list error: {e}")
-
-    total_compressed = resources.aggregate(total_size=models.Sum('compressed_size'))['total_size'] or 0
-    db_usage_mb = total_compressed / (1024 * 1024)
-    usage_mb = max(usage_mb, db_usage_mb)
+    total_bytes = resources.aggregate(total_size=models.Sum('compressed_size'))['total_size'] or 0
+    usage_mb = total_bytes / (1024 * 1024)
 
     percent = min((usage_mb / SUPABASE_LIMIT_MB) * 100, 100) if SUPABASE_LIMIT_MB else 0
     remaining_mb = round(max(SUPABASE_LIMIT_MB - usage_mb, 0), 2)
@@ -438,5 +421,4 @@ def get_all_storage_stats():
         'cloudinary': get_cloudinary_stats(),
         'database': get_database_stats(),
         'firebase_rtdb': get_firebase_rtdb_stats(),
-        'render_ram': get_render_memory_stats(),
     }

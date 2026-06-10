@@ -202,11 +202,11 @@
 {% endblock %}
 
 {% block content %}
-{% with ss=stats.supabase_signup sr=stats.supabase_resources cl=stats.cloudinary db=stats.database fb=stats.firebase_rtdb rd=stats.render_ram %}
+{% with ss=stats.supabase_signup sr=stats.supabase_resources cl=stats.cloudinary db=stats.database fb=stats.firebase_rtdb %}
 <div class="p-1">
 
-    <!-- 5 Main Summary Cards (real-time core services) -->
-    <div class="sd-grid" style="grid-template-columns:repeat(5,1fr);">
+    <!-- 4 Main Summary Cards (real-time core services) -->
+    <div class="sd-grid" style="grid-template-columns:repeat(4,1fr);">
         <!-- Supabase Signup -->
         <div class="sd-card">
             <div class="accent-bar" style="background: {{ ss.color }};"></div>
@@ -259,18 +259,6 @@
             <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ fb.percent }}% used · {{ fb.remaining_mb }} MB balance</p>
         </div>
 
-        <!-- Render RAM -->
-        <div class="sd-card">
-            <div class="accent-bar" style="background: {{ rd.color }};"></div>
-            <h3>{{ rd.emoji }} {{ rd.label }}</h3>
-            <p class="big-value">{{ rd.usage_mb }} <span style="font-size:0.9rem;font-weight:400;color:#94a3b8;">MB</span></p>
-            <p class="sub-text"><strong>{{ rd.remaining_mb }} MB free</strong></p>
-            <p class="kb-text">{{ rd.usage_mb }} MB of {{ rd.limit_mb }} MB total</p>
-            <div class="bar-wrap">
-                <div class="bar-fill" style="width: {{ rd.percent }}%; background: {{ rd.color }};"></div>
-            </div>
-            <p style="margin:0.4rem 0 0;font-size:0.75rem;color:#94a3b8;text-align:right;">{{ rd.percent }}% used · {{ rd.remaining_mb }} MB balance</p>
-        </div>
     </div>
 
     <!-- Charts Row 1: Bar + Doughnut -->
@@ -386,8 +374,8 @@
         </div>
     </div>
 
-    <!-- Third Row: Database + Firebase + Render RAM Details -->
-    <div class="sd-detail-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+    <!-- Third Row: Database + Firebase Details -->
+    <div class="sd-detail-grid" style="grid-template-columns: 1fr 1fr;">
         <div class="sd-panel">
             <div class="sd-panel-header">
                 <h2 class="sd-panel-title"><span class="dot" style="background:{{ db.color }};"></span> {{ db.emoji }} Database</h2>
@@ -464,36 +452,6 @@
             </div>
         </div>
 
-        <div class="sd-panel">
-            <div class="sd-panel-header">
-                <h2 class="sd-panel-title"><span class="dot" style="background:{{ rd.color }};"></span> {{ rd.emoji }} Render RAM</h2>
-                {% if rd.status == 'connected' %}
-                <span class="status-badge ok">● Live</span>
-                {% else %}
-                <span class="status-badge off">● Offline</span>
-                {% endif %}
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Used</span>
-                <span class="stat-value">{{ rd.usage_mb }} MB</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Total</span>
-                <span class="stat-value">{{ rd.limit_mb }} MB</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Free</span>
-                <span class="stat-value">{{ rd.remaining_mb }} MB</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Usage</span>
-                <span class="stat-value">{{ rd.percent }}%</span>
-            </div>
-            <div class="stat-row">
-                <span class="stat-label">Description</span>
-                <span class="stat-value sd-muted">{{ rd.description }}</span>
-            </div>
-        </div>
     </div>
 
     <!-- Backup Health (live from BackupLog) -->
@@ -644,28 +602,24 @@
     const sr_u = {{ stats.supabase_resources.usage_mb }};
     const db_u = {{ stats.database.usage_mb }};
     const fb_u = {{ stats.firebase_rtdb.usage_mb }};
-    const rd_u = {{ stats.render_ram.usage_mb }};
-    const cl_u = {{ stats.cloudinary.usage_mb }};
 
     const ss_r = {{ stats.supabase_signup.remaining_mb }};
     const sr_r = {{ stats.supabase_resources.remaining_mb }};
     const db_r = {{ stats.database.remaining_mb }};
     const fb_r = {{ stats.firebase_rtdb.remaining_mb }};
-    const rd_r = {{ stats.render_ram.remaining_mb }};
 
     const ss_p = {{ stats.supabase_signup.percent }};
     const sr_p = {{ stats.supabase_resources.percent }};
     const db_p = {{ stats.database.percent }};
     const fb_p = {{ stats.firebase_rtdb.percent }};
-    const rd_p = {{ stats.render_ram.percent }};
 
     function fmtMB(v) { return v.toFixed(1) + ' MB'; }
 
-    const mainLabels = ['Signup Proofs', 'Course Resources', 'Render DB', 'Firebase RTDB', 'Render RAM'];
-    const mainUsage = [ss_u, sr_u, db_u, fb_u, rd_u];
-    const mainRem   = [ss_r, sr_r, db_r, fb_r, rd_r];
-    const mainPct   = [ss_p, sr_p, db_p, fb_p, rd_p];
-    const mainColors = ['#6366f1', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6'];
+    const mainLabels = ['Signup Proofs', 'Course Resources', 'Render DB', 'Firebase RTDB'];
+    const mainUsage = [ss_u, sr_u, db_u, fb_u];
+    const mainRem   = [ss_r, sr_r, db_r, fb_r];
+    const mainPct   = [ss_p, sr_p, db_p, fb_p];
+    const mainColors = ['#6366f1', '#10b981', '#3b82f6', '#ef4444'];
 
     // 1. Storage Comparison Bar Chart (MB)
     new Chart(document.getElementById('storageBarChart'), {

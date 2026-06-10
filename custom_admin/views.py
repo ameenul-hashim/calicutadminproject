@@ -1268,19 +1268,11 @@ def admin_view_course_content(request, course_uid):
 def storage_dashboard(request):
     from accounts.utils.storage_analytics import get_all_storage_stats
     from accounts.models import CourseResource, BackupLog
-    from django.db.models import Sum, Count, Q
+    from django.db.models import Count, Q
 
     stats = get_all_storage_stats()
-    sr = stats.get('supabase_resources', {})
     resources = CourseResource.objects.filter(is_deleted=False).select_related('course')
-    total_mb = (sr.get('usage_mb', 0) or 0)
-    total_count = sr.get('total_files', 0)
-    max_mb = 1000
-    usage_percent = min((total_mb / max_mb) * 100, 100) if max_mb else 0
-    total_compressed = resources.aggregate(s=Sum('compressed_size'))['s'] or 0
-    avg_bytes = (total_compressed / total_count) if total_count else 0
 
-    # BackupLog live stats
     backup_stats = BackupLog.objects.aggregate(
         total=Count('id'),
         success=Count('id', filter=Q(status='SUCCESS')),
@@ -1294,10 +1286,6 @@ def storage_dashboard(request):
     return render(request, 'custom_admin/storage_dashboard.html', {
         'stats': stats,
         'resources': resources.order_by('-created_at')[:50],
-        'total_mb': round(total_compressed / (1024 * 1024), 2),
-        'total_count': total_count,
-        'avg_bytes': round(avg_bytes),
-        'usage_percent': round(usage_percent, 1),
         'backup_stats': backup_stats,
         'drive_configured': drive_configured,
         'recent_backups': recent_backups,
