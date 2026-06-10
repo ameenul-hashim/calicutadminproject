@@ -38,44 +38,46 @@ def _init_supabase(url, key):
         return None
 
 
-def _list_all_files(client, bucket, prefix=""):
+def _list_files_in_dir(client, bucket, prefix):
+    """List files (not subdirectories) in a given prefix path."""
     try:
-        if prefix:
-            files = client.storage.from_(bucket).list(prefix)
-        else:
-            files = client.storage.from_(bucket).list()
-        return files or []
+        return client.storage.from_(bucket).list(prefix) or []
     except Exception as e:
         logger.error(f"Supabase list error (bucket={bucket}, prefix={prefix}): {e}")
         return []
 
 
 def get_supabase_signup_stats():
-    """Stats for signup proof PDFs - real-time from active DB records only"""
+    """Stats for signup proof PDFs — matches DB records to Supabase files by directory"""
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("SUPABASE_KEY")
     bucket = os.getenv("SUPABASE_BUCKET", "calicutadminpanelpdf")
 
     from accounts.models import CustomUser
-    active_paths = set(
-        CustomUser.objects.filter(
-            pdf_path__isnull=False
-        ).exclude(pdf_path='').values_list('pdf_path', flat=True)
-    )
-    total_files = len(active_paths)
+    active_qs = CustomUser.objects.filter(
+        pdf_path__isnull=False
+    ).exclude(pdf_path='').values_list('pdf_path', flat=True)
 
+    from collections import defaultdict
+    dirs = defaultdict(set)
+    for full_path in active_qs:
+        parts = full_path.rsplit('/', 1)
+        if len(parts) == 2:
+            dirs[parts[0]].add(parts[1])
+
+    total_files = len(active_qs)
     client = _init_supabase(url, key)
     usage_mb = 0
     status = 'connected'
 
-    if client and active_paths:
+    if client and dirs:
         try:
-            files = _list_all_files(client, bucket)
-            total_size = sum(
-                int(f.get('metadata', {}).get('size', 0))
-                for f in files
-                if f.get('metadata') and f.get('name') in active_paths
-            )
+            total_size = 0
+            for dirname, basenames in dirs.items():
+                files = _list_files_in_dir(client, bucket, dirname)
+                for f in files or []:
+                    if f.get('metadata') and f.get('name') in basenames:
+                        total_size += int(f['metadata'].get('size', 0))
             usage_mb = total_size / (1024 * 1024)
         except Exception as e:
             logger.error(f"Supabase signup list error: {e}")
