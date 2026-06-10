@@ -229,7 +229,7 @@
 
   function startPolling(uid) {
     stopMsgPolling();
-    chatPollInterval = setInterval(() => pollNewMessages(uid), 1000);
+    chatPollInterval = setInterval(() => pollNewMessages(uid), 3000);
   }
 
   function stopMsgPolling() {
@@ -238,7 +238,7 @@
 
   function startListPolling() {
     stopListPolling();
-    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 2000);
+    listPollInterval = setInterval(() => { if (!selectedUid) loadChatList(searchInput.value); }, 4000);
   }
 
   function stopListPolling() {
@@ -445,7 +445,7 @@
   }
 
   updateUnreadCounts();
-  setInterval(updateUnreadCounts, 2000);
+  setInterval(updateUnreadCounts, 4000);
   window.addEventListener('beforeunload', stopAllPolling);
 })();
 </script>

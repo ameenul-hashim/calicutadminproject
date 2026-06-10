@@ -265,7 +265,7 @@ class SlowQueryMonitorMiddleware:
         start = _time.time()
         response = self.get_response(request)
         duration = _time.time() - start
-        if duration > 1.0:
+        if duration > 2.0:
             slow_query_logger.warning(
                 "SLOW_REQUEST: %.2fs %s %s | user=%s",
                 duration,
