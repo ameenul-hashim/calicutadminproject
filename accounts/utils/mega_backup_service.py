@@ -40,12 +40,12 @@ def _ensure_path(mega, path_parts):
         current = ''
         for part in path_parts:
             test_path = f"{current}/{part}" if current else part
-            try:
-                found = mega.find(test_path, exclude_deleted=True)
-                if found is None:
-                    raise ValueError('Not found')
-            except Exception:
-                mega.create_folder(part, current if current else None)
+            existing_id = mega.find_path_descriptor(test_path)
+            if existing_id is None:
+                parent_id = mega.find_path_descriptor(current) if current else None
+                created = mega.create_folder(part, parent_id)
+                if not created or part not in created:
+                    raise ValueError(f'Failed to create folder: {part}')
             current = test_path
         return current
     except Exception as e:
@@ -58,13 +58,15 @@ def upload_bytes(mega, file_bytes, filename, folder_path):
     Returns ('mega://<full_path>', None) on success, (None, error) on failure."""
     temp_path = None
     try:
+        if not folder_path:
+            return None, 'MEGA folder path is empty'
         fd, temp_path = tempfile.mkstemp(suffix=f'_{filename}')
         with os.fdopen(fd, 'wb') as f:
             f.write(file_bytes)
-        folder = mega.find(folder_path)
-        if folder is None:
+        node_id = mega.find_path_descriptor(folder_path)
+        if node_id is None:
             return None, f'MEGA folder not found: {folder_path}'
-        mega.upload(temp_path, folder)
+        mega.upload(temp_path, dest=node_id)
         dest = f"mega://{folder_path}/{filename}"
         logger.info(f'Uploaded {filename} to MEGA ({dest})')
         return dest, None
