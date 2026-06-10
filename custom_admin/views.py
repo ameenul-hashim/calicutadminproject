@@ -2517,7 +2517,7 @@ def _backup_card_stats():
     resource_success = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE', status='SUCCESS').count()
     resource_rate = (resource_success / (resource_total or 1)) * 100
 
-    # Drive health check
+    # Drive health check (MEGA)
     from accounts.utils.drive_backup_service import _mega_configured, _get_drive_service
     drive_configured = _mega_configured()
     drive_available = False
