@@ -46,9 +46,11 @@ https://github.com/ameenul-hashim/calicutadminproject.git
 - Emergency rollback = Render manual deploy pinned to `stable-may19-rollback`.
 
 ### Recent Git History (last meaningful commits)
-- `12283c8` — Firebase RTDB cleanup on user deletion (Phase 6)
-- `e20eafe` — Remove reset endpoint, platform reset complete
-- `ba23686` — Implemented resource deletion workflow (2026-05-29)
+- `77a86b4` — Fix teacher panel layout, JS error handlers, localhost CSRF origins
+- `ad4ec56` — Fix BACKUP_VERIFY_SHA256 comparison: handle bool config value
+- `3c923ce` — Fix MEGA upload: use node IDs instead of string paths/tuples
+- `3a8835f` — Fix MEGA login crash on Python 3.11+: asyncio.coroutine shim
+- `f46ccb5` — Fix backup center MEGA health check: use _mega_configured
 
 ---
 

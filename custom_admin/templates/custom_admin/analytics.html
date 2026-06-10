@@ -12,7 +12,7 @@
     .dashboard-layout { display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
     .stats-grid {
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(3, 1fr);
         gap: 1rem;
         margin-bottom: 1.5rem;
     }
@@ -128,12 +128,17 @@
 <div class="dashboard-layout">
     <div class="full-width-content">
 
-        <!-- ===== CARD ROW (5 Cards) ===== -->
+        <!-- ===== CARD ROW (6 Cards) ===== -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #6366f1, #818cf8);">👥</div>
                 <h3>Active Users</h3>
                 <p class="value">{{ active_users }}</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: linear-gradient(135deg, #0ea5e9, #38bdf8);">🎓</div>
+                <h3>Active Students</h3>
+                <p class="value">{{ active_students }}</p>
             </div>
             <div class="stat-card">
                 <div class="stat-icon" style="background: linear-gradient(135deg, #059669, #10b981);">👨‍🏫</div>

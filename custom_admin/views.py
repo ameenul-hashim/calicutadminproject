@@ -658,6 +658,7 @@ def analytics_view(request):
     # ===== CARD METRICS =====
     active_users = CustomUser.objects.filter(status='ACTIVE').count()
     active_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
+    active_students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE').count()
     pdf_sessions = CourseResource.objects.filter(status='APPROVED', is_deleted=False).count()
     enrolled_courses = Enrollment.objects.count()
     top_educators_qs = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').annotate(
@@ -723,6 +724,7 @@ def analytics_view(request):
 
     context = {
         'active_users': active_users,
+        'active_students': active_students,
         'active_teachers': active_teachers,
         'pdf_sessions': pdf_sessions,
         'enrolled_courses': enrolled_courses,
