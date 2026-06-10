@@ -270,15 +270,15 @@
                     </div>
                     {% if failed_backups > 0 %}
                     <div class="alert alert-warning mt-4 rounded-4 border-0 small py-2">
-                        <i class="fas fa-exclamation-triangle me-2"></i><strong>{{ failed_backups }} resource(s)</strong> have failed backup to Google Drive.
+                        <i class="fas fa-exclamation-triangle me-2"></i><strong>{{ failed_backups }} resource(s)</strong> have failed backup to MEGA.
                         {% if not drive_configured %}
-                        <br><code class="x-small">GOOGLE_DRIVE_CREDENTIALS</code> env var not set — backups will keep failing until configured.
+                        <br><code class="x-small">MEGA_EMAIL / MEGA_PASSWORD</code> env vars not set — backups will keep failing until configured.
                         {% endif %}
                     </div>
                     {% endif %}
                     {% if not drive_configured and failed_backups == 0 %}
                     <div class="alert alert-info mt-4 rounded-4 border-0 small py-2">
-                        <i class="fas fa-info-circle me-2"></i>Google Drive backup not configured. Set <code>GOOGLE_DRIVE_CREDENTIALS</code> env var to enable Supabase storage offload.
+                        <i class="fas fa-info-circle me-2"></i>MEGA backup not configured. Set <code>MEGA_EMAIL</code> and <code>MEGA_PASSWORD</code> env vars to enable off-site backups.
                     </div>
                     {% endif %}
                 </div>

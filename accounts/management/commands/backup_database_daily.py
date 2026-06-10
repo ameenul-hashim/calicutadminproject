@@ -53,7 +53,7 @@ class Command(BaseCommand):
             service = _get_drive_service()
             if not service:
                 log.status = 'FAILED'
-                log.error_message = 'Google Drive not configured (GOOGLE_DRIVE_CREDENTIALS missing)'
+                log.error_message = 'MEGA not configured (MEGA_EMAIL / MEGA_PASSWORD missing)'
                 log.save(update_fields=['status', 'error_message', 'completed_at'])
                 self.stdout.write(self.style.ERROR(log.error_message))
                 return

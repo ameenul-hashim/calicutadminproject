@@ -19,21 +19,23 @@ def _get_config(key, default=None):
 
 def backup_signup_pdf(user_id, pdf_path, pdf_bytes):
     """Backup a signup proof PDF to Google Drive in a background thread.
-    Never blocks the signup flow — always returns immediately."""
+    Never blocks the signup flow — always returns immediately.
+    Non-daemon thread ensures upload completes even after request ends."""
     threading.Thread(
         target=_do_backup_signup_pdf,
         args=(user_id, pdf_path, pdf_bytes),
-        daemon=True
+        daemon=False
     ).start()
 
 
 def backup_teacher_resource(resource_id, supabase_path, file_bytes, course_title, chapter, category):
     """Backup a teacher resource PDF to Google Drive in a background thread.
-    Never blocks the upload flow — always returns immediately."""
+    Never blocks the upload flow — always returns immediately.
+    Non-daemon thread ensures upload completes even after request ends."""
     threading.Thread(
         target=_do_backup_teacher_resource,
         args=(resource_id, supabase_path, file_bytes, course_title, chapter, category),
-        daemon=True
+        daemon=False
     ).start()
 
 

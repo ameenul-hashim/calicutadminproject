@@ -1287,8 +1287,8 @@ def storage_dashboard(request):
         failed=Count('id', filter=Q(status='FAILED')),
         pending=Count('id', filter=Q(status__in=['PENDING', 'RUNNING', 'UPLOADING', 'VERIFYING'])),
     )
-    from accounts.utils.drive_backup_service import _load_credentials_json
-    drive_configured = _load_credentials_json()[0] is not None
+    from accounts.utils.drive_backup_service import _mega_configured
+    drive_configured = _mega_configured()
     recent_backups = BackupLog.objects.order_by('-created_at')[:5]
 
     return render(request, 'custom_admin/storage_dashboard.html', {
@@ -1804,8 +1804,8 @@ def enterprise_monitor(request):
         pass
 
     try:
-        from accounts.utils.drive_backup_service import _load_credentials_json
-        context['drive_configured'] = _load_credentials_json()[0] is not None
+        from accounts.utils.drive_backup_service import _mega_configured
+        context['drive_configured'] = _mega_configured()
     except Exception:
         pass
 
@@ -1979,8 +1979,8 @@ def system_audit_view(request):
 
     drive_configured = False
     try:
-        from accounts.utils.drive_backup_service import _load_credentials_json
-        drive_configured = _load_credentials_json()[0] is not None
+    from accounts.utils.drive_backup_service import _mega_configured
+    drive_configured = _mega_configured()
     except Exception:
         pass
 
@@ -2877,13 +2877,12 @@ def _backup_card_stats():
     resource_rate = (resource_success / (resource_total or 1)) * 100
 
     # Drive health check
-    from accounts.utils.drive_backup_service import _load_credentials_json
-    drive_configured = _load_credentials_json()[0] is not None
+    from accounts.utils.drive_backup_service import _mega_configured, _get_drive_service
+    drive_configured = _mega_configured()
     drive_available = False
-    drive_health = 'UNKNOWN'
+    drive_health = 'NOT_CONFIGURED'
     if drive_configured:
         try:
-            from accounts.utils.drive_backup_service import _get_drive_service
             service = _get_drive_service()
             drive_available = service is not None
             drive_health = 'CONNECTED' if drive_available else 'UNAVAILABLE'
@@ -2999,16 +2998,23 @@ def backup_center(request):
 @ratelimit(key='user', rate='10/hour', method='POST', block=True)
 def run_database_backup(request):
     """Manual trigger for database backup."""
+    from django.core.management import call_command
+    from accounts.models import BackupLog
+    from io import StringIO
     try:
-        from django.core.management import call_command
-        from io import StringIO
+        last_id = BackupLog.objects.filter(backup_type='DATABASE').values_list('id', flat=True).first() or 0
         buf = StringIO()
         call_command('backup_database_daily', '--force', stdout=buf)
         output = buf.getvalue()
-        messages.success(request, 'Database backup completed.')
-        logger.info(f'Manual database backup triggered by {request.user.username}')
+        latest = BackupLog.objects.filter(backup_type='DATABASE', id__gt=last_id).order_by('-id').first()
+        if latest and latest.status == 'FAILED':
+            messages.error(request, f'Database backup failed: {latest.error_message or "Unknown error"}')
+            logger.error(f'Manual database backup failed: {latest.error_message}')
+        else:
+            messages.success(request, 'Database backup completed.')
+            logger.info(f'Manual database backup triggered by {request.user.username}')
     except Exception as e:
-        messages.error(request, f'Database backup failed: {e}')
+        messages.error(request, f'Database backup error: {e}')
         logger.error(f'Manual database backup error: {e}')
     return redirect('backup_center')
 

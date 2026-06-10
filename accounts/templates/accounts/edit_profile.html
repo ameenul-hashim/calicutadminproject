@@ -97,7 +97,8 @@
         {% include 'includes/messages.html' %}
         {% include 'includes/validation_engine.html' %}
 
-        <form method="POST" id="profileForm">
+        <!-- ════ Form 1: Avatar Update ════ -->
+        <form method="POST" id="avatarForm">
             {% csrf_token %}
             
             <div class="photo-preview" id="previewContainer">
@@ -133,75 +134,84 @@
                 <div class="readonly-field">{{ user.full_name }}</div>
             </div>
 
-            <div id="credSection">
-                <!-- ════ Username Section ════ -->
-                <div style="margin-top: 1.5rem; padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Username</h3>
-                    <p style="font-size: 0.85rem; color: #3b82f6; margin: 0 0 1rem;">Current username is <strong>@{{ user.username }}</strong> — type below to change it.</p>
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label for="new_username">New Username</label>
-                        <input type="text" id="new_username" name="new_username" value="{{ user.username }}"
-                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem;">
-                        <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
-                        <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Only letters, numbers, and @/./+/-/_ allowed.</p>
-                    </div>
-                </div>
-
-                <!-- ════ Password Section ════ -->
-                <div style="margin-top: 1.5rem; padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #991b1b; margin: 0 0 0.25rem;">🔒 Password</h3>
-                    <p style="font-size: 0.85rem; color: #dc2626; margin: 0 0 1rem;">Leave all fields blank to keep your current password.</p>
-
-                    <div class="form-group">
-                        <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
-                        <div style="position: relative;">
-                            <input type="password" id="current_password" name="current_password" placeholder="Verify your identity"
-                                   style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                            <span onclick="togglePassword('current_password', 'eye-current')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                                <svg id="eye-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="new_password">New Password</label>
-                        <div style="position: relative;">
-                            <input type="password" id="new_password" name="new_password" placeholder="Create a strong password"
-                                   style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                            <span onclick="togglePassword('new_password', 'eye-new')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                                <svg id="eye-new" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="confirm_password">Confirm New Password</label>
-                        <div style="position: relative;">
-                            <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password"
-                                   style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
-                            <span onclick="togglePassword('confirm_password', 'eye-confirm')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
-                                <svg id="eye-confirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            </span>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 0.75rem; background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #fecaca;">
-                        <p style="margin: 0; font-size: 0.75rem; color: #b91c1c; font-weight: 600;">Security Requirements:</p>
-                        <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.7rem; color: #b91c1c;">
-                            <li>Minimum 8 characters long</li>
-                            <li>At least one UPPERCASE letter</li>
-                            <li>At least one lowercase letter</li>
-                            <li>At least one SPECIAL character (!@#$%^ etc.)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <button type="submit" class="btn-save" id="submitBtn" style="margin-top: 2rem;">Update Profile</button>
+            <button type="submit" class="btn-save" id="avatarSubmitBtn" style="margin-top: 2rem;">🖼️ Update Avatar</button>
+            {% if not user.image and not user.profile_photo %}
             <div style="text-align: center; margin-top: 0.75rem;">
                 <a href="javascript:void(0)" id="skipBtn" style="color: #94a3b8; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer;">Skip</a>
             </div>
+            {% endif %}
             <a href="{% url 'profile' %}" class="btn-back">← Back to Profile</a>
+        </form>
+
+        <!-- ════ Form 2: Manage Credential ════ -->
+        <hr style="margin: 2rem 0; border: 0; border-top: 2px dashed #e2e8f0;">
+        <form method="POST" id="credForm">
+            {% csrf_token %}
+            <h3 style="font-size: 1.3rem; font-weight: 800; color: #1e293b; margin-bottom: 1rem;">🔐 Manage Credential</h3>
+
+            <!-- Username Section -->
+            <div style="padding: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 1rem; margin-bottom: 1.5rem;">
+                <h4 style="font-size: 1rem; font-weight: 700; color: #1e40af; margin: 0 0 0.25rem;">👤 Change Username</h4>
+                <p style="font-size: 0.85rem; color: #3b82f6; margin: 0 0 1rem;">Current username is <strong>@{{ user.username }}</strong></p>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label for="new_username">New Username</label>
+                    <input type="text" id="new_username" name="new_username" placeholder="Enter new username" value=""
+                           style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #93c5fd; font-size: 0.95rem;">
+                    <div id="usernameStatus" style="font-size: 0.75rem; margin-top: 0.3rem;"></div>
+                    <p style="font-size: 0.75rem; color: #64748b; margin: 0.5rem 0 0;">Leave blank to keep current. Only letters, numbers, and @/./+/-/_ allowed.</p>
+                </div>
+            </div>
+
+            <!-- Password Section -->
+            <div style="padding: 1.5rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 1rem; margin-bottom: 1.5rem;">
+                <h4 style="font-size: 1rem; font-weight: 700; color: #991b1b; margin: 0 0 0.25rem;">🔒 Change Password</h4>
+                <p style="font-size: 0.85rem; color: #dc2626; margin: 0 0 1rem;">Leave all fields blank to keep your current password.</p>
+
+                <div class="form-group">
+                    <label for="current_password">Current Password <span style="color:#ef4444;">*</span></label>
+                    <div style="position: relative;">
+                        <input type="password" id="current_password" name="current_password" placeholder="Verify your identity"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
+                        <span onclick="togglePassword('current_password', 'eye-current')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
+                            <svg id="eye-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="new_password">New Password</label>
+                    <div style="position: relative;">
+                        <input type="password" id="new_password" name="new_password" placeholder="Create a strong password"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
+                        <span onclick="togglePassword('new_password', 'eye-new')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
+                            <svg id="eye-new" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm_password">Confirm New Password</label>
+                    <div style="position: relative;">
+                        <input type="password" id="confirm_password" name="confirm_password" placeholder="Repeat new password"
+                               style="width: 100%; padding: 0.8rem 1.2rem; border-radius: 0.8rem; border: 1px solid #fca5a5; font-size: 0.95rem; padding-right: 2.5rem;">
+                        <span onclick="togglePassword('confirm_password', 'eye-confirm')" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #94a3b8; display: flex; align-items: center;">
+                            <svg id="eye-confirm" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </span>
+                    </div>
+                </div>
+
+                <div style="margin-top: 0.75rem; background: #fff; padding: 1rem; border-radius: 0.5rem; border: 1px solid #fecaca;">
+                    <p style="margin: 0; font-size: 0.75rem; color: #b91c1c; font-weight: 600;">Security Requirements:</p>
+                    <ul style="margin: 0.5rem 0 0 0; padding-left: 1.25rem; font-size: 0.7rem; color: #b91c1c;">
+                        <li>Minimum 8 characters long</li>
+                        <li>At least one UPPERCASE letter</li>
+                        <li>At least one lowercase letter</li>
+                        <li>At least one SPECIAL character (!@#$%^ etc.)</li>
+                    </ul>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save" id="credSubmitBtn">🔐 Update Credentials</button>
         </form>
     </div>
 
@@ -249,8 +259,10 @@
         const avatarUrlInput = document.getElementById('avatarUrlInput');
         const previewImg = document.getElementById('previewImg');
         const previewContainer = document.getElementById('previewContainer');
-        const submitBtn = document.getElementById('submitBtn');
-        const profileForm = document.getElementById('profileForm');
+        const avatarForm = document.getElementById('avatarForm');
+        const credForm = document.getElementById('credForm');
+        const avatarSubmitBtn = document.getElementById('avatarSubmitBtn');
+        const credSubmitBtn = document.getElementById('credSubmitBtn');
         const skipBtn = document.getElementById('skipBtn');
 
         avatarOptions.forEach(option => {
@@ -268,26 +280,60 @@
             });
         });
 
-        profileForm.addEventListener('submit', function(e) {
+        // ─── Form 1: Avatar submit ───
+        avatarForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            
-            const usernameField = document.getElementById('new_username');
-            const origUsername = '{{ user.username }}';
-            const usernameChanged = usernameField ? (usernameField.value.trim() !== origUsername) : false;
-            const newPasswordEl = document.getElementById('new_password');
-            const passEntered = newPasswordEl ? newPasswordEl.value : '';
-
-            if (!avatarUrlInput.value && !document.getElementById('previewImg') && !usernameChanged && !passEntered) {
-                showToast('No changes detected.', 'error');
+            if (!avatarUrlInput.value) {
+                showToast('Please select an avatar first.', 'error');
                 return;
             }
-            
-            const newPassVal = newPasswordEl ? newPasswordEl.value : '';
+            avatarSubmitBtn.disabled = true;
+            avatarSubmitBtn.style.opacity = '0.5';
+            avatarSubmitBtn.innerText = 'Updating...';
+            const formData = new FormData(this);
+            fetch(window.location.href, {
+                method: 'POST', body: formData,
+                headers: {'X-Requested-With': 'XMLHttpRequest',
+                          'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
+            })
+            .then(r => {
+                if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
+                return r.json();
+            })
+            .then(d => {
+                if (d.status === 'success') {
+                    showToast(d.message, 'success');
+                    setTimeout(() => window.location.href = "{% url 'dashboard' %}", 1500);
+                } else {
+                    showToast(d.message || 'Failed', 'error');
+                    avatarSubmitBtn.disabled = false;
+                    avatarSubmitBtn.style.opacity = '1';
+                    avatarSubmitBtn.innerText = '🖼️ Update Avatar';
+                }
+            })
+            .catch(err => {
+                showToast('Error: ' + err.message, 'error');
+                avatarSubmitBtn.disabled = false;
+                avatarSubmitBtn.style.opacity = '1';
+                avatarSubmitBtn.innerText = '🖼️ Update Avatar';
+            });
+        });
+
+        // ─── Form 2: Credentials submit ───
+        credForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newUsername = document.getElementById('new_username').value.trim();
+            const newPassVal = document.getElementById('new_password').value;
+            const confirmVal = document.getElementById('confirm_password').value;
+            const currentPassEl = document.getElementById('current_password');
+
+            if (!newUsername && !newPassVal) {
+                showToast('No changes to save.', 'error');
+                return;
+            }
             if (newPassVal) {
-                const currentPassEl = document.getElementById('current_password');
-                const confirmPassEl = document.getElementById('confirm_password');
                 if (!currentPassEl || !currentPassEl.value) {
-                    showToast('Current password is required to set a new password.', 'error');
+                    showToast('Current password is required.', 'error');
                     return;
                 }
                 if (newPassVal.length < 8) {
@@ -298,56 +344,40 @@
                     showToast('Password must contain Uppercase, Lowercase, and a Special character.', 'error');
                     return;
                 }
-                if (!confirmPassEl || newPassVal !== confirmPassEl.value) {
-                    showToast('New passwords do not match.', 'error');
+                if (newPassVal !== confirmVal) {
+                    showToast('Passwords do not match.', 'error');
                     return;
                 }
             }
-            
-            submitBtn.disabled = true;
-            submitBtn.style.opacity = '0.5';
-            submitBtn.innerText = 'Updating...';
-
-            // don't send username if unchanged
-            if (!usernameChanged) {
-                if (usernameField) usernameField.value = '';
-            }
-
+            credSubmitBtn.disabled = true;
+            credSubmitBtn.style.opacity = '0.5';
+            credSubmitBtn.innerText = 'Updating...';
             const formData = new FormData(this);
-            
             fetch(window.location.href, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-                }
+                method: 'POST', body: formData,
+                headers: {'X-Requested-With': 'XMLHttpRequest',
+                          'X-CSRFToken': this.querySelector('[name=csrfmiddlewaretoken]').value}
             })
             .then(r => {
                 if (!r.ok) { return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0, 200)); }); }
                 return r.json();
             })
-            .then(data => {
-                if (data.status === 'success') {
-                    showToast(data.message, 'success');
-                    setTimeout(() => {
-                        window.location.href = "{% url 'dashboard' %}";
-                    }, 1500);
-                } else if (data.status === 'skip') {
-                    window.location.href = data.redirect;
+            .then(d => {
+                if (d.status === 'success') {
+                    showToast(d.message, 'success');
+                    setTimeout(() => window.location.href = "{% url 'dashboard' %}", 1500);
                 } else {
-                    showToast(data.message || 'Update failed', 'error');
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '1';
-                    submitBtn.innerText = 'Update Avatar';
+                    showToast(d.message || 'Failed', 'error');
+                    credSubmitBtn.disabled = false;
+                    credSubmitBtn.style.opacity = '1';
+                    credSubmitBtn.innerText = '🔐 Update Credentials';
                 }
             })
             .catch(err => {
-                console.error('Error:', err);
                 showToast('Error: ' + err.message, 'error');
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                submitBtn.innerText = 'Update Avatar';
+                credSubmitBtn.disabled = false;
+                credSubmitBtn.style.opacity = '1';
+                credSubmitBtn.innerText = '🔐 Update Credentials';
             });
         });
 

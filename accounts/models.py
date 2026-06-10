@@ -656,7 +656,7 @@ def cleanup_course_resource_files(sender, instance, **kwargs):
 
 @receiver(post_save, sender=CustomUser)
 def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
-    """Trigger Google Drive backup when a new signup PDF is uploaded."""
+    """Trigger MEGA backup when a new signup PDF is uploaded."""
     if not instance.pdf_path:
         return
     if not created and not kwargs.get('update_fields'):
@@ -676,7 +676,7 @@ def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
 
 @receiver(post_save, sender=CourseResource)
 def backup_teacher_resource_on_save(sender, instance, created, **kwargs):
-    """Trigger Google Drive backup when a new teacher resource is uploaded."""
+    """Trigger MEGA backup when a new teacher resource is uploaded."""
     if not instance.firebase_file_path:
         return
     if not created:

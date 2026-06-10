@@ -15,7 +15,7 @@ class RecoverySimulator:
         print("🚨 DR SIMULATION: Injecting Storage Outage...")
         try:
             # Check if circuit-breaker logic handles the outage
-            # In real production, we verify if fallback (Google Drive) is reachable
+            # In real production, we verify if fallback (MEGA) is reachable
             # For simulation, we check heartbeat
             start_time = time.time()
             # If heartbeat fails, trigger alert
@@ -31,9 +31,9 @@ class RecoverySimulator:
 
     @staticmethod
     def simulate_db_corruption():
-        """Verifies if the platform can recover from a hypothetical DB corruption using GDrive snapshots."""
+        """Verifies if the platform can recover from a hypothetical DB corruption using MEGA snapshots."""
         print("🚨 DR SIMULATION: Verifying Backup Integrity...")
-        # Check if the latest snapshot in GDrive is valid (Mocked check)
+        # Check if the latest snapshot in MEGA is valid (Mocked check)
         # In real scenario, we pull the manifest.json
         return {
             "backup_integrity": "100%",

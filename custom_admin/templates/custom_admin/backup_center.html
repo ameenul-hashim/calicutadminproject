@@ -246,9 +246,9 @@
         </div>
     </div>
 
-    <!-- Google Drive Health -->
+    <!-- MEGA Backup Health -->
     <div class="backup-card">
-        <div class="label">☁️ Google Drive</div>
+        <div class="label">☁️ MEGA Backup</div>
         <div class="value" style="font-size: 1.25rem;">
             {% if stats.drive_health == 'CONNECTED' %}
                 <span style="color: #10b981;">✅ Connected</span>
@@ -260,9 +260,9 @@
         </div>
         <div class="sub">
             {% if stats.drive_configured %}
-                Service account configured
+                MEGA credentials configured
             {% else %}
-                Set GOOGLE_DRIVE_CREDENTIALS env var
+                Set MEGA_EMAIL / MEGA_PASSWORD env vars
             {% endif %}
         </div>
     </div>
