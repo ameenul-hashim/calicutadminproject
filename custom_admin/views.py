@@ -650,11 +650,6 @@ def analytics_view(request):
     from django.db.models import Count, Q, Sum
     from accounts.models import CourseResource
 
-    cache_key = 'admin_analytics_data'
-    cached = cache.get(cache_key)
-    if cached:
-        return render(request, 'custom_admin/analytics.html', cached)
-
     # ===== CARD METRICS =====
     active_users = CustomUser.objects.filter(status='ACTIVE').count()
     active_teachers = CustomUser.objects.filter(user_type='TEACHER', status='ACTIVE').count()
@@ -745,7 +740,6 @@ def analytics_view(request):
         'pending_students_count': pending_students_count,
         'pending_teachers_count': pending_teachers_count,
     }
-    cache.set(cache_key, context, 60)
     return render(request, 'custom_admin/analytics.html', context)
 
 @user_passes_test(is_admin, login_url='admin_login')
