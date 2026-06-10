@@ -326,12 +326,13 @@ def accept_user(request, user_uid):
         except Exception:
             pass
 
-        messages.success(request, f"✅ {user.user_type.title()} {user.username} has been approved.")
+        messages.success(request, f"{user.user_type.title()} {user.username} has been approved.")
         if user.user_type == 'TEACHER':
             return redirect('pending_teachers')
         return redirect('pending_users')
     except Exception as e:
-        messages.error(request, f"⚠️ Could not approve user: {str(e)}")
+        logger.exception(f"Could not approve user: {e}")
+        messages.error(request, "Could not approve user. Please try again.")
         return redirect('pending_users')
 
 @ratelimit(key='user', rate='60/hour', method='POST', block=True)
@@ -375,14 +376,15 @@ def decline_user(request, user_uid):
                 # Fallback: just delete the user if cleanup fails
                 user.delete()
 
-            messages.warning(request, f"✔ {user_type.title()} {username} has been rejected and PERMANENTLY purged from the database.")
+            messages.warning(request, f"{user_type.title()} {username} has been rejected and purged from the database.")
             if user_type == 'TEACHER':
                 return redirect('pending_teachers')
             return redirect('pending_users')
 
         return render(request, 'custom_admin/decline_reason.html', {'target_user': user})
     except Exception as e:
-        messages.error(request, f"⚠️ Could not reject user: {str(e)}")
+        logger.exception(f"Could not reject user: {e}")
+        messages.error(request, "Could not reject user. Please try again.")
         return redirect('pending_users')
 
 @ratelimit(key='user', rate='60/hour', method='POST', block=True)
@@ -531,7 +533,7 @@ def create_student_admin(request):
             user_type='STUDENT',
             pdf_path=pdf_url
         )
-        messages.success(request, f"✅ Account for {username} created successfully!")
+        messages.success(request, f"Account for {username} created successfully!")
         return redirect('manage_students')
             
     return render(request, 'custom_admin/create_student.html')
@@ -640,7 +642,7 @@ def create_teacher_admin(request):
             user_type='TEACHER',
             pdf_path=pdf_url
         )
-        messages.success(request, f"✅ Account for {username} created successfully!")
+        messages.success(request, f"Account for {username} created successfully!")
         return redirect('manage_teachers')
             
     return render(request, 'custom_admin/create_teacher.html')
@@ -1014,7 +1016,7 @@ def approve_lesson(request, lesson_uid):
             lesson.video_url = f"https://www.youtube.com/watch?v={lesson.youtube_video_id}"
         except Exception as e:
             logger.error(f"Failed to change YouTube visibility for {lesson.youtube_video_id}: {e}")
-            messages.error(request, f"Lesson approved but failed to update YouTube visibility: {e}")
+            messages.warning(request, "Lesson approved but YouTube visibility could not be updated. The video may remain private.")
             return redirect('admin_view_course_content', course_uid=lesson.course.uid)
         
     lesson.status = 'APPROVED'
@@ -1091,7 +1093,8 @@ def approve_resource(request, resource_uid):
                     resource.compressed_size = len(comp_bytes)
                     resource.original_size = len(original_bytes)
         except Exception as e:
-            messages.warning(request, f"Compression skipped: {str(e)}")
+            logger.warning(f"PDF compression skipped: {e}")
+            messages.warning(request, "PDF compression could not be completed. The original file will be used.")
 
     if is_edit_approval:
         # Apply all file properties from pending fields
@@ -1305,7 +1308,7 @@ def admin_delete_course_secure(request, course_uid):
             course.is_approved = False
             course.save()
             
-            messages.success(request, f"✅ '{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
+            messages.success(request, f"'{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
             return redirect('deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
@@ -1350,7 +1353,7 @@ def admin_delete_lesson_secure(request, lesson_uid):
                     logger.error(f"Error deleting lesson video file: {e}")
 
             lesson.delete()
-            messages.success(request, f"✅ {lesson_title} removed successfully.")
+            messages.success(request, f"{lesson_title} removed successfully.")
             return redirect('admin_view_course_content', course_uid=course_uid)
         else:
             messages.error(request, "Action not allowed. Please verify administrator credentials.")
@@ -1385,12 +1388,13 @@ def admin_delete_resource_secure(request, resource_uid):
                         logger.error(f"Error wiping Supabase file: {e}")
 
                 resource.delete()
-                messages.success(request, f"✅ Resource '{resource_title}' was permanently deleted from storage.")
+                messages.success(request, f"Resource '{resource_title}' was permanently deleted from storage.")
                 return redirect('admin_view_course_content', course_uid=course_uid)
             else:
                 messages.error(request, "Action not allowed. Please verify administrator credentials.")
     except Exception as e:
-        messages.error(request, f"⚠️ Could not delete resource: {str(e)}")
+        logger.exception(f"Could not delete resource: {e}")
+        messages.error(request, "Could not delete the resource. Please try again.")
 
     return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
 
@@ -1432,25 +1436,23 @@ def delete_user_admin(request, user_uid):
         messages.error(request, "User not found.")
         return redirect('manage_students')
 
-    # TEACHER CONTENT CHECK — block deletion if any content exists
+    # TEACHER CONTENT CHECK — block deletion only if active/published content exists
     if target_user.user_type == 'TEACHER':
         from accounts.models import CourseResource
-        course_count = Course.objects.filter(teacher=target_user).count()
-        lesson_count = Lesson.objects.filter(course__teacher=target_user).count()
-        resource_count = CourseResource.objects.filter(course__teacher=target_user).count()
+        active_course_count = Course.objects.filter(teacher=target_user, status='PUBLISHED').count()
+        lesson_count = Lesson.objects.filter(course__teacher=target_user, course__status='PUBLISHED').count()
+        resource_count = CourseResource.objects.filter(course__teacher=target_user, course__status='PUBLISHED').count()
 
-        if course_count > 0 or lesson_count > 0 or resource_count > 0:
+        if active_course_count > 0 or lesson_count > 0 or resource_count > 0:
             messages.error(request, (
                 f"Cannot delete teacher {target_user.full_name or target_user.username}. "
-                f"This teacher still owns: "
-                f"{course_count} Course{'s' if course_count != 1 else ''}, "
+                f"This teacher still has published content: "
+                f"{active_course_count} Course{'s' if active_course_count != 1 else ''}, "
                 f"{lesson_count} Lesson{'s' if lesson_count != 1 else ''}, "
                 f"{resource_count} Resource{'s' if resource_count != 1 else ''}. "
-                f"Delete all teacher-owned content first."
+                f"Delete or unpublish all active content first."
             ))
-            if target_user.user_type == 'TEACHER':
-                return redirect('manage_teachers')
-            return redirect('manage_students')
+            return redirect('manage_teachers')
     
     if request.method == 'POST':
         username = request.POST.get('admin_username', '').strip()
@@ -1511,7 +1513,7 @@ def admin_all_notifications(request):
 def admin_logout(request):
     request.session.flush()
     logout(request)
-    messages.success(request, "✅ Logout successful. Sessions cleared.")
+    messages.success(request, "Logout successful. Sessions cleared.")
     return redirect('admin_login')
 
 
@@ -1580,7 +1582,7 @@ def approve_deletion_request(request, request_uid):
                     logger.warning(f"Could not delete YouTube video {lesson.youtube_video_id} (may already be gone): {e}")
             lesson.delete()
         else:
-            messages.warning(request, "Item already gone.")
+            messages.warning(request, "The requested item no longer exists.")
     elif del_request.item_type == 'Course':
         course = Course.objects.filter(id=del_request.item_id).first()
         if course:
@@ -1595,7 +1597,7 @@ def approve_deletion_request(request, request_uid):
             course.save()
             success_msg = f"Course '{del_request.item_name}' and all its content moved to Deleted Courses area."
         else:
-            messages.warning(request, "Item already gone.")
+            messages.warning(request, "The requested item no longer exists.")
     elif del_request.item_type == 'Resource':
         from accounts.models import CourseResource
         resource = CourseResource.objects.filter(id=del_request.item_id).first()
@@ -1610,13 +1612,13 @@ def approve_deletion_request(request, request_uid):
                 pass
             resource.delete()
         else:
-            messages.warning(request, "Resource already gone.")
+            messages.warning(request, "The requested resource no longer exists.")
 
     # Delete the DeletionRequest — no history saved
     del_request.delete()
     from accounts.utils.firebase_db import notif_create
     notif_create(str(del_request.teacher.uid), "Deletion Approved", f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been approved.", 'deletion_approved', '')
-    messages.success(request, f"✅ {success_msg}")
+    messages.success(request, f"{success_msg}")
     return redirect('manage_deletion_requests')
 
 
@@ -1705,7 +1707,7 @@ def admin_permanent_delete_course_secure(request, course_uid):
                         logger.error(f"Error deleting resource {res.uid} from Supabase: {e}")
 
             course.delete()
-            messages.success(request, f"✅ Course '{course_title}' has been PERMANENTLY deleted from the database.")
+            messages.success(request, f"Course '{course_title}' has been permanently deleted from the database.")
             return redirect('deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
@@ -1735,7 +1737,7 @@ def admin_restore_course(request, course_uid):
         DeletionRequest.objects.filter(item_type='Course', item_id=course.id).delete()
         
         create_notification(course.teacher, f"Your course '{course_title}' and all its content (lessons, resources) have been restored from the Recycle Bin and are now active!")
-        messages.success(request, f"✅ Course '{course_title}' and all content restored successfully.")
+        messages.success(request, f"Course '{course_title}' and all content restored successfully.")
         
     return redirect('deleted_courses')
 
@@ -2645,14 +2647,14 @@ def run_database_backup(request):
         output = buf.getvalue()
         latest = BackupLog.objects.filter(backup_type='DATABASE', id__gt=last_id).order_by('-id').first()
         if latest and latest.status == 'FAILED':
-            messages.error(request, f'Database backup failed: {latest.error_message or "Unknown error"}')
+            messages.error(request, 'Database backup failed. Check the logs for details.')
             logger.error(f'Manual database backup failed: {latest.error_message}')
         else:
             messages.success(request, 'Database backup completed.')
             logger.info(f'Manual database backup triggered by {request.user.username}')
     except Exception as e:
-        messages.error(request, f'Database backup error: {e}')
-        logger.error(f'Manual database backup error: {e}')
+        messages.error(request, 'Database backup could not be completed. Please try again.')
+        logger.exception(f'Manual database backup error: {e}')
     return redirect('backup_center')
 
 
@@ -2670,7 +2672,8 @@ def retry_failed_backups(request):
         messages.success(request, 'Retry initiated for failed backups.')
         log_admin_activity(request, 'BACKUP_RETRY', details='Admin retried all failed backups')
     except Exception as e:
-        messages.error(request, f'Retry failed: {e}')
+        logger.exception(f'Retry failed: {e}')
+        messages.error(request, 'Retry could not be completed. Please try again.')
     return redirect('backup_center')
 
 
@@ -2688,7 +2691,8 @@ def verify_all_backups(request):
         messages.success(request, 'Backup verification complete.')
         log_admin_activity(request, 'BACKUP_VERIFY', details='Admin triggered backup integrity verification')
     except Exception as e:
-        messages.error(request, f'Verification failed: {e}')
+        logger.exception(f'Verification failed: {e}')
+        messages.error(request, 'Backup verification could not be completed. Please try again.')
     return redirect('backup_center')
 
 
@@ -2706,7 +2710,8 @@ def run_restore_test(request):
         messages.success(request, 'Restore test complete.')
         log_admin_activity(request, 'BACKUP_RESTORE_TEST', details='Admin triggered restore test')
     except Exception as e:
-        messages.error(request, f'Restore test failed: {e}')
+        logger.exception(f'Restore test failed: {e}')
+        messages.error(request, 'Restore test could not be completed. Please try again.')
     return redirect('backup_center')
 
 
@@ -2751,7 +2756,8 @@ def export_backup_report(request):
         response['Content-Disposition'] = f'attachment; filename="backup_report_{timezone.now().strftime("%Y%m%d")}.json"'
         return response
     except Exception as e:
-        messages.error(request, f'Report export failed: {e}')
+        logger.exception(f'Report export failed: {e}')
+        messages.error(request, 'Report export could not be completed. Please try again.')
         return redirect('backup_center')
 
 
@@ -2853,5 +2859,6 @@ def backup_cron_trigger(request):
             output = buf.getvalue()
             return JsonResponse({'status': 'ok', 'output': output[:500]})
         except Exception as e:
-            return JsonResponse({'status': 'error', 'error': str(e)}, status=500)
+            logger.exception(f"Backup API error for type '{btype}': {e}")
+            return JsonResponse({'status': 'error', 'error': 'Backup operation failed. Please try again.'}, status=500)
     return JsonResponse({'error': f'Unknown backup type: {btype}'}, status=400)
