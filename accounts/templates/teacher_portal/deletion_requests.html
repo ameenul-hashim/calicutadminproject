@@ -48,8 +48,41 @@
     .info-row strong { color: #1e293b; min-width: 6rem; }
 </style>
 
-{% if deletion_requests %}
-    {% for dr in deletion_requests %}
+{% if course_requests or lesson_res_requests %}
+    {% if course_requests %}
+    <h3 style="margin: 1.5rem 0 1rem 0; color: #1e293b;">Course Deletion Requests</h3>
+    {% for dr in course_requests %}
+    <div class="dr-card">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
+            <div>
+                <h3 style="margin: 0; font-size: 1rem; color: #1e293b;">{{ dr.course.title }}</h3>
+                <span style="font-size: 0.8rem; color: #94a3b8;">Course</span>
+            </div>
+            <span class="status-pill {{ dr.status|lower }}">
+                {% if dr.status == 'PENDING' %}&#x23F3; Pending{% elif dr.status == 'APPROVED' %}&#x2705; Approved{% else %}&#x274C; Rejected{% endif %}
+            </span>
+        </div>
+        <div class="info-row">
+            <strong>Your Reason:</strong>
+            <span>{{ dr.reason }}</span>
+        </div>
+        {% if dr.admin_feedback %}
+        <div class="info-row">
+            <strong>Admin Feedback:</strong>
+            <span>{{ dr.admin_feedback }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <strong>Requested:</strong>
+            <span>{{ dr.requested_at|date:"M d, Y h:i A" }}</span>
+        </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if lesson_res_requests %}
+    <h3 style="margin: 1.5rem 0 1rem 0; color: #1e293b;">Lesson &amp; Resource Deletion Requests</h3>
+    {% for dr in lesson_res_requests %}
     <div class="dr-card">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
             <div>
@@ -57,7 +90,7 @@
                 <span style="font-size: 0.8rem; color: #94a3b8;">{{ dr.item_type }}</span>
             </div>
             <span class="status-pill {{ dr.status|lower }}">
-                &#x23F3; Pending
+                {% if dr.status == 'PENDING' %}&#x23F3; Pending{% elif dr.status == 'APPROVED' %}&#x2705; Approved{% else %}&#x274C; Rejected{% endif %}
             </span>
         </div>
         {% if dr.reason %}
@@ -72,6 +105,7 @@
         </div>
     </div>
     {% endfor %}
+    {% endif %}
 {% else %}
 <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
     <div style="font-size: 3rem; margin-bottom: 1rem;">&#x2705;</div>

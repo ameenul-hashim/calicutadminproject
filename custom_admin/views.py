@@ -1353,16 +1353,20 @@ def admin_delete_course_secure(request, course_uid):
         if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER')):
             course = get_object_or_404(Course, uid=course_uid)
             course_title = course.title
-            
-            # Soft-delete: move course and all content to recycle bin (keep files for potential restore)
-            from django.utils import timezone
+
             now = timezone.now()
-            course.lessons.all().update(status='REJECTED', is_approved=False)
-            from accounts.models import CourseResource
-            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True, deleted_at=now)
+            course.is_deleted = True
+            course.deleted_at = now
+            course.deleted_by = admin_user
             course.status = 'DELETED'
             course.is_approved = False
+            course.lessons.all().update(is_deleted=True, deleted_at=now, is_approved=False, status='REJECTED')
+            from accounts.models import CourseResource
+            CourseResource.objects.filter(course=course).update(is_deleted=True, deleted_at=now, status='REJECTED')
             course.save()
+
+            messages.success(request, f"'{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
+            return redirect('deleted_courses')
             
             messages.success(request, f"'{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
             return redirect('deleted_courses')
@@ -1574,6 +1578,111 @@ def admin_logout(request):
 
 
 @user_passes_test(is_admin, login_url='admin_login')
+def course_deletion_requests(request):
+    from accounts.models import CourseDeletionRequest
+    pending = CourseDeletionRequest.objects.filter(status='PENDING').select_related('course', 'teacher').order_by('-requested_at')
+    for req in pending:
+        req.chapters_count = len(req.course.chapters or [])
+        req.lessons_count = req.course.lessons.count()
+        req.resources_count = req.course.resources.count()
+    return render(request, 'custom_admin/course_deletion_requests.html', {
+        'requests': pending,
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def approve_course_deletion(request, request_uid):
+    from accounts.models import CourseDeletionRequest, CourseResource
+    req = get_object_or_404(CourseDeletionRequest, uid=request_uid)
+    if req.status != 'PENDING':
+        messages.error(request, "This request has already been processed.")
+        return redirect('course_deletion_requests')
+
+    username = request.POST.get('admin_username', '').strip()
+    password = request.POST.get('admin_password', '')
+    admin_user = request.user
+    is_identity_match = (
+        username.lower() == admin_user.username.lower() or
+        username.lower() == admin_user.email.lower()
+    )
+    if not (is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER'))):
+        messages.error(request, "Admin credentials verification failed.")
+        return redirect('course_deletion_requests')
+
+    course = req.course
+    now = timezone.now()
+
+    course.is_deleted = True
+    course.deleted_at = now
+    course.deleted_by = admin_user
+    course.status = 'DELETED'
+    course.is_approved = False
+    course.save()
+
+    course.lessons.all().update(is_deleted=True, deleted_at=now, is_approved=False, status='REJECTED')
+    CourseResource.objects.filter(course=course).update(is_deleted=True, deleted_at=now, status='REJECTED')
+
+    admin_feedback = request.POST.get('admin_feedback', '').strip() or ''
+
+    req.status = 'APPROVED'
+    req.reviewed_by = admin_user
+    req.reviewed_at = now
+    req.admin_feedback = admin_feedback
+    req.save()
+
+    log_admin_activity(request, f"Approved course deletion for '{course.title}'", target_user=course.teacher, details=f"Course: {course.title} ({course.uid})")
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=course.teacher,
+        message=f"Your course deletion request for '{course.title}' has been approved. The course has been removed."
+    )
+
+    messages.success(request, f"Course '{course.title}' has been soft-deleted. Moved to Recycle Bin.")
+    return redirect('course_deletion_requests')
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def reject_course_deletion(request, request_uid):
+    from accounts.models import CourseDeletionRequest
+    req = get_object_or_404(CourseDeletionRequest, uid=request_uid)
+    if req.status != 'PENDING':
+        messages.error(request, "This request has already been processed.")
+        return redirect('course_deletion_requests')
+
+    username = request.POST.get('admin_username', '').strip()
+    password = request.POST.get('admin_password', '')
+    admin_user = request.user
+    is_identity_match = (
+        username.lower() == admin_user.username.lower() or
+        username.lower() == admin_user.email.lower()
+    )
+    if not (is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER'))):
+        messages.error(request, "Admin credentials verification failed.")
+        return redirect('course_deletion_requests')
+
+    admin_feedback = request.POST.get('admin_feedback', '').strip()
+    if not admin_feedback:
+        messages.error(request, "Please provide a reason for rejection.")
+        return redirect('course_deletion_requests')
+
+    req.status = 'REJECTED'
+    req.reviewed_by = admin_user
+    req.reviewed_at = timezone.now()
+    req.admin_feedback = admin_feedback
+    req.save()
+
+    log_admin_activity(request, f"Rejected course deletion for '{req.course.title}'", target_user=req.teacher, details=f"Reason: {admin_feedback}")
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=req.teacher,
+        message=f"Your course deletion request for '{req.course.title}' was rejected.\n\nReason: {admin_feedback}"
+    )
+
+    messages.success(request, f"Deletion request for '{req.course.title}' rejected. Teacher notified.")
+    return redirect('course_deletion_requests')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
     pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')[:20]
     return render(request, 'custom_admin/manage_deletion_requests.html', {
@@ -1589,7 +1698,7 @@ def verify_deletion_request(request, request_uid):
             messages.info(request, f"ℹ️ Verifying request for {lesson.title}.")
             return redirect('admin_view_course_content', course_uid=lesson.course.uid)
     elif del_request.item_type == 'Course':
-        course = Course.objects.filter(id=del_request.item_id).first()
+        course = Course.all_objects.filter(id=del_request.item_id).first()
         if course:
             messages.info(request, f"ℹ️ Verifying request for {course.title}.")
             return redirect('admin_view_course_content', course_uid=course.uid)
@@ -1640,16 +1749,18 @@ def approve_deletion_request(request, request_uid):
         else:
             messages.warning(request, "The requested item no longer exists.")
     elif del_request.item_type == 'Course':
-        course = Course.objects.filter(id=del_request.item_id).first()
+        course = Course.all_objects.filter(id=del_request.item_id).first()
         if course:
             from django.utils import timezone
             now = timezone.now()
-            # Cascade soft-delete: mark all lessons and resources as deleted
-            course.lessons.all().update(status='REJECTED', is_approved=False)
-            from accounts.models import CourseResource
-            CourseResource.objects.filter(course=course).update(status='REJECTED', is_deleted=True, deleted_at=now)
+            course.is_deleted = True
+            course.deleted_at = now
+            course.deleted_by = request.user
             course.status = 'DELETED'
             course.is_approved = False
+            course.lessons.all().update(is_deleted=True, deleted_at=now, is_approved=False, status='REJECTED')
+            from accounts.models import CourseResource
+            CourseResource.objects.filter(course=course).update(is_deleted=True, deleted_at=now, status='REJECTED')
             course.save()
             success_msg = f"Course '{del_request.item_name}' and all its content moved to Deleted Courses area."
         else:
@@ -1719,11 +1830,11 @@ def reject_deletion_request(request, request_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def deleted_courses_view(request):
     from django.db.models import Count
-    courses = Course.objects.filter(status='DELETED').select_related('teacher').annotate(
+    courses = Course.all_objects.filter(is_deleted=True).select_related('teacher', 'deleted_by').annotate(
         lessons_count=Count('lessons'),
         resources_count=Count('resources'),
-    ).order_by('-created_at')[:20]
-    
+    ).order_by('-deleted_at')[:50]
+
     return render(request, 'custom_admin/deleted_courses.html', {
         'courses': courses,
     })
@@ -1745,7 +1856,7 @@ def admin_permanent_delete_course_secure(request, course_uid):
         )
         
         if is_identity_match and admin_user.check_password(password) and (admin_user.is_superuser or admin_user.user_type == 'ADMIN' or (admin_user.is_staff and admin_user.user_type != 'TEACHER')):
-            course = get_object_or_404(Course, uid=course_uid, status='DELETED')
+            course = get_object_or_404(Course.all_objects, uid=course_uid, is_deleted=True)
             course_title = course.title
 
             # Cleanup all Course Resources from Supabase before deletion
@@ -1775,26 +1886,29 @@ def admin_permanent_delete_course_secure(request, course_uid):
 @require_POST
 def admin_restore_course(request, course_uid):
     if request.method == 'POST':
-        course = get_object_or_404(Course, uid=course_uid, status='DELETED')
+        course = get_object_or_404(Course.all_objects, uid=course_uid, is_deleted=True)
         course_title = course.title
+        course.is_deleted = False
+        course.deleted_at = None
+        course.deleted_by = None
         course.status = 'PUBLISHED'
         course.is_approved = True
         course.rejection_reason = None
         course.save()
-        
-        # Restore all lessons — set back to APPROVED
-        course.lessons.all().update(is_approved=True, status='APPROVED')
-        
-        # Restore all resources — set back to APPROVED
+
+        course.lessons.all().update(is_deleted=False, deleted_at=None, is_approved=True, status='APPROVED')
         from accounts.models import CourseResource
-        CourseResource.objects.filter(course=course).update(status='APPROVED', is_deleted=False)
-        
-        # Remove any deletion requests that were associated with this course
-        DeletionRequest.objects.filter(item_type='Course', item_id=course.id).delete()
-        
-        create_notification(course.teacher, f"Your course '{course_title}' and all its content (lessons, resources) have been restored from the Recycle Bin and are now active!")
+        CourseResource.objects.filter(course=course).update(is_deleted=False, deleted_at=None, status='APPROVED')
+
+        log_admin_activity(request, f"Restored course '{course_title}'", target_user=course.teacher, details=f"Course: {course_title} ({course.uid})")
+        from accounts.models import Notification
+        Notification.objects.create(
+            user=course.teacher,
+            message=f"Your course '{course_title}' and all its content (lessons, resources) have been restored from the Recycle Bin and are now active!"
+        )
+
         messages.success(request, f"Course '{course_title}' and all content restored successfully.")
-        
+
     return redirect('deleted_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')

@@ -1,0 +1,144 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Course Delete Requests | Admin{% endblock %}
+
+{% block header_title %}
+    <h1>Course Delete Requests</h1>
+    <p style="color: #64748b;">Review teacher-submitted course deletion requests.</p>
+{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="margin-bottom: 2rem;">
+    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+        <h2 style="margin: 0; font-size: 1.25rem;">⏳ Pending Course Deletion Requests</h2>
+        <span style="background: #fef3c7; color: #92400e; padding: 0.4rem 1rem; border-radius: 2rem; font-weight: 700; font-size: 0.85rem;">{{ requests|length }} Pending</span>
+    </div>
+
+    {% for req in requests %}
+    <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
+        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
+            <!-- Thumbnail -->
+            <div style="flex-shrink: 0;">
+                {% if req.course.thumbnail_url %}
+                    <img src="{{ req.course.thumbnail_url }}" alt="{{ req.course.title }}" style="width: 160px; height: 100px; border-radius: 0.75rem; object-fit: cover; border: 1px solid #e2e8f0;">
+                {% else %}
+                    <div style="width: 160px; height: 100px; border-radius: 0.75rem; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 2rem; border: 1px solid #e2e8f0;">📚</div>
+                {% endif %}
+            </div>
+
+            <!-- Course Info -->
+            <div style="flex: 1; min-width: 250px;">
+                <h3 style="margin: 0 0 0.25rem 0; font-size: 1.1rem; color: #0f172a;">{{ req.course.title }}</h3>
+                <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                    <span style="display: flex; align-items: center; gap: 0.3rem; font-size: 0.85rem; color: #64748b;">
+                        <img src="{{ req.teacher.avatar_url|default:'https://ui-avatars.com/api/?name='|add:req.teacher.username }}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;">
+                        {{ req.teacher.full_name|default:req.teacher.username }}
+                    </span>
+                    <span style="font-size: 0.8rem; color: #94a3b8;">{{ req.requested_at|date:"M d, Y g:i A" }}</span>
+                </div>
+
+                <!-- Metrics -->
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem;">
+                    <span style="padding: 0.25rem 0.6rem; background: #e0f2fe; color: #0369a1; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">📁 {{ req.chapters_count }} Chapters</span>
+                    <span style="padding: 0.25rem 0.6rem; background: #fef3c7; color: #92400e; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">📺 {{ req.lessons_count }} Lessons</span>
+                    <span style="padding: 0.25rem 0.6rem; background: #ede9fe; color: #5b21b6; border-radius: 0.4rem; font-size: 0.75rem; font-weight: 700;">📄 {{ req.resources_count }} Resources</span>
+                </div>
+
+                <!-- Teacher Reason -->
+                <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; padding: 1rem; margin-bottom: 1rem;">
+                    <strong style="color: #ef4444; font-size: 0.8rem; display: block; margin-bottom: 0.5rem;">Teacher Reason</strong>
+                    <div style="color: #991b1b; font-size: 0.85rem; white-space: pre-wrap; line-height: 1.5;">{{ req.reason }}</div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                    <a href="{% url 'admin_view_course_content' req.course.uid %}" class="view-btn" style="background: #eef2ff; color: #4f46e5; border: none; padding: 0.5rem 1rem; font-size: 0.85rem; text-decoration: none; border-radius: 0.5rem; font-weight: 600;">View Details</a>
+                    <button onclick="openApproveModal('{{ req.uid }}', '{{ req.course.title|escapejs }}')" class="view-btn" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Approve</button>
+                    <button onclick="openRejectModal('{{ req.uid }}', '{{ req.course.title|escapejs }}')" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; font-size: 0.85rem; border-radius: 0.5rem; font-weight: 600; cursor: pointer;">Reject</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div style="padding: 3rem; text-align: center; color: #94a3b8;">
+        <div style="font-size: 2rem; margin-bottom: 1rem;">✅</div>
+        No pending course deletion requests.
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Approve Modal -->
+<div id="approveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Approve Course Deletion</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Approve deletion of: <strong id="approveItemName"></strong><br>
+            <span style="color:#f59e0b;">This will soft-delete the course. Everything remains in the database.</span>
+        </p>
+        <form id="approveForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Admin Note (optional)</label>
+                <textarea name="admin_feedback" rows="2" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Add a note for the teacher..."></textarea>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Username</label>
+                <input type="text" name="admin_username" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your admin username">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Password</label>
+                <input type="password" name="admin_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#10b981; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Approve & Soft Delete</button>
+                <button type="button" onclick="closeApproveModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Reject Course Deletion Request</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Reject deletion of: <strong id="rejectItemName"></strong>
+        </p>
+        <form id="rejectForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Reason for Rejection</label>
+                <textarea name="admin_feedback" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this deletion request is being rejected..." required></textarea>
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Username</label>
+                <input type="text" name="admin_username" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your admin username">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Password</label>
+                <input type="password" name="admin_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Reject Request</button>
+                <button type="button" onclick="closeRejectModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openApproveModal(uid, name) {
+    document.getElementById('approveItemName').textContent = name;
+    document.getElementById('approveForm').action = '/customadmin/course-deletion-requests/' + uid + '/approve/';
+    document.getElementById('approveModal').style.display = 'flex';
+}
+function closeApproveModal() { document.getElementById('approveModal').style.display = 'none'; }
+function openRejectModal(uid, name) {
+    document.getElementById('rejectItemName').textContent = name;
+    document.getElementById('rejectForm').action = '/customadmin/course-deletion-requests/' + uid + '/reject/';
+    document.getElementById('rejectModal').style.display = 'flex';
+}
+function closeRejectModal() { document.getElementById('rejectModal').style.display = 'none'; }
+</script>
+{% endblock %}

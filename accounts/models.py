@@ -82,6 +82,10 @@ class CustomUser(AbstractUser):
             models.Index(fields=['status', 'user_type', '-date_joined']),
         ]
 
+class CourseManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_deleted=False)
+
 class Course(models.Model):
     STATUS_CHOICES = (
         ('DRAFT', 'Draft'),
@@ -119,6 +123,12 @@ class Course(models.Model):
     pending_image_public_id = models.CharField(max_length=255, blank=True, null=True)
     has_pending_edits = models.BooleanField(default=False, db_index=True)
     chapters = models.JSONField(default=list, blank=True, help_text="List of chapter names for this course")
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='deleted_courses')
+
+    objects = CourseManager()
+    all_objects = models.Manager()
 
     @property
     def thumbnail_url(self):
@@ -177,6 +187,8 @@ class Lesson(models.Model):
     )
     upload_status = models.CharField(max_length=20, choices=UPLOAD_STATUS_CHOICES, default='NOT_UPLOADED', db_index=True)
     file_size = models.PositiveBigIntegerField(default=0, help_text="Video file size in bytes")
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['order']
@@ -375,6 +387,28 @@ class DeletionRequest(models.Model):
 
     def __str__(self):
         return f"{self.item_type} deletion request by {self.teacher.username}"
+
+
+class CourseDeletionRequest(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='course_deletion_requests')
+    teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='course_deletion_requests')
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
+    reviewed_by = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    admin_feedback = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
+    class Meta:
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['status', '-requested_at']),
+        ]
+
+    def __str__(self):
+        return f"Course deletion request for '{self.course.title}' by {self.teacher.username}"
+
 
 class PDFAccessLog(models.Model):
     """Logs every time a user accesses a sensitive PDF."""

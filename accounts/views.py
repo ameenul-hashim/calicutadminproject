@@ -948,12 +948,15 @@ def view_other_course(request, course_uid):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def my_courses(request):
-    from django.db.models import Count, Q
+    from django.db.models import Count, Q, Exists, OuterRef
+    from .models import CourseDeletionRequest
+    pending_req_sub = CourseDeletionRequest.objects.filter(course=OuterRef('pk'), status='PENDING')
     courses_qs = Course.objects.filter(teacher=request.user).exclude(status='DELETED').annotate(
         total_lessons=Count('lessons'),
         approved_lessons=Count('lessons', filter=Q(lessons__status='APPROVED')),
         pending_lessons=Count('lessons', filter=Q(lessons__status='PENDING')),
-        rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED'))
+        rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED')),
+        has_pending_deletion=Exists(pending_req_sub),
     ).only('id', 'uid', 'title', 'status', 'created_at', 'image', 'thumbnail').order_by('-created_at')
     
 # Pagination
@@ -969,25 +972,31 @@ def my_courses(request):
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 @require_POST
 def delete_course(request, course_uid):
-    from .models import DeletionRequest, Course
+    from .models import Course, CourseDeletionRequest
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
-    
-    existing_request = DeletionRequest.objects.filter(
-        teacher=request.user, item_type='Course', item_id=course.id, status='PENDING'
-    ).first()
-    
-    if existing_request:
+
+    existing = CourseDeletionRequest.objects.filter(course=course, status='PENDING').first()
+    if existing:
         messages.info(request, "A deletion request for this course is already pending admin approval.")
-    else:
-        DeletionRequest.objects.create(
-            teacher=request.user,
-            item_type='Course',
-            item_id=course.id,
-            item_name=course.title
-        )
-        messages.success(request, "Deletion request for course sent to admin.")
-        notify_admins("Deletion Request Submitted", f"Teacher {request.user.username} requested to delete course '{course.title}'.", 'deletion_request', f"/customadmin/deletion-requests/")
-        
+        return redirect('my_courses')
+
+    reason = request.POST.get('reason', '').strip()
+    if len(reason) < 20:
+        messages.error(request, "Please provide a reason for deletion (minimum 20 characters).")
+        return redirect('my_courses')
+    if len(reason) > 1000:
+        messages.error(request, "Reason must not exceed 1000 characters.")
+        return redirect('my_courses')
+
+    CourseDeletionRequest.objects.create(
+        course=course,
+        teacher=request.user,
+        reason=reason,
+        status='PENDING',
+    )
+    messages.success(request, "Course deletion request submitted successfully. Your request is pending administrator approval.")
+    notify_admins("Course Deletion Requested", f"Teacher {request.user.username} requested deletion of course '{course.title}'.", 'deletion_request', '/customadmin/course-deletion-requests/')
+
     return redirect('my_courses')
 
 
@@ -1791,10 +1800,12 @@ def delete_resource(request, resource_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_deletion_requests(request):
-    from .models import DeletionRequest
-    deletion_requests = DeletionRequest.objects.filter(teacher=request.user).order_by('-created_at')
+    from .models import DeletionRequest, CourseDeletionRequest
+    lesson_res_requests = DeletionRequest.objects.filter(teacher=request.user).order_by('-created_at')
+    course_requests = CourseDeletionRequest.objects.filter(teacher=request.user).order_by('-requested_at')
     return render(request, 'teacher_portal/deletion_requests.html', {
-        'deletion_requests': deletion_requests,
+        'lesson_res_requests': lesson_res_requests,
+        'course_requests': course_requests,
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')

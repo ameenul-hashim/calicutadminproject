@@ -444,9 +444,15 @@
                     </button>
                     <div id="deletion-drop" class="dropdown-container {% if 'deletion' in request.path or 'deleted-courses' in request.path %}active{% endif %}">
                         <a href="{% url 'manage_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'manage_deletion_requests' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
-                            Course Delete Requests
+                            Delete Requests (All)
                             {% if pending_deletions_count > 0 %}
                             <span style="background: #ef4444; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_deletions_count }}</span>
+                            {% endif %}
+                        </a>
+                        <a href="{% url 'course_deletion_requests' %}" class="nav-link {% if request.resolver_match.url_name == 'course_deletion_requests' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                            Course Delete Requests
+                            {% if pending_course_deletion_count > 0 %}
+                            <span style="background: #f59e0b; color: white; border-radius: 50%; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;">{{ pending_course_deletion_count }}</span>
                             {% endif %}
                         </a>
                         <a href="{% url 'deleted_courses' %}" class="nav-link {% if request.resolver_match.url_name == 'deleted_courses' %}active{% endif %}" style="color: #e11d48;">

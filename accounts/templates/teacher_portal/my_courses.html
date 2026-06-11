@@ -68,6 +68,12 @@
                     {% endif %}
                     
                     <a href="{% url 'delete_course' course.uid %}" onclick="return confirm('Are you sure you want to request deletion for this course? This action requires admin approval.');" style="padding: 0.6rem; background: #fef2f2; color: #ef4444; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 3; border: 1px solid #fecaca; margin-top: 0.5rem;">Delete Course</a>
+
+                    {% if course.has_pending_deletion %}
+                        <span style="grid-column: span 3; padding: 0.6rem; background: #fef3c7; color: #92400e; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; border: 1px solid #fde68a; margin-top: 0.5rem;">⏳ Pending Approval</span>
+                    {% else %}
+                        <button onclick="openDeleteModal('{{ course.uid }}', '{{ course.title|escapejs }}')" style="grid-column: span 3; padding: 0.6rem; background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; cursor: pointer; margin-top: 0.5rem; transition: all 0.2s;" onmouseover="this.style.background='#fee2e2'" onmouseout="this.style.background='#fef2f2'">Delete Course</button>
+                    {% endif %}
                 </div>
             </div>
             
@@ -97,8 +103,105 @@
     {% endif %}
 </div>
 {% endif %}
+
+<!-- Delete Course Modal -->
+<div id="deleteModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(4px); z-index: 50; align-items: center; justify-content: center; padding: 1rem;">
+    <div style="background: white; border-radius: 1.5rem; width: 100%; max-width: 480px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); transform: scale(0.95); opacity: 0; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);" id="deleteModalContent">
+        <div style="padding: 1.5rem; border-bottom: 1px solid #f1f5f9;">
+            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #0f172a;">Delete Course</h3>
+        </div>
+        <div style="padding: 1.5rem;">
+            <p style="margin: 0 0 1rem 0; color: #475569; font-size: 0.95rem; line-height: 1.5;">
+                Are you sure you want to request deletion of <strong id="modalCourseTitle" style="color: #0f172a;"></strong>?
+            </p>
+            <p style="margin: 0 0 1.5rem 0; color: #64748b; font-size: 0.85rem; background: #f8fafc; padding: 1rem; border-radius: 0.75rem; border-left: 3px solid #6366f1;">
+                Your request will be reviewed by an administrator. The course will remain available until approved.
+            </p>
+            <form id="deleteForm" method="POST" action="">
+                {% csrf_token %}
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #1e293b;">Reason for Deletion <span style="color: #ef4444;">*</span></label>
+                    <textarea name="reason" rows="4" required minlength="20" maxlength="1000" style="width: 100%; padding: 0.75rem 1rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; font-size: 0.9rem; outline: none; transition: border-color 0.2s; box-sizing: border-box; resize: vertical; font-family: inherit;" placeholder="Please explain why you want to delete this course.&#10;&#10;Example:&#10;The course contains outdated content and I have created a new updated version." onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99,102,241,0.1)'" onblur="this.style.borderColor='#cbd5e1'; this.style.boxShadow='none'"></textarea>
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.3rem;">
+                        <span style="font-size: 0.75rem; color: #94a3b8;" id="charCounter">Minimum 20 characters</span>
+                        <span style="font-size: 0.75rem; color: #94a3b8;" id="charCount">0 / 1000</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <button type="button" onclick="closeDeleteModal()" style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #cbd5e1; background: white; color: #475569; font-weight: 600; font-size: 0.95rem; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">Cancel</button>
+                    <button type="submit" id="submitDeleteBtn" style="flex: 1; padding: 0.75rem; border-radius: 0.75rem; border: none; background: #ef4444; color: white; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; opacity: 0.5;" disabled onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">Submit Delete Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    var currentDeleteUid = null;
+
+    function openDeleteModal(courseUid, courseTitle) {
+        currentDeleteUid = courseUid;
+        var modal = document.getElementById('deleteModal');
+        var modalContent = document.getElementById('deleteModalContent');
+        var titleSpan = document.getElementById('modalCourseTitle');
+        var form = document.getElementById('deleteForm');
+        var textarea = form.querySelector('textarea[name="reason"]');
+
+        titleSpan.textContent = '"' + courseTitle + '"';
+        form.action = '/teacher/courses/' + courseUid + '/delete/';
+        textarea.value = '';
+        updateCharCount();
+        document.getElementById('submitDeleteBtn').disabled = true;
+        document.getElementById('submitDeleteBtn').style.opacity = '0.5';
+
+        modal.style.display = 'flex';
+        void modal.offsetWidth;
+        modalContent.style.transform = 'scale(1)';
+        modalContent.style.opacity = '1';
+        setTimeout(function() { textarea.focus(); }, 100);
+    }
+
+    function closeDeleteModal() {
+        var modal = document.getElementById('deleteModal');
+        var modalContent = document.getElementById('deleteModalContent');
+        modalContent.style.transform = 'scale(0.95)';
+        modalContent.style.opacity = '0';
+        setTimeout(function() { modal.style.display = 'none'; }, 300);
+    }
+
+    document.getElementById('deleteModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDeleteModal();
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('deleteModal').style.display === 'flex') {
+            closeDeleteModal();
+        }
+    });
+
+    var reasonTextarea = document.querySelector('#deleteForm textarea[name="reason"]');
+    if (reasonTextarea) {
+        reasonTextarea.addEventListener('input', updateCharCount);
+    }
+    function updateCharCount() {
+        var textarea = document.querySelector('#deleteForm textarea[name="reason"]');
+        if (!textarea) return;
+        var len = textarea.value.length;
+        var btn = document.getElementById('submitDeleteBtn');
+        var counter = document.getElementById('charCount');
+        var hint = document.getElementById('charCounter');
+        if (counter) counter.textContent = len + ' / 1000';
+        if (len >= 20 && len <= 1000) {
+            btn.disabled = false;
+            btn.style.opacity = '1';
+            if (hint) { hint.textContent = 'Minimum met'; hint.style.color = '#10b981'; }
+        } else {
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            if (hint) { hint.textContent = 'Minimum 20 characters'; hint.style.color = '#94a3b8'; }
+        }
+        if (len > 1000) {
+            if (hint) { hint.textContent = 'Maximum 1000 characters exceeded'; hint.style.color = '#ef4444'; }
+        }
+    }
+</script>
 {% endblock %}
-
-
-
-
