@@ -2170,9 +2170,22 @@ def course_player(request, course_uid):
     for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
         res_by_chapter[ch] = list(grp)
 
-    all_chapter_names = sorted(set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys())), key=lambda x: (x == ''), reverse=True)
-    if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
-        all_chapter_names.remove('')
+    # Order chapters: course.chapters first (teacher-set order), then any derived chapters, then empty/uncategorized last
+    course_chapters = list(course.chapters or [])
+    derived_chapters = set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys()))
+    all_chapter_names = []
+    seen = set()
+    for name in course_chapters:
+        if name and name in derived_chapters and name not in seen:
+            seen.add(name)
+            all_chapter_names.append(name)
+    for name in sorted(d for d in derived_chapters if d):
+        if name not in seen:
+            seen.add(name)
+            all_chapter_names.append(name)
+    # Empty/uncategorized at end
+    if '' in derived_chapters and (lesson_by_chapter.get('') or res_by_chapter.get('')):
+        all_chapter_names.append('')
 
     chapters_data = []
     for ch_name in all_chapter_names:
