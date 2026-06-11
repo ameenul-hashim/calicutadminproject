@@ -322,7 +322,8 @@
             .then(d => {
                 if (d.status === 'success') {
                     showToast(d.message, 'success');
-                    setTimeout(() => window.location.href = "{% url 'edit_profile' %}", 1500);
+                    const redirectUrl = d.redirect || "{% url 'edit_profile' %}";
+                    setTimeout(() => window.location.href = redirectUrl, 1500);
                 } else {
                     showToast(d.message || 'Failed', 'error');
                     avatarSubmitBtn.disabled = false;

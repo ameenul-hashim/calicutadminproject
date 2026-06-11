@@ -1952,7 +1952,8 @@ def edit_profile(request):
                     cache.delete(photo_cache_key)
 
                 if avatar_changed and not new_username and not new_password:
-                    return JsonResponse({'status': 'success', 'message': 'Avatar updated successfully!'})
+                    redirect_url = reverse('teacher_dashboard') if request.user.user_type == 'TEACHER' else reverse('dashboard')
+                    return JsonResponse({'status': 'success', 'message': 'Avatar updated successfully!', 'redirect': redirect_url})
 
                 return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
             else:
@@ -2044,6 +2045,7 @@ def teacher_edit_profile(request):
                     request.session.pop('avatar_skipped', None)
                     photo_cache_key = f"user_has_photo_{request.user.id}"
                     cache.delete(photo_cache_key)
+                    return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!', 'redirect': reverse('teacher_dashboard')})
                 return JsonResponse({'status': 'success', 'message': 'Profile updated successfully!'})
             else:
                 return JsonResponse({'status': 'error', 'message': 'No changes detected.'}, status=400)

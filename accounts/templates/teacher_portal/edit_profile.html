@@ -470,7 +470,7 @@
             return r.json();
         })
         .then(d => {
-            if (d.status === 'success') { showToast(d.message, 'success'); setTimeout(() => window.location.href = '{% url "teacher_edit_profile" %}', 1500); }
+            if (d.status === 'success') { showToast(d.message, 'success'); const redirectUrl = d.redirect || '{% url "teacher_edit_profile" %}'; setTimeout(() => window.location.href = redirectUrl, 1500); }
             else { showToast(d.message || 'Failed', 'error'); btn.disabled = false; btn.textContent = 'Update Profile Picture'; }
         })
         .catch(err => { showToast(err.message, 'error'); console.error(err); btn.disabled = false; btn.textContent = 'Update Profile Picture'; });
