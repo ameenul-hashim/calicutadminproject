@@ -373,7 +373,7 @@
     <div class="ch-card-header" onclick="toggleChapter(this)">
         <span class="toggle-icon" id="icon-{{ forloop.counter }}">&#x25B6;</span>
         <span style="font-size: 1.3rem;">&#x1F4C1;</span>
-        <h3>{{ chapter.name|default:"Uncategorized" }}</h3>
+        <h3>{{ chapter.name }}</h3>
         <span style="margin-left: 0.75rem; display: flex; gap: 0.3rem;">
             <button onclick="event.stopPropagation(); openRenameModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #6366f1; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Rename chapter">&#x270F;&#xFE0F;</button>
             {% if chapter.name %}<button onclick="event.stopPropagation(); openDeleteChapterModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Delete chapter">&#x1F5D1;&#xFE0F;</button>{% endif %}
@@ -788,7 +788,7 @@ function openResourceDeleteModal(uid, title) {
 }
 function closeResourceDeleteModal() { document.getElementById('resourceDeleteModal').style.display = 'none'; }
 function openRenameModal(courseUid, chapterName) {
-    document.getElementById('renameChapterCurrent').textContent = chapterName || 'Uncategorized';
+    document.getElementById('renameChapterCurrent').textContent = chapterName;
     document.getElementById('renameChapterOldName').value = chapterName;
     document.getElementById('renameChapterNewName').value = chapterName;
     document.getElementById('renameChapterForm').action = '/teacher/courses/' + courseUid + '/chapters/rename/';

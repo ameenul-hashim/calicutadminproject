@@ -1281,7 +1281,7 @@ def admin_view_course_content(request, course_uid):
     for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
         res_by_chapter[ch] = list(grp)
 
-    # Order chapters: course.chapters first (teacher-set order), then derived chapters by creation, then uncategorized last
+    # Order chapters: course.chapters first (teacher-set order), then remaining by creation date
     course_chapters = list(course.chapters or [])
     derived_chapters = set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys()))
     all_chapter_names = []
@@ -1304,29 +1304,22 @@ def admin_view_course_content(request, course_uid):
         if name not in seen:
             seen.add(name)
             all_chapter_names.append(name)
-    if '' in derived_chapters and (lesson_by_chapter.get('') or res_by_chapter.get('')):
-        all_chapter_names.append('')
 
     chapters_data = []
     for ch_name in all_chapter_names:
         ch_lessons = lesson_by_chapter.get(ch_name, [])
         ch_resources = res_by_chapter.get(ch_name, [])
-
-        # Process items to attach deletion requests
+        # Segregate content for tabs
         for l in ch_lessons:
             l.deletion_request = deletions_map.get(f"Lesson_{l.id}")
         for r in ch_resources:
             r.deletion_request = deletions_map.get(f"Resource_{r.id}")
-
-        # Segregate content for tabs
         pending_lessons = [l for l in ch_lessons if l.status == 'PENDING' or l.has_pending_edits or l.deletion_request]
         pending_resources = [r for r in ch_resources if r.status in ('PENDING', 'DELETION_PENDING') or r.has_pending_edits or r.deletion_request]
-        
         approved_lessons = [l for l in ch_lessons if l.status == 'APPROVED' and not l.has_pending_edits and not l.deletion_request]
         approved_resources = [r for r in ch_resources if r.status == 'APPROVED' and not r.has_pending_edits and not r.deletion_request]
-
         chapters_data.append({
-            'name': ch_name if ch_name else 'Uncategorized',
+            'name': ch_name,
             'pending_lessons': pending_lessons,
             'pending_resources': pending_resources,
             'approved_lessons': approved_lessons,
