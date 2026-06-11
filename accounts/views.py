@@ -1078,7 +1078,6 @@ def edit_course(request, course_uid):
                         course.pending_image_public_id = p_id
             
             course.save()
-            notify_admins("Course Edits Submitted", f"Teacher {request.user.username} edited the approved course '{course.title}'.", 'course_edit', '')
             messages.success(request, f"Changes to '{course.title}' submitted for admin approval. Students will continue to see the previously approved version until approved.")
         else:
             # Course is not approved yet (draft or rejected), so overwrite main fields directly
@@ -1102,7 +1101,6 @@ def edit_course(request, course_uid):
             course.status = 'PENDING'
             course.is_approved = False
             course.save()
-            notify_admins("Course Updated", f"Teacher {request.user.username} updated course '{course.title}'.", 'course_edit', '')
             messages.success(request, f"Course '{course.title}' updated successfully!")
             
         return redirect('my_courses')
@@ -1434,7 +1432,6 @@ def edit_lesson(request, lesson_uid):
             lesson.has_pending_edits = True
             lesson.save()
 
-            notify_admins("Lesson Edits Submitted", f"Teacher {request.user.username} edited approved lesson '{lesson.title}'.", 'lesson_edit', '')
             messages.success(request, "Lesson edits submitted for approval! Students will continue to view the current version until approved.")
         else:
             lesson.title = title
@@ -1449,7 +1446,6 @@ def edit_lesson(request, lesson_uid):
             lesson.save()
 
             messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
-            notify_admins("Lesson Updated", f"Teacher {request.user.username} updated lesson '{lesson.title}'.", 'lesson_edit', '')
 
         return redirect('course_lessons', course_uid=lesson.course.uid)
 
@@ -1715,7 +1711,6 @@ def edit_resource(request, resource_uid):
             resource.has_pending_edits = True
             resource.save()
             messages.success(request, f"Changes to resource '{title}' submitted for admin review.")
-            notify_admins("Resource Edit Submitted", f"Teacher {request.user.username} edited approved resource '{resource.title}'.", 'resource_edit', '')
         else:
             if new_fb_path and resource.firebase_file_path:
                 try:
@@ -1736,7 +1731,6 @@ def edit_resource(request, resource_uid):
             resource.rejection_reason = None
             resource.save()
             messages.success(request, f"Resource '{title}' updated and resubmitted for approval.")
-            notify_admins("Resource Updated", f"Teacher {request.user.username} updated resource '{title}'.", 'resource_edit', '')
 
         return redirect('course_lessons', course_uid=course.uid)
 
@@ -3279,7 +3273,6 @@ def youtube_edit_complete(request):
             'pending_video_url', 'has_pending_edits', 'youtube_video_id',
             'youtube_upload_status', 'youtube_uploaded_at', 'upload_status',
         ])
-        notify_admins("Lesson Edits Submitted", f"Teacher {request.user.username} edited approved lesson '{lesson.title}'.", 'lesson_edit', '')
     elif lesson.is_approved and course_is_published:
         lesson.youtube_video_id = video_id
         lesson.youtube_upload_status = 'UPLOADED'
