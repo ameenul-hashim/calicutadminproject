@@ -58,17 +58,16 @@
                     <span style="font-size: 0.75rem; color: #94a3b8;">{{ course.created_at|date:"M d, Y" }}</span>
                 </div>
                 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem;">
                     <a href="{% url 'course_player' course.uid %}" style="padding: 0.6rem; background: #ecfdf5; color: #059669; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center;">Preview</a>
                     <a href="{% url 'edit_course' course.uid %}" style="padding: 0.6rem; background: #f1f5f9; color: #64748b; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center;">Edit Info</a>
                     <a href="{% url 'course_lessons' course.uid %}" style="padding: 0.6rem; background: #eef2ff; color: #6366f1; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center;">Manage Lessons</a>
-                    <a href="{% url 'add_resource' course.uid %}" style="padding: 0.6rem; background: #ecfdf5; color: #10b981; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; border: 1px solid #10b981;">Add Resource</a>
                     
                     {% if course.status == 'DRAFT' or course.status == 'REJECTED' or course.rejected_lessons_count > 0 %}
-                    <a href="{% url 'submit_course_approval' course.uid %}" style="padding: 0.6rem; background: #10b981; color: white; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 2; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Resubmit for Approval</a>
+                    <a href="{% url 'submit_course_approval' course.uid %}" style="padding: 0.6rem; background: #10b981; color: white; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 3; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Resubmit for Approval</a>
                     {% endif %}
                     
-                    <a href="{% url 'delete_course' course.uid %}" onclick="return confirm('Are you sure you want to request deletion for this course? This action requires admin approval.');" style="padding: 0.6rem; background: #fef2f2; color: #ef4444; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 2; border: 1px solid #fecaca; margin-top: 0.5rem;">Delete Course</a>
+                    <a href="{% url 'delete_course' course.uid %}" onclick="return confirm('Are you sure you want to request deletion for this course? This action requires admin approval.');" style="padding: 0.6rem; background: #fef2f2; color: #ef4444; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 3; border: 1px solid #fecaca; margin-top: 0.5rem;">Delete Course</a>
                 </div>
             </div>
             
