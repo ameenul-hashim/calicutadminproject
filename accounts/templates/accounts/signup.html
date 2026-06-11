@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
       tailwind.config = {
         corePlugins: { preflight: false }
@@ -127,6 +128,9 @@
     </div>
 
     <script>
+        var conversionInProgress = false;
+        var CONVERTED_PDF = null;
+
         // Device-aware upload — set accept + text on page load
         (function() {
             var isMobile = /mobile|android|iphone|ipad|ipod|blackberry|windows phone|opera mini|iemobile/i.test(navigator.userAgent) || window.innerWidth <= 1024;
@@ -145,8 +149,8 @@
         })();
 
         function togglePassword(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon = document.getElementById(iconId);
+            var input = document.getElementById(inputId);
+            var icon = document.getElementById(iconId);
             if (input.type === "password") {
                 input.type = "text";
                 icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line>';
@@ -158,8 +162,8 @@
 
         // Live Password Strength Meter
         document.getElementById('password').addEventListener('input', function(e) {
-            const score = Validation.password(e.target.value);
-            const bar = document.getElementById('strength-bar');
+            var score = Validation.password(e.target.value);
+            var bar = document.getElementById('strength-bar');
             bar.className = 'strength-bar';
             if (score === 1) bar.classList.add('strength-weak');
             if (score === 2) bar.classList.add('strength-fair');
@@ -167,39 +171,159 @@
             if (score === 4) bar.classList.add('strength-strong');
         });
 
+        // --- Client-side Image to PDF Conversion ---
+        function loadImage(file) {
+            return new Promise(function(resolve, reject) {
+                var img = new Image();
+                img.onload = function() {
+                    URL.revokeObjectURL(img.src);
+                    resolve(img);
+                };
+                img.onerror = function() {
+                    URL.revokeObjectURL(img.src);
+                    reject(new Error('Failed to load image'));
+                };
+                img.src = URL.createObjectURL(file);
+            });
+        }
+
+        function compressToDataUrl(img, maxWidth, quality) {
+            var canvas = document.createElement('canvas');
+            var w = img.width, h = img.height;
+            if (w > maxWidth) {
+                h = Math.round((maxWidth / w) * h);
+                w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            return { dataUrl: canvas.toDataURL('image/jpeg', quality), width: w, height: h };
+        }
+
+        async function convertImageToPdf(file) {
+            var img = await loadImage(file);
+            var MAX_SIZE = 200 * 1024;
+            var quality = 0.85;
+            var maxWidth = 1200;
+            var pdfBlob = null;
+            var lastResult = null;
+
+            for (var attempt = 0; attempt < 3; attempt++) {
+                lastResult = compressToDataUrl(img, maxWidth, quality);
+                var doc = new window.jspdf.jsPDF();
+                var pageWidth = doc.internal.pageSize.getWidth();
+                var margin = 10;
+                var maxRenderW = pageWidth - 2 * margin;
+                var maxRenderH = doc.internal.pageSize.getHeight() - 2 * margin;
+                var renderW = maxRenderW;
+                var renderH = (lastResult.height / lastResult.width) * renderW;
+                if (renderH > maxRenderH) {
+                    renderH = maxRenderH;
+                    renderW = (lastResult.width / lastResult.height) * renderH;
+                }
+                doc.addImage(lastResult.dataUrl, 'JPEG', (pageWidth - renderW) / 2, margin, renderW, renderH);
+                pdfBlob = doc.output('blob');
+                if (pdfBlob.size <= MAX_SIZE) break;
+                quality -= 0.2;
+                maxWidth = Math.floor(maxWidth * 0.75);
+            }
+            return new File([pdfBlob], 'proof.pdf', { type: 'application/pdf' });
+        }
+
+        function setLoading(show, btnText) {
+            var btn = document.getElementById('signup-btn');
+            if (show) {
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner"></span> Converting image to PDF... Please wait.';
+                conversionInProgress = true;
+            } else {
+                btn.disabled = false;
+                btn.innerHTML = btnText || 'create Account';
+                conversionInProgress = false;
+            }
+        }
+
+        function resetUploadUI(defaultText) {
+            var display = document.getElementById('file-name-display');
+            var label = document.getElementById('upload-label');
+            display.innerText = defaultText || 'Click to upload document';
+            label.style.borderColor = '#cbd5e1';
+            label.style.background = '#f8fafc';
+        }
+
         function handleFileSelection(input) {
-            const display = document.getElementById('file-name-display');
-            const label = document.getElementById('upload-label');
-            const file = input.files[0];
+            var display = document.getElementById('file-name-display');
+            var label = document.getElementById('upload-label');
+            var file = input.files[0];
             if (!file) return;
 
-            const isMobile = window.innerWidth <= 1024;
-            const fileName = file.name.toLowerCase();
-            const isPDF = fileName.endsWith('.pdf');
-            const isImage = ['.jpg', '.jpeg', '.png', '.heic', '.heif'].some(ext => fileName.endsWith(ext));
+            var isMobile = window.innerWidth <= 1024;
+            var fileName = file.name.toLowerCase();
+            var isPDF = fileName.endsWith('.pdf');
+            var isImage = ['.jpg', '.jpeg', '.png', '.heic', '.heif', '.webp'].some(function(ext) { return fileName.endsWith(ext); });
 
-            // On Laptop (non-mobile), only PDF is allowed
+            // Desktop: PDF only
             if (!isMobile && !isPDF) {
-                Toast.error("On laptop, only PDF files are allowed. Please use a mobile device for image uploads.");
+                Toast.error("Only PDF files are allowed on desktop devices. Please upload a PDF document not exceeding 200 KB.");
                 input.value = "";
+                resetUploadUI('Click to upload document');
                 return;
             }
 
+            // Unsupported format
             if (!isPDF && !isImage) {
-                Toast.error("Please upload a PDF or an image.");
+                Toast.error("Unsupported file format. Please upload a PDF or supported image.");
                 input.value = "";
+                resetUploadUI('Click to upload document');
                 return;
             }
 
+            // PDF size check
             if (isPDF && file.size > 200 * 1024) {
-                Toast.error("PDF too large. Max 200KB.");
+                Toast.error("PDF size exceeds the maximum limit of 200 KB. Please upload a smaller PDF.");
                 input.value = "";
+                resetUploadUI('Click to upload document');
                 return;
             }
 
-            display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
-            label.style.borderColor = "#10b981";
-            label.style.background = "#f0fdf4";
+            // Valid PDF
+            if (isPDF) {
+                display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
+                label.style.borderColor = "#10b981";
+                label.style.background = "#f0fdf4";
+                return;
+            }
+
+            // Mobile: image selected → convert to PDF client-side
+            if (isMobile && isImage) {
+                setLoading(true, 'create Account');
+                display.innerText = "Converting image to PDF...";
+                label.style.borderColor = "#f59e0b";
+                label.style.background = "#fffbeb";
+
+                convertImageToPdf(file).then(function(pdfFile) {
+                    if (pdfFile.size > 200 * 1024) {
+                        setLoading(false, 'create Account');
+                        Toast.error("Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.");
+                        input.value = "";
+                        resetUploadUI('Click to upload document');
+                        return;
+                    }
+                    var dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(pdfFile);
+                    input.files = dataTransfer.files;
+                    setLoading(false, 'create Account');
+                    display.innerText = "✓ Image successfully converted to PDF. Ready for upload.";
+                    label.style.borderColor = "#10b981";
+                    label.style.background = "#f0fdf4";
+                }).catch(function(err) {
+                    setLoading(false, 'create Account');
+                    Toast.error("Image conversion failed. Please select another image or upload a PDF.");
+                    input.value = "";
+                    resetUploadUI('Click to upload document');
+                });
+            }
         }
 
         // Initialize Validation Engine
@@ -209,36 +333,24 @@
                 { id: 'fullname', label: 'Full Name', required: true },
                 { id: 'email', label: 'Email', required: true, type: 'email' },
                 { id: 'phone_number', label: 'Phone', required: true, type: 'phone' },
-                { id: 'password', label: 'Password', required: true, custom: (val) => {
+                { id: 'password', label: 'Password', required: true, custom: function(val) {
                     if (val.length < 8) return "Password must be at least 8 characters";
                     if (!/[A-Z]/.test(val)) return "Include at least one uppercase letter";
                     if (!/[a-z]/.test(val)) return "Include at least one lowercase letter";
                     if (!/[@$!%*?&#]/.test(val)) return "Include at least one special character";
                     return null;
                 }},
-                { id: 'confirm_password', label: 'Confirm Password', required: true, custom: (val, form) => {
+                { id: 'confirm_password', label: 'Confirm Password', required: true, custom: function(val, form) {
                     if (val !== form.querySelector('#password').value) return "Passwords do not match";
                     return null;
                 }},
-                { id: 'proof_file', label: 'Verification Document', custom: (val, form) => {
-                    const file = form.querySelector('#proof_file').files[0];
+                { id: 'proof_file', label: 'Verification Document', custom: function(val, form) {
+                    var file = form.querySelector('#proof_file').files[0];
                     if (!file) return "Please upload a verification document";
-                    
-                    const isMobile = window.innerWidth <= 1024;
-                    const fileName = file.name.toLowerCase();
-                    const isPDF = fileName.endsWith('.pdf');
-                    
-                    if (!isMobile && !isPDF) return "On laptop, only PDF files are allowed";
-                    if (isPDF && file.size > 200 * 1024) return "PDF too large (Max 200KB)";
+                    if (file.size > 200 * 1024) return "File exceeds 200 KB limit";
                     return null;
                 }}
             ]
-        });
-
-        document.getElementById('signupForm').addEventListener('submit', function(e) {
-            const fileInput = document.getElementById('proof_file');
-            const isImage = fileInput.files.length > 0 && !fileInput.files[0].name.toLowerCase().endsWith('.pdf');
-            if (isImage) document.getElementById('is_mobile').value = "true";
         });
     </script>
     <style>
