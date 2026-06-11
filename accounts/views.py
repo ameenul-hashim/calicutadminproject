@@ -5,7 +5,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, PasswordResetOTP, ChatMessage
+from .models import CustomUser, Course, Lesson, Enrollment, EmailOTP, DeletionRequest, PasswordResetOTP, ChatMessage, UploadJob
 import uuid
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.views.decorators.cache import cache_control, never_cache
@@ -3002,14 +3002,16 @@ def reset_password(request):
     return render(request, 'accounts/reset_password.html', {'user': user})
 
 
+@ratelimit(key='user', rate='10/m', method='POST', block=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def init_video_upload(request):
     """
-    Phase 1: Create lesson record and get YouTube resumable upload URL.
-    Browser uploads MP4 directly to YouTube — no bytes pass through Django.
-    Returns {lesson_uid, upload_url} for browser to PUT file to YouTube.
+    Phase 1: Create UploadJob + Lesson record and get YouTube resumable upload URL.
+    Browser uploads MP4 directly to YouTube via chunks — no bytes pass through Django.
+    Idempotent: same idempotency_key returns same UploadJob.
     """
     import json
+    from django.utils import timezone as tz
 
     if request.method != 'POST':
         return JsonResponse({'error': 'POST required'}, status=405)
@@ -3021,14 +3023,35 @@ def init_video_upload(request):
         order = data.get('order', 1)
         chapter = data.get('chapter', '')
         file_size = data.get('file_size')
+        idempotency_key = data.get('idempotency_key', '')
 
         if not title:
             return JsonResponse({'error': 'Title is required'}, status=400)
 
         course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
-
         course_is_published = course.status == 'PUBLISHED' and course.is_approved
 
+        # Idempotency check: if same key exists, return existing UploadJob
+        if idempotency_key:
+            existing_job = UploadJob.objects.filter(
+                idempotency_key=idempotency_key,
+                teacher=request.user,
+            ).first()
+            if existing_job:
+                if existing_job.status in ('UPLOADED', 'COMPLETED'):
+                    return JsonResponse({'lesson_uid': str(existing_job.lesson.uid) if existing_job.lesson else '', 'status': 'already_complete', 'upload_job_uid': str(existing_job.uid)})
+                if existing_job.youtube_upload_url and existing_job.status == 'UPLOADING':
+                    return JsonResponse({
+                        'lesson_uid': str(existing_job.lesson.uid) if existing_job.lesson else '',
+                        'upload_url': existing_job.youtube_upload_url,
+                        'access_token': existing_job.access_token,
+                        'upload_job_uid': str(existing_job.uid),
+                        'uploaded_bytes': existing_job.uploaded_bytes,
+                        'progress_percentage': existing_job.progress_percentage,
+                        'resumed': True,
+                    })
+
+        # Create lesson
         lesson = Lesson.objects.create(
             course=course,
             title=title,
@@ -3055,6 +3078,24 @@ def init_video_upload(request):
         upload_url = result['upload_url']
         access_token = result['access_token']
 
+        # Create UploadJob
+        upload_job = UploadJob.objects.create(
+            teacher=request.user,
+            lesson=lesson,
+            title=title,
+            file_size=file_size or 0,
+            file_name=title,
+            status='UPLOADING',
+            progress_percentage=0,
+            uploaded_bytes=0,
+            youtube_upload_url=upload_url,
+            access_token=access_token,
+            idempotency_key=idempotency_key or None,
+            last_activity=tz.now(),
+            client_ip=request.META.get('REMOTE_ADDR'),
+            user_agent=request.META.get('HTTP_USER_AGENT', ''),
+        )
+
         lesson.upload_status = 'UPLOADING'
         lesson.youtube_upload_status = 'UPLOADING'
         lesson.save(update_fields=['upload_status', 'youtube_upload_status'])
@@ -3063,6 +3104,10 @@ def init_video_upload(request):
             'lesson_uid': str(lesson.uid),
             'upload_url': upload_url,
             'access_token': access_token,
+            'upload_job_uid': str(upload_job.uid),
+            'uploaded_bytes': 0,
+            'progress_percentage': 0,
+            'resumed': False,
         })
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
@@ -3075,8 +3120,8 @@ def init_video_upload(request):
 def youtube_upload_complete(request):
     """
     Phase 2: Browser has finished uploading MP4 directly to YouTube.
-    Receives video_id from browser, saves to lesson.
-    MP4 bytes never touched Django.
+    Receives video_id from browser, saves to lesson + UploadJob.
+    Starts background YouTube processing verification.
     """
     from django.utils import timezone as tz
     import json
@@ -3092,6 +3137,7 @@ def youtube_upload_complete(request):
     lesson_uid_str = data.get('lesson_uid')
     video_id = data.get('video_id', '').strip()
     auto_recover = data.get('auto_recover', False)
+    upload_job_uid = data.get('upload_job_uid', '')
 
     if not lesson_uid_str:
         return JsonResponse({'error': 'lesson_uid required'}, status=400)
@@ -3119,20 +3165,31 @@ def youtube_upload_complete(request):
         return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
     if lesson.youtube_video_id == video_id and lesson.upload_status == 'READY':
+        # Update UploadJob if exists
+        if upload_job_uid:
+            UploadJob.objects.filter(uid=upload_job_uid, teacher=request.user).update(
+                status='COMPLETED',
+                youtube_video_id=video_id,
+                progress_percentage=100,
+                completed_at=tz.now(),
+                last_activity=tz.now(),
+            )
         return JsonResponse({'success': True, 'status': 'already_complete', 'video_id': video_id})
 
     course = lesson.course
     course_is_published = course.status == 'PUBLISHED' and course.is_approved
 
+    # Save video ID to lesson
     lesson.youtube_video_id = video_id
     lesson.youtube_upload_status = 'UPLOADED'
     lesson.youtube_uploaded_at = tz.now()
     lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
-    lesson.upload_status = 'READY'
+    lesson.upload_status = 'PROCESSING'  # Will become READY after YouTube processing confirmation
 
     if course_is_published:
         lesson.status = 'APPROVED'
         lesson.is_approved = True
+
     update_fields = [
         'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
         'upload_status', 'video_url',
@@ -3141,16 +3198,68 @@ def youtube_upload_complete(request):
         update_fields.extend(['status', 'is_approved'])
     lesson.save(update_fields=update_fields)
 
+    # Update UploadJob
+    if upload_job_uid:
+        UploadJob.objects.filter(uid=upload_job_uid, teacher=request.user).update(
+            status='UPLOADED',
+            youtube_video_id=video_id,
+            youtube_url=lesson.video_url,
+            progress_percentage=100,
+            uploaded_bytes=0,  # Will be set by update_upload_progress
+            last_activity=tz.now(),
+        )
+
     if auto_recover:
         logger.info(f"auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
 
+    # Start YouTube processing verification in background
+    def verify_processing(lesson_pk, video_id_str):
+        import time
+        from .utils.youtube_uploader import verify_youtube_video
+        max_attempts = 30  # 5 minutes at 10-second intervals
+        for attempt in range(max_attempts):
+            time.sleep(10)
+            try:
+                is_ready = verify_youtube_video(video_id_str)
+                if is_ready:
+                    Lesson.objects.filter(pk=lesson_pk).update(
+                        upload_status='READY',
+                    )
+                    UploadJob.objects.filter(lesson__pk=lesson_pk, teacher=request.user).update(
+                        status='COMPLETED',
+                        completed_at=tz.now(),
+                        last_activity=tz.now(),
+                    )
+                    logger.info(f"YouTube processing complete for video {video_id_str}")
+                    return
+            except Exception as e:
+                logger.warning(f"YouTube verification attempt {attempt+1} failed: {e}")
+        # After 5 minutes, mark as READY anyway (video may be delayed)
+        try:
+            Lesson.objects.filter(pk=lesson_pk, upload_status='PROCESSING').update(
+                upload_status='READY',
+            )
+            UploadJob.objects.filter(lesson__pk=lesson_pk, teacher=request.user, status='UPLOADED').update(
+                status='COMPLETED',
+                completed_at=tz.now(),
+                last_activity=tz.now(),
+            )
+        except Exception:
+            pass
+
+    import threading
+    thread = threading.Thread(target=verify_processing, args=(lesson.pk, video_id), daemon=True)
+    thread.start()
+
     return JsonResponse({
         'success': True,
-        'message': 'Video uploaded to YouTube successfully!',
+        'message': 'Video uploaded to YouTube successfully! Processing...',
         'video_id': video_id,
+        'upload_job_uid': upload_job_uid,
     })
 
 
+@ratelimit(key='user', rate='10/m', method='POST', block=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def init_youtube_edit_upload(request):
     """
@@ -3209,6 +3318,7 @@ def init_youtube_edit_upload(request):
     })
 
 
+@ratelimit(key='user', rate='10/m', method='POST', block=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def youtube_edit_complete(request):
     """
@@ -3303,6 +3413,139 @@ def youtube_edit_complete(request):
         'message': 'Video uploaded to YouTube successfully!',
         'video_id': video_id,
     })
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def update_upload_progress(request, job_uid):
+    """
+    Reports chunk upload progress from browser to server.
+    Stores uploaded_bytes so page-refresh recovery can resume from last byte.
+    """
+    import json
+    from django.utils import timezone as tz
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+    uploaded_bytes = data.get('uploaded_bytes', 0)
+    total_bytes = data.get('total_bytes', 0)
+
+    try:
+        job = UploadJob.objects.get(uid=job_uid, teacher=request.user)
+    except UploadJob.DoesNotExist:
+        return JsonResponse({'error': 'Upload job not found'}, status=404)
+
+    progress = int((uploaded_bytes / total_bytes) * 100) if total_bytes > 0 else 0
+    job.uploaded_bytes = uploaded_bytes
+    job.progress_percentage = min(progress, 99)  # 100 only on complete
+    job.last_activity = tz.now()
+    job.save(update_fields=['uploaded_bytes', 'progress_percentage', 'last_activity'])
+
+    return JsonResponse({'success': True, 'progress_percentage': job.progress_percentage})
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def get_upload_status(request, job_uid):
+    """
+    Returns current upload status for resume/recovery.
+    Teacher can see progress after page refresh or tab crash.
+    """
+    try:
+        job = UploadJob.objects.get(uid=job_uid, teacher=request.user)
+    except UploadJob.DoesNotExist:
+        return JsonResponse({'error': 'Upload job not found'}, status=404)
+
+    return JsonResponse({
+        'status': job.status,
+        'progress_percentage': job.progress_percentage,
+        'uploaded_bytes': job.uploaded_bytes,
+        'total_bytes': job.file_size,
+        'youtube_upload_url': job.youtube_upload_url or '',
+        'access_token': job.access_token,
+        'lesson_uid': str(job.lesson.uid) if job.lesson else '',
+        'error_message': job.error_message,
+        'last_activity': job.last_activity.isoformat() if job.last_activity else '',
+        'created_at': job.created_at.isoformat(),
+    })
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def cancel_upload(request, job_uid):
+    """
+    Cancel an in-progress upload.
+    Optionally deletes the lesson (keep_lesson=false) or keeps it as draft (keep_lesson=true).
+    """
+    import json
+    from django.utils import timezone as tz
+
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError:
+        data = {}
+
+    keep_lesson = data.get('keep_lesson', False)
+
+    try:
+        job = UploadJob.objects.get(uid=job_uid, teacher=request.user)
+    except UploadJob.DoesNotExist:
+        return JsonResponse({'error': 'Upload job not found'}, status=404)
+
+    job.status = 'CANCELLED'
+    job.error_message = 'Cancelled by teacher'
+    job.last_activity = tz.now()
+    job.save(update_fields=['status', 'error_message', 'last_activity'])
+
+    lesson = job.lesson
+    if lesson and not keep_lesson:
+        try:
+            lesson.delete()
+            job.lesson = None
+            job.save(update_fields=['lesson'])
+        except Exception as e:
+            logger.warning(f"cancel_upload: Could not delete lesson: {e}")
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Upload cancelled.',
+        'lesson_deleted': not keep_lesson and lesson is not None,
+    })
+
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def list_active_uploads(request):
+    """
+    Returns all active uploads for the current teacher.
+    Used to detect orphaned/in-progress uploads on page load.
+    """
+    from django.utils import timezone as tz
+    active_jobs = UploadJob.objects.filter(
+        teacher=request.user,
+        status__in=['PENDING', 'UPLOADING'],
+    ).order_by('-created_at')[:5]
+
+    results = []
+    for job in active_jobs:
+        results.append({
+            'uid': str(job.uid),
+            'title': job.title,
+            'file_size': job.file_size,
+            'progress_percentage': job.progress_percentage,
+            'uploaded_bytes': job.uploaded_bytes,
+            'status': job.status,
+            'last_activity': job.last_activity.isoformat() if job.last_activity else '',
+            'created_at': job.created_at.isoformat(),
+            'lesson_uid': str(job.lesson.uid) if job.lesson else '',
+        })
+
+    return JsonResponse({'uploads': results})
 
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')

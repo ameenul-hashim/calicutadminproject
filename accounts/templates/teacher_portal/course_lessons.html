@@ -822,6 +822,29 @@ document.addEventListener('keydown', function(e) {
 
 // ====== LESSON RECOVERY: Auto-fix orphaned YouTube uploads ======
 (function autoRecoverLessons() {
+    // First check for active UploadJobs (incomplete uploads)
+    fetch('/api/video/active-uploads/')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.uploads && data.uploads.length > 0) {
+            var upload = data.uploads[0];
+            var pct = upload.progress_percentage || 0;
+            var msg = '⏳ You have an incomplete upload: "' + upload.title + '" (' + pct + '%). ';
+            if (pct > 0) {
+                msg += '<a href="' + window.location.href.replace(/lessons\/$/, '') + 'lessons/add/" style="color:#6366f1;font-weight:700;">Resume Upload</a>';
+            }
+            var banner = document.createElement('div');
+            banner.style.cssText = 'background:#fef3c7;border:1px solid #f59e0b;border-radius:1rem;padding:1rem;margin-bottom:1.5rem;font-size:0.9rem;';
+            banner.innerHTML = msg;
+            var container = document.querySelector('.main-content') || document.querySelector('main');
+            if (container && container.firstChild) {
+                container.insertBefore(banner, container.firstChild);
+            }
+        }
+    })
+    .catch(function() {});
+
+    // Then recover orphaned lessons
     var cards = document.querySelectorAll('.lesson-card[data-upload-status]:not([data-upload-status="READY"]):not([data-upload-status="NOT_UPLOADED"])');
     cards.forEach(function(card) {
         var lessonUid = card.getAttribute('data-lesson-uid');

@@ -474,9 +474,11 @@ class UploadJob(models.Model):
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
         ('UPLOADING', 'Uploading'),
+        ('UPLOADED', 'Uploaded to YouTube'),
         ('PROCESSING', 'Processing on YouTube'),
         ('COMPLETED', 'Completed'),
         ('FAILED', 'Failed'),
+        ('CANCELLED', 'Cancelled'),
     )
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
     teacher = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='upload_jobs')
@@ -484,6 +486,7 @@ class UploadJob(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
     file_size = models.BigIntegerField(default=0)
+    uploaded_bytes = models.BigIntegerField(default=0)
     file_name = models.CharField(max_length=500, blank=True, default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', db_index=True)
     progress_percentage = models.PositiveIntegerField(default=0)
@@ -491,8 +494,15 @@ class UploadJob(models.Model):
     youtube_upload_url = models.URLField(max_length=2000, null=True, blank=True)
     youtube_video_id = models.CharField(max_length=100, null=True, blank=True)
     youtube_url = models.URLField(max_length=500, null=True, blank=True)
+    access_token = models.TextField(blank=True, default='')
+    idempotency_key = models.CharField(max_length=64, unique=True, null=True, blank=True, db_index=True)
+    retry_count = models.PositiveIntegerField(default=0)
+    last_activity = models.DateTimeField(null=True, blank=True, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    client_ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True, default='')
 
     class Meta:
         ordering = ['-created_at']

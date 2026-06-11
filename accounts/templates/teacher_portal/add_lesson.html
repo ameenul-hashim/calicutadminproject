@@ -22,7 +22,6 @@
         .input-group input { width: 100%; padding: 0.8rem 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; font-size: 0.95rem; outline: none; transition: border-color 0.2s; }
         .input-group input:focus { border-color: #6366f1; }
 
-        /* RESPONSIVE INJECTIONS */
         @media (max-width: 1024px) {
             .sidebar { transform: translateX(-100%); z-index: 1000; position: fixed; width: 280px; transition: transform 0.3s; }
             .sidebar.active { transform: translateX(0); }
@@ -36,18 +35,11 @@
         }
         .table-responsive, .table-container { overflow-x: auto; width: 100%; }
         table { min-width: 62.5rem; }
-
-        /* Video Player Responsive */
         .video-container { aspect-ratio: 16 / 9; width: 100%; max-width: 100%; }
         video { width: 100%; height: 100%; }
-
-        /* Django Messages Toast */
         .messages { max-width: 24rem; word-wrap: break-word; }
-        @media (max-width: 640px) {
-            .messages { max-width: 90vw; }
-        }
+        @media (max-width: 640px) { .messages { max-width: 90vw; } }
 
-        /* Upload Progress */
         .upload-progress { display: none; margin-top: 1.2rem; padding: 1.2rem; background: #f8fafc; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
         .upload-progress.active { display: block; }
         .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.6rem; }
@@ -57,15 +49,22 @@
         .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #8b5cf6); border-radius: 4px; transition: width 0.3s ease; }
         .progress-fill.complete { background: linear-gradient(90deg, #22c55e, #16a34a); }
         .progress-fill.error { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .progress-fill.paused { background: linear-gradient(90deg, #f59e0b, #d97706); }
         .progress-detail { font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; }
         .upload-phase { font-size: 0.8rem; color: #64748b; margin-top: 0.3rem; font-weight: 500; }
         .upload-phase.complete { color: #16a34a; }
         .upload-phase.error { color: #dc2626; }
+        .upload-phase.paused { color: #d97706; }
 
-        /* Upload error message */
         .upload-error { display: none; margin-top: 1rem; padding: 0.8rem 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 0.75rem; color: #dc2626; font-size: 0.85rem; }
         .upload-error.active { display: block; }
-        .retry-btn { background: #dc2626; color: white; border: none; padding: 0.4rem 1rem; border-radius: 0.5rem; cursor: pointer; font-size: 0.8rem; font-weight: 600; margin-top: 0.5rem; }
+
+        .recovery-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; }
+        .recovery-modal.active { display: flex; }
+        .recovery-card { background: white; border-radius: 1.5rem; padding: 2rem; max-width: 480px; width: 90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3); }
+
+        .offline-banner { display: none; position: fixed; top: 0; left: 0; right: 0; background: #fef3c7; border-bottom: 1px solid #f59e0b; color: #92400e; text-align: center; padding: 0.5rem; font-size: 0.85rem; font-weight: 600; z-index: 99999; }
+        .offline-banner.active { display: block; }
     </style>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -90,6 +89,8 @@
             return cookieValue;
         }
 
+        var csrfToken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+
         function toggleVideoInput(mode) {
             const fileGroup = document.getElementById('fileUploadGroup');
             const urlGroup = document.getElementById('urlUploadGroup');
@@ -98,17 +99,18 @@
             if (mode === 'file') {
                 fileGroup.style.display = 'block';
                 urlGroup.style.display = 'none';
-                fileInput.required = true;
+                fileInput.required = false;
                 urlInput.required = false;
             } else {
                 fileGroup.style.display = 'none';
                 urlGroup.style.display = 'block';
                 fileInput.required = false;
-                urlInput.required = true;
+                urlInput.required = false;
             }
         }
 
         function formatSize(bytes) {
+            if (!bytes || bytes < 0) return '0 B';
             if (bytes < 1024) return bytes + ' B';
             if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
             if (bytes < 1073741824) return (bytes / 1048576).toFixed(1) + ' MB';
@@ -116,12 +118,13 @@
         }
 
         function formatSpeed(bytesPerSec) {
+            if (!bytesPerSec || bytesPerSec <= 0) return '-- KB/s';
             if (bytesPerSec < 1048576) return (bytesPerSec / 1024).toFixed(0) + ' KB/s';
             return (bytesPerSec / 1048576).toFixed(1) + ' MB/s';
         }
 
         function formatTimeRemaining(bytesRemaining, bytesPerSec) {
-            if (bytesPerSec <= 0) return 'calculating...';
+            if (bytesPerSec <= 0 || bytesRemaining <= 0) return '';
             const secs = Math.ceil(bytesRemaining / bytesPerSec);
             if (secs < 60) return secs + 's remaining';
             return Math.floor(secs / 60) + 'm ' + (secs % 60) + 's remaining';
@@ -155,13 +158,14 @@
         function clearError() {
             document.getElementById('uploadError').classList.remove('active');
             document.getElementById('progressBar').classList.remove('error');
+            document.getElementById('progressBar').classList.remove('paused');
         }
 
-        function setButtonLoading(loading) {
+        function setButtonLoading(loading, text) {
             const btn = document.getElementById('submitBtn');
             if (loading) {
                 btn.disabled = true;
-                btn.textContent = 'Uploading...';
+                btn.textContent = text || 'Uploading...';
                 btn.style.opacity = '0.7';
                 btn.style.cursor = 'wait';
             } else {
@@ -172,8 +176,412 @@
             }
         }
 
+        function uuidv4() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        // ====== CHUNKED RESUMABLE UPLOAD ENGINE ======
+        var CHUNK_SIZE = 5 * 1024 * 1024; // 5MB default
+        var MAX_RETRIES = 5;
+        var UPLOAD_STATE_KEY = 'neolearner_upload_state';
+
+        function getStoredUploadState() {
+            try {
+                var raw = sessionStorage.getItem(UPLOAD_STATE_KEY);
+                if (raw) return JSON.parse(raw);
+            } catch(e) {}
+            return null;
+        }
+
+        function setStoredUploadState(state) {
+            try {
+                sessionStorage.setItem(UPLOAD_STATE_KEY, JSON.stringify(state));
+            } catch(e) {}
+        }
+
+        function clearStoredUploadState() {
+            try {
+                sessionStorage.removeItem(UPLOAD_STATE_KEY);
+            } catch(e) {}
+        }
+
+        // YouTube resumable upload: query bytes uploaded so far
+        function getYouTubeUploadedBytes(uploadUrl, accessToken) {
+            return new Promise(function(resolve) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('PUT', uploadUrl);
+                xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+                xhr.setRequestHeader('Content-Range', 'bytes */' + uploadUrl);
+                xhr.setRequestHeader('Content-Length', '0');
+                xhr.onload = function() {
+                    if (xhr.status === 308) {
+                        var range = xhr.getResponseHeader('Range');
+                        if (range) {
+                            var match = range.match(/bytes=0-(\d+)/);
+                            if (match) {
+                                resolve(parseInt(match[1], 10) + 1);
+                                return;
+                            }
+                        }
+                        resolve(0);
+                    } else if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(-1); // Already complete
+                    } else {
+                        resolve(0);
+                    }
+                };
+                xhr.onerror = function() { resolve(0); };
+                xhr.send();
+            });
+        }
+
+        // Upload a single chunk with retry
+        function uploadChunk(uploadUrl, chunk, startByte, totalBytes, accessToken, retriesLeft) {
+            return new Promise(function(resolve, reject) {
+                var endByte = Math.min(startByte + chunk.size, totalBytes) - 1;
+                var xhr = new XMLHttpRequest();
+                var timedOut = false;
+                var timeoutMs = 300000; // 5 min per chunk
+
+                var timer = setTimeout(function() {
+                    timedOut = true;
+                    xhr.abort();
+                }, timeoutMs);
+
+                xhr.upload.addEventListener('progress', function(e) {
+                    if (e.lengthComputable && !timedOut) {
+                        // chunk progress within this chunk
+                    }
+                });
+
+                xhr.addEventListener('load', function() {
+                    clearTimeout(timer);
+                    if (timedOut) return;
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(true);
+                    } else if (xhr.status === 308) {
+                        // YouTube accepted the bytes
+                        resolve(true);
+                    } else if (xhr.status === 503 || xhr.status === 500 || xhr.status === 429) {
+                        if (retriesLeft > 0) {
+                            var delay = [5000, 15000, 30000, 60000][5 - retriesLeft] || 60000;
+                            setTimeout(function() {
+                                uploadChunk(uploadUrl, chunk, startByte, totalBytes, accessToken, retriesLeft - 1)
+                                    .then(resolve).catch(reject);
+                            }, delay);
+                        } else {
+                            reject(new Error('YouTube server error (HTTP ' + xhr.status + ').'));
+                        }
+                    } else if (xhr.status === 404) {
+                        reject(new Error('Upload session expired. Please start again.'));
+                    } else {
+                        reject(new Error('Upload failed (HTTP ' + xhr.status + ').'));
+                    }
+                });
+
+                xhr.addEventListener('error', function() {
+                    clearTimeout(timer);
+                    if (retriesLeft > 0) {
+                        var delay = [5000, 15000, 30000, 60000][5 - retriesLeft] || 60000;
+                        setTimeout(function() {
+                            uploadChunk(uploadUrl, chunk, startByte, totalBytes, accessToken, retriesLeft - 1)
+                                .then(resolve).catch(reject);
+                        }, delay);
+                    } else {
+                        reject(new Error('Network error during upload.'));
+                    }
+                });
+
+                xhr.addEventListener('abort', function() {
+                    clearTimeout(timer);
+                    if (!timedOut) {
+                        reject(new Error('aborted'));
+                    } else {
+                        reject(new Error('Chunk upload timed out.'));
+                    }
+                });
+
+                xhr.open('PUT', uploadUrl);
+                xhr.setRequestHeader('Content-Type', 'video/mp4');
+                xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+                xhr.setRequestHeader('Content-Range', 'bytes ' + startByte + '-' + endByte + '/' + totalBytes);
+                xhr.send(chunk);
+            });
+        }
+
+        // Main chunked upload function
+        function uploadToYouTubeChunked(uploadUrl, file, accessToken, uploadJobUid, onProgress, onCancel) {
+            return new Promise(function(resolve, reject) {
+                var totalBytes = file.size;
+                var uploadedBytes = 0;
+                var cancelled = false;
+                var paused = false;
+                var startTime = Date.now();
+                var lastReportTime = Date.now();
+                var lastReportedBytes = 0;
+
+                if (onCancel) {
+                    onCancel(function() {
+                        cancelled = true;
+                    });
+                }
+
+                // Step 1: Query YouTube for already uploaded bytes (resume support)
+                setPhase('Checking for existing upload progress...');
+                getYouTubeUploadedBytes(uploadUrl, accessToken).then(function(resumeFrom) {
+                    if (resumeFrom < 0) {
+                        // Already fully uploaded
+                        resolve({});
+                        return;
+                    }
+                    if (resumeFrom > 0) {
+                        uploadedBytes = resumeFrom;
+                        if (onProgress) onProgress(uploadedBytes, totalBytes);
+                    }
+
+                    // Step 2: Determine chunk size based on file size
+                    var chunkSize = CHUNK_SIZE;
+                    if (totalBytes > 1073741824) chunkSize = 10 * 1024 * 1024; // 10MB for >1GB
+                    else if (totalBytes > 524288000) chunkSize = 8 * 1024 * 1024; // 8MB for >500MB
+                    else if (totalBytes < 104857600) chunkSize = 2 * 1024 * 1024; // 2MB for <100MB
+
+                    uploadNextChunk();
+                });
+
+                function uploadNextChunk() {
+                    if (cancelled) {
+                        reject(new Error('cancelled'));
+                        return;
+                    }
+
+                    if (paused) {
+                        setTimeout(uploadNextChunk, 500);
+                        return;
+                    }
+
+                    if (uploadedBytes >= totalBytes) {
+                        resolve({});
+                        return;
+                    }
+
+                    var startByte = uploadedBytes;
+                    var endByte = Math.min(startByte + chunkSize, totalBytes);
+                    var chunk = file.slice(startByte, endByte);
+
+                    uploadChunk(uploadUrl, chunk, startByte, totalBytes, accessToken, MAX_RETRIES).then(function() {
+                        uploadedBytes = endByte;
+                        var now = Date.now();
+
+                        if (onProgress) onProgress(uploadedBytes, totalBytes);
+
+                        // Report progress to server every 2 seconds
+                        if (now - lastReportTime > 2000) {
+                            var reportData = JSON.stringify({
+                                uploaded_bytes: uploadedBytes,
+                                total_bytes: totalBytes,
+                            });
+                            var url = '/api/video/progress/' + uploadJobUid + '/';
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('POST', url, true);
+                            xhr.setRequestHeader('Content-Type', 'application/json');
+                            xhr.setRequestHeader('X-CSRFToken', csrfToken);
+                            xhr.send(reportData);
+                            lastReportTime = now;
+                            lastReportedBytes = uploadedBytes;
+
+                            // Persist to sessionStorage for crash recovery
+                            setStoredUploadState({
+                                uploadJobUid: uploadJobUid,
+                                lessonUid: null,
+                                uploadedBytes: uploadedBytes,
+                                totalBytes: totalBytes,
+                                timestamp: now,
+                            });
+                        }
+
+                        // Small delay between chunks to avoid overwhelming
+                        setTimeout(uploadNextChunk, 100);
+                    }).catch(function(err) {
+                        if (err.message === 'aborted' || err.message === 'cancelled') {
+                            reject(err);
+                        } else {
+                            // Retry at chunk level already handled; if we get here, all retries exhausted
+                            reject(err);
+                        }
+                    });
+                }
+            });
+        }
+
+        // ====== UI State ======
+        var currentUploadJobUid = null;
+        var currentLessonUid = null;
+        var cancelUploadCallback = null;
+
+        function cancelCurrentUpload() {
+            if (!currentUploadJobUid) return;
+            if (!confirm('Cancel upload? The lesson draft will be saved. You can resume later.')) return;
+            if (cancelUploadCallback) cancelUploadCallback();
+            fetch('/api/video/cancel/' + currentUploadJobUid + '/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({ keep_lesson: true }),
+            }).catch(function() {});
+            setPhase('Upload cancelled', 'error');
+            showUploadProgress(false);
+            setButtonLoading(false);
+            clearStoredUploadState();
+            currentUploadJobUid = null;
+        }
+
+        // ====== OFFLINE DETECTION ======
+        var wasOffline = false;
+
+        window.addEventListener('offline', function() {
+            wasOffline = true;
+            document.getElementById('offlineBanner').classList.add('active');
+            setPhase('Connection lost. Waiting for internet...', 'paused');
+            document.getElementById('progressBar').classList.add('paused');
+        });
+
+        window.addEventListener('online', function() {
+            document.getElementById('offlineBanner').classList.remove('active');
+            if (wasOffline && currentUploadJobUid) {
+                setPhase('Reconnected! Resuming upload...');
+                document.getElementById('progressBar').classList.remove('paused');
+                wasOffline = false;
+            }
+        });
+
+        // ====== RECOVERY ON PAGE LOAD ======
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check for stored upload state (tab crash recovery)
+            var stored = getStoredUploadState();
+            if (stored && stored.uploadJobUid) {
+                fetch('/api/video/status/' + stored.uploadJobUid + '/')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.status === 'UPLOADING' || data.status === 'PENDING') {
+                        showRecoveryModal(stored.uploadJobUid, data);
+                    } else {
+                        clearStoredUploadState();
+                    }
+                })
+                .catch(function() {
+                    clearStoredUploadState();
+                });
+            }
+
+            // Also check for active uploads from server
+            fetch('/api/video/active-uploads/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.uploads && data.uploads.length > 0) {
+                    var upload = data.uploads[0];
+                    if (!stored || stored.uploadJobUid !== upload.uid) {
+                        showRecoveryModal(upload.uid, upload);
+                    }
+                }
+            })
+            .catch(function() {});
+        });
+
+        function showRecoveryModal(jobUid, data) {
+            var modal = document.getElementById('recoveryModal');
+            var pct = data.progress_percentage || 0;
+            var uploaded = formatSize(data.uploaded_bytes || 0);
+            var total = formatSize(data.file_size || 0);
+            document.getElementById('recoveryInfo').textContent =
+                'Found an incomplete upload: ' + (data.title || 'Untitled') +
+                ' (' + pct + '% / ' + uploaded + ' of ' + total + ').';
+            modal.classList.add('active');
+
+            document.getElementById('recoveryResume').onclick = function() {
+                modal.classList.remove('active');
+                resumeUpload(jobUid, data);
+            };
+            document.getElementById('recoveryDelete').onclick = function() {
+                modal.classList.remove('active');
+                fetch('/api/video/cancel/' + jobUid + '/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                    body: JSON.stringify({ keep_lesson: false }),
+                }).catch(function() {});
+                clearStoredUploadState();
+            };
+        }
+
+        function resumeUpload(jobUid, data) {
+            // Pre-fill the form title if available
+            if (data.title) {
+                document.getElementById('title').value = data.title;
+            }
+            currentUploadJobUid = jobUid;
+            currentLessonUid = data.lesson_uid || '';
+            showUploadProgress(true);
+            setButtonLoading(true, 'Resuming...');
+            setProgress(data.progress_percentage || 0, 'Resuming...');
+            setPhase('Resuming upload from ' + (data.progress_percentage || 0) + '%...');
+
+            // Store the upload job uid and set up for resuming
+            clearStoredUploadState();
+            setStoredUploadState({
+                uploadJobUid: jobUid,
+                lessonUid: data.lesson_uid || '',
+                uploadedBytes: data.uploaded_bytes || 0,
+                totalBytes: data.file_size || 0,
+                timestamp: Date.now(),
+            });
+
+            // Disable form fields during recovery
+            document.getElementById('title').disabled = true;
+            document.getElementById('order').disabled = true;
+
+            // Start upload from where we left off
+            var uploadUrl = data.youtube_upload_url;
+            var accessToken = data.access_token;
+            var totalBytes = data.file_size || 0;
+
+            if (!uploadUrl || !accessToken) {
+                setError('Upload session expired. Please start a new upload.');
+                setButtonLoading(false);
+                return;
+            }
+
+            // Create a dummy file object for the size
+            var dummyFile = { size: totalBytes, slice: function() { return new Blob(); } };
+
+            setPhase('Resuming upload...');
+            uploadToYouTubeChunked(uploadUrl, dummyFile, accessToken, jobUid,
+                function(uploadedBytes, totalBytes) {
+                    var pct = Math.round((uploadedBytes / totalBytes) * 100);
+                    var speed = formatSpeed((uploadedBytes) / ((Date.now() - startResumeTime) / 1000 || 1));
+                    var eta = formatTimeRemaining(totalBytes - uploadedBytes, (uploadedBytes) / ((Date.now() - startResumeTime) / 1000 || 1));
+                    setProgress(pct, 'Uploading ' + pct + '%');
+                    document.getElementById('progressDetail').textContent =
+                        formatSize(uploadedBytes) + ' / ' + formatSize(totalBytes) +
+                        ' (' + speed + ') ' + eta;
+                },
+                function(cancelFn) {
+                    cancelUploadCallback = cancelFn;
+                }
+            ).then(function() {
+                onUploadComplete(jobUid, currentLessonUid);
+            }).catch(function(err) {
+                if (err.message === 'aborted' || err.message === 'cancelled') return;
+                onUploadError(err);
+            });
+        }
+
+        // ====== MAIN FORM SUBMIT ======
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('lessonForm');
+            var idempotencyKey = uuidv4();
+
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 clearError();
@@ -182,13 +590,11 @@
                 const urlInput = document.getElementById('video_url');
                 const videoSource = document.querySelector('input[name="video_source"]:checked').value;
 
-                // YouTube URL path — simple form submit (no upload)
                 if (videoSource === 'url' && urlInput.value.trim()) {
                     form.submit();
                     return;
                 }
 
-                // MP4 file upload — browser uploads directly to YouTube
                 if (videoSource !== 'file' || !fileInput.files.length) {
                     form.submit();
                     return;
@@ -198,25 +604,23 @@
                 const fileSize = file.size;
                 const sizeMB = (fileSize / (1024 * 1024)).toFixed(1);
 
-                // Validate file type
                 if (!file.name.toLowerCase().endsWith('.mp4')) {
                     setError('Only MP4 files are supported. Please select an MP4 video file.');
                     return;
                 }
 
-                // Start upload
                 showUploadProgress(true);
-                setButtonLoading(true);
+                setButtonLoading(true, 'Starting upload...');
                 setProgress(0, 'Preparing upload...');
                 setPhase('Initializing...');
 
                 try {
-                    // Step 1: Create lesson + get YouTube upload URL
+                    // Step 1: Create lesson + YouTube upload session (idempotent)
                     const initResp = await fetch('/api/video/init-youtube/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                            'X-CSRFToken': csrfToken,
                         },
                         body: JSON.stringify({
                             course_uid: '{{ course.uid }}',
@@ -224,6 +628,7 @@
                             order: document.getElementById('order').value,
                             chapter: document.querySelector('[name=chapter]')?.value || '',
                             file_size: fileSize,
+                            idempotency_key: idempotencyKey,
                         })
                     });
 
@@ -233,203 +638,128 @@
                     }
 
                     const initData = await initResp.json();
-                    var lessonUid = initData.lesson_uid;
-                    const uploadUrl = initData.upload_url;
-                    const accessToken = initData.access_token;
 
-                    setProgress(0, 'Uploading to YouTube...');
-                    setPhase('Uploading ' + sizeMB + ' MB directly to YouTube...');
-                    document.getElementById('progressDetail').textContent = 'Starting upload...';
-
-                    // Step 2: PUT file directly to YouTube (browser → YouTube, zero Django RAM)
-                    const videoId = await uploadToYouTube(uploadUrl, file, fileSize, accessToken);
-
-                    // Step 3: Tell Django the video_id
-                    const completeResp = await fetch('/api/video/youtube-complete/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                        },
-                        body: JSON.stringify({
-                            lesson_uid: lessonUid,
-                            video_id: videoId,
-                        })
-                    });
-
-                    if (!completeResp.ok) {
-                        const err = await completeResp.json();
-                        throw new Error(err.error || 'Failed to save video info');
-                    }
-
-                    // Step 4: Success — redirect to lessons page
-                    setProgress(100, '✅ Upload complete!');
-                    setPhase('✅ Video uploaded successfully!', 'complete');
-                    document.getElementById('progressDetail').textContent = '';
-                    document.getElementById('progressBar').classList.add('complete');
-
-                    setTimeout(function() {
-                        window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                    }, 1500);
-
-                } catch (err) {
-                    const errorMsg = err.message || 'Upload failed. Please try again.';
-                    if (errorMsg === '__UPLOAD_LIKELY_SUCCESS__') {
-                        document.getElementById('progressBar').style.width = '100%';
+                    if (initData.status === 'already_complete') {
+                        setProgress(100, 'Already uploaded!');
+                        setPhase('✅ Video was already uploaded successfully!', 'complete');
                         document.getElementById('progressBar').classList.add('complete');
-                        document.getElementById('progressPercent').textContent = '100%';
-                        document.getElementById('progressText').textContent = '✅ Upload complete!';
-                        document.getElementById('uploadPhase').textContent = '✅ Video uploaded to YouTube!';
-                        document.getElementById('uploadPhase').classList.add('complete');
-                        document.getElementById('uploadError').textContent = '';
-                        document.getElementById('uploadError').classList.remove('active');
-                        document.getElementById('progressDetail').textContent = '';
-                        submitBtn.disabled = true;
-                        submitBtn.textContent = 'Finalizing...';
-                        // Try to auto-recover: call youtube-complete with auto_recover flag
-                        (async function() {
-                            try {
-                                const recoverResp = await fetch('/api/video/youtube-complete/', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-                                    },
-                                    body: JSON.stringify({
-                                        lesson_uid: lessonUid,
-                                        auto_recover: true,
-                                    })
-                                });
-                                const recoverData = await recoverResp.json();
-                                if (!recoverResp.ok || recoverData.error) {
-                                    console.warn('Auto-recover could not save video_id:', recoverData);
-                                }
-                            } catch (recoverErr) {
-                                console.warn('Auto-recover request failed:', recoverErr);
-                            }
-                            setTimeout(function() {
-                                window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
-                            }, 500);
-                        })();
+                        setTimeout(function() {
+                            window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                        }, 1500);
                         return;
                     }
-                    console.error('Upload error:', err);
-                    setProgress(0, 'Upload failed');
-                    setPhase('❌ ' + errorMsg, 'error');
-                    setError(errorMsg);
-                    setButtonLoading(false);
+
+                    var lessonUid = initData.lesson_uid;
+                    var uploadUrl = initData.upload_url;
+                    var accessToken = initData.access_token;
+                    var uploadJobUid = initData.upload_job_uid;
+                    var resumed = initData.resumed || false;
+                    var uploadedBytes = initData.uploaded_bytes || 0;
+
+                    currentUploadJobUid = uploadJobUid;
+                    currentLessonUid = lessonUid;
+
+                    // Store in sessionStorage for crash recovery
+                    setStoredUploadState({
+                        uploadJobUid: uploadJobUid,
+                        lessonUid: lessonUid,
+                        uploadedBytes: uploadedBytes,
+                        totalBytes: fileSize,
+                        timestamp: Date.now(),
+                        idempotencyKey: idempotencyKey,
+                    });
+
+                    if (resumed) {
+                        setPhase('Resuming upload from ' + initData.progress_percentage + '%...');
+                    } else {
+                        setProgress(0, 'Uploading to YouTube...');
+                        setPhase('Uploading ' + sizeMB + ' MB to YouTube...');
+                    }
+
+                    document.getElementById('progressDetail').textContent = 'Starting upload...';
+
+                    // Step 2: Upload in chunks directly to YouTube
+                    var startResumeTime = Date.now();
+
+                    var videoId = await new Promise(function(resolve, reject) {
+                        uploadToYouTubeChunked(uploadUrl, file, accessToken, uploadJobUid,
+                            function(upBytes, totBytes) {
+                                var pct = Math.round((upBytes / totBytes) * 100);
+                                var elapsed = (Date.now() - startResumeTime) / 1000;
+                                var speed = formatSpeed(elapsed > 0 ? upBytes / elapsed : 0);
+                                var eta = formatTimeRemaining(totBytes - upBytes, elapsed > 0 ? upBytes / elapsed : 0);
+                                var chunksDone = Math.ceil(upBytes / CHUNK_SIZE);
+                                var chunksTotal = Math.ceil(totBytes / CHUNK_SIZE);
+                                setProgress(pct, 'Uploading ' + pct + '%');
+                                document.getElementById('progressDetail').textContent =
+                                    formatSize(upBytes) + ' / ' + formatSize(totBytes) +
+                                    ' (' + speed + ') ' + eta +
+                                    ' | Chunk ' + chunksDone + ' / ' + chunksTotal;
+                            },
+                            function(cancelFn) {
+                                cancelUploadCallback = cancelFn;
+                            }
+                        ).then(function() {
+                            resolve(null);
+                        }).catch(function(err) {
+                            reject(err);
+                        });
+                    });
+
+                    // Step 3: Tell Django the upload is complete
+                    onUploadComplete(uploadJobUid, lessonUid);
+
+                } catch (err) {
+                    onUploadError(err);
                 }
             });
-
-            function uploadToYouTube(uploadUrl, file, fileSize, accessToken) {
-                return new Promise((resolve, reject) => {
-                    const xhr = new XMLHttpRequest();
-                    let startTime = Date.now();
-                    let lastLoaded = 0;
-                    let lastTime = startTime;
-                    let timedOut = false;
-                    let lastProgressPercent = 0;
-
-                    // 30-minute timeout for large files
-                    const timeoutMs = 1800000;
-                    const timer = setTimeout(function() {
-                        timedOut = true;
-                        xhr.abort();
-                        reject(new Error('Upload timed out after 30 minutes. Try a smaller file or check your connection.'));
-                    }, timeoutMs);
-
-                    xhr.upload.addEventListener('progress', function(e) {
-                        if (e.lengthComputable) {
-                            const percent = Math.round((e.loaded / e.total) * 100);
-                            lastProgressPercent = percent;
-                            const now = Date.now();
-                            const timeDelta = (now - lastTime) / 1000;
-
-                            if (timeDelta > 0.3) {
-                                const bytesPerSec = (e.loaded - lastLoaded) / timeDelta;
-                                const remaining = e.total - e.loaded;
-                                const speed = formatSpeed(bytesPerSec);
-                                const eta = formatTimeRemaining(remaining, bytesPerSec);
-
-                                setProgress(percent, 'Uploading ' + percent + '%');
-                                document.getElementById('progressDetail').textContent =
-                                    formatSize(e.loaded) + ' / ' + formatSize(e.total) +
-                                    '  (' + speed + ')  ' + eta;
-
-                                lastLoaded = e.loaded;
-                                lastTime = now;
-                            }
-                        }
-                    });
-
-                    xhr.addEventListener('load', function() {
-                        clearTimeout(timer);
-                        if (timedOut) return;
-
-                        const text = (xhr.responseText || '').trim();
-                        if (xhr.status >= 200 && xhr.status < 300) {
-                            // Try to get video ID from JSON response
-                            try {
-                                const resp = JSON.parse(text);
-                                if (resp.id) {
-                                    resolve(resp.id);
-                                    return;
-                                }
-                            } catch(e) { /* fall through */ }
-
-                            // If JSON fails but response might contain the ID somewhere
-                            const idMatch = text.match(/"id"\s*:\s*"([a-zA-Z0-9_-]{11})"/);
-                            if (idMatch) {
-                                resolve(idMatch[1]);
-                                return;
-                            }
-
-                            // YouTube sometimes returns the ID in Location header
-                            const location = xhr.getResponseHeader('Location') || '';
-                            const urlIdMatch = location.match(/\/([a-zA-Z0-9_-]{11})\b/);
-                            if (urlIdMatch) {
-                                resolve(urlIdMatch[1]);
-                                return;
-                            }
-
-                            reject(new Error('Upload appeared to succeed but we could not get the video ID. Please check your YouTube channel and add the URL manually.'));
-                        } else {
-                            try {
-                                const resp = JSON.parse(text);
-                                const msg = resp.error && resp.error.message ? resp.error.message : 'Upload failed';
-                                reject(new Error(msg + ' (HTTP ' + xhr.status + ')'));
-                            } catch(e) {
-                                reject(new Error('Upload failed (HTTP ' + xhr.status + '). Try again or use a smaller file.'));
-                            }
-                        }
-                    });
-
-                    xhr.addEventListener('error', function() {
-                        clearTimeout(timer);
-                        if (!timedOut) {
-                            if (lastProgressPercent >= 90) {
-                                reject(new Error('__UPLOAD_LIKELY_SUCCESS__'));
-                            } else {
-                                reject(new Error('Network error: Could not reach YouTube. Check your internet connection and try again.'));
-                            }
-                        }
-                    });
-
-                    xhr.addEventListener('abort', function() {
-                        clearTimeout(timer);
-                        if (!timedOut) {
-                            reject(new Error('Upload was cancelled.'));
-                        }
-                    });
-
-                    // PUT binary file directly to YouTube — MP4 never touches Django
-                    xhr.open('PUT', uploadUrl);
-                    xhr.setRequestHeader('Content-Type', 'video/mp4');
-                    xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
-                    xhr.send(file);
-                });
-            }
         });
+
+        function onUploadComplete(uploadJobUid, lessonUid) {
+            // Mark upload as complete on the server
+            fetch('/api/video/youtube-complete/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                body: JSON.stringify({
+                    lesson_uid: lessonUid,
+                    upload_job_uid: uploadJobUid,
+                    auto_recover: true,
+                })
+            }).then(function(r) { return r.json(); })
+            .then(function(data) {
+                setProgress(100, '✅ Upload complete!');
+                setPhase('✅ Video uploaded! YouTube is processing...', 'complete');
+                document.getElementById('progressBar').classList.add('complete');
+                document.getElementById('progressDetail').textContent = 'YouTube is now processing your video. This may take a few minutes.';
+                clearStoredUploadState();
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('submitBtn').textContent = 'Finalizing...';
+                setTimeout(function() {
+                    window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                }, 2000);
+            })
+            .catch(function() {
+                setProgress(100, '✅ Upload complete!');
+                setPhase('✅ Video uploaded successfully!', 'complete');
+                document.getElementById('progressBar').classList.add('complete');
+                clearStoredUploadState();
+                setTimeout(function() {
+                    window.location.href = '/teacher/courses/{{ course.uid }}/lessons/';
+                }, 2000);
+            });
+        }
+
+        function onUploadError(err) {
+            console.error('Upload error:', err);
+            if (err.message === 'aborted' || err.message === 'cancelled') {
+                return;
+            }
+            var errorMsg = err.message || 'Upload failed. Please try again.';
+            setProgress(0, 'Upload failed');
+            setPhase('❌ ' + errorMsg, 'error');
+            setError(errorMsg);
+            setButtonLoading(false);
+        }
     </script>
 </head>
 <body>
@@ -483,6 +813,9 @@
                             </div>
                             <div id="progressDetail" class="progress-detail"></div>
                             <div id="uploadPhase" class="upload-phase"></div>
+                            <div style="margin-top:0.5rem;">
+                                <button type="button" id="cancelUploadBtn" onclick="cancelCurrentUpload()" style="background:transparent;color:#94a3b8;border:1px solid #e2e8f0;padding:0.3rem 0.8rem;border-radius:0.5rem;cursor:pointer;font-size:0.75rem;">Cancel</button>
+                            </div>
                         </div>
                         <div id="uploadError" class="upload-error"></div>
                     </div>
@@ -502,6 +835,21 @@
                 </form>
             </div>
         </main>
+    </div>
+
+    <!-- Offline Banner -->
+    <div id="offlineBanner" class="offline-banner">⚠ No internet connection. Upload paused. Will resume automatically when reconnected.</div>
+
+    <!-- Recovery Modal -->
+    <div id="recoveryModal" class="recovery-modal">
+        <div class="recovery-card">
+            <h3 style="margin:0 0 0.5rem; color:#1e293b;">⏳ Incomplete Upload Found</h3>
+            <p id="recoveryInfo" style="color:#475569; font-size:0.95rem; margin-bottom:1.5rem;"></p>
+            <div style="display:flex; gap:1rem;">
+                <button id="recoveryResume" style="flex:1; background:#6366f1; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Resume Upload</button>
+                <button id="recoveryDelete" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Discard & Start Fresh</button>
+            </div>
+        </div>
     </div>
 </body>
 
