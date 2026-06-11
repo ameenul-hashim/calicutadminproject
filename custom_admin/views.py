@@ -490,8 +490,26 @@ def create_student_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
+        if len(password) < 8:
+            messages.error(request, "Password must be at least 8 characters long.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if not any(c.isupper() for c in password):
+            messages.error(request, "Password must contain at least one uppercase letter.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if not any(c.islower() for c in password):
+            messages.error(request, "Password must contain at least one lowercase letter.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>).")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
@@ -599,8 +617,26 @@ def create_teacher_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        if len(password) < 8 or not any(c.isupper() for c in password) or not any(c.islower() for c in password) or not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-            messages.error(request, "Password must be 8+ chars and contain Uppercase, Lowercase, and a Special character.")
+        if len(password) < 8:
+            messages.error(request, "Password must be at least 8 characters long.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if not any(c.isupper() for c in password):
+            messages.error(request, "Password must contain at least one uppercase letter.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if not any(c.islower() for c in password):
+            messages.error(request, "Password must contain at least one lowercase letter.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+            messages.error(request, "Password must contain at least one special character (!@#$%^&*(),.?\":{}|<>).")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
