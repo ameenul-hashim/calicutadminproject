@@ -1281,9 +1281,31 @@ def admin_view_course_content(request, course_uid):
     for ch, grp in groupby(resources_list, key=lambda x: x.chapter or ''):
         res_by_chapter[ch] = list(grp)
 
-    all_chapter_names = sorted(set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys())), key=lambda x: (x == ''), reverse=True)
-    if '' in all_chapter_names and not lesson_by_chapter.get('') and not res_by_chapter.get(''):
-        all_chapter_names.remove('')
+    # Order chapters: course.chapters first (teacher-set order), then derived chapters by creation, then uncategorized last
+    course_chapters = list(course.chapters or [])
+    derived_chapters = set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys()))
+    all_chapter_names = []
+    seen = set()
+    from datetime import datetime as dt_module
+    def _chapter_first_ts(ch_name):
+        ts = []
+        for l in lesson_by_chapter.get(ch_name, []):
+            if l.created_at:
+                ts.append(l.created_at)
+        for r in res_by_chapter.get(ch_name, []):
+            if r.created_at:
+                ts.append(r.created_at)
+        return ts[0] if ts else dt_module.min
+    for name in course_chapters:
+        if name and name in derived_chapters and name not in seen:
+            seen.add(name)
+            all_chapter_names.append(name)
+    for name in sorted((d for d in derived_chapters if d), key=_chapter_first_ts):
+        if name not in seen:
+            seen.add(name)
+            all_chapter_names.append(name)
+    if '' in derived_chapters and (lesson_by_chapter.get('') or res_by_chapter.get('')):
+        all_chapter_names.append('')
 
     chapters_data = []
     for ch_name in all_chapter_names:
