@@ -551,8 +551,7 @@ def create_student_admin(request):
             is_active=True,
             status='ACTIVE',
             user_type='STUDENT',
-            pdf_path=pdf_url,
-            image='/static/avatars/student_m_0.png'
+            pdf_path=pdf_url
         )
         messages.success(request, f"Account for {username} created successfully!")
         return redirect('manage_students')
@@ -679,8 +678,7 @@ def create_teacher_admin(request):
             is_active=True,
             status='ACTIVE',
             user_type='TEACHER',
-            pdf_path=pdf_url,
-            image='/static/avatars/teacher_m_0.png'
+            pdf_path=pdf_url
         )
         messages.success(request, f"Account for {username} created successfully!")
         return redirect('manage_teachers')
