@@ -58,22 +58,6 @@ class CustomUser(AbstractUser):
                 pass
 
         if url and 'cloudinary.com' in url:
-            if '/upload/' in url:
-                import cloudinary
-                from cloudinary.utils import cloudinary_url
-                try:
-                    clean = url.split('/upload/')[-1]
-                    ver_parts = clean.split('/', 1)
-                    public_id_part = ver_parts[1] if (len(ver_parts) == 2 and ver_parts[0].startswith('v') and ver_parts[0][1:].isdigit()) else clean
-                    dot = public_id_part.rfind('.')
-                    public_id = public_id_part[:dot] if dot > 0 else public_id_part
-                    result, _ = cloudinary_url(
-                        public_id, type='upload', resource_type='image',
-                        quality='auto:best', fetch_format='auto', secure=True
-                    )
-                    return result
-                except Exception:
-                    pass
             return url
 
         if not url:
@@ -149,26 +133,6 @@ class Course(models.Model):
                 pass
 
         if url and 'cloudinary.com' in url:
-            if '/upload/' in url:
-                import cloudinary
-                from cloudinary.utils import cloudinary_url
-                try:
-                    # Extract public_id from Cloudinary URL
-                    # URL: https://res.cloudinary.com/{cloud}/{type}/upload/v{ver}/{public_id}.{ext}
-                    clean = url.split('/upload/')[-1]
-                    # Strip version (v12345/) prefix
-                    ver_parts = clean.split('/', 1)
-                    public_id_part = ver_parts[1] if (len(ver_parts) == 2 and ver_parts[0].startswith('v') and ver_parts[0][1:].isdigit()) else clean
-                    # Remove file extension
-                    dot = public_id_part.rfind('.')
-                    public_id = public_id_part[:dot] if dot > 0 else public_id_part
-                    result, _ = cloudinary_url(
-                        public_id, type='upload', resource_type='image',
-                        quality='auto:best', fetch_format='auto', secure=True
-                    )
-                    return result
-                except Exception:
-                    pass
             return url
         return url
 

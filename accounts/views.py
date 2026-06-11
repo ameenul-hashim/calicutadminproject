@@ -956,21 +956,7 @@ def my_courses(request):
         rejected_lessons_count=Count('lessons', filter=Q(lessons__status='REJECTED'))
     ).only('id', 'uid', 'title', 'status', 'created_at', 'image', 'thumbnail').order_by('-created_at')
     
-    # === DEBUG: print course values ===
-    import sys as _sys
-    print("=== MY COURSES DEBUG ===", file=_sys.stderr)
-    for c in courses_qs:
-        print(f"  course id={c.id} title={c.title!r}", file=_sys.stderr)
-        print(f"    image={c.image!r}", file=_sys.stderr)
-        print(f"    thumbnail={c.thumbnail!r}", file=_sys.stderr)
-        try:
-            tv = c.thumbnail_url
-        except Exception as e:
-            tv = f"ERROR: {e}"
-        print(f"    thumbnail_url={tv!r}", file=_sys.stderr)
-    print("=== END MY COURSES ===", file=_sys.stderr)
-    
-    # Pagination
+# Pagination
     from django.core.paginator import Paginator
     paginator = Paginator(courses_qs, 12)
     page_number = request.GET.get('page')
