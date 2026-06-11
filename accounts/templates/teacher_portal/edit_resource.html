@@ -60,14 +60,7 @@
             </div>
             {% endif %}
 
-            {% if resource.has_pending_edits %}
-            <div style="background: #f0f9ff; border: 1px solid #e0f2fe; border-radius: 1rem; padding: 1.25rem; margin-bottom: 2rem;">
-                <h4 style="margin: 0 0 0.5rem 0; color: #0ea5e9; display: flex; align-items: center; gap: 0.5rem;">
-                    <span>ℹ️</span> Pending Approval
-                </h4>
-                <p style="margin: 0; color: #0369a1; font-size: 0.95rem;">This resource has pending edits awaiting admin review. Submitting again will update the pending changes.</p>
-            </div>
-            {% endif %}
+            
 
             <div class="form-card">
                 <form method="POST" enctype="multipart/form-data">

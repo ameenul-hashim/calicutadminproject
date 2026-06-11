@@ -1054,31 +1054,23 @@ def edit_course(request, course_uid):
             thumbnail_file = request.FILES.get('thumbnail') or request.FILES.get('thumbnail_compressed')
             
         if course.is_approved:
-            # Course is already approved, so store edits in pending fields to keep old version visible to student
-            course.pending_title = title
-            course.pending_description = description
-            course.pending_category = category
-            course.pending_level = level
-            course.has_pending_edits = True
+            course.title = title
+            course.description = description
+            course.category = category
+            course.level = level
             
             if thumbnail_file:
                 if thumbnail_file.size > 5 * 1024 * 1024:
                     messages.warning(request, "Thumbnail exceeds 5MB limit. Changes saved without thumbnail update.")
                 else:
-                    from .utils.cloudinary_helpers import upload_image_only
-                    p_url, p_id = upload_image_only(thumbnail_file, folder="Neo Learner/courses")
-                    if p_url:
-                        if course.pending_image_public_id:
-                            try:
-                                import cloudinary.uploader
-                                cloudinary.uploader.destroy(course.pending_image_public_id)
-                            except Exception:
-                                pass
-                        course.pending_image = p_url
-                        course.pending_image_public_id = p_id
+                    from .utils.cloudinary_helpers import update_image
+                    success = update_image(course, thumbnail_file, folder="Neo Learner/courses")
+                    if not success:
+                        logger.warning("Thumbnail update failed for course '%s'", course.title)
             
+            course.has_pending_edits = False
             course.save()
-            messages.success(request, f"Changes to '{course.title}' submitted for admin approval. Students will continue to see the previously approved version until approved.")
+            messages.success(request, f"Course '{course.title}' updated successfully!")
         else:
             # Course is not approved yet (draft or rejected), so overwrite main fields directly
             course.title = title
@@ -1426,13 +1418,15 @@ def edit_lesson(request, lesson_uid):
             lesson.save()
             messages.success(request, "Lesson updated and immediately visible to students.")
         elif lesson.is_approved:
-            lesson.pending_title = title
-            lesson.pending_video_url = video_url
-            lesson.pending_order = order
-            lesson.has_pending_edits = True
+            lesson.title = title
+            if new_youtube_video_id:
+                lesson.youtube_video_id = new_youtube_video_id
+                lesson.youtube_upload_status = 'UPLOADED'
+                lesson.youtube_uploaded_at = timezone.now()
+            lesson.video_url = video_url
+            lesson.order = order
             lesson.save()
-
-            messages.success(request, "Lesson edits submitted for approval! Students will continue to view the current version until approved.")
+            messages.success(request, "Lesson updated successfully.")
         else:
             lesson.title = title
             if new_youtube_video_id:
@@ -1445,7 +1439,7 @@ def edit_lesson(request, lesson_uid):
             lesson.status = 'PENDING'
             lesson.save()
 
-            messages.success(request, "Lesson updated successfully! It will be visible to students once re-approved by admin.")
+            messages.success(request, "Lesson updated successfully.")
 
         return redirect('course_lessons', course_uid=lesson.course.uid)
 
@@ -1699,18 +1693,23 @@ def edit_resource(request, resource_uid):
             resource.save()
             messages.success(request, f"Resource '{title}' updated and immediately available to students.")
         elif is_approved:
-            resource.pending_title = title
-            resource.pending_category = category
-            resource.pending_resource_type = 'PDF'
+            if new_fb_path and resource.firebase_file_path:
+                try:
+                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                except:
+                    pass
+            resource.title = title
+            resource.category = category
+            resource.resource_type = 'PDF'
             if new_fb_path:
-                resource.pending_firebase_file_path = new_fb_path
-                resource.pending_mime_type = 'application/pdf'
-                resource.pending_file_extension = 'pdf'
-                resource.pending_original_size = new_file_size
-                resource.pending_compressed_size = new_file_size
-            resource.has_pending_edits = True
+                resource.firebase_file_path = new_fb_path
+                resource.mime_type = 'application/pdf'
+                resource.file_extension = 'pdf'
+                resource.original_size = new_file_size
+                resource.compressed_size = new_file_size
+            resource.has_pending_edits = False
             resource.save()
-            messages.success(request, f"Changes to resource '{title}' submitted for admin review.")
+            messages.success(request, f"Resource '{title}' updated successfully.")
         else:
             if new_fb_path and resource.firebase_file_path:
                 try:
@@ -1730,7 +1729,7 @@ def edit_resource(request, resource_uid):
             resource.is_approved = False
             resource.rejection_reason = None
             resource.save()
-            messages.success(request, f"Resource '{title}' updated and resubmitted for approval.")
+            messages.success(request, f"Resource '{title}' updated successfully.")
 
         return redirect('course_lessons', course_uid=course.uid)
 
