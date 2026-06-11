@@ -14,6 +14,87 @@
             overflow: hidden;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         }
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 0.75rem;
+            margin: 0.5rem 0 1rem;
+        }
+        .resource-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.75rem;
+            padding: 0.75rem;
+            transition: box-shadow 0.2s;
+        }
+        .resource-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .resource-card .rc-title {
+            font-weight: 700;
+            font-size: 0.88rem;
+            color: #1e293b;
+            margin-bottom: 0.4rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .resource-card .rc-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+        .resource-card .rc-actions {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            padding-top: 0.5rem;
+            border-top: 1px solid #f1f5f9;
+        }
+        .rc-action {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-decoration: none;
+            padding: 0.25rem 0.6rem;
+            border-radius: 0.35rem;
+            transition: background 0.15s;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .rc-action:hover { background: #f1f5f9; }
+        .rc-action.view { color: #059669; }
+        .rc-action.edit { color: #6366f1; }
+        .rc-action.delete { color: #ef4444; }
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 1rem 0 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .section-header:first-child { margin-top: 0; }
+        .section-header .label {
+            font-weight: 700;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .empty-section {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            font-style: italic;
+            padding: 0.3rem 0.6rem;
+        }
+        @media (max-width: 768px) {
+            .resource-grid { grid-template-columns: 1fr; }
+        }
+        @media (min-width: 769px) and (max-width: 1100px) {
+            .resource-grid { grid-template-columns: repeat(2, 1fr); }
+        }
     </style>
 {% endblock %}
 
@@ -107,8 +188,10 @@
                     <span style="font-size: 1.2rem;">📂</span>
                     <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
-                        {% if chapter.pending_lessons %}{{ chapter.pending_lessons|length }}L{% endif %}
-                        {% if chapter.pending_resources %}{% if chapter.pending_lessons %} · {% endif %}{{ chapter.pending_resources|length }}R{% endif %}
+                        {{ chapter.pending_lessons|length }}L ·
+                        {{ chapter.cat_counts.ENGLISH.total }}E ·
+                        {{ chapter.cat_counts.MALAYALAM.total }}M ·
+                        {{ chapter.cat_counts.ONLINE.total }}O
                     </span>
                     <span class="admin-ch-chevron" style="font-size: 0.75rem; color: #94a3b8; transition: transform 0.2s;">▶</span>
                 </div>
@@ -210,54 +293,157 @@
                     </div>
                     {% endif %}
 
-                    <!-- Pending Resources — card grid -->
+                    <!-- Pending Resources — card grid by category (teacher style) -->
                     {% if chapter.pending_resources %}
                     <div>
-                        <div style="font-size: 0.8rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 1rem;">📚 Resources ({{ chapter.pending_resources|length }})</div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
-                            {% for resource in chapter.pending_resources %}
-                            <div style="background:white;border-radius:0.75rem;border:2px solid {% if resource.deletion_request %}#fecaca{% else %}#e2e8f0{% endif %};padding:1rem;display:flex;flex-direction:column;gap:0.5rem;">
-                                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
-                                    <div style="min-width:0;">
-                                        <div style="font-weight:600;color:#1e293b;font-size:0.9rem;">{{ resource.title }}</div>
-                                        <div style="display:flex;align-items:center;gap:0.3rem;margin-top:0.2rem;flex-wrap:wrap;">
-                                            <span style="font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#f1f5f9;color:#475569;font-weight:700;">{{ resource.get_resource_type_display }}</span>
-                                            <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fffbeb;color:#92400e;font-weight:700;">{{ resource.get_category_display }}</span>
-                                            <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fef2f2;color:#dc2626;font-weight:700;">{{ resource.status }}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if resource.deletion_request %}
-                                <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:0.5rem;padding:0.5rem;">
-                                    <div style="color:#e11d48;font-size:0.75rem;font-weight:700;">🗑️ Deletion Requested</div>
-                                    <div style="font-size:0.72rem;color:#9f1239;">{{ resource.deletion_request.reason }}</div>
-                                </div>
-                                {% endif %}
-                                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:auto;">
-                                    {% if resource.deletion_request %}
-                                    <button onclick="openGenericModal('Approve Resource Deletion', '{% url 'approve_deletion_request' resource.deletion_request.uid %}')" style="background:#ef4444;color:white;border:none;padding:0.35rem 0.65rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;cursor:pointer;">Approve Delete</button>
-                                    <form action="{% url 'reject_deletion_request' resource.deletion_request.uid %}" method="POST" style="margin:0;">
-                                        {% csrf_token %}
-                                        <button type="submit" style="background:none;border:1px solid #e2e8f0;color:#475569;padding:0.35rem 0.65rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;cursor:pointer;">Cancel Delete</button>
-                                    </form>
-                                    {% else %}
-                                    <form action="{% url 'approve_resource' resource.uid %}" method="post" style="margin:0;">
-                                        {% csrf_token %}
-                                        <button type="submit" style="background:#10b981;color:white;border:none;padding:0.35rem 0.65rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;cursor:pointer;">Approve</button>
-                                    </form>
-                                    <button onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'block':'none'" style="background:none;border:1px solid #f59e0b;color:#f59e0b;padding:0.35rem 0.65rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;cursor:pointer;">Reject</button>
-                                    <form action="{% url 'reject_resource' resource.uid %}" method="POST" style="display:none;margin:0;width:100%;">
-                                        {% csrf_token %}
-                                        <textarea name="reason" placeholder="Rejection reason..." required style="width:100%;padding:0.4rem;border-radius:0.3rem;border:1px solid #cbd5e1;font-size:0.72rem;box-sizing:border-box;"></textarea>
-                                        <button type="submit" style="width:100%;background:#b45309;color:white;border:none;padding:0.3rem;border-radius:0.3rem;font-size:0.72rem;margin-top:0.3rem;">Confirm Reject</button>
-                                    </form>
-                                    {% endif %}
-                                    <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background:#eef2ff;color:#4f46e5;padding:0.35rem 0.65rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;text-decoration:none;">View</a>
-                                    <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background:none;border:none;color:#ef4444;font-size:0.72rem;font-weight:700;cursor:pointer;">Delete</button>
-                                </div>
-                            </div>
-                            {% endfor %}
+                        <div style="font-size: 0.8rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 1rem;">&#x1F4DA; Resources Pending ({{ chapter.pending_resources|length }})</div>
+
+                        <!-- English -->
+                        <div class="section-header">
+                            <span class="label" style="color: #059669;">&#x1F4C4; English ({{ chapter.pending_cat_counts.ENGLISH.total }})</span>
                         </div>
+                        {% if chapter.pending_cat_counts.ENGLISH.total %}
+                        <div class="resource-grid">
+                        {% for res in chapter.pending_resources %}{% if res.category == 'ENGLISH' %}
+                        <div class="resource-card" style="border:2px solid {% if res.deletion_request %}#fecaca{% else %}#e2e8f0{% endif %};">
+                            <div class="rc-title">{{ res.title }}</div>
+                            <div class="rc-meta">
+                                <span style="font-size:0.72rem;color:#94a3b8;">{{ res.resource_type }}</span>
+                                <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fffbeb;color:#92400e;font-weight:700;">{{ res.get_category_display }}</span>
+                                <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fef2f2;color:#dc2626;font-weight:700;">{{ res.status }}</span>
+                            </div>
+                            {% if res.deletion_request %}
+                            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:0.5rem;padding:0.5rem;">
+                                <div style="color:#e11d48;font-size:0.75rem;font-weight:700;">&#x1F5D1;&#xFE0F; Deletion Requested</div>
+                                <div style="font-size:0.72rem;color:#9f1239;">{{ res.deletion_request.reason }}</div>
+                            </div>
+                            {% endif %}
+                            <div class="rc-actions">
+                                {% if res.deletion_request %}
+                                <button onclick="openGenericModal('Approve Resource Deletion', '{% url 'approve_deletion_request' res.deletion_request.uid %}')" class="rc-action" style="color:#ef4444;font-weight:700;">Approve Delete</button>
+                                <form action="{% url 'reject_deletion_request' res.deletion_request.uid %}" method="POST" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="color:#475569;">Cancel Delete</button>
+                                </form>
+                                {% else %}
+                                <form action="{% url 'approve_resource' res.uid %}" method="post" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="background:#10b981;color:white;padding:0.25rem 0.65rem;font-weight:700;">Approve</button>
+                                </form>
+                                <button onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'block':'none'" class="rc-action" style="color:#f59e0b;border:1px solid #f59e0b;">Reject</button>
+                                <form action="{% url 'reject_resource' res.uid %}" method="POST" style="display:none;margin:0;width:100%;">
+                                    {% csrf_token %}
+                                    <textarea name="reason" placeholder="Rejection reason..." required style="width:100%;padding:0.4rem;border-radius:0.3rem;border:1px solid #cbd5e1;font-size:0.72rem;box-sizing:border-box;"></textarea>
+                                    <button type="submit" style="width:100%;background:#b45309;color:white;border:none;padding:0.3rem;border-radius:0.3rem;font-size:0.72rem;margin-top:0.3rem;">Confirm Reject</button>
+                                </form>
+                                {% endif %}
+                                <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">View</a>
+                                <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' res.uid %}')" class="rc-action delete">Delete</button>
+                            </div>
+                        </div>
+                        {% endif %}{% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-section">No English resources pending.</div>
+                        {% endif %}
+
+                        <!-- Malayalam -->
+                        <div class="section-header">
+                            <span class="label" style="color: #d97706;">&#x1F4D5; Malayalam ({{ chapter.pending_cat_counts.MALAYALAM.total }})</span>
+                        </div>
+                        {% if chapter.pending_cat_counts.MALAYALAM.total %}
+                        <div class="resource-grid">
+                        {% for res in chapter.pending_resources %}{% if res.category == 'MALAYALAM' %}
+                        <div class="resource-card" style="border:2px solid {% if res.deletion_request %}#fecaca{% else %}#e2e8f0{% endif %};">
+                            <div class="rc-title">{{ res.title }}</div>
+                            <div class="rc-meta">
+                                <span style="font-size:0.72rem;color:#94a3b8;">{{ res.resource_type }}</span>
+                                <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fffbeb;color:#92400e;font-weight:700;">{{ res.get_category_display }}</span>
+                                <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fef2f2;color:#dc2626;font-weight:700;">{{ res.status }}</span>
+                            </div>
+                            {% if res.deletion_request %}
+                            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:0.5rem;padding:0.5rem;">
+                                <div style="color:#e11d48;font-size:0.75rem;font-weight:700;">&#x1F5D1;&#xFE0F; Deletion Requested</div>
+                                <div style="font-size:0.72rem;color:#9f1239;">{{ res.deletion_request.reason }}</div>
+                            </div>
+                            {% endif %}
+                            <div class="rc-actions">
+                                {% if res.deletion_request %}
+                                <button onclick="openGenericModal('Approve Resource Deletion', '{% url 'approve_deletion_request' res.deletion_request.uid %}')" class="rc-action" style="color:#ef4444;font-weight:700;">Approve Delete</button>
+                                <form action="{% url 'reject_deletion_request' res.deletion_request.uid %}" method="POST" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="color:#475569;">Cancel Delete</button>
+                                </form>
+                                {% else %}
+                                <form action="{% url 'approve_resource' res.uid %}" method="post" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="background:#10b981;color:white;padding:0.25rem 0.65rem;font-weight:700;">Approve</button>
+                                </form>
+                                <button onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'block':'none'" class="rc-action" style="color:#f59e0b;border:1px solid #f59e0b;">Reject</button>
+                                <form action="{% url 'reject_resource' res.uid %}" method="POST" style="display:none;margin:0;width:100%;">
+                                    {% csrf_token %}
+                                    <textarea name="reason" placeholder="Rejection reason..." required style="width:100%;padding:0.4rem;border-radius:0.3rem;border:1px solid #cbd5e1;font-size:0.72rem;box-sizing:border-box;"></textarea>
+                                    <button type="submit" style="width:100%;background:#b45309;color:white;border:none;padding:0.3rem;border-radius:0.3rem;font-size:0.72rem;margin-top:0.3rem;">Confirm Reject</button>
+                                </form>
+                                {% endif %}
+                                <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">View</a>
+                                <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' res.uid %}')" class="rc-action delete">Delete</button>
+                            </div>
+                        </div>
+                        {% endif %}{% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-section">No Malayalam resources pending.</div>
+                        {% endif %}
+
+                        <!-- Online -->
+                        <div class="section-header">
+                            <span class="label" style="color: #7c3aed;">&#x1F310; Online ({{ chapter.pending_cat_counts.ONLINE.total }})</span>
+                        </div>
+                        {% if chapter.pending_cat_counts.ONLINE.total %}
+                        <div class="resource-grid">
+                        {% for res in chapter.pending_resources %}{% if res.category == 'ONLINE' %}
+                        <div class="resource-card" style="border:2px solid {% if res.deletion_request %}#fecaca{% else %}#e2e8f0{% endif %};">
+                            <div class="rc-title">{{ res.title }}</div>
+                            <div class="rc-meta">
+                                <span style="font-size:0.72rem;color:#94a3b8;">{{ res.resource_type }}</span>
+                                <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fffbeb;color:#92400e;font-weight:700;">{{ res.get_category_display }}</span>
+                                <span style="font-size:0.65rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fef2f2;color:#dc2626;font-weight:700;">{{ res.status }}</span>
+                            </div>
+                            {% if res.deletion_request %}
+                            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:0.5rem;padding:0.5rem;">
+                                <div style="color:#e11d48;font-size:0.75rem;font-weight:700;">&#x1F5D1;&#xFE0F; Deletion Requested</div>
+                                <div style="font-size:0.72rem;color:#9f1239;">{{ res.deletion_request.reason }}</div>
+                            </div>
+                            {% endif %}
+                            <div class="rc-actions">
+                                {% if res.deletion_request %}
+                                <button onclick="openGenericModal('Approve Resource Deletion', '{% url 'approve_deletion_request' res.deletion_request.uid %}')" class="rc-action" style="color:#ef4444;font-weight:700;">Approve Delete</button>
+                                <form action="{% url 'reject_deletion_request' res.deletion_request.uid %}" method="POST" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="color:#475569;">Cancel Delete</button>
+                                </form>
+                                {% else %}
+                                <form action="{% url 'approve_resource' res.uid %}" method="post" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="background:#10b981;color:white;padding:0.25rem 0.65rem;font-weight:700;">Approve</button>
+                                </form>
+                                <button onclick="var f=this.nextElementSibling;f.style.display=f.style.display==='none'?'block':'none'" class="rc-action" style="color:#f59e0b;border:1px solid #f59e0b;">Reject</button>
+                                <form action="{% url 'reject_resource' res.uid %}" method="POST" style="display:none;margin:0;width:100%;">
+                                    {% csrf_token %}
+                                    <textarea name="reason" placeholder="Rejection reason..." required style="width:100%;padding:0.4rem;border-radius:0.3rem;border:1px solid #cbd5e1;font-size:0.72rem;box-sizing:border-box;"></textarea>
+                                    <button type="submit" style="width:100%;background:#b45309;color:white;border:none;padding:0.3rem;border-radius:0.3rem;font-size:0.72rem;margin-top:0.3rem;">Confirm Reject</button>
+                                </form>
+                                {% endif %}
+                                <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">View</a>
+                                <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' res.uid %}')" class="rc-action delete">Delete</button>
+                            </div>
+                        </div>
+                        {% endif %}{% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-section">No Online resources pending.</div>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -278,8 +464,10 @@
                     <span style="font-size: 1.2rem;">📂</span>
                     <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
-                        {% if chapter.approved_lessons %}{{ chapter.approved_lessons|length }}L{% endif %}
-                        {% if chapter.approved_resources %}{% if chapter.approved_lessons %} · {% endif %}{{ chapter.approved_resources|length }}R{% endif %}
+                        {{ chapter.approved_lessons|length }}L ·
+                        {{ chapter.cat_counts.ENGLISH.total }}E ·
+                        {{ chapter.cat_counts.MALAYALAM.total }}M ·
+                        {{ chapter.cat_counts.ONLINE.total }}O
                     </span>
                     <span class="admin-ch-chevron" style="font-size: 0.75rem; color: #94a3b8; transition: transform 0.2s;">▶</span>
                 </div>
@@ -360,43 +548,124 @@
                     </div>
                     {% endif %}
 
-                    <!-- Approved Resources — card grid -->
+                    <!-- Approved Resources — card grid by category (teacher style) -->
                     {% if chapter.approved_resources %}
                     <div>
                         <div style="font-size: 0.8rem; font-weight: 700; color: #6366f1; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 1rem;">📚 Resources ({{ chapter.approved_resources|length }})</div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
-                            {% for resource in chapter.approved_resources %}
-                            <div style="background:white;border-radius:0.75rem;border:1px solid #e2e8f0;padding:1rem;display:flex;flex-direction:column;gap:0.5rem;">
-                                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;">
-                                    <div style="min-width:0;">
-                                        <div style="font-weight:600;color:#1e293b;font-size:0.9rem;">{{ resource.title }}</div>
-                                        <div style="display:flex;align-items:center;gap:0.3rem;margin-top:0.2rem;">
-                                            <span style="font-size:0.7rem;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#f1f5f9;color:#475569;font-weight:700;">{{ resource.get_resource_type_display }}</span>
-                                            {% if resource.is_suspended %}<span style="font-size:0.65rem;font-weight:700;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fff7ed;color:#f97316;">⏸️ Suspended</span>{% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% if resource.is_suspended and resource.suspension_reason %}
-                                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.5rem;font-size:0.72rem;color:#92400e;">
-                                    <strong>Reason:</strong> {{ resource.suspension_reason }}
-                                </div>
-                                {% endif %}
-                                <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-top:auto;">
-                                    <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background:#eef2ff;color:#4f46e5;padding:0.35rem 0.65rem;border-radius:0.4rem;font-size:0.72rem;font-weight:700;text-decoration:none;">View</a>
-                                    {% if resource.is_suspended %}
-                                    <form action="{% url 'unsuspend_resource' resource.uid %}" method="POST" style="margin:0;">
-                                        {% csrf_token %}
-                                        <button type="submit" style="background:none;border:none;color:#10b981;font-size:0.72rem;font-weight:700;cursor:pointer;">Reinstate</button>
-                                    </form>
-                                    <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background:none;border:none;color:#6366f1;font-size:0.72rem;font-weight:700;cursor:pointer;">Edit Reason</button>
-                                    {% else %}
-                                    <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background:none;border:none;color:#f59e0b;font-size:0.72rem;font-weight:700;cursor:pointer;">Suspend</button>
-                                    {% endif %}
-                                    <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background:none;border:none;color:#ef4444;font-size:0.72rem;font-weight:700;cursor:pointer;">Delete</button>
-                                </div>
-                            </div>
-                            {% endfor %}
+
+                        <!-- English -->
+                        <div class="section-header">
+                            <span class="label" style="color: #059669;">&#x1F4C4; English ({{ chapter.approved_cat_counts.ENGLISH.total }})</span>
                         </div>
+                        {% if chapter.approved_cat_counts.ENGLISH.total %}
+                        <div class="resource-grid">
+                        {% for res in chapter.approved_resources %}{% if res.category == 'ENGLISH' %}
+                        <div class="resource-card">
+                            <div class="rc-title">{{ res.title }}</div>
+                            <div class="rc-meta">
+                                <span style="font-size:0.72rem;color:#94a3b8;">{{ res.resource_type }}</span>
+                                {% if res.is_suspended %}<span style="font-size:0.65rem;font-weight:700;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>{% endif %}
+                            </div>
+                            {% if res.is_suspended and res.suspension_reason %}
+                            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.5rem;font-size:0.72rem;color:#92400e;">
+                                <strong>Reason:</strong> {{ res.suspension_reason }}
+                            </div>
+                            {% endif %}
+                            <div class="rc-actions">
+                                <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">View</a>
+                                {% if res.is_suspended %}
+                                <form action="{% url 'unsuspend_resource' res.uid %}" method="POST" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="color:#10b981;">Reinstate</button>
+                                </form>
+                                <button onclick="openEditSuspensionModal('{{ res.uid }}', '{{ res.title|escapejs }}', '{{ res.suspension_reason|escapejs }}', 'resource')" class="rc-action" style="color:#6366f1;">Edit Reason</button>
+                                {% else %}
+                                <button onclick="openSuspendModal('{{ res.uid }}', '{{ res.title|escapejs }}', 'resource')" class="rc-action" style="color:#f59e0b;">Suspend</button>
+                                {% endif %}
+                                <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' res.uid %}')" class="rc-action delete">Delete</button>
+                            </div>
+                        </div>
+                        {% endif %}{% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-section">No English resources.</div>
+                        {% endif %}
+
+                        <!-- Malayalam -->
+                        <div class="section-header">
+                            <span class="label" style="color: #d97706;">&#x1F4D5; Malayalam ({{ chapter.approved_cat_counts.MALAYALAM.total }})</span>
+                        </div>
+                        {% if chapter.approved_cat_counts.MALAYALAM.total %}
+                        <div class="resource-grid">
+                        {% for res in chapter.approved_resources %}{% if res.category == 'MALAYALAM' %}
+                        <div class="resource-card">
+                            <div class="rc-title">{{ res.title }}</div>
+                            <div class="rc-meta">
+                                <span style="font-size:0.72rem;color:#94a3b8;">{{ res.resource_type }}</span>
+                                {% if res.is_suspended %}<span style="font-size:0.65rem;font-weight:700;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>{% endif %}
+                            </div>
+                            {% if res.is_suspended and res.suspension_reason %}
+                            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.5rem;font-size:0.72rem;color:#92400e;">
+                                <strong>Reason:</strong> {{ res.suspension_reason }}
+                            </div>
+                            {% endif %}
+                            <div class="rc-actions">
+                                <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">View</a>
+                                {% if res.is_suspended %}
+                                <form action="{% url 'unsuspend_resource' res.uid %}" method="POST" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="color:#10b981;">Reinstate</button>
+                                </form>
+                                <button onclick="openEditSuspensionModal('{{ res.uid }}', '{{ res.title|escapejs }}', '{{ res.suspension_reason|escapejs }}', 'resource')" class="rc-action" style="color:#6366f1;">Edit Reason</button>
+                                {% else %}
+                                <button onclick="openSuspendModal('{{ res.uid }}', '{{ res.title|escapejs }}', 'resource')" class="rc-action" style="color:#f59e0b;">Suspend</button>
+                                {% endif %}
+                                <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' res.uid %}')" class="rc-action delete">Delete</button>
+                            </div>
+                        </div>
+                        {% endif %}{% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-section">No Malayalam resources.</div>
+                        {% endif %}
+
+                        <!-- Online -->
+                        <div class="section-header">
+                            <span class="label" style="color: #7c3aed;">&#x1F310; Online ({{ chapter.approved_cat_counts.ONLINE.total }})</span>
+                        </div>
+                        {% if chapter.approved_cat_counts.ONLINE.total %}
+                        <div class="resource-grid">
+                        {% for res in chapter.approved_resources %}{% if res.category == 'ONLINE' %}
+                        <div class="resource-card">
+                            <div class="rc-title">{{ res.title }}</div>
+                            <div class="rc-meta">
+                                <span style="font-size:0.72rem;color:#94a3b8;">{{ res.resource_type }}</span>
+                                {% if res.is_suspended %}<span style="font-size:0.65rem;font-weight:700;padding:0.15rem 0.4rem;border-radius:0.3rem;background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>{% endif %}
+                            </div>
+                            {% if res.is_suspended and res.suspension_reason %}
+                            <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.5rem;font-size:0.72rem;color:#92400e;">
+                                <strong>Reason:</strong> {{ res.suspension_reason }}
+                            </div>
+                            {% endif %}
+                            <div class="rc-actions">
+                                <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">View</a>
+                                {% if res.is_suspended %}
+                                <form action="{% url 'unsuspend_resource' res.uid %}" method="POST" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="rc-action" style="color:#10b981;">Reinstate</button>
+                                </form>
+                                <button onclick="openEditSuspensionModal('{{ res.uid }}', '{{ res.title|escapejs }}', '{{ res.suspension_reason|escapejs }}', 'resource')" class="rc-action" style="color:#6366f1;">Edit Reason</button>
+                                {% else %}
+                                <button onclick="openSuspendModal('{{ res.uid }}', '{{ res.title|escapejs }}', 'resource')" class="rc-action" style="color:#f59e0b;">Suspend</button>
+                                {% endif %}
+                                <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' res.uid %}')" class="rc-action delete">Delete</button>
+                            </div>
+                        </div>
+                        {% endif %}{% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="empty-section">No Online resources.</div>
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>

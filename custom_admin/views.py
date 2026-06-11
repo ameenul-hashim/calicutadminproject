@@ -1355,6 +1355,20 @@ def admin_view_course_content(request, course_uid):
             'has_approved': bool(approved_lessons or approved_resources),
         })
 
+    # Add per-chapter category counts (matching teacher template)
+    for ch in chapters_data:
+        all_ch_resources = ch['approved_resources'] + ch['pending_resources']
+        approved_cat_counts = {}
+        pending_cat_counts = {}
+        cat_counts = {}
+        for cat in ['ENGLISH', 'MALAYALAM', 'ONLINE']:
+            approved_cat_counts[cat] = {'total': sum(1 for r in ch['approved_resources'] if r.category == cat)}
+            pending_cat_counts[cat] = {'total': sum(1 for r in ch['pending_resources'] if r.category == cat)}
+            cat_counts[cat] = {'total': sum(1 for r in all_ch_resources if r.category == cat)}
+        ch['approved_cat_counts'] = approved_cat_counts
+        ch['pending_cat_counts'] = pending_cat_counts
+        ch['cat_counts'] = cat_counts
+
     return render(request, 'custom_admin/course_content_verify.html', {
         'course': course,
         'chapters': chapters_data,
