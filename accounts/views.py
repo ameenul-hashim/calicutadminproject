@@ -209,9 +209,14 @@ def signup_view(request):
             messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/signup.html', ctx)
 
-        # PDF size check (max 200KB) — only for direct PDF uploads, images are compressed internally
+        # PDF size check (max 200KB) — for direct PDF uploads
         if file_ext == '.pdf' and proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
+            return render(request, 'accounts/signup.html', ctx)
+
+        # Image size check (max 10MB) — images are compressed internally but we still need a sanity limit
+        if file_ext != '.pdf' and proof_file.size > 10 * 1024 * 1024:
+            messages.error(request, "Image file is too large. Please choose a smaller image (max 10 MB).")
             return render(request, 'accounts/signup.html', ctx)
 
         # 4. Processing File Uploads
@@ -230,6 +235,11 @@ def signup_view(request):
 
             if file_ext == '.pdf':
                 logger.debug("Uploading PDF to Supabase for %s", username)
+                # Final size guard: catch any file >200KB before upload
+                if proof_file.size > 200 * 1024:
+                    user.delete()
+                    messages.error(request, "PDF size exceeds the maximum limit of 200 KB.")
+                    return redirect('login')
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
@@ -240,6 +250,12 @@ def signup_view(request):
                 if not optimized_pdf:
                     user.delete()
                     raise Exception("PDF conversion failed. File may be corrupted.")
+
+                # Size check on the converted PDF before upload
+                if optimized_pdf.size > 200 * 1024:
+                    user.delete()
+                    messages.error(request, "Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.")
+                    return redirect('login')
 
                 if not upload_user_proof(user, optimized_pdf):
                     user.delete()
@@ -333,9 +349,14 @@ def teacher_signup_view(request):
             messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        # PDF size check (max 200KB) — only for direct PDF uploads, images are compressed internally
+        # PDF size check (max 200KB) — for direct PDF uploads
         if file_ext == '.pdf' and proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
+            return render(request, 'accounts/teacher_signup.html', ctx)
+
+        # Image size check (max 10MB) — images are compressed internally but we still need a sanity limit
+        if file_ext != '.pdf' and proof_file.size > 10 * 1024 * 1024:
+            messages.error(request, "Image file is too large. Please choose a smaller image (max 10 MB).")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
         # 4. Processing File Uploads
@@ -354,6 +375,11 @@ def teacher_signup_view(request):
 
             if file_ext == '.pdf':
                 logger.debug("Teacher signup: uploading PDF to Supabase for %s", username)
+                # Final size guard: catch any file >200KB before upload
+                if proof_file.size > 200 * 1024:
+                    user.delete()
+                    messages.error(request, "PDF size exceeds the maximum limit of 200 KB.")
+                    return redirect('teacher_login')
                 if not upload_user_proof(user, proof_file):
                     user.delete()
                     raise Exception("Supabase storage failure.")
@@ -364,6 +390,12 @@ def teacher_signup_view(request):
                 if not optimized_pdf:
                     user.delete()
                     raise Exception("PDF conversion failed. File may be corrupted.")
+
+                # Size check on the converted PDF before upload
+                if optimized_pdf.size > 200 * 1024:
+                    user.delete()
+                    messages.error(request, "Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.")
+                    return redirect('teacher_login')
 
                 if not upload_user_proof(user, optimized_pdf):
                     user.delete()
