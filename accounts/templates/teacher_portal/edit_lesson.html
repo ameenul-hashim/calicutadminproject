@@ -74,7 +74,7 @@
             return cookieValue;
         }
 
-        var csrfToken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        var csrfToken;
 
         function toggleVideoInput(mode) {
             const fileGroup = document.getElementById('fileUploadGroup');
@@ -433,6 +433,7 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
             var hasUrl = '{{ lesson.video_url|default:"" }}'.length > 0;
             if (hasUrl) {
                 document.querySelector('input[name="video_source"][value="url"]').checked = true;
