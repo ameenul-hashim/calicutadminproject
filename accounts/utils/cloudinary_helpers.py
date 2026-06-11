@@ -137,6 +137,14 @@ def update_image(instance, image_file, folder="Neo Learner/uploads"):
         # 3. Update Instance
         secure_url = result.get('secure_url')
         public_id = result.get('public_id')
+
+        # === DEBUG: print Cloudinary upload result ===
+        import sys as _sys
+        print("=== CLOUDINARY UPLOAD RESULT ===", file=_sys.stderr)
+        print(f"  secure_url: {secure_url!r}", file=_sys.stderr)
+        print(f"  public_id: {public_id!r}", file=_sys.stderr)
+        print(f"  result keys: {list(result.keys())}", file=_sys.stderr)
+        print("=== END UPLOAD RESULT ===", file=_sys.stderr)
         
         if secure_url and public_id:
             # Update modern Cloudinary fields
@@ -152,6 +160,16 @@ def update_image(instance, image_file, folder="Neo Learner/uploads"):
             
             # Save the entire instance to ensure database persistence
             instance.save()
+
+            # === DEBUG: print course values after save ===
+            print("=== AFTER SAVE ===", file=_sys.stderr)
+            print(f"  instance.image: {instance.image!r}", file=_sys.stderr)
+            print(f"  instance.image_public_id: {instance.image_public_id!r}", file=_sys.stderr)
+            if hasattr(instance, 'thumbnail'):
+                print(f"  instance.thumbnail: {instance.thumbnail!r}", file=_sys.stderr)
+            if hasattr(instance, 'thumbnail_url'):
+                print(f"  instance.thumbnail_url: {instance.thumbnail_url!r}", file=_sys.stderr)
+            print("=== END AFTER SAVE ===", file=_sys.stderr)
             
             logger.info(f"Successfully updated Image for {instance}")
             logger.debug(f"Image URL: {instance.image}")
