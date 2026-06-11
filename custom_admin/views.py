@@ -25,6 +25,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django_ratelimit.decorators import ratelimit
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
 
 def log_admin_activity(request, action, target_user=None, details=""):
     """Enterprise helper to track all administrative actions (Firebase RTDB)."""
