@@ -67,8 +67,6 @@
                     <a href="{% url 'submit_course_approval' course.uid %}" style="padding: 0.6rem; background: #10b981; color: white; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 3; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.2);">Resubmit for Approval</a>
                     {% endif %}
                     
-                    <a href="{% url 'delete_course' course.uid %}" onclick="return confirm('Are you sure you want to request deletion for this course? This action requires admin approval.');" style="padding: 0.6rem; background: #fef2f2; color: #ef4444; text-decoration: none; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; grid-column: span 3; border: 1px solid #fecaca; margin-top: 0.5rem;">Delete Course</a>
-
                     {% if course.has_pending_deletion %}
                         <span style="grid-column: span 3; padding: 0.6rem; background: #fef3c7; color: #92400e; border-radius: 0.6rem; font-size: 0.8rem; font-weight: 700; text-align: center; border: 1px solid #fde68a; margin-top: 0.5rem;">⏳ Pending Approval</span>
                     {% else %}
