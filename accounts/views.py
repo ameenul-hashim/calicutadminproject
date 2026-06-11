@@ -739,21 +739,24 @@ def teacher_login_view(request):
                 messages.error(request, "Your account was REJECTED. Please contact admin for details.")
                 return render(request, 'accounts/teacher_login.html')
             elif user.status == 'BLOCKED':
-                logger.debug("Login blocked: BLOCKED status for %s", username)
-                messages.error(request, "Your account has been BLOCKED. Access is restricted.")
-                return render(request, 'accounts/teacher_login.html')
+                logger.debug("Login allowed for BLOCKED teacher %s (auto-reinstate on edit)", username)
+                messages.warning(request, "Your account is currently suspended. Your content is hidden from students. Edit and save any course to automatically reinstate your account.")
             
             if user.user_type != 'TEACHER':
                 logger.debug("Login blocked: user_type=%s for %s", user.user_type, username)
                 messages.error(request, "Invalid username or password. Please try again.")
                 return render(request, 'accounts/teacher_login.html')
                 
-            if user.status == 'ACTIVE':
-                logger.debug("Login success for %s", username)
+            if user.status in ('ACTIVE', 'BLOCKED'):
+                logger.debug("Login success for %s (status=%s)", username, user.status)
                 login(request, user)
                 request.session.set_expiry(0)
-                log_login_attempt(request, user, status='SUCCESS')
-                messages.success(request, f"Welcome, {user.full_name}!")
+                if user.status == 'BLOCKED':
+                    log_login_attempt(request, user, status='SUCCESS_BLOCKED')
+                    messages.warning(request, "Your account is suspended. Your content is hidden from students. Edit any course to auto-reinstate.")
+                else:
+                    log_login_attempt(request, user, status='SUCCESS')
+                    messages.success(request, f"Welcome, {user.full_name}!")
                 return redirect('teacher_dashboard')
         else:
             reason = "user not found" if not user_candidate else "password mismatch" if not user_candidate.check_password(password) else "backend rejected"
@@ -889,9 +892,10 @@ def student_explore(request):
     # Enrolled course IDs to exclude
     enrolled_ids = Enrollment.objects.filter(user=request.user).values_list('course_id', flat=True)
     
-    # All approved and published courses not yet enrolled
+    # All approved and published courses not yet enrolled (exclude BLOCKED teachers)
     explore_courses = Course.objects.filter(status='PUBLISHED', is_approved=True)\
         .exclude(id__in=enrolled_ids)\
+        .exclude(teacher__status='BLOCKED')\
         .select_related('teacher')\
         .annotate(lesson_count=Count('lessons', filter=Q(lessons__status='APPROVED')))\
         .only('id', 'uid', 'title', 'description', 'image', 'thumbnail', 'category', 'teacher__username', 'teacher__full_name', 'teacher__image')\
@@ -916,9 +920,10 @@ def student_explore(request):
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def explore_courses(request):
-    # Other teachers' courses for viewing
+    # Other teachers' courses for viewing (exclude BLOCKED teachers)
     other_courses_qs = Course.objects.exclude(teacher=request.user)\
         .filter(is_approved=True, status='PUBLISHED')\
+        .exclude(teacher__status='BLOCKED')\
         .select_related('teacher')\
         .only('id', 'uid', 'title', 'category', 'status', 'created_at', 'image', 'thumbnail', 'teacher__username', 'teacher__full_name', 'teacher__image')\
         .order_by('-created_at')
@@ -1094,6 +1099,14 @@ def edit_course(request, course_uid):
             course.is_approved = False
             course.save()
             messages.success(request, f"Course '{course.title}' updated successfully!")
+
+        # Auto-reinstate BLOCKED teacher after successful edit
+        if request.user.status == 'BLOCKED':
+            request.user.status = 'ACTIVE'
+            request.user.is_active = True
+            request.user.save(update_fields=['status', 'is_active'])
+            cache.delete(f"user_status_{request.user.id}")
+            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
             
         return redirect('my_courses')
         
@@ -1398,6 +1411,14 @@ def add_lesson(request, course_uid):
             messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
             notify_admins("New Lesson Added", f"Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.", 'new_lesson', '')
 
+        # Auto-reinstate BLOCKED teacher after successful edit
+        if request.user.status == 'BLOCKED':
+            request.user.status = 'ACTIVE'
+            request.user.is_active = True
+            request.user.save(update_fields=['status', 'is_active'])
+            cache.delete(f"user_status_{request.user.id}")
+            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+
         return redirect('course_lessons', course_uid=course.uid)
     
     chapter = request.GET.get('chapter', '')
@@ -1481,6 +1502,14 @@ def edit_lesson(request, lesson_uid):
             lesson.save()
 
             messages.success(request, "Lesson updated successfully.")
+
+        # Auto-reinstate BLOCKED teacher after successful edit
+        if request.user.status == 'BLOCKED':
+            request.user.status = 'ACTIVE'
+            request.user.is_active = True
+            request.user.save(update_fields=['status', 'is_active'])
+            cache.delete(f"user_status_{request.user.id}")
+            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
 
         return redirect('course_lessons', course_uid=lesson.course.uid)
 
@@ -1634,6 +1663,14 @@ def add_resource(request, course_uid):
                     pass
             messages.error(request, "An error occurred while uploading the file. Please try again.")
 
+        # Auto-reinstate BLOCKED teacher after successful edit
+        if request.user.status == 'BLOCKED':
+            request.user.status = 'ACTIVE'
+            request.user.is_active = True
+            request.user.save(update_fields=['status', 'is_active'])
+            cache.delete(f"user_status_{request.user.id}")
+            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+
         return redirect('course_lessons', course_uid=course.uid)
 
     chapter = request.GET.get('chapter', '')
@@ -1778,6 +1815,14 @@ def edit_resource(request, resource_uid):
             resource.save()
             messages.success(request, f"Resource '{title}' updated successfully.")
 
+        # Auto-reinstate BLOCKED teacher after successful edit
+        if request.user.status == 'BLOCKED':
+            request.user.status = 'ACTIVE'
+            request.user.is_active = True
+            request.user.save(update_fields=['status', 'is_active'])
+            cache.delete(f"user_status_{request.user.id}")
+            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+
         return redirect('course_lessons', course_uid=course.uid)
 
     return render(request, 'teacher_portal/edit_resource.html', {'resource': resource})
@@ -1917,7 +1962,12 @@ def logout_view(request):
 @login_required
 def enroll_course(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid, status='PUBLISHED', is_approved=True)
-    
+
+    # Block enrollment if teacher is BLOCKED
+    if course.teacher.status == 'BLOCKED':
+        messages.error(request, "This course is currently unavailable for enrollment.")
+        return redirect('student_explore')
+
     # Constrain: Student must update profile picture to enroll
     if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
         if not request.user.image and not request.user.profile_photo:
@@ -2145,6 +2195,11 @@ def teacher_edit_profile(request):
 @login_required
 def course_player(request, course_uid):
     course = get_object_or_404(Course, uid=course_uid)
+
+    # Hide content from students if teacher is BLOCKED
+    if course.teacher.status == 'BLOCKED' and not request.user.is_staff and request.user.user_type != 'TEACHER':
+        messages.error(request, "This course is currently unavailable.")
+        return redirect('student_explore')
 
     is_unlocked = request.session.get('student_view_unlocked')
     is_admin = getattr(request.user, 'is_staff', False)

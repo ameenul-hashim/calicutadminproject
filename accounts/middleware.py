@@ -118,13 +118,16 @@ class PortalSecurityMiddleware:
 
             # --- Cached status check (avoids DB hit per request) ---
             # Staff users (admins) and superusers are exempt from status-based session flushing
+            # BLOCKED teachers are allowed through so they can edit and auto-reinstate
             if not request.user.is_superuser and not request.user.is_staff and getattr(request.user, 'user_type', '') != 'ADMIN':
                 status_cache_key = f"user_status_{request.user.id}"
                 cached_status = cache.get(status_cache_key)
                 if cached_status is None:
                     cached_status = request.user.status
                     cache.set(status_cache_key, cached_status, 300)
-                if cached_status != 'ACTIVE':
+                if cached_status == 'BLOCKED' and request.user.user_type == 'TEACHER':
+                    pass
+                elif cached_status != 'ACTIVE':
                     status_msg = "Your account is pending admin approval." if cached_status == 'PENDING' else "Your account has been blocked."
                     request.session.flush()
                     logout(request)
