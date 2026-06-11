@@ -89,7 +89,7 @@
             return cookieValue;
         }
 
-        var csrfToken = getCookie('csrftoken') || document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        var csrfToken;
 
         function toggleVideoInput(mode) {
             const fileGroup = document.getElementById('fileUploadGroup');
@@ -459,6 +459,7 @@
 
         // ====== RECOVERY ON PAGE LOAD ======
         document.addEventListener('DOMContentLoaded', function() {
+            csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
             // Check for stored upload state (tab crash recovery)
             var stored = getStoredUploadState();
             if (stored && stored.uploadJobUid) {
