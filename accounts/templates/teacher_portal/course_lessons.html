@@ -454,9 +454,7 @@
                             {% if lesson.youtube_video_id %}
                             <a href="javascript:void(0)" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}')" class="rc-action view">&#x25B6; Play</a>
                             {% endif %}
-                            {% if not lesson.is_suspended %}
                             <a href="{% url 'edit_lesson' lesson.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
-                            {% endif %}
                             <a href="javascript:void(0)" onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" class="rc-action delete">&#x1F5D1;&#xFE0F; Delete Request</a>
                         {% endif %}
                         </div>
@@ -503,7 +501,7 @@
                 {% if res.status != 'DELETION_PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
-                        {% if res.status != 'DELETION_PENDING' and not res.is_suspended %}
+                        {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                         {% endif %}
                         {% if res.status == 'APPROVED' %}
@@ -561,7 +559,7 @@
                 {% if res.status != 'DELETION_PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
-                        {% if res.status != 'DELETION_PENDING' and not res.is_suspended %}
+                        {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                         {% endif %}
                         {% if res.status == 'APPROVED' %}
@@ -619,7 +617,7 @@
                 {% if res.status != 'DELETION_PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
-                        {% if res.status != 'DELETION_PENDING' and not res.is_suspended %}
+                        {% if res.status != 'DELETION_PENDING' %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                         {% endif %}
                         {% if res.status == 'APPROVED' %}

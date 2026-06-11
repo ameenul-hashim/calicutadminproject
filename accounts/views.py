@@ -1411,6 +1411,12 @@ def edit_lesson(request, lesson_uid):
     """
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
+        # Auto-unsuspend if teacher is editing a suspended lesson
+        if lesson.is_suspended:
+            lesson.is_suspended = False
+            lesson.suspended_at = None
+            lesson.suspended_by = None
+            lesson.suspension_reason = ''
         title = request.POST.get('title')
         video_source = request.POST.get('video_source', 'file')
         video_url = request.POST.get('video_url', '')
@@ -1643,6 +1649,12 @@ def edit_resource(request, resource_uid):
     course = resource.course
 
     if request.method == 'POST':
+        # Auto-unsuspend if teacher is editing a suspended resource
+        if resource.is_suspended:
+            resource.is_suspended = False
+            resource.suspended_at = None
+            resource.suspended_by = None
+            resource.suspension_reason = ''
         title = request.POST.get('title', '').strip()
         category = request.POST.get('category', '').strip()
         upload_file = request.FILES.get('upload_file')
