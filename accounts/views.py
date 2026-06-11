@@ -209,8 +209,8 @@ def signup_view(request):
             messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/signup.html', ctx)
 
-        # PDF/Image size check (max 200KB) — BEFORE user creation
-        if proof_file.size > 200 * 1024:
+        # PDF size check (max 200KB) — only for direct PDF uploads, images are compressed internally
+        if file_ext == '.pdf' and proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'accounts/signup.html', ctx)
 
@@ -333,8 +333,8 @@ def teacher_signup_view(request):
             messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        # PDF/Image size check (max 200KB) — BEFORE user creation
-        if proof_file.size > 200 * 1024:
+        # PDF size check (max 200KB) — only for direct PDF uploads, images are compressed internally
+        if file_ext == '.pdf' and proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
