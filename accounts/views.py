@@ -3237,12 +3237,14 @@ def init_video_upload(request):
         return JsonResponse({'error': 'Server error'}, status=500)
 
 
+@ratelimit(key='user', rate='10/m', method='POST', block=True)
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def youtube_upload_complete(request):
     """
     Phase 2: Browser has finished uploading MP4 directly to YouTube.
     Receives video_id from browser, saves to lesson + UploadJob.
-    Starts background YouTube processing verification.
+    Sets READY immediately — same pattern as edit flow.
+    Client-side polling shows real-time progress.
     """
     from django.utils import timezone as tz
     import json
@@ -3255,19 +3257,19 @@ def youtube_upload_complete(request):
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON'}, status=400)
 
-    lesson_uid_str = data.get('lesson_uid')
-    video_id = data.get('video_id', '').strip()
-    auto_recover = data.get('auto_recover', False)
-    upload_job_uid = data.get('upload_job_uid', '')
+    try:
+        lesson_uid_str = data.get('lesson_uid')
+        video_id = data.get('video_id', '').strip()
+        auto_recover = data.get('auto_recover', False)
+        upload_job_uid = data.get('upload_job_uid', '')
 
-    if not lesson_uid_str:
-        return JsonResponse({'error': 'lesson_uid required'}, status=400)
+        if not lesson_uid_str:
+            return JsonResponse({'error': 'lesson_uid required'}, status=400)
 
-    if not video_id:
-        if not auto_recover:
-            return JsonResponse({'error': 'video_id required'}, status=400)
-        from .utils.youtube_uploader import find_latest_youtube_upload
-        try:
+        if not video_id:
+            if not auto_recover:
+                return JsonResponse({'error': 'video_id required'}, status=400)
+            from .utils.youtube_uploader import find_latest_youtube_upload
             lesson_lookup = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
             lesson_title = lesson_lookup.title
             recovered_id = find_latest_youtube_upload(lesson_title)
@@ -3277,107 +3279,65 @@ def youtube_upload_complete(request):
                     'message': 'Video uploaded to YouTube but the video ID could not be captured automatically. Please edit the lesson to add the YouTube URL manually.',
                 }, status=200)
             video_id = recovered_id
-        except Lesson.DoesNotExist:
-            return JsonResponse({'error': 'auto_recover: Lesson not found'}, status=404)
 
-    try:
         lesson = Lesson.objects.get(uid=lesson_uid_str, course__teacher=request.user)
-    except Lesson.DoesNotExist:
-        return JsonResponse({'error': 'Lesson not found. The lesson may have been deleted.'}, status=404)
 
-    if lesson.youtube_video_id == video_id and lesson.upload_status == 'READY':
-        # Update UploadJob if exists
+        if lesson.youtube_video_id == video_id and lesson.upload_status == 'READY':
+            if upload_job_uid:
+                UploadJob.objects.filter(uid=upload_job_uid, teacher=request.user).update(
+                    status='COMPLETED',
+                    youtube_video_id=video_id,
+                    progress_percentage=100,
+                    completed_at=tz.now(),
+                    last_activity=tz.now(),
+                )
+            return JsonResponse({'success': True, 'status': 'already_complete', 'video_id': video_id})
+
+        course = lesson.course
+        course_is_published = course.status == 'PUBLISHED' and course.is_approved
+
+        lesson.youtube_video_id = video_id
+        lesson.youtube_upload_status = 'UPLOADED'
+        lesson.youtube_uploaded_at = tz.now()
+        lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
+        lesson.upload_status = 'READY'
+
+        if course_is_published:
+            lesson.status = 'APPROVED'
+            lesson.is_approved = True
+
+        update_fields = [
+            'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
+            'upload_status', 'video_url',
+        ]
+        if course_is_published:
+            update_fields.extend(['status', 'is_approved'])
+        lesson.save(update_fields=update_fields)
+
         if upload_job_uid:
             UploadJob.objects.filter(uid=upload_job_uid, teacher=request.user).update(
-                status='COMPLETED',
+                status='UPLOADED',
                 youtube_video_id=video_id,
+                youtube_url=lesson.video_url,
                 progress_percentage=100,
-                completed_at=tz.now(),
+                uploaded_bytes=0,
                 last_activity=tz.now(),
             )
-        return JsonResponse({'success': True, 'status': 'already_complete', 'video_id': video_id})
 
-    course = lesson.course
-    course_is_published = course.status == 'PUBLISHED' and course.is_approved
+        if auto_recover:
+            logger.info(f"auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
 
-    # Save video ID to lesson
-    lesson.youtube_video_id = video_id
-    lesson.youtube_upload_status = 'UPLOADED'
-    lesson.youtube_uploaded_at = tz.now()
-    lesson.video_url = f'https://www.youtube.com/watch?v={video_id}'
-    lesson.upload_status = 'PROCESSING'  # Will become READY after YouTube processing confirmation
-
-    if course_is_published:
-        lesson.status = 'APPROVED'
-        lesson.is_approved = True
-
-    update_fields = [
-        'youtube_video_id', 'youtube_upload_status', 'youtube_uploaded_at',
-        'upload_status', 'video_url',
-    ]
-    if course_is_published:
-        update_fields.extend(['status', 'is_approved'])
-    lesson.save(update_fields=update_fields)
-
-    # Update UploadJob
-    if upload_job_uid:
-        UploadJob.objects.filter(uid=upload_job_uid, teacher=request.user).update(
-            status='UPLOADED',
-            youtube_video_id=video_id,
-            youtube_url=lesson.video_url,
-            progress_percentage=100,
-            uploaded_bytes=0,  # Will be set by update_upload_progress
-            last_activity=tz.now(),
-        )
-
-    if auto_recover:
-        logger.info(f"auto_recover: Saved recovered video_id={video_id} to lesson {lesson_uid_str}")
-
-    # Start YouTube processing verification in background
-    def verify_processing(lesson_pk, video_id_str):
-        import time
-        from .utils.youtube_uploader import verify_youtube_video
-        max_attempts = 30  # 5 minutes at 10-second intervals
-        for attempt in range(max_attempts):
-            time.sleep(10)
-            try:
-                is_ready = verify_youtube_video(video_id_str)
-                if is_ready:
-                    Lesson.objects.filter(pk=lesson_pk).update(
-                        upload_status='READY',
-                    )
-                    UploadJob.objects.filter(lesson__pk=lesson_pk, teacher=request.user).update(
-                        status='COMPLETED',
-                        completed_at=tz.now(),
-                        last_activity=tz.now(),
-                    )
-                    logger.info(f"YouTube processing complete for video {video_id_str}")
-                    return
-            except Exception as e:
-                logger.warning(f"YouTube verification attempt {attempt+1} failed: {e}")
-        # After 5 minutes, mark as READY anyway (video may be delayed)
-        try:
-            Lesson.objects.filter(pk=lesson_pk, upload_status='PROCESSING').update(
-                upload_status='READY',
-            )
-            UploadJob.objects.filter(lesson__pk=lesson_pk, teacher=request.user, status='UPLOADED').update(
-                status='COMPLETED',
-                completed_at=tz.now(),
-                last_activity=tz.now(),
-            )
-        except Exception:
-            pass
-
-    import threading
-    thread = threading.Thread(target=verify_processing, args=(lesson.pk, video_id), daemon=True)
-    thread.start()
-
-    return JsonResponse({
-        'success': True,
-        'message': 'Video uploaded to YouTube successfully! Processing...',
-        'video_id': video_id,
-        'upload_job_uid': upload_job_uid,
-    })
+        return JsonResponse({
+            'success': True,
+            'message': 'Video uploaded to YouTube successfully!',
+            'video_id': video_id,
+            'upload_job_uid': upload_job_uid,
+        })
+    except Lesson.DoesNotExist:
+        return JsonResponse({'error': 'Lesson not found'}, status=404)
+    except Exception as e:
+        logger.error(f"youtube_upload_complete error: {e}")
+        return JsonResponse({'error': 'Server error'}, status=500)
 
 
 @ratelimit(key='user', rate='10/m', method='POST', block=True)
