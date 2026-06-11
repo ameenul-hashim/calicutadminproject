@@ -1730,6 +1730,11 @@ def verify_deletion_request(request, request_uid):
         if resource:
             messages.info(request, f"ℹ️ Opening PDF for {resource.title}.")
             return redirect('access_resource', resource_uid=resource.uid)
+    elif del_request.item_type == 'Chapter':
+        course = Course.objects.filter(id=del_request.item_id).first()
+        if course:
+            messages.info(request, f"ℹ️ Chapter '{del_request.item_name}' in course '{course.title}'.")
+            return redirect('admin_view_course_content', course_uid=course.uid)
 
     messages.error(request, "The item could not be found or verified.")
     return redirect('manage_deletion_requests')
@@ -1802,6 +1807,43 @@ def approve_deletion_request(request, request_uid):
             resource.delete()
         else:
             messages.warning(request, "The requested resource no longer exists.")
+    elif del_request.item_type == 'Chapter':
+        from accounts.models import CourseResource
+        course_id = del_request.item_id
+        chapter_name = del_request.item_name
+        course = Course.objects.filter(id=course_id).first()
+        if course:
+            from django.utils import timezone
+            now = timezone.now()
+            # Delete YouTube videos for all lessons in this chapter
+            for lesson in course.lessons.filter(chapter=chapter_name):
+                if lesson.youtube_video_id:
+                    try:
+                        from accounts.utils.youtube_uploader import delete_youtube_video
+                        delete_youtube_video(lesson.youtube_video_id)
+                    except Exception as e:
+                        logger.warning(f"Could not delete YouTube video {lesson.youtube_video_id}: {e}")
+                lesson.delete()
+            # Delete all resources in this chapter (with storage cleanup)
+            for res in CourseResource.objects.filter(course=course, chapter=chapter_name, is_deleted=False):
+                from accounts.utils.storage_manager import StorageManager
+                from accounts.utils.cloudinary_helpers import delete_temp_image
+                try:
+                    StorageManager.delete_from_supabase_storage(res.firebase_file_path)
+                    if res.thumbnail_public_id:
+                        delete_temp_image(res.thumbnail_public_id)
+                except Exception:
+                    pass
+                res.delete()
+            # Remove chapter from course.chapters list
+            chapters = list(course.chapters or [])
+            if chapter_name in chapters:
+                chapters.remove(chapter_name)
+                course.chapters = chapters
+                course.save(update_fields=['chapters'])
+            success_msg = f"Chapter '{chapter_name}' and all its content deleted permanently."
+        else:
+            messages.warning(request, "The course for this chapter no longer exists.")
 
     # Delete the DeletionRequest — no history saved
     del_request.delete()

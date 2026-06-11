@@ -1271,14 +1271,38 @@ def delete_chapter(request, course_uid):
     if chapter_name not in chapters:
         messages.error(request, f"Chapter '{chapter_name}' not found.")
         return redirect('course_lessons', course_uid=course.uid)
-    chapters.remove(chapter_name)
-    course.chapters = chapters
-    course.save(update_fields=['chapters'])
-    # Unlink lessons and resources — move them to uncategorized
-    course.lessons.filter(chapter=chapter_name).update(chapter='')
-    from .models import CourseResource
-    CourseResource.objects.filter(course=course, chapter=chapter_name).update(chapter='')
-    messages.success(request, f"Chapter '{chapter_name}' deleted. Content moved to uncategorized.")
+    # Check for existing pending deletion request for this chapter
+    existing = DeletionRequest.objects.filter(
+        teacher=request.user, item_type='Chapter', item_id=course.id,
+        item_name=chapter_name, status='PENDING'
+    ).first()
+    if existing:
+        messages.warning(request, f"A deletion request for chapter '{chapter_name}' is already pending.")
+        return redirect('course_lessons', course_uid=course.uid)
+    # Check if chapter has content
+    lesson_count = course.lessons.filter(chapter=chapter_name).count()
+    resource_count = course.resources.filter(is_deleted=False, chapter=chapter_name).count()
+    # Create deletion request for admin approval
+    DeletionRequest.objects.create(
+        teacher=request.user,
+        item_type='Chapter',
+        item_id=course.id,
+        item_name=chapter_name,
+        reason=request.POST.get('reason', '').strip() or f"Delete entire chapter '{chapter_name}' with {lesson_count} lesson(s) and {resource_count} resource(s)."
+    )
+    from .models import Notification
+    # Notify all admins
+    from django.db.models import Q
+    from .models import CustomUser
+    admins = CustomUser.objects.filter(
+        Q(user_type='ADMIN') | Q(is_superuser=True)
+    )
+    for admin in admins:
+        Notification.objects.create(
+            user=admin,
+            message=f"Teacher {request.user.full_name} requested to delete chapter '{chapter_name}' from course '{course.title}'."
+        )
+    messages.success(request, f"Deletion request sent for chapter '{chapter_name}'. Waiting for admin approval.")
     return redirect('course_lessons', course_uid=course.uid)
 
 
