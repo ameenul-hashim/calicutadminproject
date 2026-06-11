@@ -1783,8 +1783,11 @@ def approve_deletion_request(request, request_uid):
 
     # Delete the DeletionRequest — no history saved
     del_request.delete()
-    from accounts.utils.firebase_db import notif_create
-    notif_create(str(del_request.teacher.uid), "Deletion Approved", f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been approved.", 'deletion_approved', '')
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=del_request.teacher,
+        message=f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been approved."
+    )
     messages.success(request, f"{success_msg}")
     return redirect('manage_deletion_requests')
 
@@ -1819,10 +1822,11 @@ def reject_deletion_request(request, request_uid):
             resource.save()
     
     admin_feedback = request.POST.get('admin_feedback', '').strip() or 'No reason provided.'
-    # Send notification to teacher with rejection reason (via Firebase — external, not Django DB)
-    from accounts.utils.firebase_db import notif_create
-    notif_create(str(del_request.teacher.uid), "Deletion Rejected", f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.", 'deletion_rejected', '')
-    # Delete the DeletionRequest — no history saved
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=del_request.teacher,
+        message=f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.\n\nReason: {admin_feedback}"
+    )
     del_request.delete()
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Teacher notified with reason.")
     return redirect('manage_deletion_requests')
