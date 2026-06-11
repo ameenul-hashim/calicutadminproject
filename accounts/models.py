@@ -189,6 +189,10 @@ class Lesson(models.Model):
     file_size = models.PositiveBigIntegerField(default=0, help_text="Video file size in bytes")
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    is_suspended = models.BooleanField(default=False, db_index=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspended_by = models.ForeignKey('CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='suspended_lessons')
+    suspension_reason = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ['order']
@@ -238,6 +242,10 @@ class CourseResource(models.Model):
     # Lifecycle & Soft Deletes
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    is_suspended = models.BooleanField(default=False, db_index=True)
+    suspended_at = models.DateTimeField(null=True, blank=True)
+    suspended_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='suspended_resources')
+    suspension_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)

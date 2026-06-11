@@ -2987,6 +2987,142 @@ from django.views.decorators.csrf import csrf_exempt
 from django.core.management import call_command
 from io import StringIO
 
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def suspend_lesson(request, lesson_uid):
+    from accounts.models import Lesson
+    lesson = get_object_or_404(Lesson, uid=lesson_uid)
+    reason = request.POST.get('suspension_reason', '').strip()
+    if not reason:
+        messages.error(request, "Suspension reason is required.")
+        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+    from django.utils import timezone
+    lesson.is_suspended = True
+    lesson.suspension_reason = reason
+    lesson.suspended_by = request.user
+    lesson.suspended_at = timezone.now()
+    lesson.save()
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=lesson.course.teacher,
+        message=f"Your lesson '{lesson.title}' has been suspended.\n\nReason: {reason}"
+    )
+    messages.success(request, f"Lesson '{lesson.title}' suspended. Teacher notified.")
+    return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def unsuspend_lesson(request, lesson_uid):
+    from accounts.models import Lesson
+    lesson = get_object_or_404(Lesson, uid=lesson_uid)
+    lesson.is_suspended = False
+    lesson.suspension_reason = None
+    lesson.suspended_by = None
+    lesson.suspended_at = None
+    lesson.save()
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=lesson.course.teacher,
+        message=f"Your lesson '{lesson.title}' has been reinstated. You can now edit and use it again."
+    )
+    messages.success(request, f"Lesson '{lesson.title}' reinstated.")
+    return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def edit_lesson_suspension(request, lesson_uid):
+    from accounts.models import Lesson
+    lesson = get_object_or_404(Lesson, uid=lesson_uid)
+    if not lesson.is_suspended:
+        messages.error(request, "Lesson is not currently suspended.")
+        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+    new_reason = request.POST.get('suspension_reason', '').strip()
+    if not new_reason:
+        messages.error(request, "Suspension reason cannot be empty.")
+        return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+    lesson.suspension_reason = new_reason
+    lesson.suspended_by = request.user
+    lesson.suspended_at = lesson.suspended_at or timezone.now()
+    lesson.save()
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=lesson.course.teacher,
+        message=f"The suspension reason for your lesson '{lesson.title}' has been updated.\n\nUpdated reason: {new_reason}"
+    )
+    messages.success(request, f"Suspension reason updated for '{lesson.title}'.")
+    return redirect('admin_view_course_content', course_uid=lesson.course.uid)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def suspend_resource(request, resource_uid):
+    from accounts.models import CourseResource
+    resource = get_object_or_404(CourseResource, uid=resource_uid)
+    reason = request.POST.get('suspension_reason', '').strip()
+    if not reason:
+        messages.error(request, "Suspension reason is required.")
+        return redirect('admin_view_course_content', course_uid=resource.course.uid)
+    from django.utils import timezone
+    resource.is_suspended = True
+    resource.suspension_reason = reason
+    resource.suspended_by = request.user
+    resource.suspended_at = timezone.now()
+    resource.save()
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=resource.course.teacher,
+        message=f"Your resource '{resource.title}' has been suspended.\n\nReason: {reason}"
+    )
+    messages.success(request, f"Resource '{resource.title}' suspended. Teacher notified.")
+    return redirect('admin_view_course_content', course_uid=resource.course.uid)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def unsuspend_resource(request, resource_uid):
+    from accounts.models import CourseResource
+    resource = get_object_or_404(CourseResource, uid=resource_uid)
+    resource.is_suspended = False
+    resource.suspension_reason = None
+    resource.suspended_by = None
+    resource.suspended_at = None
+    resource.save()
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=resource.course.teacher,
+        message=f"Your resource '{resource.title}' has been reinstated."
+    )
+    messages.success(request, f"Resource '{resource.title}' reinstated.")
+    return redirect('admin_view_course_content', course_uid=resource.course.uid)
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+def edit_resource_suspension(request, resource_uid):
+    from accounts.models import CourseResource
+    resource = get_object_or_404(CourseResource, uid=resource_uid)
+    if not resource.is_suspended:
+        messages.error(request, "Resource is not currently suspended.")
+        return redirect('admin_view_course_content', course_uid=resource.course.uid)
+    new_reason = request.POST.get('suspension_reason', '').strip()
+    if not new_reason:
+        messages.error(request, "Suspension reason cannot be empty.")
+        return redirect('admin_view_course_content', course_uid=resource.course.uid)
+    resource.suspension_reason = new_reason
+    resource.suspended_by = request.user
+    resource.suspended_at = resource.suspended_at or timezone.now()
+    resource.save()
+    from accounts.models import Notification
+    Notification.objects.create(
+        user=resource.course.teacher,
+        message=f"The suspension reason for your resource '{resource.title}' has been updated.\n\nUpdated reason: {new_reason}"
+    )
+    messages.success(request, f"Suspension reason updated for '{resource.title}'.")
+    return redirect('admin_view_course_content', course_uid=resource.course.uid)
+
+
 @csrf_exempt
 def backup_cron_trigger(request):
     """Cron-job webhook — triggers daily database backup.

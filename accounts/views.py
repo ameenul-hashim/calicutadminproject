@@ -2104,7 +2104,7 @@ def course_player(request, course_uid):
 
     # === ACCESS CONTROL ===
     if is_unlocked and (is_admin or request.user.user_type == 'TEACHER'):
-        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file', 'chapter').order_by('chapter', 'order')
+        lessons = course.lessons.filter(status='APPROVED', is_suspended=False).only('id', 'title', 'order', 'video_url', 'video_file', 'chapter').order_by('chapter', 'order')
 
     elif is_admin:
         lessons = course.lessons.exclude(status='REJECTED').order_by('chapter', 'order')
@@ -2119,11 +2119,11 @@ def course_player(request, course_uid):
         if not Enrollment.objects.filter(user=request.user, course=course).exists():
             messages.error(request, "You are not enrolled in this course.")
             return redirect('student_explore')
-        lessons = course.lessons.filter(status='APPROVED').only('id', 'title', 'order', 'video_url', 'video_file', 'chapter').order_by('chapter', 'order')
+        lessons = course.lessons.filter(status='APPROVED', is_suspended=False).only('id', 'title', 'order', 'video_url', 'video_file', 'chapter').order_by('chapter', 'order')
 
     from .models import CourseResource
     approved_resources = CourseResource.objects.filter(
-        course=course, status='APPROVED', is_deleted=False
+        course=course, status='APPROVED', is_deleted=False, is_suspended=False
     ).order_by('chapter', '-created_at')
 
     # Category counts for resource chart

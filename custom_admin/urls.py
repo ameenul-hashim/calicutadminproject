@@ -18,10 +18,16 @@ urlpatterns = [
     # Lesson actions
     path('lesson/approve/<uuid:lesson_uid>/', views.approve_lesson, name='approve_lesson'),
     path('lesson/reject/<uuid:lesson_uid>/', views.reject_lesson, name='reject_lesson'),
+    path('lesson/suspend/<uuid:lesson_uid>/', views.suspend_lesson, name='suspend_lesson'),
+    path('lesson/unsuspend/<uuid:lesson_uid>/', views.unsuspend_lesson, name='unsuspend_lesson'),
+    path('lesson/edit-suspension/<uuid:lesson_uid>/', views.edit_lesson_suspension, name='edit_lesson_suspension'),
     
     # Resource actions
     path('resource/approve/<uuid:resource_uid>/', views.approve_resource, name='approve_resource'),
     path('resource/reject/<uuid:resource_uid>/', views.reject_resource, name='reject_resource'),
+    path('resource/suspend/<uuid:resource_uid>/', views.suspend_resource, name='suspend_resource'),
+    path('resource/unsuspend/<uuid:resource_uid>/', views.unsuspend_resource, name='unsuspend_resource'),
+    path('resource/edit-suspension/<uuid:resource_uid>/', views.edit_resource_suspension, name='edit_resource_suspension'),
     
     path('storage-dashboard/', views.storage_dashboard, name='storage_dashboard'),
     path('backup-info/', views.backup_info_view, name='backup_info'),

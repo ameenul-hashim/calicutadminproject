@@ -361,9 +361,32 @@
                             {% for lesson in chapter.approved_lessons %}
                                 <div style="background: #f8fafc; border-radius: 1rem; border: 1px solid #e2e8f0; padding: 1.25rem;">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                        <h3 style="margin: 0; font-size: 1rem; color: #1e293b;">🎬 Lesson {{ lesson.order }}: {{ lesson.title }}</h3>
-                                        <button onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" style="background: none; border: none; color: #ef4444; font-size: 0.8rem; font-weight: 700; cursor: pointer;">Delete</button>
+                                        <div>
+                                            <h3 style="margin: 0; font-size: 1rem; color: #1e293b;">🎬 Lesson {{ lesson.order }}: {{ lesson.title }}</h3>
+                                            {% if lesson.is_suspended %}
+                                            <span style="display: inline-flex; align-items: center; gap: 0.25rem; margin-top: 0.25rem; font-size: 0.7rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 0.35rem; background: #fff7ed; color: #f97316;">⏸️ Suspended</span>
+                                            {% endif %}
+                                        </div>
+                                        <div style="display: flex; gap: 0.3rem; flex-wrap: wrap;">
+                                            {% if lesson.is_suspended %}
+                                            <form action="{% url 'unsuspend_lesson' lesson.uid %}" method="POST" style="margin:0;">
+                                                {% csrf_token %}
+                                                <button type="submit" style="background: none; border: none; color: #10b981; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Reinstate</button>
+                                            </form>
+                                            <button onclick="openEditSuspensionModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}', '{{ lesson.suspension_reason|escapejs }}', 'lesson')" style="background: none; border: none; color: #6366f1; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Edit Reason</button>
+                                            {% else %}
+                                            <button onclick="openSuspendModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}', 'lesson')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                            {% endif %}
+                                            <button onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
+                                        </div>
                                     </div>
+                                    {% if lesson.is_suspended and lesson.suspension_reason %}
+                                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.75rem; padding: 0.75rem; margin-bottom: 1rem;">
+                                        <div style="font-weight: 700; color: #d97706; font-size: 0.8rem; margin-bottom: 0.25rem;">⏸️ Suspension Reason:</div>
+                                        <div style="font-size: 0.85rem; color: #92400e; line-height: 1.5;">{{ lesson.suspension_reason }}</div>
+                                        {% if lesson.suspended_by %}<div style="font-size: 0.72rem; color: #a16207; margin-top: 0.25rem;">Suspended by: {{ lesson.suspended_by.full_name|default:lesson.suspended_by.username }}</div>{% endif %}
+                                    </div>
+                                    {% endif %}
 
                                     <div style="background: white; border-radius: 1rem; border: 1px solid #f1f5f9; padding: 1rem; margin-bottom: 1.5rem;">
                                         {% if lesson.video_file %}
@@ -419,12 +442,20 @@
                                         <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">{{ resource.title }}</span>
                                         <span style="font-size: 0.72rem; color: #94a3b8; margin-left: 0.5rem;">({{ resource.get_resource_type_display }})</span>
                                     </div>
+                                    {% if resource.is_suspended %}
+                                    <div style="font-size: 0.7rem; color: #d97706; font-weight: 600; margin-top: 0.2rem;">⏸️ Suspended: {{ resource.suspension_reason|truncatechars:60 }}</div>
+                                    {% endif %}
                                     <div style="display: flex; gap: 0.5rem;">
                                         <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #f1f5f9; color: #4f46e5; padding: 0.4rem 0.8rem; border-radius: 0.4rem; font-size: 0.72rem; font-weight: 700; text-decoration: none;">View</a>
-                                        <form action="{% url 'reject_resource' resource.uid %}" method="POST" style="margin: 0;">
+                                        {% if resource.is_suspended %}
+                                        <form action="{% url 'unsuspend_resource' resource.uid %}" method="POST" style="margin:0;">
                                             {% csrf_token %}
-                                            <button type="submit" onclick="return confirm('Suspend/Reject this resource?')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                            <button type="submit" style="background: none; border: none; color: #10b981; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Reinstate</button>
                                         </form>
+                                        <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background: none; border: none; color: #6366f1; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Edit Reason</button>
+                                        {% else %}
+                                        <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                        {% endif %}
                                         <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
                                     </div>
                                 </div>
@@ -437,12 +468,20 @@
                                         <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">{{ resource.title }}</span>
                                         <span style="font-size: 0.72rem; color: #94a3b8; margin-left: 0.5rem;">({{ resource.get_resource_type_display }})</span>
                                     </div>
+                                    {% if resource.is_suspended %}
+                                    <div style="font-size: 0.7rem; color: #d97706; font-weight: 600; margin-top: 0.2rem;">⏸️ Suspended: {{ resource.suspension_reason|truncatechars:60 }}</div>
+                                    {% endif %}
                                     <div style="display: flex; gap: 0.5rem;">
                                         <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #f1f5f9; color: #4f46e5; padding: 0.4rem 0.8rem; border-radius: 0.4rem; font-size: 0.72rem; font-weight: 700; text-decoration: none;">View</a>
-                                        <form action="{% url 'reject_resource' resource.uid %}" method="POST" style="margin: 0;">
+                                        {% if resource.is_suspended %}
+                                        <form action="{% url 'unsuspend_resource' resource.uid %}" method="POST" style="margin:0;">
                                             {% csrf_token %}
-                                            <button type="submit" onclick="return confirm('Suspend/Reject this resource?')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                            <button type="submit" style="background: none; border: none; color: #10b981; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Reinstate</button>
                                         </form>
+                                        <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background: none; border: none; color: #6366f1; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Edit Reason</button>
+                                        {% else %}
+                                        <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                        {% endif %}
                                         <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
                                     </div>
                                 </div>
@@ -455,12 +494,20 @@
                                         <span style="font-size: 0.9rem; color: #1e293b; font-weight: 500;">{{ resource.title }}</span>
                                         <span style="font-size: 0.72rem; color: #94a3b8; margin-left: 0.5rem;">({{ resource.get_resource_type_display }})</span>
                                     </div>
+                                    {% if resource.is_suspended %}
+                                    <div style="font-size: 0.7rem; color: #d97706; font-weight: 600; margin-top: 0.2rem;">⏸️ Suspended: {{ resource.suspension_reason|truncatechars:60 }}</div>
+                                    {% endif %}
                                     <div style="display: flex; gap: 0.5rem;">
                                         <a href="{% url 'access_resource' resource.uid %}" target="_blank" style="background: #f1f5f9; color: #4f46e5; padding: 0.4rem 0.8rem; border-radius: 0.4rem; font-size: 0.72rem; font-weight: 700; text-decoration: none;">View</a>
-                                        <form action="{% url 'reject_resource' resource.uid %}" method="POST" style="margin: 0;">
+                                        {% if resource.is_suspended %}
+                                        <form action="{% url 'unsuspend_resource' resource.uid %}" method="POST" style="margin:0;">
                                             {% csrf_token %}
-                                            <button type="submit" onclick="return confirm('Suspend/Reject this resource?')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                            <button type="submit" style="background: none; border: none; color: #10b981; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Reinstate</button>
                                         </form>
+                                        <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background: none; border: none; color: #6366f1; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Edit Reason</button>
+                                        {% else %}
+                                        <button onclick="openSuspendModal('{{ resource.uid }}', '{{ resource.title|escapejs }}', 'resource')" style="background: none; border: none; color: #f59e0b; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Suspend</button>
+                                        {% endif %}
                                         <button onclick="openGenericModal('Delete Resource', '{% url 'admin_delete_resource_secure' resource.uid %}')" style="background: none; border: none; color: #ef4444; font-size: 0.72rem; font-weight: 700; cursor: pointer;">Delete</button>
                                     </div>
                                 </div>
@@ -683,6 +730,80 @@
         </form>
     </div>
 </div>
+
+<!-- Suspend Modal -->
+<div id="suspendModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;" id="suspendModalTitle">Suspend Item</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Suspend: <strong id="suspendItemName"></strong><br>
+            <span style="color:#d97706;">This will hide the content from students and notify the teacher.</span>
+        </p>
+        <form id="suspendForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Suspension Reason <span style="color:#ef4444;">*</span></label>
+                <textarea name="suspension_reason" id="suspendReason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" placeholder="Explain why this content is being suspended..." required></textarea>
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#f59e0b; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Suspend</button>
+                <button type="button" onclick="closeSuspendModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Suspension Modal -->
+<div id="editSuspensionModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Edit Suspension Reason</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Updating reason for: <strong id="editSuspensionItemName"></strong>
+        </p>
+        <form id="editSuspensionForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Updated Reason <span style="color:#ef4444;">*</span></label>
+                <textarea name="suspension_reason" id="editSuspensionReason" rows="3" style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; resize:vertical; box-sizing:border-box;" required></textarea>
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#6366f1; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Update Reason</button>
+                <button type="button" onclick="closeEditSuspensionModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openSuspendModal(uid, name, type) {
+    document.getElementById('suspendItemName').textContent = name;
+    if (type === 'lesson') {
+        document.getElementById('suspendModalTitle').textContent = 'Suspend Lesson';
+        document.getElementById('suspendForm').action = '/customadmin/lesson/suspend/' + uid + '/';
+    } else {
+        document.getElementById('suspendModalTitle').textContent = 'Suspend Resource';
+        document.getElementById('suspendForm').action = '/customadmin/resource/suspend/' + uid + '/';
+    }
+    document.getElementById('suspendReason').value = '';
+    document.getElementById('suspendModal').style.display = 'flex';
+}
+function closeSuspendModal() {
+    document.getElementById('suspendModal').style.display = 'none';
+}
+function openEditSuspensionModal(uid, name, currentReason, type) {
+    document.getElementById('editSuspensionItemName').textContent = name;
+    if (type === 'lesson') {
+        document.getElementById('editSuspensionForm').action = '/customadmin/lesson/edit-suspension/' + uid + '/';
+    } else {
+        document.getElementById('editSuspensionForm').action = '/customadmin/resource/edit-suspension/' + uid + '/';
+    }
+    document.getElementById('editSuspensionReason').value = currentReason;
+    document.getElementById('editSuspensionModal').style.display = 'flex';
+}
+function closeEditSuspensionModal() {
+    document.getElementById('editSuspensionModal').style.display = 'none';
+}
+</script>
 {% endblock %}
 
 

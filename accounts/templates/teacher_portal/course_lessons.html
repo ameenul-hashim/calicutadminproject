@@ -440,13 +440,23 @@
                                     <span class="badge del-rejected">&#x274C; Del. Rejected</span>
                                 {% endif %}
                             {% endif %}
+                            {% if lesson.is_suspended %}
+                                <span class="badge" style="background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>
+                            {% endif %}
                         </div>
+                        {% if lesson.is_suspended and lesson.suspension_reason %}
+                        <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.5rem;margin-bottom:0.5rem;font-size:0.75rem;color:#92400e;">
+                            <strong>⏸️ Suspended:</strong> {{ lesson.suspension_reason }}
+                        </div>
+                        {% endif %}
                         <div class="lesson-actions">
                         {% if not lesson.deletion_request or lesson.deletion_request.status == 'REJECTED' %}
                             {% if lesson.youtube_video_id %}
                             <a href="javascript:void(0)" onclick="openVideoPlayer('youtube','{{ lesson.youtube_video_id }}')" class="rc-action view">&#x25B6; Play</a>
                             {% endif %}
+                            {% if not lesson.is_suspended %}
                             <a href="{% url 'edit_lesson' lesson.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
+                            {% endif %}
                             <a href="javascript:void(0)" onclick="openLessonDeleteModal('{{ lesson.uid }}', '{{ lesson.title|escapejs }}')" class="rc-action delete">&#x1F5D1;&#xFE0F; Delete Request</a>
                         {% endif %}
                         </div>
@@ -480,12 +490,20 @@
                     {% if res.deletion_request and res.deletion_request.status == 'REJECTED' %}
                         <span class="badge del-rejected">&#x274C; Del. Rejected</span>
                     {% endif %}
+                    {% if res.is_suspended %}
+                        <span class="badge" style="background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>
+                    {% endif %}
                 </div>
+                {% if res.is_suspended and res.suspension_reason %}
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.4rem;margin-bottom:0.4rem;font-size:0.72rem;color:#92400e;">
+                    <strong>⏸️ Suspended:</strong> {{ res.suspension_reason }}
+                </div>
+                {% endif %}
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
-                        {% if res.status != 'DELETION_PENDING' %}
+                        {% if res.status != 'DELETION_PENDING' and not res.is_suspended %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                         {% endif %}
                         {% if res.status == 'APPROVED' %}
@@ -530,12 +548,20 @@
                     {% if res.deletion_request and res.deletion_request.status == 'REJECTED' %}
                         <span class="badge del-rejected">&#x274C; Del. Rejected</span>
                     {% endif %}
+                    {% if res.is_suspended %}
+                        <span class="badge" style="background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>
+                    {% endif %}
                 </div>
+                {% if res.is_suspended and res.suspension_reason %}
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.4rem;margin-bottom:0.4rem;font-size:0.72rem;color:#92400e;">
+                    <strong>⏸️ Suspended:</strong> {{ res.suspension_reason }}
+                </div>
+                {% endif %}
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
-                        {% if res.status != 'DELETION_PENDING' %}
+                        {% if res.status != 'DELETION_PENDING' and not res.is_suspended %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                         {% endif %}
                         {% if res.status == 'APPROVED' %}
@@ -580,12 +606,20 @@
                     {% if res.deletion_request and res.deletion_request.status == 'REJECTED' %}
                         <span class="badge del-rejected">&#x274C; Del. Rejected</span>
                     {% endif %}
+                    {% if res.is_suspended %}
+                        <span class="badge" style="background:#fff7ed;color:#f97316;">&#x23F8;&#xFE0F; Suspended</span>
+                    {% endif %}
                 </div>
+                {% if res.is_suspended and res.suspension_reason %}
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:0.5rem;padding:0.4rem;margin-bottom:0.4rem;font-size:0.72rem;color:#92400e;">
+                    <strong>⏸️ Suspended:</strong> {{ res.suspension_reason }}
+                </div>
+                {% endif %}
                 <div class="rc-actions">
                 {% if res.status != 'DELETION_PENDING' %}
                         <a href="{% url 'access_resource' res.uid %}" target="_blank" class="rc-action view">&#x1F441;&#xFE0F; View</a>
                     {% if not res.deletion_request or res.deletion_request.status == 'REJECTED' %}
-                        {% if res.status != 'DELETION_PENDING' %}
+                        {% if res.status != 'DELETION_PENDING' and not res.is_suspended %}
                             <a href="{% url 'edit_resource' res.uid %}" class="rc-action edit">&#x270F;&#xFE0F; Edit</a>
                         {% endif %}
                         {% if res.status == 'APPROVED' %}
