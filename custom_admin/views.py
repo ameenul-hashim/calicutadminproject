@@ -916,6 +916,19 @@ def approve_course(request, course_uid):
         comments="Course published."
     )
     
+    # Notify all active students via Firebase
+    active_students = CustomUser.objects.filter(user_type='STUDENT', status='ACTIVE')
+    student_uids = [str(s.uid) for s in active_students]
+    if student_uids:
+        from accounts.utils.firebase_db import notif_create_batch
+        notif_create_batch(
+            student_uids,
+            "New Course Available",
+            f"New course '{course.title}' is now available! Start learning today.",
+            'course_approved',
+            '/student/explore/'
+        )
+    
     messages.success(request, f"Course '{course.title}' has been approved and published!")
     referer = request.META.get('HTTP_REFERER')
     if referer and ('content' in referer or 'pending' in referer):
@@ -1081,11 +1094,18 @@ def approve_lesson(request, lesson_uid):
     lesson.save()
     create_notification(lesson.course.teacher, f"Your lesson '{lesson.title}' in course '{lesson.course.title}' has been approved.")
     
-    # Notify students
-    enrollments = Enrollment.objects.filter(course=lesson.course).select_related('user')
-    for enrollment in enrollments:
-        if enrollment.user.status == 'ACTIVE':
-            create_notification(enrollment.user, f"New content added to your course '{lesson.course.title}': {lesson.title}")
+    # Notify students via Firebase
+    enrollments = Enrollment.objects.filter(course=lesson.course, user__status='ACTIVE').select_related('user')
+    student_uids = [str(e.user.uid) for e in enrollments]
+    if student_uids:
+        from accounts.utils.firebase_db import notif_create_batch
+        notif_create_batch(
+            student_uids,
+            "New Lesson Available",
+            f"New lesson '{lesson.title}' added to your course '{lesson.course.title}'",
+            'lesson_approved',
+            f'/course/{lesson.course.uid}/play/'
+        )
 
     messages.success(request, f"Lesson '{lesson.title}' approved and made visible to students.")
     return redirect('admin_view_course_content', course_uid=lesson.course.uid)
@@ -1203,10 +1223,17 @@ def approve_resource(request, resource_uid):
         messages.success(request, f"Changes to resource '{resource.title}' approved successfully.")
     else:
         create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' has been approved.")
-        enrollments = Enrollment.objects.filter(course=resource.course).select_related('user')
-        for enrollment in enrollments:
-            if enrollment.user.status == 'ACTIVE':
-                create_notification(enrollment.user, f"New resource added to your course '{resource.course.title}': {resource.title}")
+        enrollments = Enrollment.objects.filter(course=resource.course, user__status='ACTIVE').select_related('user')
+        student_uids = [str(e.user.uid) for e in enrollments]
+        if student_uids:
+            from accounts.utils.firebase_db import notif_create_batch
+            notif_create_batch(
+                student_uids,
+                "New Resource Available",
+                f"New {resource.get_resource_type_display()} resource '{resource.title}' added to your course '{resource.course.title}'",
+                'resource_approved',
+                f'/course/{resource.course.uid}/play/'
+            )
         messages.success(request, f"Resource '{resource.title}' approved successfully.")
 
     from accounts.utils.firebase_db import notif_create
