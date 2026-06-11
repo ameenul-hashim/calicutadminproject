@@ -163,7 +163,7 @@
 
                                                     // Switch names: compressed input wins, raw input no longer submitted
                                                     finalThumbnail.name = 'thumbnail';
-                                                    imageInput.removNLtribute('name');
+                                                    imageInput.removeAttribute('name');
 
                                                     console.log(`[ImageProcessor] Success: ${compressedFile.size} bytes (Reduced by ${((1 - compressedFile.size/file.size)*100).toFixed(1)}%)`);
                                                     statusText.innerHTML = `<span style="color:#10b981;font-weight:600;">✅ Optimized! (${(compressedFile.size/1024).toFixed(1)} KB) — Ready to upload</span>`;

@@ -989,6 +989,7 @@ def create_course(request):
                 success = update_image(course, thumbnail, folder="Neo Learner/courses")
                 if not success:
                     logger.warning("Thumbnail upload failed for course '%s' — saved without thumbnail.", title)
+                    messages.warning(request, "Thumbnail could not be saved. Course was created without a custom thumbnail.")
         
         messages.success(request, f"Course '{title}' created as draft. You can now add lessons.")
         return redirect('course_lessons', course_uid=course.uid)
