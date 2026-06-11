@@ -209,6 +209,11 @@ def signup_view(request):
             messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/signup.html', ctx)
 
+        # PDF/Image size check (max 200KB) — BEFORE user creation
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Verification document file size must be below 200 KB.")
+            return render(request, 'accounts/signup.html', ctx)
+
         # 4. Processing File Uploads
         try:
             from accounts.utils.supabase_storage import upload_user_proof
@@ -224,11 +229,6 @@ def signup_view(request):
             from accounts.utils.supabase_storage import upload_user_proof
 
             if file_ext == '.pdf':
-                if proof_file.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
-                    return redirect('login')
-
                 logger.debug("Uploading PDF to Supabase for %s", username)
                 if not upload_user_proof(user, proof_file):
                     user.delete()
@@ -333,6 +333,11 @@ def teacher_signup_view(request):
             messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
+        # PDF/Image size check (max 200KB) — BEFORE user creation
+        if proof_file.size > 200 * 1024:
+            messages.error(request, "Verification document file size must be below 200 KB.")
+            return render(request, 'accounts/teacher_signup.html', ctx)
+
         # 4. Processing File Uploads
         try:
             from accounts.utils.supabase_storage import upload_user_proof
@@ -348,11 +353,6 @@ def teacher_signup_view(request):
             from accounts.utils.supabase_storage import upload_user_proof
 
             if file_ext == '.pdf':
-                if proof_file.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "PDF exceeds 200KB limit. Please optimize before uploading.")
-                    return redirect('teacher_login')
-
                 logger.debug("Teacher signup: uploading PDF to Supabase for %s", username)
                 if not upload_user_proof(user, proof_file):
                     user.delete()

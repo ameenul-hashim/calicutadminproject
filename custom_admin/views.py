@@ -516,14 +516,23 @@ def create_student_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        # 6. Document Size & Type Check (200KB limit)
+        # 6. File Extension Check
+        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        file_ext = os.path.splitext(proof_file.name.lower())[1]
+        if file_ext not in allowed_exts:
+            messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
+            return render(request, 'custom_admin/create_student.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # 7. Document Size Check (200KB limit)
         if proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'custom_admin/create_student.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        # 7. Malware & File Security Scan
+        # 8. Malware & File Security Scan
         is_infected, reason = scanner.scan_file(proof_file)
         if is_infected:
             logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
@@ -643,14 +652,23 @@ def create_teacher_admin(request):
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        # 6. Document Size & Type Check (200KB limit)
+        # 6. File Extension Check
+        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        file_ext = os.path.splitext(proof_file.name.lower())[1]
+        if file_ext not in allowed_exts:
+            messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
+            return render(request, 'custom_admin/create_teacher.html', {
+                'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
+            })
+
+        # 7. Document Size Check (200KB limit)
         if proof_file.size > 200 * 1024:
             messages.error(request, "Verification document file size must be below 200 KB.")
             return render(request, 'custom_admin/create_teacher.html', {
                 'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number
             })
 
-        # 7. Malware & File Security Scan
+        # 8. Malware & File Security Scan
         is_infected, reason = scanner.scan_file(proof_file)
         if is_infected:
             logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
