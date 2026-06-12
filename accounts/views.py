@@ -1714,7 +1714,7 @@ def add_resource(request, course_uid):
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_resource(request, resource_uid):
-    from .utils.pdf_processor import validate_file, process_pdf
+    from .utils.pdf_processor import validate_file
     from .utils.storage_manager import StorageManager
     from .models import CourseResource
     import traceback
