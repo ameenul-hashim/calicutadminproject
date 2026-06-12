@@ -924,7 +924,7 @@ def approve_course(request, course_uid):
         notif_create_batch(
             student_uids,
             "New Course Available",
-            f"New course '{course.title}' is now available! Start learning today.",
+            f"New course '{course.title}' by {course.teacher.full_name} is now available!",
             'course_approved',
             '/student/explore/'
         )
@@ -1107,7 +1107,7 @@ def approve_lesson(request, lesson_uid):
         notif_create_batch(
             student_uids,
             "New Lesson Available",
-            f"New lesson '{lesson.title}' added to your course '{lesson.course.title}'",
+            f"New lesson '{lesson.title}' by {lesson.course.teacher.full_name} added to your course '{lesson.course.title}'",
             'lesson_approved',
             f'/course/{lesson.course.uid}/play/'
         )
@@ -1256,7 +1256,7 @@ def approve_resource(request, resource_uid):
             notif_create_batch(
                 student_uids,
                 "New Resource Available",
-                f"New {resource.get_resource_type_display()} resource '{resource.title}' added to your course '{resource.course.title}'",
+                f"New {resource.get_resource_type_display()} resource '{resource.title}' by {resource.course.teacher.full_name} added to your course '{resource.course.title}'",
                 'resource_approved',
                 f'/course/{resource.course.uid}/play/'
             )

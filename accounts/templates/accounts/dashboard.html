@@ -638,6 +638,20 @@
             }
         }
     });
+
+    // Auto-refresh notification badge every 30s
+    setInterval(function() {
+        fetch('/unread-counts/')
+            .then(r => r.json())
+            .then(data => {
+                const badge = document.getElementById('notif-count-badge');
+                if (badge) {
+                    badge.textContent = data.notifications;
+                    badge.style.display = data.notifications > 0 ? 'flex' : 'none';
+                }
+            })
+            .catch(() => {});
+    }, 30000);
     </script>
 </body>
 

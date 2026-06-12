@@ -396,6 +396,22 @@
                 if (window.innerWidth <= 1024) closeSidebar();
             });
         }
+
+        // Auto-refresh notification badge every 30s
+        setInterval(function() {
+            fetch('/unread-counts/')
+                .then(r => r.json())
+                .then(data => {
+                    const badges = document.querySelectorAll('[id$="notif-count-badge"], [id*="notif-count"]');
+                    badges.forEach(function(badge) {
+                        if (badge) {
+                            badge.textContent = data.notifications;
+                            badge.style.display = data.notifications > 0 ? 'flex' : 'none';
+                        }
+                    });
+                })
+                .catch(() => {});
+        }, 30000);
     </script>
     {% include 'accounts/chat_widget.html' %}
     {% block extra_js %}{% endblock %}
