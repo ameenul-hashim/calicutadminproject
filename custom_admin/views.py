@@ -1319,8 +1319,10 @@ def admin_view_course_content(request, course_uid):
     lesson_ids = list(lessons.values_list('id', flat=True))
     resource_ids = list(resources.values_list('id', flat=True))
 
-    course_deletion_request = DeletionRequest.objects.filter(
-        status='PENDING', item_type='Course', item_id=course.id
+    from accounts.models import CourseDeletionRequest
+    # Course-level deletion request (uses CourseDeletionRequest model)
+    course_deletion_request = CourseDeletionRequest.objects.filter(
+        status='PENDING', course=course
     ).first()
     
     # Chapter-level deletion requests for this course
