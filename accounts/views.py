@@ -1446,84 +1446,94 @@ def edit_lesson(request, lesson_uid):
     Handles YouTube URL lesson updates (form POST).
     MP4 file uploads use AJAX via /api/video/init-youtube-edit/ + browser→YouTube PUT.
     """
+    import traceback
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
-        # Save suspended state BEFORE auto-unsuspending
-        was_suspended = lesson.is_suspended or lesson.status == 'SUSPENDED'
-        if lesson.is_suspended:
-            lesson.is_suspended = False
-            lesson.suspended_at = None
-            lesson.suspended_by = None
-            lesson.suspension_reason = ''
-        title = request.POST.get('title')
-        chapter = request.POST.get('chapter', lesson.chapter)
-        video_source = request.POST.get('video_source', 'file')
-        video_url = request.POST.get('video_url', '')
-        video_file = request.FILES.get('video_file')
+        try:
+            # Save suspended state BEFORE auto-unsuspending
+            was_suspended = lesson.is_suspended or lesson.status == 'SUSPENDED'
+            if lesson.is_suspended:
+                lesson.is_suspended = False
+                lesson.suspended_at = None
+                lesson.suspended_by = None
+                lesson.suspension_reason = ''
+            title = request.POST.get('title')
+            chapter = request.POST.get('chapter', lesson.chapter)
+            video_source = request.POST.get('video_source', 'file')
+            video_url = request.POST.get('video_url', '')
+            video_file = request.FILES.get('video_file')
 
-        if video_source == 'file' and video_file:
-            messages.error(request, "MP4 uploads must use the upload button. Please try again.")
-            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
+            if video_source == 'file' and video_file:
+                messages.error(request, "MP4 uploads must use the upload button. Please try again.")
+                return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
 
-        if video_source == 'file' and not video_file:
-            messages.error(request, "Please upload a video file or select YouTube URL mode.")
-            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
+            if video_source == 'file' and not video_file:
+                messages.error(request, "Please upload a video file or select YouTube URL mode.")
+                return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
 
-        if video_source == 'url' and video_url:
-            video_url = video_url.strip()
-        elif video_source == 'url' and not video_url:
-            video_url = lesson.video_url or ''
-        elif video_source not in ('file', 'url'):
-            messages.error(request, "Invalid video source selected.")
-            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
+            if video_source == 'url' and video_url:
+                video_url = video_url.strip()
+            elif video_source == 'url' and not video_url:
+                video_url = lesson.video_url or ''
+            elif video_source not in ('file', 'url'):
+                messages.error(request, "Invalid video source selected.")
+                return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
 
-        order_raw = request.POST.get('order')
-        order = max(int(order_raw), 1) if order_raw and order_raw.strip() else lesson.order
+            try:
+                order_raw = request.POST.get('order')
+                order = max(int(order_raw), 1) if order_raw and order_raw.strip() else lesson.order
+            except (ValueError, TypeError):
+                order = lesson.order
 
-        youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
-        new_youtube_video_id = youtube_match.group(1) if youtube_match else None
+            youtube_match = re.search(r'(?:v=|youtu\.be/|/shorts/)([a-zA-Z0-9_-]{11})', video_url)
+            new_youtube_video_id = youtube_match.group(1) if youtube_match else None
 
-        course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
+            course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
 
-        lesson.title = title
-        lesson.chapter = chapter
-        if new_youtube_video_id:
-            lesson.youtube_video_id = new_youtube_video_id
-            lesson.youtube_upload_status = 'UPLOADED'
-            lesson.youtube_uploaded_at = timezone.now()
-        lesson.video_url = video_url
-        lesson.order = order
+            lesson.title = title
+            lesson.chapter = chapter
+            if new_youtube_video_id:
+                lesson.youtube_video_id = new_youtube_video_id
+                lesson.youtube_upload_status = 'UPLOADED'
+                lesson.youtube_uploaded_at = timezone.now()
+            lesson.video_url = video_url
+            lesson.order = order
 
-        if was_suspended:
-            # Suspended content edited → route to PENDING for re-review
-            lesson.is_approved = False
-            lesson.status = 'PENDING'
-            lesson.has_pending_edits = True
-            lesson.save()
-            messages.success(request, "Your lesson has been updated and submitted for re-review.")
-        elif course_is_published:
-            lesson.is_approved = True
-            lesson.status = 'APPROVED'
-            lesson.save()
-            messages.success(request, "Lesson updated and immediately visible to students.")
-        elif lesson.is_approved:
-            lesson.save()
-            messages.success(request, "Lesson updated successfully.")
-        else:
-            lesson.is_approved = False
-            lesson.status = 'PENDING'
-            lesson.save()
-            messages.success(request, "Lesson updated successfully.")
+            if was_suspended:
+                # Suspended content edited → route to PENDING for re-review
+                lesson.is_approved = False
+                lesson.status = 'PENDING'
+                lesson.has_pending_edits = True
+                lesson.save()
+                messages.success(request, "Your lesson has been updated and submitted for re-review.")
+            elif course_is_published:
+                lesson.is_approved = True
+                lesson.status = 'APPROVED'
+                lesson.save()
+                messages.success(request, "Lesson updated and immediately visible to students.")
+            elif lesson.is_approved:
+                lesson.save()
+                messages.success(request, "Lesson updated successfully.")
+            else:
+                lesson.is_approved = False
+                lesson.status = 'PENDING'
+                lesson.save()
+                messages.success(request, "Lesson updated successfully.")
 
-        # Auto-reinstate BLOCKED teacher after successful edit
-        if request.user.status == 'BLOCKED':
-            request.user.status = 'ACTIVE'
-            request.user.is_active = True
-            request.user.save(update_fields=['status', 'is_active'])
-            cache.delete(f"user_status_{request.user.id}")
-            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+            # Auto-reinstate BLOCKED teacher after successful edit
+            if request.user.status == 'BLOCKED':
+                request.user.status = 'ACTIVE'
+                request.user.is_active = True
+                request.user.save(update_fields=['status', 'is_active'])
+                cache.delete(f"user_status_{request.user.id}")
+                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
 
-        return redirect('course_lessons', course_uid=lesson.course.uid)
+            return redirect('course_lessons', course_uid=lesson.course.uid)
+        except Exception as e:
+            logger.error("Lesson edit UNHANDLED ERROR | user=%s lesson=%s\n%s",
+                request.user.username, lesson.uid, traceback.format_exc())
+            messages.error(request, "An unexpected error occurred. Please try again or contact support.")
+            return redirect('course_lessons', course_uid=lesson.course.uid)
 
     return render(request, 'teacher_portal/edit_lesson.html', {
         'lesson': lesson,
@@ -1586,169 +1596,48 @@ def add_resource(request, course_uid):
     from .utils.pdf_processor import validate_file
     from .utils.storage_manager import StorageManager
     from .models import CourseResource
+    import traceback
 
     course = get_object_or_404(Course, uid=course_uid, teacher=request.user)
     if course.status == 'DELETED':
         messages.error(request, "Cannot add resources to a deleted course.")
         return redirect('my_courses')
     if request.method == 'POST':
-        title = request.POST.get('title', '').strip()
-        category = request.POST.get('category', '').strip()
-        upload_file = request.FILES.get('upload_file')
-
-        if not title:
-            messages.error(request, "Please enter a resource name.")
-            return redirect('course_lessons', course_uid=course.uid)
-
-        if not category or category not in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
-            messages.error(request, "Please select a category (English, Malayalam, or Online).")
-            return redirect('course_lessons', course_uid=course.uid)
-
-        if not upload_file:
-            messages.error(request, "Please select a PDF file to upload.")
-            return redirect('course_lessons', course_uid=course.uid)
-
-        MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-        if upload_file.size > MAX_UPLOAD_BYTES:
-            messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
-            return redirect('course_lessons', course_uid=course.uid)
-
-        uploaded_fb_path = None
         try:
-            from .utils.malware_scanner import scanner
-            mime_type, ext = validate_file(upload_file, upload_file.name)
-            is_infected, scan_reason = scanner.scan_file(upload_file)
-            if is_infected:
-                logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
-                    request.user.username, upload_file.name, scan_reason,
-                    request.META.get('REMOTE_ADDR'))
-                messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
+            title = request.POST.get('title', '').strip()
+            category = request.POST.get('category', '').strip()
+            upload_file = request.FILES.get('upload_file')
+
+            if not title:
+                messages.error(request, "Please enter a resource name.")
                 return redirect('course_lessons', course_uid=course.uid)
-            file_bytes = upload_file.read()
-            file_size = len(file_bytes)
 
-            import uuid
-            course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
-            course_slug = re.sub(r'-+', '-', course_slug)
-            safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).strip()
-            safe_title = re.sub(r'\s+', '-', safe_title)
-            safe_title = re.sub(r'-+', '-', safe_title).lower()
-            safe_title = safe_title[:40]
-            category_folder = category.lower() if category else 'uncategorised'
-            suffix = uuid.uuid4().hex[:4]
-            dest_filename = f"{safe_title}-{suffix}.pdf"
-            dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-            uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
-            del file_bytes
+            if not category or category not in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
+                messages.error(request, "Please select a category (English, Malayalam, or Online).")
+                return redirect('course_lessons', course_uid=course.uid)
 
-            chapter = request.POST.get('chapter', '')
-            course_is_published = course.status == 'PUBLISHED' and course.is_approved
-            if course_is_published:
-                resource_status = 'APPROVED'
-                resource_approved = True
-                success_msg = f"Resource '{title}' added and immediately available to students."
-            else:
-                resource_status = 'PENDING'
-                resource_approved = False
-                success_msg = f"Resource '{title}' uploaded and pending approval."
-                notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
+            if not upload_file:
+                messages.error(request, "Please select a PDF file to upload.")
+                return redirect('course_lessons', course_uid=course.uid)
 
-            CourseResource.objects.create(
-                course=course,
-                title=title,
-                chapter=chapter,
-                category=category,
-                resource_type='PDF',
-                firebase_file_path=uploaded_fb_path,
-                backup_file_path=None,
-                mime_type='application/pdf',
-                file_extension='pdf',
-                original_size=file_size,
-                compressed_size=file_size,
-                status=resource_status,
-                is_approved=resource_approved
-            )
-            messages.success(request, success_msg)
-        except Exception as e:
-            logger.error("Resource upload error | user=%s course=%s error=%s",
-                request.user.username, course.uid, str(e))
-            if uploaded_fb_path:
-                try:
-                    StorageManager.delete_from_supabase_storage(uploaded_fb_path)
-                except Exception:
-                    pass
-            messages.error(request, "An error occurred while uploading the file. Please try again.")
-
-        # Auto-reinstate BLOCKED teacher after successful edit
-        if request.user.status == 'BLOCKED':
-            request.user.status = 'ACTIVE'
-            request.user.is_active = True
-            request.user.save(update_fields=['status', 'is_active'])
-            cache.delete(f"user_status_{request.user.id}")
-            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
-
-        return redirect('course_lessons', course_uid=course.uid)
-
-    chapter = request.GET.get('chapter', '')
-    return render(request, 'teacher_portal/add_resource.html', {
-        'course': course,
-        'chapter': chapter,
-    })
-
-@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
-def edit_resource(request, resource_uid):
-    from .utils.pdf_processor import validate_file, process_pdf
-    from .utils.storage_manager import StorageManager
-    from .models import CourseResource
-
-    resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
-    course = resource.course
-
-    if request.method == 'POST':
-        # Save suspended state BEFORE auto-unsuspending
-        was_suspended = resource.is_suspended or resource.status == 'SUSPENDED'
-        if resource.is_suspended:
-            resource.is_suspended = False
-            resource.suspended_at = None
-            resource.suspended_by = None
-            resource.suspension_reason = ''
-        title = request.POST.get('title', '').strip()
-        category = request.POST.get('category', '').strip()
-        chapter = request.POST.get('chapter', '').strip()
-        upload_file = request.FILES.get('upload_file')
-
-        if not title:
-            messages.error(request, "Please enter a resource name.")
-            return redirect('edit_resource', resource_uid=resource.uid)
-
-        if not category or category not in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
-            messages.error(request, "Please select a category (English, Malayalam, or Online).")
-            return redirect('edit_resource', resource_uid=resource.uid)
-
-        is_approved = resource.status == 'APPROVED'
-        new_fb_path = None
-        new_file_size = 0
-        uploaded_fb_path = None
-
-        if upload_file:
             MAX_UPLOAD_BYTES = 10 * 1024 * 1024
             if upload_file.size > MAX_UPLOAD_BYTES:
                 messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
-                return redirect('edit_resource', resource_uid=resource.uid)
+                return redirect('course_lessons', course_uid=course.uid)
 
+            uploaded_fb_path = None
             try:
                 from .utils.malware_scanner import scanner
-                from .utils.pdf_processor import validate_file
-                new_mime, new_ext = validate_file(upload_file, upload_file.name)
+                mime_type, ext = validate_file(upload_file, upload_file.name)
                 is_infected, scan_reason = scanner.scan_file(upload_file)
                 if is_infected:
                     logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
                         request.user.username, upload_file.name, scan_reason,
                         request.META.get('REMOTE_ADDR'))
                     messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
-                    return redirect('edit_resource', resource_uid=resource.uid)
+                    return redirect('course_lessons', course_uid=course.uid)
                 file_bytes = upload_file.read()
-                new_file_size = len(file_bytes)
+                file_size = len(file_bytes)
 
                 import uuid
                 course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
@@ -1762,72 +1651,207 @@ def edit_resource(request, resource_uid):
                 dest_filename = f"{safe_title}-{suffix}.pdf"
                 dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
                 uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
-                new_fb_path = uploaded_fb_path
                 del file_bytes
+
+                chapter = request.POST.get('chapter', '')
+                course_is_published = course.status == 'PUBLISHED' and course.is_approved
+                if course_is_published:
+                    resource_status = 'APPROVED'
+                    resource_approved = True
+                    success_msg = f"Resource '{title}' added and immediately available to students."
+                else:
+                    resource_status = 'PENDING'
+                    resource_approved = False
+                    success_msg = f"Resource '{title}' uploaded and pending approval."
+                    notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
+
+                CourseResource.objects.create(
+                    course=course,
+                    title=title,
+                    chapter=chapter,
+                    category=category,
+                    resource_type='PDF',
+                    firebase_file_path=uploaded_fb_path,
+                    backup_file_path=None,
+                    mime_type='application/pdf',
+                    file_extension='pdf',
+                    original_size=file_size,
+                    compressed_size=file_size,
+                    status=resource_status,
+                    is_approved=resource_approved
+                )
+                messages.success(request, success_msg)
             except Exception as e:
-                logger.error("Resource edit error | user=%s resource=%s error=%s",
-                    request.user.username, resource.uid, str(e))
+                logger.error("Resource upload error | user=%s course=%s error=%s",
+                    request.user.username, course.uid, str(e))
                 if uploaded_fb_path:
                     try:
                         StorageManager.delete_from_supabase_storage(uploaded_fb_path)
                     except Exception:
                         pass
-                messages.error(request, "An error occurred while processing the file. Please try again.")
+                messages.error(request, "An error occurred while uploading the file. Please try again.")
+
+            # Auto-reinstate BLOCKED teacher after successful edit
+            if request.user.status == 'BLOCKED':
+                request.user.status = 'ACTIVE'
+                request.user.is_active = True
+                request.user.save(update_fields=['status', 'is_active'])
+                cache.delete(f"user_status_{request.user.id}")
+                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+
+            return redirect('course_lessons', course_uid=course.uid)
+        except Exception as e:
+            logger.error("Resource add UNHANDLED ERROR | user=%s course=%s\n%s",
+                request.user.username, course.uid, traceback.format_exc())
+            messages.error(request, "An unexpected error occurred. Please try again or contact support.")
+            return redirect('course_lessons', course_uid=course.uid)
+
+    chapter = request.GET.get('chapter', '')
+    return render(request, 'teacher_portal/add_resource.html', {
+        'course': course,
+        'chapter': chapter,
+    })
+
+@user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
+def edit_resource(request, resource_uid):
+    from .utils.pdf_processor import validate_file, process_pdf
+    from .utils.storage_manager import StorageManager
+    from .models import CourseResource
+    import traceback
+
+    resource = get_object_or_404(CourseResource, uid=resource_uid, course__teacher=request.user)
+    course = resource.course
+
+    if request.method == 'POST':
+        try:
+            # Save suspended state BEFORE auto-unsuspending
+            was_suspended = resource.is_suspended or resource.status == 'SUSPENDED'
+            if resource.is_suspended:
+                resource.is_suspended = False
+                resource.suspended_at = None
+                resource.suspended_by = None
+                resource.suspension_reason = ''
+            title = request.POST.get('title', '').strip()
+            category = request.POST.get('category', '').strip()
+            chapter = request.POST.get('chapter', '').strip()
+            upload_file = request.FILES.get('upload_file')
+
+            if not title:
+                messages.error(request, "Please enter a resource name.")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
-        course_is_published = course.status == 'PUBLISHED' and course.is_approved
+            if not category or category not in ('ENGLISH', 'MALAYALAM', 'ONLINE'):
+                messages.error(request, "Please select a category (English, Malayalam, or Online).")
+                return redirect('edit_resource', resource_uid=resource.uid)
 
-        # Set resource metadata fields
-        if new_fb_path and resource.firebase_file_path:
-            try:
-                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-            except:
-                pass
-        resource.title = title
-        resource.category = category
-        resource.chapter = chapter
-        resource.resource_type = 'PDF'
-        if new_fb_path:
-            resource.firebase_file_path = new_fb_path
-            resource.mime_type = 'application/pdf'
-            resource.file_extension = 'pdf'
-            resource.original_size = new_file_size
-            resource.compressed_size = new_file_size
+            is_approved = resource.status == 'APPROVED'
+            new_fb_path = None
+            new_file_size = 0
+            uploaded_fb_path = None
 
-        if was_suspended:
-            resource.status = 'PENDING'
-            resource.is_approved = False
-            resource.rejection_reason = None
-            resource.has_pending_edits = True
-            resource.save()
-            messages.success(request, f"Resource '{title}' updated and submitted for re-review.")
-        elif course_is_published:
-            resource.status = 'APPROVED'
-            resource.is_approved = True
-            resource.rejection_reason = None
-            resource.has_pending_edits = False
-            resource.save()
-            messages.success(request, f"Resource '{title}' updated and immediately available to students.")
-        elif is_approved:
-            resource.has_pending_edits = False
-            resource.save()
-            messages.success(request, f"Resource '{title}' updated successfully.")
-        else:
-            resource.status = 'PENDING'
-            resource.is_approved = False
-            resource.rejection_reason = None
-            resource.save()
-            messages.success(request, f"Resource '{title}' updated successfully.")
+            if upload_file:
+                MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+                if upload_file.size > MAX_UPLOAD_BYTES:
+                    messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
+                    return redirect('edit_resource', resource_uid=resource.uid)
 
-        # Auto-reinstate BLOCKED teacher after successful edit
-        if request.user.status == 'BLOCKED':
-            request.user.status = 'ACTIVE'
-            request.user.is_active = True
-            request.user.save(update_fields=['status', 'is_active'])
-            cache.delete(f"user_status_{request.user.id}")
-            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+                try:
+                    from .utils.malware_scanner import scanner
+                    from .utils.pdf_processor import validate_file
+                    new_mime, new_ext = validate_file(upload_file, upload_file.name)
+                    is_infected, scan_reason = scanner.scan_file(upload_file)
+                    if is_infected:
+                        logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
+                            request.user.username, upload_file.name, scan_reason,
+                            request.META.get('REMOTE_ADDR'))
+                        messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
+                        return redirect('edit_resource', resource_uid=resource.uid)
+                    file_bytes = upload_file.read()
+                    new_file_size = len(file_bytes)
 
-        return redirect('course_lessons', course_uid=course.uid)
+                    import uuid
+                    course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
+                    course_slug = re.sub(r'-+', '-', course_slug)
+                    safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).strip()
+                    safe_title = re.sub(r'\s+', '-', safe_title)
+                    safe_title = re.sub(r'-+', '-', safe_title).lower()
+                    safe_title = safe_title[:40]
+                    category_folder = category.lower() if category else 'uncategorised'
+                    suffix = uuid.uuid4().hex[:4]
+                    dest_filename = f"{safe_title}-{suffix}.pdf"
+                    dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
+                    uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
+                    new_fb_path = uploaded_fb_path
+                    del file_bytes
+                except Exception as e:
+                    logger.error("Resource edit error | user=%s resource=%s error=%s",
+                        request.user.username, resource.uid, str(e))
+                    if uploaded_fb_path:
+                        try:
+                            StorageManager.delete_from_supabase_storage(uploaded_fb_path)
+                        except Exception:
+                            pass
+                    messages.error(request, "An error occurred while processing the file. Please try again.")
+                    return redirect('edit_resource', resource_uid=resource.uid)
+
+            course_is_published = course.status == 'PUBLISHED' and course.is_approved
+
+            # Set resource metadata fields
+            if new_fb_path and resource.firebase_file_path:
+                try:
+                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                except:
+                    pass
+            resource.title = title
+            resource.category = category
+            resource.chapter = chapter
+            resource.resource_type = 'PDF'
+            if new_fb_path:
+                resource.firebase_file_path = new_fb_path
+                resource.mime_type = 'application/pdf'
+                resource.file_extension = 'pdf'
+                resource.original_size = new_file_size
+                resource.compressed_size = new_file_size
+
+            if was_suspended:
+                resource.status = 'PENDING'
+                resource.is_approved = False
+                resource.rejection_reason = None
+                resource.has_pending_edits = True
+                resource.save()
+                messages.success(request, f"Resource '{title}' updated and submitted for re-review.")
+            elif course_is_published:
+                resource.status = 'APPROVED'
+                resource.is_approved = True
+                resource.rejection_reason = None
+                resource.has_pending_edits = False
+                resource.save()
+                messages.success(request, f"Resource '{title}' updated and immediately available to students.")
+            elif is_approved:
+                resource.has_pending_edits = False
+                resource.save()
+                messages.success(request, f"Resource '{title}' updated successfully.")
+            else:
+                resource.status = 'PENDING'
+                resource.is_approved = False
+                resource.rejection_reason = None
+                resource.save()
+                messages.success(request, f"Resource '{title}' updated successfully.")
+
+            # Auto-reinstate BLOCKED teacher after successful edit
+            if request.user.status == 'BLOCKED':
+                request.user.status = 'ACTIVE'
+                request.user.is_active = True
+                request.user.save(update_fields=['status', 'is_active'])
+                cache.delete(f"user_status_{request.user.id}")
+                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+
+            return redirect('course_lessons', course_uid=course.uid)
+        except Exception as e:
+            logger.error("Resource edit UNHANDLED ERROR | user=%s resource=%s\n%s",
+                request.user.username, resource.uid, traceback.format_exc())
+            messages.error(request, "An unexpected error occurred. Please try again or contact support.")
+            return redirect('edit_resource', resource_uid=resource.uid)
 
     return render(request, 'teacher_portal/edit_resource.html', {
         'resource': resource,
