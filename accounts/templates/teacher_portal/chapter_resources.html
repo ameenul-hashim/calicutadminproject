@@ -29,7 +29,7 @@
 <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0;">
     <div style="font-size: 2.5rem; margin-bottom: 1rem;">&#x1F4C4;</div>
     <p style="color: #94a3b8; margin: 0 0 1rem;">No {{ category_label|lower }} resources in this chapter.</p>
-    <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Resource</a>
+    <a href="{% url 'add_resource' course.uid %}?chapter={{ chapter_name|urlencode }}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600;">+ Add Resource</a>
 </div>
 {% endif %}
 

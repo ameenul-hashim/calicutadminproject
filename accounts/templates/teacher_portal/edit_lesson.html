@@ -700,6 +700,15 @@
                         <label for="title">Lesson Title</label>
                         <input type="text" name="title" id="title" value="{{ lesson.title }}" required>
                     </div>
+                    <div class="input-group">
+                        <label for="chapter">Chapter</label>
+                        <select name="chapter" id="chapter" required style="cursor: pointer;">
+                            <option value="">-- Select Chapter --</option>
+                            {% for ch in course.chapters %}
+                            <option value="{{ ch }}" {% if lesson.chapter == ch %}selected{% endif %}>{{ ch }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     {% if lesson.video_url %}
                     <div class="input-group">
                         <label>Current Video</label>

@@ -71,6 +71,16 @@
                     </div>
                     
                     <div class="input-group">
+                        <label for="chapter">Chapter</label>
+                        <select name="chapter" id="chapter" required style="cursor: pointer;">
+                            <option value="">-- Select Chapter --</option>
+                            {% for ch in resource.course.chapters %}
+                            <option value="{{ ch }}" {% if resource.chapter == ch %}selected{% endif %}>{{ ch }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="input-group">
                         <label for="category">Category</label>
                         <select name="category" id="category" required style="cursor: pointer;">
                             <option value="ENGLISH" {% if resource.category == 'ENGLISH' %}selected{% endif %}>🇬🇧 English Notes</option>

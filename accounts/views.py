@@ -1435,7 +1435,11 @@ def add_lesson(request, course_uid):
         return redirect('course_lessons', course_uid=course.uid)
     
     chapter = request.GET.get('chapter', '')
-    return render(request, 'teacher_portal/add_lesson.html', {'course': course, 'chapter': chapter})
+    return render(request, 'teacher_portal/add_lesson.html', {
+        'course': course,
+        'chapter': chapter,
+        'course_chapters': course.chapters or [],
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_lesson(request, lesson_uid):
@@ -1453,6 +1457,7 @@ def edit_lesson(request, lesson_uid):
             lesson.suspended_by = None
             lesson.suspension_reason = ''
         title = request.POST.get('title')
+        chapter = request.POST.get('chapter', lesson.chapter)
         video_source = request.POST.get('video_source', 'file')
         video_url = request.POST.get('video_url', '')
         video_file = request.FILES.get('video_file')
@@ -1482,6 +1487,7 @@ def edit_lesson(request, lesson_uid):
         course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
 
         lesson.title = title
+        lesson.chapter = chapter
         if new_youtube_video_id:
             lesson.youtube_video_id = new_youtube_video_id
             lesson.youtube_upload_status = 'UPLOADED'
@@ -1681,7 +1687,11 @@ def add_resource(request, course_uid):
         return redirect('course_lessons', course_uid=course.uid)
 
     chapter = request.GET.get('chapter', '')
-    return render(request, 'teacher_portal/add_resource.html', {'course': course, 'chapter': chapter})
+    return render(request, 'teacher_portal/add_resource.html', {
+        'course': course,
+        'chapter': chapter,
+        'course_chapters': course.chapters or [],
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def edit_resource(request, resource_uid):
@@ -1702,6 +1712,7 @@ def edit_resource(request, resource_uid):
             resource.suspension_reason = ''
         title = request.POST.get('title', '').strip()
         category = request.POST.get('category', '').strip()
+        chapter = request.POST.get('chapter', '').strip()
         upload_file = request.FILES.get('upload_file')
 
         if not title:
@@ -1771,6 +1782,7 @@ def edit_resource(request, resource_uid):
                 pass
         resource.title = title
         resource.category = category
+        resource.chapter = chapter
         resource.resource_type = 'PDF'
         if new_fb_path:
             resource.firebase_file_path = new_fb_path
