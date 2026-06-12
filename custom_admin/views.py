@@ -1364,10 +1364,6 @@ def admin_view_course_content(request, course_uid):
         if name and name in derived_chapters and name not in seen:
             seen.add(name)
             all_chapter_names.append(name)
-    # Uncategorized items (empty chapter) always come first
-    if '' in derived_chapters:
-        all_chapter_names.insert(0, '')
-        seen.add('')
     for name in sorted((d for d in derived_chapters if d), key=_chapter_first_ts):
         if name not in seen:
             seen.add(name)

@@ -179,7 +179,7 @@
                     <div class="chapter-item">
                         <div class="chapter-header" onclick="toggleChapter(this)">
                             <span class="ch-icon">📂</span>
-                            <span class="ch-name">{% if chapter.name %}{{ chapter.name }}{% else %}Uncategorized{% endif %}</span>
+                            <span class="ch-name">{{ chapter.name }}</span>
                             <span class="ch-counts">{{ chapter.videos_count }}L{% if chapter.resources_count %} · {{ chapter.resources_count }}R{% endif %}</span>
                             <span class="chevron">▶</span>
                         </div>

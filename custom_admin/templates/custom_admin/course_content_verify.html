@@ -186,7 +186,7 @@
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
                 <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
                     <span style="font-size: 1.2rem;">📂</span>
-                    <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{% if chapter.name %}{{ chapter.name }}{% else %}Uncategorized{% endif %}</h2>
+                    <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
                         {{ chapter.pending_lessons|length }}L ·
                         {{ chapter.cat_counts.ENGLISH.total }}E ·
@@ -462,7 +462,7 @@
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
                 <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
                     <span style="font-size: 1.2rem;">📂</span>
-                    <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{% if chapter.name %}{{ chapter.name }}{% else %}Uncategorized{% endif %}</h2>
+                    <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
                         {{ chapter.approved_lessons|length }}L ·
                         {{ chapter.cat_counts.ENGLISH.total }}E ·
