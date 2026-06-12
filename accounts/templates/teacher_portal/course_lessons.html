@@ -374,10 +374,18 @@
         <span class="toggle-icon" id="icon-{{ forloop.counter }}">&#x25B6;</span>
         <span style="font-size: 1.3rem;">&#x1F4C1;</span>
         <h3>{{ chapter.name }}</h3>
+        {% if chapter.deletion_request %}
+            {% if chapter.deletion_request.status == 'PENDING' %}
+                <span class="badge del-pending" style="margin-left: 0.5rem;">&#x23F3; Del. Pending</span>
+            {% elif chapter.deletion_request.status == 'APPROVED' %}
+                <span class="badge del-approved" style="margin-left: 0.5rem;">&#x2705; Del. Approved</span>
+            {% endif %}
+        {% else %}
         <span style="margin-left: 0.75rem; display: flex; gap: 0.3rem;">
             <button onclick="event.stopPropagation(); openRenameModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #6366f1; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Rename chapter">&#x270F;&#xFE0F;</button>
             {% if chapter.name %}<button onclick="event.stopPropagation(); openDeleteChapterModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Delete chapter">&#x1F5D1;&#xFE0F;</button>{% endif %}
         </span>
+        {% endif %}
         <span style="margin-left: auto; font-size: 0.8rem; color: #64748b;">
             {{ chapter.videos_count }} vid{% if chapter.videos_count != 1 %}s{% endif %} &middot;
             {{ chapter.cat_counts.ENGLISH.total }} Eng &middot;
@@ -389,12 +397,14 @@
     <div class="ch-card-body" id="body-{{ forloop.counter }}">
         <!-- Action Buttons -->
         <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+            {% if not chapter.deletion_request or chapter.deletion_request.status == 'REJECTED' %}
             <a href="{% url 'add_lesson' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #eef2ff; color: #4f46e5; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
                 + Add Lesson
             </a>
             <a href="{% url 'add_resource' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #ecfdf5; color: #059669; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
                 + Add Resource
             </a>
+            {% endif %}
         </div>
 
         <!-- Videos Section -->

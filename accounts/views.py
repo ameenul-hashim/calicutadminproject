@@ -1152,6 +1152,13 @@ def course_lessons(request, course_uid):
     lesson_dr_map = {dr.item_id: dr for dr in lesson_del_requests}
     resource_dr_map = {dr.item_id: dr for dr in resource_del_requests}
 
+    # Chapter deletion requests lookup
+    chapter_del_requests = DeletionRequest.objects.filter(
+        teacher=request.user, item_type='Chapter', item_id=course.id,
+        status__in=['PENDING', 'APPROVED']
+    )
+    chapter_dr_map = {dr.item_name: dr for dr in chapter_del_requests}
+
     # Attach deletion request to each lesson/resource
     for lesson in lessons:
         lesson.deletion_request = lesson_dr_map.get(lesson.id)
@@ -1219,6 +1226,7 @@ def course_lessons(request, course_uid):
             'resources': ch_resources,
             'resources_count': len(ch_resources),
             'cat_counts': cat_counts,
+            'deletion_request': chapter_dr_map.get(ch_name),
         })
 
     return render(request, 'teacher_portal/course_lessons.html', {
