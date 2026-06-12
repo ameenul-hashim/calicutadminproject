@@ -188,7 +188,7 @@
                             <div class="ch-section">
                                 <div class="ch-section-title">🎥 Lessons</div>
                                 {% for lesson in chapter.videos %}
-                                <div class="lesson-item" onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}')">
+                                <div class="lesson-item" onclick="playContent(this, 'video', '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:'' }}', '{% if lesson.video_file %}{{ lesson.video_file.url }}{% endif %}', '{{ lesson.youtube_video_id|default:'' }}')">
                                     <div class="lesson-order">{{ forloop.counter }}</div>
                                     <div class="lesson-title">{{ lesson.title }}</div>
                                     {% if lesson.video_url or lesson.video_file %}
@@ -539,11 +539,12 @@
         if (!url) return null;
         const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|live\/)([^#&?]*).*/;
         const match = url.match(regExp);
-        return (match && match[2].length === 11) ? match[2] : null;
+        if (match && match[2].length === 11) return match[2];
+        const bare = url.match(/^([a-zA-Z0-9_-]{11})$/);
+        return bare ? bare[1] : null;
     }
 
-    function playContent(element, type, title, videoUrl, videoFileUrl, notesUrl) {
-        // Close sidebar on mobile after selecting
+    function playContent(element, type, title, videoUrl, videoFileUrl, youtubeVideoId) {
         if (window.innerWidth <= 1024) {
             togglePlayerSidebar();
         }
@@ -551,7 +552,6 @@
         document.querySelectorAll('.lesson-item').forEach(item => item.classList.remove('active'));
         element.classList.add('active');
 
-        // Scroll sidebar so the active lesson is visible
         setTimeout(() => {
             const sidebar = document.querySelector('.content-sidebar');
             if (sidebar && window.innerWidth > 1024) {
@@ -571,7 +571,6 @@
         document.getElementById('currentContentTitle').textContent = title;
         document.getElementById('contentSubtitle').textContent = type === 'video' ? '🎥 Watching Video Lesson' : '📄 Reading Study Notes';
 
-        // Reset all
         cleanupPlayer();
         noVideoMsg.style.display = 'none';
         pdfViewer.style.display = 'none';
@@ -586,7 +585,7 @@
                 downloadBtn.style.display = 'block';
                 actionArea.style.display = 'flex';
             } else if (videoUrl) {
-                const videoId = getYouTubeId(videoUrl);
+                const videoId = youtubeVideoId || getYouTubeId(videoUrl);
                 if (videoId) {
                     initPlayer('youtube', videoId);
                 } else if (videoUrl.includes('supabase.co') || videoUrl.endsWith('.mp4') || videoUrl.endsWith('.webm')) {
@@ -595,13 +594,10 @@
                     downloadBtn.style.display = 'block';
                     actionArea.style.display = 'flex';
                 } else {
-                    const playerContainer = document.getElementById('playerContainer');
-                    const playerElement = document.getElementById('player');
-                    playerContainer.style.display = 'block';
-                    playerElement.innerHTML = `
-                        <div style="position: relative; width: 100%; height: 100%; aspect-ratio: 16/9;">
-                            <iframe src="${videoUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none;" allowfullscreen></iframe>
-                        </div>`;
+                    window.open(videoUrl, '_blank');
+                    noVideoMsg.querySelector('h3').textContent = 'Opening video...';
+                    noVideoMsg.querySelector('p').textContent = 'This video could not be embedded. Opening in a new tab.';
+                    noVideoMsg.style.display = 'flex';
                 }
             } else {
                 noVideoMsg.querySelector('h3').textContent = 'No video content available';
