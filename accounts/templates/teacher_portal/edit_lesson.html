@@ -322,10 +322,9 @@
                 var renewPromise = Promise.resolve(data);
                 if (!data.youtube_upload_url || !data.access_token || data.status === 'SESSION_EXPIRED') {
                     uploadPhase.textContent = 'Upload session expired. Attempting to renew...';
-                    renewPromise = fetch('/api/video/renew-session/', {
+                    renewPromise = fetch('/api/video/renew-session/' + jobUid + '/', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                        body: JSON.stringify({ upload_job_uid: jobUid })
                     })
                     .then(function(r) { return r.json(); })
                     .then(function(renewData) {
