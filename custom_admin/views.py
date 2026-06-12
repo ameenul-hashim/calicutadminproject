@@ -1323,6 +1323,12 @@ def admin_view_course_content(request, course_uid):
         status='PENDING', item_type='Course', item_id=course.id
     ).first()
     
+    # Chapter-level deletion requests for this course
+    chapter_deletion_requests = DeletionRequest.objects.filter(
+        status='PENDING', item_type='Chapter', item_id=course.id
+    )
+    chapter_deletion_names = set(dr.item_name for dr in chapter_deletion_requests)
+    
     pending_deletions = DeletionRequest.objects.filter(
         status='PENDING'
     ).filter(
@@ -1382,6 +1388,7 @@ def admin_view_course_content(request, course_uid):
         pending_resources = [r for r in ch_resources if r.status in ('PENDING', 'DELETION_PENDING') or r.has_pending_edits or r.deletion_request]
         approved_lessons = [l for l in ch_lessons if l.status == 'APPROVED' and not l.has_pending_edits and not l.deletion_request]
         approved_resources = [r for r in ch_resources if r.status == 'APPROVED' and not r.has_pending_edits and not r.deletion_request]
+        ch_deletion = next((dr for dr in chapter_deletion_requests if dr.item_name == ch_name), None)
         chapters_data.append({
             'name': ch_name,
             'pending_lessons': pending_lessons,
@@ -1390,6 +1397,7 @@ def admin_view_course_content(request, course_uid):
             'approved_resources': approved_resources,
             'has_pending': bool(pending_lessons or pending_resources),
             'has_approved': bool(approved_lessons or approved_resources),
+            'deletion_request': ch_deletion,
         })
 
     # Add per-chapter category counts (matching teacher template)

@@ -1728,6 +1728,7 @@ def edit_resource(request, resource_uid):
         is_approved = resource.status == 'APPROVED'
         new_fb_path = None
         new_file_size = 0
+        uploaded_fb_path = None
 
         if upload_file:
             MAX_UPLOAD_BYTES = 10 * 1024 * 1024
