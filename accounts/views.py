@@ -1724,8 +1724,6 @@ def edit_resource(request, resource_uid):
 
     if request.method == 'POST':
         try:
-            # Save suspended state BEFORE auto-unsuspending
-            was_suspended = resource.is_suspended or resource.status == 'SUSPENDED'
             if resource.is_suspended:
                 resource.is_suspended = False
                 resource.suspended_at = None
@@ -1744,7 +1742,6 @@ def edit_resource(request, resource_uid):
                 messages.error(request, "Please select a category (English, Malayalam, or Online).")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
-            is_approved = resource.status == 'APPROVED'
             new_fb_path = None
             new_file_size = 0
             uploaded_fb_path = None
@@ -1794,8 +1791,6 @@ def edit_resource(request, resource_uid):
                     messages.error(request, "An error occurred while processing the file. Please try again.")
                     return redirect('edit_resource', resource_uid=resource.uid)
 
-            course_is_published = course.status == 'PUBLISHED' and course.is_approved
-
             # Set resource metadata fields
             if new_fb_path and resource.firebase_file_path:
                 try:
@@ -1813,38 +1808,12 @@ def edit_resource(request, resource_uid):
                 resource.original_size = new_file_size
                 resource.compressed_size = new_file_size
 
-            if was_suspended:
-                resource.status = 'PENDING'
-                resource.is_approved = False
-                resource.rejection_reason = None
-                resource.has_pending_edits = True
-                resource.save()
-                messages.success(request, f"Resource '{title}' updated and submitted for re-review.")
-            elif course_is_published:
-                resource.status = 'APPROVED'
-                resource.is_approved = True
-                resource.rejection_reason = None
-                resource.has_pending_edits = False
-                resource.save()
-                messages.success(request, f"Resource '{title}' updated and immediately available to students.")
-            elif is_approved:
-                resource.has_pending_edits = False
-                resource.save()
-                messages.success(request, f"Resource '{title}' updated successfully.")
-            else:
-                resource.status = 'PENDING'
-                resource.is_approved = False
-                resource.rejection_reason = None
-                resource.save()
-                messages.success(request, f"Resource '{title}' updated successfully.")
-
-            # Auto-reinstate BLOCKED teacher after successful edit
-            if request.user.status == 'BLOCKED':
-                request.user.status = 'ACTIVE'
-                request.user.is_active = True
-                request.user.save(update_fields=['status', 'is_active'])
-                cache.delete(f"user_status_{request.user.id}")
-                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
+            resource.status = 'PENDING'
+            resource.is_approved = False
+            resource.rejection_reason = None
+            resource.has_pending_edits = True
+            resource.save()
+            messages.success(request, f"Resource '{title}' updated and submitted for re-review.")
 
             return redirect('course_lessons', course_uid=course.uid)
         except Exception as e:
