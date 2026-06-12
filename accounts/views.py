@@ -1464,11 +1464,11 @@ def edit_lesson(request, lesson_uid):
 
         if video_source == 'file' and video_file:
             messages.error(request, "MP4 uploads must use the upload button. Please try again.")
-            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
 
         if video_source == 'file' and not video_file:
             messages.error(request, "Please upload a video file or select YouTube URL mode.")
-            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
 
         if video_source == 'url' and video_url:
             video_url = video_url.strip()
@@ -1476,7 +1476,7 @@ def edit_lesson(request, lesson_uid):
             video_url = lesson.video_url or ''
         elif video_source not in ('file', 'url'):
             messages.error(request, "Invalid video source selected.")
-            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+            return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course, 'course_chapters': lesson.course.chapters or []})
 
         order_raw = request.POST.get('order')
         order = max(int(order_raw), 1) if order_raw and order_raw.strip() else lesson.order
@@ -1526,7 +1526,11 @@ def edit_lesson(request, lesson_uid):
 
         return redirect('course_lessons', course_uid=lesson.course.uid)
 
-    return render(request, 'teacher_portal/edit_lesson.html', {'lesson': lesson, 'course': lesson.course})
+    return render(request, 'teacher_portal/edit_lesson.html', {
+        'lesson': lesson,
+        'course': lesson.course,
+        'course_chapters': lesson.course.chapters or [],
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def delete_lesson(request, lesson_uid):
@@ -1826,7 +1830,11 @@ def edit_resource(request, resource_uid):
 
         return redirect('course_lessons', course_uid=course.uid)
 
-    return render(request, 'teacher_portal/edit_resource.html', {'resource': resource})
+    return render(request, 'teacher_portal/edit_resource.html', {
+        'resource': resource,
+        'course': course,
+        'course_chapters': course.chapters or [],
+    })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def delete_resource(request, resource_uid):
