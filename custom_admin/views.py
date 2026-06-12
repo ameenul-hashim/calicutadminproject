@@ -1354,6 +1354,8 @@ def admin_view_course_content(request, course_uid):
     # Order chapters: course.chapters first (teacher-set order), then remaining by creation date
     course_chapters = list(course.chapters or [])
     derived_chapters = set(list(lesson_by_chapter.keys()) + list(res_by_chapter.keys()))
+    # Also include chapters that have pending deletion requests (may be empty)
+    derived_chapters.update(chapter_deletion_names)
     all_chapter_names = []
     seen = set()
     from datetime import datetime as dt_module
@@ -1367,7 +1369,7 @@ def admin_view_course_content(request, course_uid):
                 ts.append(r.created_at)
         return ts[0] if ts else dt_module.min
     for name in course_chapters:
-        if name and name in derived_chapters and name not in seen:
+        if name and name not in seen:
             seen.add(name)
             all_chapter_names.append(name)
     for name in sorted((d for d in derived_chapters if d), key=_chapter_first_ts):
@@ -1395,7 +1397,7 @@ def admin_view_course_content(request, course_uid):
             'pending_resources': pending_resources,
             'approved_lessons': approved_lessons,
             'approved_resources': approved_resources,
-            'has_pending': bool(pending_lessons or pending_resources),
+            'has_pending': bool(pending_lessons or pending_resources or ch_deletion),
             'has_approved': bool(approved_lessons or approved_resources),
             'deletion_request': ch_deletion,
         })
