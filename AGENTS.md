@@ -1,6 +1,6 @@
 # AGENTS.md — Neo Learner E-Learning Platform
 # Master AI Reference Document
-# Last Updated: 2026-06-06 | Branch: 3-fullcorrect
+# Last Updated: 2026-06-12 | Branch: 3-fullcorrect
 
 ---
 
@@ -23,34 +23,35 @@
 
 ---
 
-## 🌿 GIT BRANCH STRUCTURE
+## 🌿 GIT BRANCH STRUCTURE — CRITICAL: TWO SEPARATE BRANCHES
 
-### Active Branches
+### ⚠️ IMPORTANT: `ongoing` AND `3-fullcorrect` ARE TWO DIFFERENT BRANCHES
+### ⚠️ NEVER MERGE, SYNC, OR RESET ONE TO THE OTHER
+### ⚠️ EACH BRANCH CONTAINS DIFFERENT WORK — THEY ARE NOT MIRRORS
 
 | Branch | Purpose | Status |
 |:---|:---|:---|
-| `ongoing` | **PRIMARY development branch** — all active work happens here | ✅ HEAD |
-| `3-fullcorrect` | Synced mirror of `ongoing` (used for reset operations) | ✅ Active |
+| `3-fullcorrect` | **Work branch for AI agent tasks** — all fixes by AI go here | ✅ Active |
+| `ongoing` | **Separate work by human developer** — contains different changes | ✅ Active |
 | `stable-may19-rollback` | Stable rollback point (May 19 state) | 🔒 Frozen |
 
-### Remote: `origin`
-```
-https://github.com/ameenul-hashim/calicutadminproject.git
-```
+### What each branch contains
 
-### Branch Rules
-- **Always work on `ongoing`** — this is the only active development branch.
-- **Keep `3-fullcorrect` synced to `ongoing`** — both are identical.
+- **`3-fullcorrect`** — AI agent work. Latest commits: chapter visibility fixes, lesson/resource editing, YouTube upload fixes, admin course content verify, chapter/lesson/resource deletion requests. Current tip: `47c6cf1`.
+- **`ongoing`** — Human developer work. Latest commits: admin create student/teacher fix, thumbnail display fix, URL name corrections, signup error messages, backup clear activity, student profile layout. Current tip: `e79fdfc`.
+
+### Branch Rules — READ CAREFULLY
+- **`3-fullcorrect` and `ongoing` are SEPARATE branches with DIFFERENT commit histories.**
+- **DO NOT merge `ongoing` into `3-fullcorrect` or vice versa.**
+- **DO NOT fast-forward one to match the other.**
+- **DO NOT reset one to the other.**
+- **When working as an AI agent, ALWAYS work on `3-fullcorrect` branch.**
 - **Never push directly to `stable-may19-rollback`** — it is a safety snapshot.
 - Deploy to Render triggers from `ongoing` pushes via GitHub auto-deploy.
 - Emergency rollback = Render manual deploy pinned to `stable-may19-rollback`.
 
-### Recent Git History (last meaningful commits)
-- `77a86b4` — Fix teacher panel layout, JS error handlers, localhost CSRF origins
-- `ad4ec56` — Fix BACKUP_VERIFY_SHA256 comparison: handle bool config value
-- `3c923ce` — Fix MEGA upload: use node IDs instead of string paths/tuples
-- `3a8835f` — Fix MEGA login crash on Python 3.11+: asyncio.coroutine shim
-- `f46ccb5` — Fix backup center MEGA health check: use _mega_configured
+### What to do if an instruction says "sync" or "merge" branches
+IGNORE IT. The instruction is outdated. `3-fullcorrect` and `ongoing` diverged after May 2026 and now contain different work. Any attempt to merge or sync them will cause conflicts and data loss.
 
 ---
 
@@ -617,7 +618,7 @@ When working on this project, any AI should follow these rules:
 2. **Check `has_pending_edits` flag** before modifying approved content
 3. **Use `get_signed_url()`** for resource file access — never expose raw storage paths
 4. **Run `python manage.py makemigrations accounts`** after any model changes
-5. **Test on `ongoing` branch** — never work on `stable-may19-rollback`
+5. **Always work on `3-fullcorrect` branch** — never work on `ongoing` or `stable-may19-rollback`
 6. **Add CSRF token** to all POST forms: `{% csrf_token %}`
 7. **Check user type** (`request.user.user_type`) for role-based access control
 
