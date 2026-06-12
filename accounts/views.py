@@ -1814,12 +1814,12 @@ def edit_resource(request, resource_uid):
                 resource.compressed_size = new_file_size
 
             if was_suspended:
-                resource.status = 'PENDING'
-                resource.is_approved = False
+                resource.status = 'APPROVED'
+                resource.is_approved = True
                 resource.rejection_reason = None
-                resource.has_pending_edits = True
+                resource.has_pending_edits = False
                 resource.save()
-                messages.success(request, f"Resource '{title}' updated and submitted for re-review.")
+                messages.success(request, f"Resource '{title}' unsuspended and immediately available to students.")
             elif course_is_published:
                 resource.status = 'APPROVED'
                 resource.is_approved = True

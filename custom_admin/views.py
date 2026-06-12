@@ -1789,7 +1789,12 @@ def reject_course_deletion(request, request_uid):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
+    from accounts.models import Lesson, CourseResource
     pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')[:20]
+    for dr in pending_requests:
+        if dr.item_type == 'Chapter':
+            dr.lesson_count = Lesson.objects.filter(course_id=dr.item_id, chapter=dr.item_name).count()
+            dr.resource_count = CourseResource.objects.filter(course_id=dr.item_id, chapter=dr.item_name, is_deleted=False).count()
     return render(request, 'custom_admin/manage_deletion_requests.html', {
         'requests': pending_requests,
     })

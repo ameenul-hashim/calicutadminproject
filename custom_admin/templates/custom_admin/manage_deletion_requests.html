@@ -78,7 +78,14 @@
                             {{ req.item_type }}
                         </span>
                     </td>
-                    <td style="font-weight: 500;">{{ req.item_name }}</td>
+                    <td style="font-weight: 500;">
+                        {{ req.item_name }}
+                        {% if req.item_type == 'Chapter' and req.lesson_count is not None %}
+                            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">
+                                📹 {{ req.lesson_count }} lesson{% if req.lesson_count != 1 %}s{% endif %} &nbsp;📄 {{ req.resource_count }} resource{% if req.resource_count != 1 %}s{% endif %}
+                            </div>
+                        {% endif %}
+                    </td>
                     <td style="color: #64748b; font-size: 0.85rem; max-width: 200px;">{{ req.reason|default:"—"|truncatechars:80 }}</td>
                     <td style="color: #64748b;">{{ req.created_at|date:"M d, Y" }}</td>
                     <td>
