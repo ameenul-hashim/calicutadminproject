@@ -79,8 +79,12 @@ urlpatterns = [
     path('api/video/progress/<uuid:job_uid>/', views.update_upload_progress, name='update_upload_progress'),
     path('api/video/status/<uuid:job_uid>/', views.get_upload_status, name='get_upload_status'),
     path('api/video/cancel/<uuid:job_uid>/', views.cancel_upload, name='cancel_upload'),
+    path('api/video/pause/<uuid:job_uid>/', views.pause_upload, name='pause_upload'),
     path('api/video/active-uploads/', views.list_active_uploads, name='list_active_uploads'),
     path('api/video/recover-lesson/<uuid:lesson_uid>/', views.recover_lesson_view, name='recover_lesson_view'),
+    path('api/video/verify-processing/<uuid:job_uid>/', views.verify_processing_view, name='verify_processing_view'),
+    path('api/video/renew-session/<uuid:job_uid>/', views.renew_session_view, name='renew_session_view'),
+    path('api/video/audit/<uuid:job_uid>/', views.upload_audit_log, name='upload_audit_log'),
 
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
     path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),

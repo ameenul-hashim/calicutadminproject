@@ -71,6 +71,9 @@ urlpatterns = [
     path('course/restore/<uuid:course_uid>/', views.admin_restore_course, name='admin_restore_course'),
     path('course/permanent-delete/secure/<uuid:course_uid>/', views.admin_permanent_delete_course_secure, name='admin_permanent_delete_course_secure'),
 
+    # Upload Monitor
+    path('upload-monitor/', views.admin_upload_monitor, name='admin_upload_monitor'),
+
     # Backup Center
     path('backup-center/', views.backup_center, name='backup_center'),
     path('backup-center/run-database-backup/', views.run_database_backup, name='run_database_backup'),

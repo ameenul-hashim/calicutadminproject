@@ -12,7 +12,7 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 from django.db.models import Sum, Q, Count
 from django.db.models.functions import ExtractMonth
-from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, BackupLog
+from accounts.models import CustomUser, Enrollment, Course, Lesson, ApprovalLog, DeletionRequest, PDFAccessLog, BackupLog, UploadJob, UploadAuditEvent
 from accounts.utils.cloudinary_helpers import update_image
 from accounts.utils.supabase_storage import upload_pdf
 from accounts.utils.malware_scanner import scanner
@@ -3252,3 +3252,56 @@ def backup_clear_activity(request):
     logger.info(f"Admin {request.user.username} cleared {count} BackupLog records")
     messages.success(request, f'Cleared {count} backup activity records.')
     return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+def admin_upload_monitor(request):
+    """
+    Enterprise upload monitoring dashboard.
+    Shows all upload jobs with filtering and detailed status.
+    """
+    from django.db.models import Count, Q
+
+    status_filter = request.GET.get('status', '')
+    teacher_filter = request.GET.get('teacher', '')
+
+    jobs = UploadJob.objects.select_related('teacher', 'lesson').all()
+
+    if status_filter:
+        jobs = jobs.filter(status=status_filter)
+
+    if teacher_filter:
+        jobs = jobs.filter(
+            Q(teacher__full_name__icontains=teacher_filter) |
+            Q(teacher__email__icontains=teacher_filter)
+        )
+
+    jobs = jobs.order_by('-created_at')
+
+    from django.core.paginator import Paginator
+    paginator = Paginator(jobs, 25)
+    page = request.GET.get('page', 1)
+    jobs_page = paginator.get_page(page)
+
+    stats = UploadJob.objects.aggregate(
+        total=Count('id'),
+        uploading=Count('id', filter=Q(status='UPLOADING')),
+        uploaded=Count('id', filter=Q(status='UPLOADED')),
+        processing=Count('id', filter=Q(status='YOUTUBE_PROCESSING')),
+        completed=Count('id', filter=Q(status='READY')),
+        failed=Count('id', filter=Q(status='FAILED')),
+        cancelled=Count('id', filter=Q(status='CANCELLED')),
+    )
+
+    from django.utils import timezone
+    recent_audit = UploadAuditEvent.objects.select_related('upload_job').order_by('-timestamp')[:50]
+
+    context = {
+        'jobs': jobs_page,
+        'stats': stats,
+        'recent_audit': recent_audit,
+        'status_filter': status_filter,
+        'teacher_filter': teacher_filter,
+        'page_title': 'Upload Monitor',
+    }
+    return render(request, 'custom_admin/upload_monitor.html', context)

@@ -1,0 +1,193 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Upload Monitor | Neo Learner Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3">Upload Monitor</h1>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-2">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ stats.total }}</h5>
+                    <small>Total Uploads</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ stats.uploading }}</h5>
+                    <small>Uploading</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ stats.uploaded }}</h5>
+                    <small>Uploaded</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-white bg-secondary">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ stats.processing }}</h5>
+                    <small>Processing</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ stats.completed }}</h5>
+                    <small>Completed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-2">
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <h5 class="card-title">{{ stats.failed }}</h5>
+                    <small>Failed</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Upload Jobs</span>
+            <form method="get" class="d-flex gap-2">
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Status</option>
+                    <option value="PENDING" {% if status_filter == 'PENDING' %}selected{% endif %}>Pending</option>
+                    <option value="UPLOADING" {% if status_filter == 'UPLOADING' %}selected{% endif %}>Uploading</option>
+                    <option value="UPLOADED" {% if status_filter == 'UPLOADED' %}selected{% endif %}>Uploaded</option>
+                    <option value="YOUTUBE_PROCESSING" {% if status_filter == 'YOUTUBE_PROCESSING' %}selected{% endif %}>YouTube Processing</option>
+                    <option value="READY" {% if status_filter == 'READY' %}selected{% endif %}>Ready</option>
+                    <option value="FAILED" {% if status_filter == 'FAILED' %}selected{% endif %}>Failed</option>
+                    <option value="CANCELLED" {% if status_filter == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                </select>
+                <input type="text" name="teacher" class="form-control form-control-sm" placeholder="Teacher name/email" value="{{ teacher_filter }}">
+                <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Created</th>
+                            <th>Teacher</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Progress</th>
+                            <th>Size</th>
+                            <th>Video ID</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in jobs %}
+                        <tr>
+                            <td><small>{{ job.created_at|date:"M d, H:i" }}</small></td>
+                            <td><small>{{ job.teacher.full_name|truncatechars:20 }}</small></td>
+                            <td><small>{{ job.title|truncatechars:30 }}</small></td>
+                            <td>
+                                <span class="badge {% if job.status == 'READY' %}bg-success{% elif job.status == 'FAILED' %}bg-danger{% elif job.status == 'UPLOADING' %}bg-warning{% elif job.status == 'CANCELLED' %}bg-secondary{% elif job.status == 'YOUTUBE_PROCESSING' %}bg-info{% else %}bg-primary{% endif %}">
+                                    {{ job.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="progress flex-grow-1" style="height:6px;">
+                                        <div class="progress-bar" style="width:{{ job.progress_percentage }}%"></div>
+                                    </div>
+                                    <small class="ms-2">{{ job.progress_percentage }}%</small>
+                                </div>
+                            </td>
+                            <td><small>{{ job.file_size|filesizeformat }}</small></td>
+                            <td>
+                                {% if job.youtube_video_id %}
+                                <a href="https://www.youtube.com/watch?v={{ job.youtube_video_id }}" target="_blank" title="{{ job.youtube_video_id }}">
+                                    <small>{{ job.youtube_video_id|truncatechars:12 }}</small>
+                                </a>
+                                {% else %}
+                                <small class="text-muted">—</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Actions</button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="/api/video/audit/{{ job.uid }}/" target="_blank">View Audit</a></li>
+                                        {% if job.youtube_video_id %}
+                                        <li><a class="dropdown-item" href="https://www.youtube.com/watch?v={{ job.youtube_video_id }}" target="_blank">Open YouTube</a></li>
+                                        {% endif %}
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="8" class="text-center py-4 text-muted">No upload jobs found</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if jobs.paginator.num_pages > 1 %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    {% if jobs.has_previous %}
+                    <li class="page-item"><a class="page-link" href="?page={{ jobs.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if teacher_filter %}&teacher={{ teacher_filter }}{% endif %}">Previous</a></li>
+                    {% endif %}
+                    <li class="page-item disabled"><span class="page-link">Page {{ jobs.number }} of {{ jobs.paginator.num_pages }}</span></li>
+                    {% if jobs.has_next %}
+                    <li class="page-item"><a class="page-link" href="?page={{ jobs.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if teacher_filter %}&teacher={{ teacher_filter }}{% endif %}">Next</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>Recent Audit Events</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Event</th>
+                            <th>Upload Job</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for event in recent_audit %}
+                        <tr>
+                            <td><small>{{ event.timestamp|date:"M d, H:i:s" }}</small></td>
+                            <td><span class="badge bg-secondary">{{ event.get_event_type_display }}</span></td>
+                            <td><small>{{ event.upload_job.title|truncatechars:25 }}</small></td>
+                            <td><small class="text-muted">{{ event.details|pprint|truncatechars:50 }}</small></td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-3 text-muted">No audit events</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

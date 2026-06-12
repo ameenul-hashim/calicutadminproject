@@ -121,30 +121,35 @@
 
         var CHUNK_SIZE = 5 * 1024 * 1024;
         var MAX_RETRIES = 5;
-        var UPLOAD_STATE_KEY = 'neolearner_upload_state';
 
-        function getStoredUploadState() {
+        function getUiState() {
             try {
-                var raw = sessionStorage.getItem(UPLOAD_STATE_KEY);
+                var raw = sessionStorage.getItem('neolearner_ui_state');
                 if (raw) return JSON.parse(raw);
             } catch(e) {}
             return null;
         }
 
-        function setStoredUploadState(state) {
-            try { sessionStorage.setItem(UPLOAD_STATE_KEY, JSON.stringify(state)); } catch(e) {}
+        function setUiState(state) {
+            try {
+                sessionStorage.setItem('neolearner_ui_state', JSON.stringify({
+                    collapsedSidebar: state.collapsedSidebar || false,
+                    lastTab: state.lastTab || '',
+                    timestamp: Date.now()
+                }));
+            } catch(e) {}
         }
 
-        function clearStoredUploadState() {
-            try { sessionStorage.removeItem(UPLOAD_STATE_KEY); } catch(e) {}
+        function clearUiState() {
+            try { sessionStorage.removeItem('neolearner_ui_state'); } catch(e) {}
         }
 
-        function getYouTubeUploadedBytes(uploadUrl, accessToken) {
+        function getYouTubeUploadedBytes(uploadUrl, accessToken, totalBytes) {
             return new Promise(function(resolve) {
                 var xhr = new XMLHttpRequest();
                 xhr.open('PUT', uploadUrl);
                 xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
-                xhr.setRequestHeader('Content-Range', 'bytes */' + uploadUrl);
+                xhr.setRequestHeader('Content-Range', 'bytes */' + totalBytes);
                 xhr.setRequestHeader('Content-Length', '0');
                 xhr.onload = function() {
                     if (xhr.status === 308) {
@@ -173,7 +178,14 @@
                 xhr.addEventListener('load', function() {
                     clearTimeout(timer);
                     if (timedOut) return;
-                    if (xhr.status >= 200 && xhr.status < 300) { resolve(true); }
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        var videoId = 'uploaded';
+                        try {
+                            var resp = JSON.parse(xhr.responseText);
+                            if (resp && resp.id) videoId = resp.id;
+                        } catch(e) {}
+                        resolve(videoId);
+                    }
                     else if (xhr.status === 308) { resolve(true); }
                     else if (xhr.status === 503 || xhr.status === 500 || xhr.status === 429) {
                         if (retriesLeft > 0) {
@@ -218,11 +230,12 @@
                 var paused = false;
                 var startTime = Date.now();
                 var lastReportTime = Date.now();
+                var finalVideoId = null;
 
                 if (onCancel) { onCancel(function() { cancelled = true; }); }
 
                 document.getElementById('uploadPhase').textContent = 'Checking for existing upload progress...';
-                getYouTubeUploadedBytes(uploadUrl, accessToken).then(function(resumeFrom) {
+                getYouTubeUploadedBytes(uploadUrl, accessToken, totalBytes).then(function(resumeFrom) {
                     if (resumeFrom < 0) { resolve({}); return; }
                     if (resumeFrom > 0) {
                         uploadedBytes = resumeFrom;
@@ -238,13 +251,14 @@
                 function uploadNextChunk() {
                     if (cancelled) { reject(new Error('cancelled')); return; }
                     if (paused) { setTimeout(uploadNextChunk, 500); return; }
-                    if (uploadedBytes >= totalBytes) { resolve({}); return; }
+                    if (uploadedBytes >= totalBytes) { resolve(finalVideoId); return; }
                     var startByte = uploadedBytes;
                     var endByte = Math.min(startByte + chunkSize, totalBytes);
                     var chunk = file.slice(startByte, endByte);
 
-                    uploadChunk(uploadUrl, chunk, startByte, totalBytes, accessToken, MAX_RETRIES).then(function() {
+                    uploadChunk(uploadUrl, chunk, startByte, totalBytes, accessToken, MAX_RETRIES).then(function(videoIdResult) {
                         uploadedBytes = endByte;
+                        if (videoIdResult && videoIdResult !== true) finalVideoId = videoIdResult;
                         var now = Date.now();
                         if (onProgress) onProgress(uploadedBytes, totalBytes);
                         if (now - lastReportTime > 2000) {
@@ -254,13 +268,6 @@
                             xhr.setRequestHeader('X-CSRFToken', csrfToken);
                             xhr.send(JSON.stringify({ uploaded_bytes: uploadedBytes, total_bytes: totalBytes }));
                             lastReportTime = now;
-                            setStoredUploadState({
-                                uploadJobUid: uploadJobUid,
-                                lessonUid: null,
-                                uploadedBytes: uploadedBytes,
-                                totalBytes: totalBytes,
-                                timestamp: now,
-                            });
                         }
                         setTimeout(uploadNextChunk, 100);
                     }).catch(function(err) {
@@ -289,11 +296,10 @@
             document.getElementById('submitBtn').disabled = false;
             document.getElementById('submitBtn').textContent = 'Save Changes';
             document.getElementById('submitBtn').style.opacity = '1';
-            clearStoredUploadState();
             currentUploadJobUid = null;
         }
 
-        function resumeEditUpload(jobUid, data) {
+        function resumeEditUpload(jobUid, initialData) {
             currentUploadJobUid = jobUid;
             var startResumeTime = Date.now();
 
@@ -310,73 +316,111 @@
             submitBtn.textContent = 'Resuming...';
             submitBtn.style.opacity = '0.7';
 
-            var uploadUrl = data.youtube_upload_url;
-            var accessToken = data.access_token;
-            var totalBytes = data.file_size || 0;
+            fetch('/api/video/status/' + jobUid + '/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var renewPromise = Promise.resolve(data);
+                if (!data.youtube_upload_url || !data.access_token || data.status === 'SESSION_EXPIRED') {
+                    uploadPhase.textContent = 'Upload session expired. Attempting to renew...';
+                    renewPromise = fetch('/api/video/renew-session/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({ upload_job_uid: jobUid })
+                    })
+                    .then(function(r) { return r.json(); })
+                    .then(function(renewData) {
+                        if (!renewData.upload_url || !renewData.access_token) {
+                            throw new Error('SESSION_EXPIRED');
+                        }
+                        data.youtube_upload_url = renewData.upload_url;
+                        data.access_token = renewData.access_token;
+                        data.file_size = renewData.file_size || data.file_size;
+                        return data;
+                    });
+                }
+                return renewPromise;
+            })
+            .then(function(data) {
+                var uploadUrl = data.youtube_upload_url;
+                var accessToken = data.access_token;
+                var totalBytes = data.file_size || 0;
 
-            if (!uploadUrl || !accessToken) {
-                uploadPhase.textContent = 'Upload session expired. Please start a new upload.';
-                uploadPhase.className = 'upload-phase error';
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Try Again';
-                submitBtn.style.opacity = '1';
-                return;
-            }
+                var fileInput = document.getElementById('video_file');
+                var file = fileInput.files[0];
+                if (!file) {
+                    uploadPhase.textContent = 'Please select the video file again to resume.';
+                    uploadPhase.className = 'upload-phase error';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Select File & Try Again';
+                    submitBtn.style.opacity = '1';
+                    return;
+                }
 
-            // Create a file-like object so uploadToYouTubeChunked can use the stored total size
-            // The actual file content will be read from the file input by the chunked uploader
-            var fileInput = document.getElementById('video_file');
-            var file = fileInput.files[0];
-            if (!file) {
-                uploadPhase.textContent = 'Please select the video file again to resume.';
-                uploadPhase.className = 'upload-phase error';
-                submitBtn.disabled = false;
-                submitBtn.textContent = 'Select File & Try Again';
-                submitBtn.style.opacity = '1';
-                return;
-            }
+                uploadPhase.textContent = 'Resuming upload...';
+                uploadPhase.className = 'upload-phase';
 
-            uploadPhase.textContent = 'Resuming upload...';
-            uploadPhase.className = 'upload-phase';
+                var progressCallback = function(upBytes, totBytes) {
+                    var pct = Math.round((upBytes / totBytes) * 100);
+                    var elapsed = (Date.now() - startResumeTime) / 1000;
+                    var speed = formatSpeed(elapsed > 0 ? upBytes / elapsed : 0);
+                    var eta = formatTimeRemaining(totBytes - upBytes, elapsed > 0 ? upBytes / elapsed : 0);
+                    var chunksDone = Math.ceil(upBytes / CHUNK_SIZE);
+                    var chunksTotal = Math.ceil(totBytes / CHUNK_SIZE);
+                    progressBar.style.width = pct + '%';
+                    progressPercent.textContent = pct + '%';
+                    progressText.textContent = 'Uploading ' + pct + '%';
+                    progressDetail.textContent = formatSize(upBytes) + ' / ' + formatSize(totBytes) + ' | ' + speed + ' | ' + eta + ' | Chunk ' + chunksDone + ' / ' + chunksTotal;
+                };
 
-            var progressCallback = function(upBytes, totBytes) {
-                var pct = Math.round((upBytes / totBytes) * 100);
-                var elapsed = (Date.now() - startResumeTime) / 1000;
-                var speed = formatSpeed(elapsed > 0 ? upBytes / elapsed : 0);
-                var eta = formatTimeRemaining(totBytes - upBytes, elapsed > 0 ? upBytes / elapsed : 0);
-                var chunksDone = Math.ceil(upBytes / CHUNK_SIZE);
-                var chunksTotal = Math.ceil(totBytes / CHUNK_SIZE);
-                progressBar.style.width = pct + '%';
-                progressPercent.textContent = pct + '%';
-                progressText.textContent = 'Uploading ' + pct + '%';
-                progressDetail.textContent = formatSize(upBytes) + ' / ' + formatSize(totBytes) + ' (' + speed + ') ' + eta + ' | Chunk ' + chunksDone + ' / ' + chunksTotal;
-            };
-
-            uploadToYouTubeChunked(uploadUrl, file, accessToken, jobUid,
-                progressCallback,
-                function(cancelFn) { cancelUploadCallback = cancelFn; }
-            ).then(function() {
-                return fetch('/api/video/youtube-edit-complete/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
-                    body: JSON.stringify({ lesson_uid: '{{ lesson.uid }}', upload_job_uid: jobUid, auto_recover: true })
+                uploadToYouTubeChunked(uploadUrl, file, accessToken, jobUid,
+                    progressCallback,
+                    function(cancelFn) { cancelUploadCallback = cancelFn; }
+                ).then(function(videoId) {
+                    return fetch('/api/video/youtube-edit-complete/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+                        body: JSON.stringify({
+                            lesson_uid: '{{ lesson.uid }}',
+                            upload_job_uid: jobUid,
+                            video_id: videoId || null
+                        })
+                    });
+                }).then(function(resp) {
+                    progressBar.style.width = '100%';
+                    progressBar.classList.add('complete');
+                    progressPercent.textContent = '100%';
+                    progressText.textContent = '✅ Upload complete!';
+                    uploadPhase.textContent = '✅ Video uploaded! YouTube is processing...';
+                    uploadPhase.classList.add('complete');
+                    progressDetail.textContent = 'YouTube is now processing your video. This may take a few minutes.';
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Finalizing...';
+                    setTimeout(function() { window.location.href = '/teacher/courses/{{ course.uid }}/lessons/'; }, 2000);
+                }).catch(function(err) {
+                    if (err.message === 'aborted' || err.message === 'cancelled') return;
+                    if (err.message === 'SESSION_EXPIRED') {
+                        progressBar.classList.add('error');
+                        uploadPhase.textContent = '❌ Upload session expired. Please start a new upload.';
+                        uploadPhase.className = 'upload-phase error';
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Start Fresh';
+                        submitBtn.style.opacity = '1';
+                        return;
+                    }
+                    progressBar.classList.add('error');
+                    uploadPhase.textContent = '❌ ' + (err.message || 'Upload failed');
+                    uploadPhase.className = 'upload-phase error';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Try Again';
+                    submitBtn.style.opacity = '1';
                 });
-            }).then(function(resp) {
-                progressBar.style.width = '100%';
-                progressBar.classList.add('complete');
-                progressPercent.textContent = '100%';
-                progressText.textContent = '✅ Upload complete!';
-                uploadPhase.textContent = '✅ Video uploaded! YouTube is processing...';
-                uploadPhase.classList.add('complete');
-                progressDetail.textContent = 'YouTube is now processing your video. This may take a few minutes.';
-                clearStoredUploadState();
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Finalizing...';
-                setTimeout(function() { window.location.href = '/teacher/courses/{{ course.uid }}/lessons/'; }, 2000);
-            }).catch(function(err) {
-                if (err.message === 'aborted' || err.message === 'cancelled') return;
-                progressBar.classList.add('error');
-                uploadPhase.textContent = '❌ ' + (err.message || 'Upload failed');
+            })
+            .catch(function(err) {
+                if (err.message === 'SESSION_EXPIRED') {
+                    uploadPhase.textContent = 'Upload session expired. Please start a new upload.';
+                } else {
+                    uploadPhase.textContent = 'Could not fetch upload status. Please try again.';
+                }
                 uploadPhase.className = 'upload-phase error';
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Try Again';
@@ -391,6 +435,12 @@
             document.getElementById('uploadPhase').textContent = 'Connection lost. Waiting for internet...';
             document.getElementById('uploadPhase').className = 'upload-phase paused';
             document.getElementById('progressBar').classList.add('paused');
+            if (currentUploadJobUid) {
+                fetch('/api/video/pause/' + currentUploadJobUid + '/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+                }).catch(function() {});
+            }
         });
         window.addEventListener('online', function() {
             document.getElementById('offlineBanner').classList.remove('active');
@@ -399,6 +449,14 @@
                 document.getElementById('uploadPhase').className = 'upload-phase';
                 document.getElementById('progressBar').classList.remove('paused');
                 wasOffline = false;
+                fetch('/api/video/status/' + currentUploadJobUid + '/')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.youtube_upload_url && data.access_token) {
+                        resumeEditUpload(currentUploadJobUid, data);
+                    }
+                })
+                .catch(function() {});
             }
         });
 
@@ -413,13 +471,18 @@
             modal.classList.add('active');
 
             document.getElementById('recoveryResume').onclick = function() {
+                var fileInput = document.getElementById('video_file');
+                if (!fileInput || !fileInput.files.length) {
+                    alert('Please select a video file first before resuming.');
+                    return;
+                }
                 modal.classList.remove('active');
                 fetch('/api/video/status/' + jobUid + '/')
                 .then(function(r) { return r.json(); })
                 .then(function(statusData) {
                     resumeEditUpload(jobUid, statusData);
                 })
-                .catch(function() { alert('Could not resume. Please select the file and try again.'); });
+                .catch(function() { alert('Could not resume.'); });
             };
             document.getElementById('recoveryDelete').onclick = function() {
                 modal.classList.remove('active');
@@ -428,8 +491,21 @@
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                     body: JSON.stringify({ keep_lesson: true }),
                 }).catch(function() {});
-                clearStoredUploadState();
             };
+        }
+
+        function computeFileHash(file) {
+            return new Promise(function(resolve) {
+                var blob = file.slice(0, 5242880);
+                var reader = new FileReader();
+                reader.onload = function() {
+                    crypto.subtle.digest('SHA-256', reader.result).then(function(hash) {
+                        var hex = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2,'0')).join('');
+                        resolve(hex);
+                    });
+                };
+                reader.readAsArrayBuffer(blob);
+            });
         }
 
         document.addEventListener('DOMContentLoaded', function() {
@@ -442,29 +518,20 @@
             }
 
             // Check for incomplete uploads on load
-            var storedState = getStoredUploadState();
-            if (storedState && storedState.uploadJobUid && storedState.lessonUid === '{{ lesson.uid }}') {
-                fetch('/api/video/status/' + storedState.uploadJobUid + '/')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.status === 'UPLOADING' || data.status === 'UPLOADED') {
-                        showRecoveryModal(storedState.uploadJobUid, data);
-                    } else {
-                        clearStoredUploadState();
-                    }
-                })
-                .catch(function() { clearStoredUploadState(); });
-            } else {
-                fetch('/api/video/active-uploads/')
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
-                    if (data.uploads && data.uploads.length > 0) {
-                        var upload = data.uploads[0];
-                        showRecoveryModal(upload.upload_job_uid, upload);
-                    }
-                })
-                .catch(function() {});
-            }
+            fetch('/api/video/active-uploads/')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.uploads && data.uploads.length > 0) {
+                    var upload = data.uploads[0];
+                    fetch('/api/video/status/' + upload.uid + '/')
+                    .then(function(r) { return r.json(); })
+                    .then(function(statusData) {
+                        showRecoveryModal(upload.uid, statusData);
+                    })
+                    .catch(function() {});
+                }
+            })
+            .catch(function() {});
 
             var idempotencyKey = uuidv4();
 
@@ -507,6 +574,7 @@
                 progressDetail.textContent = '';
 
                 try {
+                    const fileHash = await computeFileHash(file);
                     const initResp = await fetch('/api/video/init-youtube-edit/', {
                         method: 'POST',
                         headers: {
@@ -517,6 +585,7 @@
                             lesson_uid: '{{ lesson.uid }}',
                             file_size: fileSize,
                             idempotency_key: idempotencyKey,
+                            file_hash: fileHash,
                         })
                     });
 
@@ -543,15 +612,6 @@
 
                     currentUploadJobUid = uploadJobUid;
 
-                    setStoredUploadState({
-                        uploadJobUid: uploadJobUid,
-                        lessonUid: '{{ lesson.uid }}',
-                        uploadedBytes: 0,
-                        totalBytes: fileSize,
-                        timestamp: Date.now(),
-                        idempotencyKey: idempotencyKey,
-                    });
-
                     progressBar.style.width = '0%';
                     progressPercent.textContent = '0%';
                     progressText.textContent = 'Uploading 0%';
@@ -572,7 +632,7 @@
                                 progressBar.style.width = pct + '%';
                                 progressPercent.textContent = pct + '%';
                                 progressText.textContent = 'Uploading ' + pct + '%';
-                                progressDetail.textContent = formatSize(upBytes) + ' / ' + formatSize(totBytes) + ' (' + speed + ') ' + eta + ' | Chunk ' + chunksDone + ' / ' + chunksTotal;
+                                progressDetail.textContent = formatSize(upBytes) + ' / ' + formatSize(totBytes) + ' | ' + speed + ' | ' + eta + ' | Chunk ' + chunksDone + ' / ' + chunksTotal;
                             },
                             function(cancelFn) { cancelUploadCallback = cancelFn; }
                         ).then(function() { resolve(); }).catch(function(err) { reject(err); });
@@ -583,8 +643,7 @@
                         headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
                         body: JSON.stringify({
                             lesson_uid: '{{ lesson.uid }}',
-                            upload_job_uid: uploadJobUid,
-                            auto_recover: true,
+                            upload_job_uid: uploadJobUid
                         })
                     });
 
@@ -595,7 +654,6 @@
                     uploadPhase.textContent = '✅ Video uploaded! YouTube is processing...';
                     uploadPhase.classList.add('complete');
                     progressDetail.textContent = 'YouTube is now processing your video. This may take a few minutes.';
-                    clearStoredUploadState();
                     submitBtn.disabled = true;
                     submitBtn.textContent = 'Finalizing...';
 

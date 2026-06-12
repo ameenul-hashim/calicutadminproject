@@ -3,6 +3,8 @@ import logging
 import tempfile
 import time
 import requests
+import hashlib
+from datetime import datetime, timedelta, timezone
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseUpload
@@ -15,16 +17,16 @@ SCOPES = ['https://www.googleapis.com/auth/youtube']
 YOUTUBE_API_SERVICE_NAME = 'youtube'
 YOUTUBE_API_VERSION = 'v3'
 
+SESSION_IDLE_TIMEOUT_MINUTES = 55
+SESSION_TOTAL_TIMEOUT_HOURS = 23
 
-def get_authenticated_service():
+
+def _get_credentials():
     client_id = os.getenv('YOUTUBE_CLIENT_ID')
     client_secret = os.getenv('YOUTUBE_CLIENT_SECRET')
     refresh_token = os.getenv('YOUTUBE_REFRESH_TOKEN')
-
     if not all([client_id, client_secret, refresh_token]):
-        logger.warning("YouTube credentials not configured (YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, YOUTUBE_REFRESH_TOKEN)")
         return None
-
     try:
         creds = Credentials(
             token=None,
@@ -34,12 +36,29 @@ def get_authenticated_service():
             client_secret=client_secret,
             scopes=None
         )
-        if creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+        creds.refresh(Request())
+        return creds
+    except Exception as e:
+        logger.error(f"YouTube credential refresh error: {e}")
+        return None
+
+
+def get_authenticated_service():
+    creds = _get_credentials()
+    if not creds:
+        return None
+    try:
         return build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION, credentials=creds)
     except Exception as e:
-        logger.error(f"YouTube auth error: {e}")
+        logger.error(f"YouTube build error: {e}")
         return None
+
+
+def get_fresh_access_token():
+    creds = _get_credentials()
+    if not creds:
+        return None
+    return creds.token
 
 
 def upload_video(video_file, title, description, privacy_status='private'):
@@ -63,7 +82,7 @@ def upload_video(video_file, title, description, privacy_status='private'):
         body = {
             'snippet': {
                 'title': title[:100],
-                'description': (description or '')[ :5000],
+                'description': (description or '')[:5000],
             },
             'status': {
                 'privacyStatus': privacy_status,
@@ -134,105 +153,12 @@ def delete_youtube_video(video_id):
         raise
 
 
-def verify_youtube_video(video_id):
-    """
-    Verify a video is fully processed and playable on YouTube.
-    Uses YouTube Data API v3 with part=status,processingDetails to check
-    processingStatus, uploadStatus, privacyStatus, and embeddable.
-
-    Logs all status fields for debugging.
-    Returns True only when the video is fully processed and embeddable.
-    """
-    if not video_id:
-        return False
-    try:
-        youtube = get_authenticated_service()
-        if not youtube:
-            logger.warning(f"YouTube service unavailable — cannot verify video {video_id}")
-            return False
-
-        request = youtube.videos().list(part='status,processingDetails', id=video_id)
-        response = request.execute()
-        items = response.get('items', [])
-        if not items:
-            logger.info(f"verify_youtube_video: {video_id} — no items returned (video may not exist)")
-            return False
-
-        item = items[0]
-        status = item.get('status', {})
-        processing = item.get('processingDetails', {})
-
-        upload_status = status.get('uploadStatus', 'unknown')
-        privacy_status = status.get('privacyStatus', 'unknown')
-        embeddable = status.get('embeddable', False)
-        processing_status = processing.get('processingStatus', 'unknown')
-        failure_reason = processing.get('processingFailureReason', '')
-
-        logger.info(
-            f"YouTube video {video_id} status: "
-            f"uploadStatus={upload_status}, "
-            f"processingStatus={processing_status}, "
-            f"privacyStatus={privacy_status}, "
-            f"embeddable={embeddable}"
-            f"{', failureReason=' + failure_reason if failure_reason else ''}"
-        )
-
-        if upload_status in ('rejected', 'failed'):
-            logger.warning(f"YouTube video {video_id} upload failed: {upload_status} {failure_reason}")
-            return False
-
-        if processing_status == 'failed':
-            logger.warning(f"YouTube video {video_id} processing failed: {failure_reason}")
-            return False
-
-        if not embeddable:
-            logger.warning(f"YouTube video {video_id} is not embeddable")
-            return False
-
-        if upload_status == 'uploaded' and processing_status == 'succeeded':
-            return True
-
-        # If processing is still running but video exists, treat as not ready yet
-        logger.info(f"YouTube video {video_id} not yet ready — will retry on next check")
-        return False
-
-    except Exception as e:
-        logger.error(f"YouTube verification error for {video_id}: {e}")
-        return False
-
-
 def create_resumable_upload_url(title, description, file_size=None):
-    """
-    Creates a YouTube resumable upload session and returns the upload URL.
-    The browser uploads the file directly to this URL — no server RAM used.
-    Returns {'upload_url': ..., 'access_token': ...} on success,
-    or {'error': '...'} on failure with a specific message.
-    """
-    from google.auth.transport.requests import Request as GoogleRequest
-    client_id = os.getenv('YOUTUBE_CLIENT_ID')
-    client_secret = os.getenv('YOUTUBE_CLIENT_SECRET')
-    refresh_token = os.getenv('YOUTUBE_REFRESH_TOKEN')
-
-    if not all([client_id, client_secret, refresh_token]):
-        logger.warning("YouTube credentials not configured")
-        return {'error': 'YouTube API credentials not configured. Contact admin to set up YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET, and YOUTUBE_REFRESH_TOKEN.'}
+    creds = _get_credentials()
+    if not creds:
+        return {'error': 'YouTube API credentials not configured or expired. Contact admin.'}
 
     try:
-        creds = Credentials(
-            token=None,
-            refresh_token=refresh_token,
-            token_uri='https://oauth2.googleapis.com/token',
-            client_id=client_id,
-            client_secret=client_secret,
-            scopes=None
-        )
-
-        try:
-            creds.refresh(GoogleRequest())
-        except Exception as auth_err:
-            logger.error(f"YouTube auth refresh failed: {auth_err}")
-            return {'error': 'YouTube API credentials expired or invalid. Contact admin to re-authenticate with Google.'}
-
         url = 'https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status'
         headers = {
             'Authorization': f'Bearer {creds.token}',
@@ -292,21 +218,180 @@ def create_resumable_upload_url(title, description, file_size=None):
         return {'error': f'YouTube upload initialization failed unexpectedly: {str(e)}'}
 
 
+def query_uploaded_bytes(upload_url, access_token, total_bytes):
+    try:
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Length': '0',
+            'Content-Range': f'bytes */{total_bytes}',
+        }
+        resp = requests.put(upload_url, headers=headers, timeout=30)
+        if resp.status_code == 308:
+            range_header = resp.headers.get('Range', '')
+            if range_header:
+                match = __import__('re').match(r'bytes=0-(\d+)', range_header)
+                if match:
+                    return int(match.group(1)) + 1
+            return 0
+        elif resp.status_code in (200, 201):
+            return -1
+        elif resp.status_code == 404 or resp.status_code == 410:
+            return -2
+        else:
+            logger.warning(f"query_uploaded_bytes: unexpected status {resp.status_code}")
+            return 0
+    except requests.exceptions.Timeout:
+        logger.warning("query_uploaded_bytes: timeout")
+        return -3
+    except Exception as e:
+        logger.error(f"query_uploaded_bytes error: {e}")
+        return -3
+
+
+def verify_youtube_video(video_id):
+    if not video_id:
+        return False
+    try:
+        youtube = get_authenticated_service()
+        if not youtube:
+            return False
+        request = youtube.videos().list(part='status,processingDetails', id=video_id)
+        response = request.execute()
+        items = response.get('items', [])
+        if not items:
+            return False
+        item = items[0]
+        status = item.get('status', {})
+        processing = item.get('processingDetails', {})
+        upload_status = status.get('uploadStatus', 'unknown')
+        privacy_status = status.get('privacyStatus', 'unknown')
+        embeddable = status.get('embeddable', False)
+        processing_status = processing.get('processingStatus', 'unknown')
+        failure_reason = processing.get('processingFailureReason', '')
+
+        logger.info(
+            f"YouTube video {video_id} status: uploadStatus={upload_status}, "
+            f"processingStatus={processing_status}, privacyStatus={privacy_status}, "
+            f"embeddable={embeddable}"
+            f"{', failureReason=' + failure_reason if failure_reason else ''}"
+        )
+
+        if upload_status in ('rejected', 'failed'):
+            return False
+        if processing_status == 'failed':
+            return False
+        if not embeddable:
+            return False
+        if upload_status == 'uploaded' and processing_status == 'succeeded':
+            return True
+        return False
+    except Exception as e:
+        logger.error(f"YouTube verification error for {video_id}: {e}")
+        return False
+
+
+def get_processing_details(video_id):
+    if not video_id:
+        return {'error': 'No video_id'}
+    try:
+        youtube = get_authenticated_service()
+        if not youtube:
+            return {'error': 'YouTube service unavailable'}
+        request = youtube.videos().list(part='status,processingDetails,snippet', id=video_id)
+        response = request.execute()
+        items = response.get('items', [])
+        if not items:
+            return {'error': 'Video not found'}
+        item = items[0]
+        status = item.get('status', {})
+        processing = item.get('processingDetails', {})
+        snippet = item.get('snippet', {})
+        upload_status = status.get('uploadStatus', 'unknown')
+        processing_status = processing.get('processingStatus', 'unknown')
+        failure_reason = processing.get('processingFailureReason', '')
+        embeddable = status.get('embeddable', False)
+        privacy_status = status.get('privacyStatus', 'unknown')
+        thumbnails = snippet.get('thumbnails', {})
+        has_thumbnail = 'default' in thumbnails if thumbnails else False
+
+        result = {
+            'video_id': video_id,
+            'upload_status': upload_status,
+            'processing_status': processing_status,
+            'embeddable': embeddable,
+            'privacy_status': privacy_status,
+            'has_thumbnail': has_thumbnail,
+            'failure_reason': failure_reason,
+            'title': snippet.get('title', ''),
+        }
+
+        if processing_status == 'succeeded' and upload_status == 'uploaded':
+            result['ready'] = True
+        elif processing_status == 'failed':
+            result['ready'] = False
+            result['error'] = f'Processing failed: {failure_reason}'
+        elif upload_status == 'uploaded':
+            result['ready'] = False
+            result['error'] = 'still_processing'
+        else:
+            result['ready'] = False
+            result['error'] = f'Upload status: {upload_status}'
+
+        return result
+    except Exception as e:
+        logger.error(f"get_processing_details error: {e}")
+        return {'error': str(e)}
+
+
+def verify_youtube_processing_status(video_id):
+    if not video_id:
+        return 'FAILED'
+    try:
+        youtube = get_authenticated_service()
+        if not youtube:
+            return 'PENDING'
+        request = youtube.videos().list(part='status,processingDetails', id=video_id)
+        response = request.execute()
+        items = response.get('items', [])
+        if not items:
+            return 'FAILED'
+        item = items[0]
+        status = item.get('status', {})
+        processing = item.get('processingDetails', {})
+        upload_status = status.get('uploadStatus', 'unknown')
+        processing_status = processing.get('processingStatus', 'unknown')
+        failure_reason = processing.get('processingFailureReason', '')
+        embeddable = status.get('embeddable', False)
+
+        if upload_status in ('rejected', 'failed') or processing_status == 'failed':
+            logger.warning(f"verify_youtube_processing_status: {video_id} failed: {failure_reason}")
+            return 'FAILED'
+        if processing_status == 'processing' or (upload_status == 'uploaded' and processing_status != 'succeeded'):
+            return 'PROCESSING'
+        if processing_status == 'succeeded' and upload_status == 'uploaded' and embeddable:
+            return 'VERIFIED'
+        return 'PROCESSING'
+    except Exception as e:
+        logger.error(f"verify_youtube_processing_status error: {e}")
+        return 'PENDING'
+
+
+def renew_upload_session(title, description, file_size=None):
+    return create_resumable_upload_url(title, description, file_size)
+
+
+def compute_file_hash_first_5mb(file_obj):
+    hasher = hashlib.sha256()
+    chunk = file_obj.read(5242880)
+    hasher.update(chunk)
+    file_obj.seek(0)
+    return hasher.hexdigest()
+
+
 def find_latest_youtube_upload(lesson_title=None, minutes_back=30):
-    """
-    Find the most recent video uploaded to the authenticated YouTube channel.
-    Used for auto-recovery when browser XHR error fires after >=90% progress
-    and the video_id response is lost.
-    Searches by title match first, falls back to most recent upload.
-    Only considers videos uploaded within minutes_back minutes.
-    Called at most once per upload — no polling.
-    """
     youtube = get_authenticated_service()
     if not youtube:
-        logger.warning("find_latest_youtube_upload: YouTube service unavailable")
         return None
-
-    from datetime import datetime, timedelta
 
     try:
         search_response = youtube.search().list(
@@ -319,7 +404,6 @@ def find_latest_youtube_upload(lesson_title=None, minutes_back=30):
 
         items = search_response.get('items', [])
         if not items:
-            logger.info("find_latest_youtube_upload: No videos found")
             return None
 
         cutoff = datetime.utcnow() - timedelta(minutes=minutes_back)
@@ -342,19 +426,83 @@ def find_latest_youtube_upload(lesson_title=None, minutes_back=30):
 
             item_title = snippet.get('title', '')
             if lesson_title and lesson_title.lower() in item_title.lower():
-                logger.info(f"find_latest_youtube_upload: Title match → {video_id} ('{item_title}')")
+                logger.info(f"find_latest_youtube_upload: Title match -> {video_id}")
                 return video_id
 
             if best_match is None or published_utc > best_match['published']:
                 best_match = {'video_id': video_id, 'published': published_utc, 'title': item_title}
 
         if best_match:
-            logger.info(f"find_latest_youtube_upload: Using most recent → {best_match['video_id']} ('{best_match['title']}')")
+            logger.info(f"find_latest_youtube_upload: Using most recent -> {best_match['video_id']}")
             return best_match['video_id']
 
-        logger.info("find_latest_youtube_upload: No videos found within time window")
         return None
-
     except Exception as e:
         logger.error(f"find_latest_youtube_upload error: {e}")
         return None
+
+
+def get_video_thumbnail_status(video_id):
+    """Check if YouTube thumbnail is available for a video."""
+    if not video_id:
+        return {'has_thumbnail': False, 'thumbnail_url': ''}
+    try:
+        youtube = get_authenticated_service()
+        if not youtube:
+            return {'has_thumbnail': False, 'thumbnail_url': ''}
+        request = youtube.videos().list(part='snippet', id=video_id)
+        response = request.execute()
+        items = response.get('items', [])
+        if not items:
+            return {'has_thumbnail': False, 'thumbnail_url': ''}
+        thumbnails = items[0].get('snippet', {}).get('thumbnails', {})
+        has_thumb = 'default' in thumbnails
+        url = ''
+        if has_thumb:
+            url = thumbnails.get('high', thumbnails.get('default', {})).get('url', '')
+        return {'has_thumbnail': has_thumb, 'thumbnail_url': url}
+    except Exception as e:
+        logger.error(f"get_video_thumbnail_status error: {e}")
+        return {'has_thumbnail': False, 'thumbnail_url': ''}
+
+
+def check_upload_session_valid(upload_url, access_token):
+    """Check if a YouTube resumable upload session is still valid."""
+    if not upload_url or not access_token:
+        return False
+    try:
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Length': '0',
+            'Content-Range': 'bytes */0',
+        }
+        resp = requests.put(upload_url, headers=headers, timeout=15)
+        if resp.status_code in (200, 201, 308):
+            return True
+        if resp.status_code in (404, 410):
+            return False
+        if resp.status_code in (401, 403):
+            return False
+        return True
+    except Exception as e:
+        logger.warning(f"check_upload_session_valid error: {e}")
+        return False
+
+
+def get_video_embed_html(video_id, width=560, height=315):
+    """Generate embed HTML for a YouTube video that is still processing.
+    Shows 'Processing...' overlay instead of broken thumbnail."""
+    if not video_id:
+        return '<div class="video-processing">No video</div>'
+    return (
+        f'<div style="position:relative;width:{width}px;height:{height}px;background:#1a1a2e;'
+        f'border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;">'
+        f'<iframe src="https://www.youtube.com/embed/{video_id}?autoplay=0" '
+        f'width="{width}" height="{height}" frameborder="0" '
+        f'allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture" '
+        f'allowfullscreen style="opacity:0;position:absolute;top:0;left:0;"></iframe>'
+        f'<div style="color:#94a3b8;font-size:1.1rem;font-weight:500;text-align:center;z-index:1;">'
+        f'<div style="font-size:2rem;margin-bottom:0.5rem;">⏳</div>'
+        f'Processing...<br><span style="font-size:0.85rem;color:#64748b;">Video will appear shortly</span>'
+        f'</div></div>'
+    )

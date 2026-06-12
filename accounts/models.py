@@ -186,6 +186,8 @@ class Lesson(models.Model):
         ('FAILED', 'Failed'),
     )
     upload_status = models.CharField(max_length=20, choices=UPLOAD_STATUS_CHOICES, default='NOT_UPLOADED', db_index=True)
+    processing_verified_at = models.DateTimeField(null=True, blank=True)
+    processing_retry_count = models.PositiveIntegerField(default=0)
     file_size = models.PositiveBigIntegerField(default=0, help_text="Video file size in bytes")
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -483,8 +485,12 @@ class UploadJob(models.Model):
         ('PENDING', 'Pending'),
         ('UPLOADING', 'Uploading'),
         ('UPLOADED', 'Uploaded to YouTube'),
+        ('YOUTUBE_PROCESSING', 'YouTube Processing'),
         ('PROCESSING', 'Processing on YouTube'),
+        ('SUCCEEDED', 'YouTube Processing Succeeded'),
         ('COMPLETED', 'Completed'),
+        ('READY', 'Ready'),
+        ('PUBLISHED', 'Published'),
         ('FAILED', 'Failed'),
         ('CANCELLED', 'Cancelled'),
     )
@@ -509,6 +515,15 @@ class UploadJob(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
+    mime_type = models.CharField(max_length=100, blank=True, default='video/mp4')
+    chunk_size = models.PositiveIntegerField(default=5242880, help_text="Chunk size in bytes (default 5MB)")
+    file_hash_first_5mb = models.CharField(max_length=64, blank=True, default='', help_text="SHA256 of first 5MB for resume verification")
+    processing_status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('PROCESSING', 'Processing'), ('VERIFIED', 'Verified'), ('FAILED', 'Failed')], default='PENDING', db_index=True)
+    processing_verified_at = models.DateTimeField(null=True, blank=True)
+    processing_retry_count = models.PositiveIntegerField(default=0)
+    session_created_at = models.DateTimeField(null=True, blank=True, help_text="When the YouTube resumable session was created")
+    session_expires_at = models.DateTimeField(null=True, blank=True, help_text="When the YouTube session is expected to expire")
+    source_ip = models.GenericIPAddressField(null=True, blank=True)
     client_ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.TextField(blank=True, default='')
 
@@ -517,6 +532,46 @@ class UploadJob(models.Model):
 
     def __str__(self):
         return f"UploadJob {self.uid} - {self.title} ({self.get_status_display()})"
+
+
+class UploadAuditEvent(models.Model):
+    EVENT_TYPES = (
+        ('UPLOAD_STARTED', 'Upload Started'),
+        ('CHUNK_UPLOADED', 'Chunk Uploaded'),
+        ('PAUSED', 'Paused'),
+        ('RESUMED', 'Resumed'),
+        ('CANCELLED', 'Cancelled'),
+        ('RETRY', 'Retry'),
+        ('SESSION_RENEWED', 'Session Renewed'),
+        ('SESSION_EXPIRED', 'Session Expired'),
+        ('UPLOAD_COMPLETED', 'Upload Completed'),
+        ('PROCESSING', 'Processing'),
+        ('PROCESSING_VERIFIED', 'Processing Verified'),
+        ('READY', 'Ready'),
+        ('FAILED', 'Failed'),
+        ('DELETED', 'Deleted'),
+        ('RESTORED', 'Restored'),
+        ('CLEANUP', 'Cleanup'),
+        ('QUERY_RESUMED', 'Query Resumed'),
+        ('NETWORK_LOST', 'Network Lost'),
+        ('NETWORK_RESTORED', 'Network Restored'),
+    )
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    upload_job = models.ForeignKey(UploadJob, on_delete=models.CASCADE, related_name='audit_events')
+    event_type = models.CharField(max_length=30, choices=EVENT_TYPES, db_index=True)
+    details = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['upload_job', '-timestamp']),
+            models.Index(fields=['event_type', '-timestamp']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_event_type_display()} - {self.upload_job.uid} at {self.timestamp}"
 
 
 class BackupLog(models.Model):
