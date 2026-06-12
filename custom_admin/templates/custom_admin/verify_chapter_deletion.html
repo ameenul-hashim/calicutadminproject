@@ -1,0 +1,460 @@
+{% extends 'custom_admin/base_admin.html' %}
+{% load static %}
+
+{% block title %}Verify Chapter Deletion | Admin{% endblock %}
+
+{% block header_title %}
+    <h1>Verify Chapter Deletion Request</h1>
+    <p style="color: #64748b;">Review the full chapter contents before approving or rejecting the deletion request.</p>
+{% endblock %}
+
+{% block content %}
+<style>
+    .vcd-card {
+        background: white;
+        border-radius: 1rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    .vcd-card-header {
+        padding: 1.25rem 1.5rem;
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        font-weight: 700;
+        font-size: 1rem;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .vcd-card-body {
+        padding: 1.5rem;
+    }
+    .summary-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.75rem;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    .summary-badge .num {
+        font-size: 1.5rem;
+        color: #1e293b;
+    }
+    .summary-badge .label {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+    .lesson-card {
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    .lesson-card-header {
+        padding: 1rem 1.25rem;
+        background: white;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        user-select: none;
+        transition: background 0.2s;
+    }
+    .lesson-card-header:hover {
+        background: #f1f5f9;
+    }
+    .lesson-card-body {
+        padding: 1rem 1.25rem;
+        display: none;
+    }
+    .lesson-card-body.open {
+        display: block;
+    }
+    .sub-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: 0.5rem;
+        background: white;
+        border: 1px solid #f1f5f9;
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+    }
+    .sub-item:last-child {
+        margin-bottom: 0;
+    }
+    .sub-item .file-type {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 0.2rem 0.5rem;
+        border-radius: 0.3rem;
+        background: #eef2ff;
+        color: #4f46e5;
+    }
+    .warning-box {
+        background: #fef2f2;
+        border: 2px solid #fecaca;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        margin-bottom: 1.5rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    .warning-box .icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+    .warning-box .text {
+        color: #991b1b;
+        font-size: 0.9rem;
+    }
+    .warning-box .text strong {
+        display: block;
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    .info-row {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.5rem 0;
+        font-size: 0.9rem;
+    }
+    .info-row .label {
+        font-weight: 600;
+        color: #1e293b;
+        min-width: 7rem;
+        flex-shrink: 0;
+    }
+    .info-row .value {
+        color: #475569;
+    }
+    .action-bar {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e2e8f0;
+    }
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: #64748b;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 0.5rem 0;
+    }
+    .back-link:hover {
+        color: #1e293b;
+    }
+    @media (max-width: 768px) {
+        .info-row {
+            flex-direction: column;
+            gap: 0.2rem;
+            padding: 0.4rem 0;
+        }
+        .info-row .label {
+            min-width: auto;
+        }
+        .action-bar {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<div style="max-width: 900px; margin: 0 auto;">
+
+<div style="margin-bottom: 1rem;">
+    <a href="{% url 'manage_deletion_requests' %}" class="back-link">&larr; Back to Deletion Requests</a>
+</div>
+
+<!-- WARNING BANNER -->
+<div class="warning-box">
+    <div class="icon">&#x26A0;&#xFE0F;</div>
+    <div class="text">
+        <strong>WARNING</strong>
+        Approving this request will permanently delete:
+        <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+            <li>All lessons inside this chapter</li>
+            <li>All uploaded resources</li>
+            <li>All uploaded videos</li>
+            <li>All associated content</li>
+        </ul>
+        <strong>This action cannot be undone.</strong>
+    </div>
+</div>
+
+<!-- CHAPTER INFO -->
+<div class="vcd-card">
+    <div class="vcd-card-header">
+        <span>&#x1F4C1;</span> Chapter Information
+    </div>
+    <div class="vcd-card-body">
+        <div class="info-row">
+            <span class="label">Chapter Title</span>
+            <span class="value">{{ chapter_name }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Subject / Course</span>
+            <span class="value">{{ course.title }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Teacher</span>
+            <span class="value">{{ del_request.teacher.full_name|default:del_request.teacher.username }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Description</span>
+            <span class="value">{{ course.description|truncatechars:200|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Created Date</span>
+            <span class="value">{{ course.created_at|date:"F d, Y" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Deletion Reason</span>
+            <span class="value">{{ del_request.reason|default:"—" }}</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Requested By</span>
+            <span class="value">{{ del_request.teacher.full_name|default:del_request.teacher.username }} ({{ del_request.teacher.email }})</span>
+        </div>
+        <div class="info-row">
+            <span class="label">Requested At</span>
+            <span class="value">{{ del_request.created_at|date:"M d, Y h:i A" }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- CONTENT SUMMARY -->
+<div class="vcd-card">
+    <div class="vcd-card-header">
+        <span>&#x1F4CA;</span> Content Summary
+    </div>
+    <div class="vcd-card-body">
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <div class="summary-badge">
+                <span class="num">{{ lesson_count }}</span>
+                <span class="label">Lesson{% if lesson_count != 1 %}s{% endif %}</span>
+            </div>
+            <div class="summary-badge">
+                <span class="num">{{ resource_count }}</span>
+                <span class="label">Resource{% if resource_count != 1 %}s{% endif %}</span>
+            </div>
+            <div class="summary-badge">
+                <span class="num">{{ lessons_with_video_count|default:0 }}</span>
+                <span class="label">Video{% if lessons_with_video_count != 1 %}s{% endif %}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LESSONS SECTION -->
+<div class="vcd-card">
+    <div class="vcd-card-header">
+        <span>&#x1F3AC;</span> Lessons
+        <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 400;">({{ lesson_count }})</span>
+    </div>
+    <div class="vcd-card-body">
+        {% for lesson in lessons %}
+        <div class="lesson-card">
+            <div class="lesson-card-header" onclick="this.nextElementSibling.classList.toggle('open'); this.querySelector('.chevron').classList.toggle('rotated');">
+                <span style="font-size: 1.1rem;">&#x1F3AC;</span>
+                <div style="flex: 1;">
+                    <div style="font-weight: 700; color: #1e293b;">
+                        Lesson {{ lesson.order }}: {{ lesson.title }}
+                    </div>
+                    <div style="font-size: 0.75rem; color: #94a3b8;">
+                        Status: {{ lesson.status }}
+                        {% if lesson.youtube_video_id %}&middot; YouTube Video{% endif %}
+                        {% if lesson.video_file %}&middot; Uploaded Video{% endif %}
+                    </div>
+                </div>
+                <span class="chevron" style="font-size: 0.8rem; color: #94a3b8; transition: transform 0.2s;">&#x25BC;</span>
+            </div>
+            <div class="lesson-card-body">
+                {% if lesson.video_url or lesson.video_file or lesson.youtube_video_id %}
+                <div style="font-size: 0.8rem; font-weight: 700; color: #64748b; margin-bottom: 0.5rem;">&#x1F4F9; Video</div>
+                <div class="sub-item">
+                    <span style="font-size: 1rem;">&#x1F4F9;</span>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600;">{{ lesson.title }}</div>
+                        <div style="font-size: 0.75rem; color: #94a3b8;">
+                            {% if lesson.youtube_video_id %}YouTube Video{% endif %}
+                            {% if lesson.video_file %}Uploaded File{% endif %}
+                            {% if lesson.video_url and not lesson.youtube_video_id %}External Link{% endif %}
+                        </div>
+                    </div>
+                    {% if lesson.file_size %}
+                    <span class="file-type">{{ lesson.file_size|filesizeformat }}</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <div style="color: #94a3b8; font-size: 0.85rem; padding: 0.5rem 0;">No video for this lesson.</div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">&#x1F3AC;</div>
+            No lessons in this chapter.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- RESOURCES SECTION -->
+<div class="vcd-card">
+    <div class="vcd-card-header">
+        <span>&#x1F4C4;</span> All Resources
+        <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 400;">({{ resource_count }})</span>
+    </div>
+    <div class="vcd-card-body">
+        {% for res in resources %}
+        <div class="sub-item">
+            <span style="font-size: 1rem;">&#x1F4C4;</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 600;">{{ res.title }}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">
+                    {{ res.get_category_display }}
+                    {% if res.chapter %} &middot; Chapter: {{ res.chapter }}{% endif %}
+                </div>
+            </div>
+            <span class="file-type">{{ res.resource_type }}</span>
+            {% if res.original_size %}
+            <span class="file-type">{{ res.original_size|filesizeformat }}</span>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">&#x1F4C4;</div>
+            No resources in this chapter.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- VIDEOS SECTION -->
+<div class="vcd-card">
+    <div class="vcd-card-header">
+        <span>&#x1F4F9;</span> Videos
+        <span style="font-size: 0.8rem; color: #94a3b8; font-weight: 400;">({{ lessons_with_video_count|default:0 }})</span>
+    </div>
+    <div class="vcd-card-body">
+        {% for lesson in lessons %}
+        {% if lesson.video_url or lesson.video_file or lesson.youtube_video_id %}
+        <div class="sub-item">
+            <span style="font-size: 1rem;">&#x1F4F9;</span>
+            <div style="flex: 1;">
+                <div style="font-weight: 600;">{{ lesson.title }}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8;">
+                    {% if lesson.youtube_video_id %}YouTube Video{% endif %}
+                    {% if lesson.video_file %}Uploaded File{% endif %}
+                    {% if lesson.video_url and not lesson.youtube_video_id %}External Link{% endif %}
+                </div>
+            </div>
+            {% if lesson.file_size %}
+            <span class="file-type">{{ lesson.file_size|filesizeformat }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% empty %}
+        <div style="text-align: center; padding: 2rem; color: #94a3b8;">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">&#x1F4F9;</div>
+            No videos in this chapter.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ACTION BAR -->
+<div class="action-bar">
+    <button onclick="openApproveModal()" style="flex: 1; background: #ef4444; color: white; border: none; padding: 1rem 1.5rem; border-radius: 0.75rem; font-weight: 700; font-size: 1rem; cursor: pointer; min-width: 200px;">
+        Approve Delete &#x1F5D1;&#xFE0F;
+    </button>
+    <button onclick="showRejectForm()" style="flex: 1; background: #f1f5f9; color: #475569; border: 2px solid #e2e8f0; padding: 1rem 1.5rem; border-radius: 0.75rem; font-weight: 700; font-size: 1rem; cursor: pointer; min-width: 200px;">
+        Reject Request
+    </button>
+    <a href="{% url 'manage_deletion_requests' %}" style="flex: 0; background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 1rem 1.5rem; border-radius: 0.75rem; font-weight: 600; font-size: 1rem; cursor: pointer; text-decoration: none; text-align: center; min-width: 120px;">
+        Cancel
+    </a>
+</div>
+
+<!-- REJECT FORM (inline) -->
+<div id="rejectForm" style="display:none; margin-top: 1.5rem; background: white; border-radius: 1rem; border: 2px solid #fecaca; padding: 1.5rem;">
+    <h3 style="margin: 0 0 0.5rem; color: #dc2626;">Reject Chapter Deletion</h3>
+    <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1.5rem;">
+        Reject deletion of chapter: <strong>{{ chapter_name }}</strong>
+    </p>
+    <form method="POST" action="{% url 'reject_deletion_request' del_request.uid %}">
+        {% csrf_token %}
+        <div style="margin-bottom: 1rem;">
+            <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Reject Reason <span style="color: #dc2626;">*</span></label>
+            <textarea name="admin_feedback" rows="4" style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; resize: vertical; box-sizing: border-box; font-size: 0.9rem;" placeholder="Enter the reason for rejecting this chapter deletion request." required></textarea>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Confirm Admin Username</label>
+            <input type="text" name="admin_username" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; box-sizing: border-box;" placeholder="Enter your admin username">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Confirm Admin Password</label>
+            <input type="password" name="admin_password" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; font-family: inherit; box-sizing: border-box;" placeholder="Enter your password to confirm">
+        </div>
+        <div style="display: flex; gap: 1rem;">
+            <button type="submit" style="flex: 1; background: #ef4444; color: white; border: none; padding: 0.8rem; border-radius: 0.75rem; font-weight: 700; font-size: 0.9rem; cursor: pointer;">Submit Rejection</button>
+            <button type="button" onclick="hideRejectForm()" style="flex: 1; background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 0.8rem; border-radius: 0.75rem; font-weight: 600; font-size: 0.9rem; cursor: pointer;">Cancel</button>
+        </div>
+    </form>
+</div>
+
+<!-- Approve Modal (reuses the same modal pattern) -->
+<div id="approveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:white; border-radius:1.5rem; padding:2rem; max-width:480px; width:90%; box-shadow: 0 25px 50px rgba(0,0,0,0.3);">
+        <h3 style="margin:0 0 0.5rem; color:#1e293b;">Approve Chapter Deletion</h3>
+        <p style="color:#64748b; font-size:0.9rem; margin-bottom:1.5rem;">
+            Approve permanent deletion of chapter: <strong id="approveItemName"></strong><br>
+            <span style="color:#ef4444; font-weight: 700;">WARNING: This will permanently delete all lessons, resources, and videos in this chapter. This action cannot be undone.</span>
+        </p>
+        <form id="approveForm" method="POST" action="">
+            {% csrf_token %}
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Username</label>
+                <input type="text" name="admin_username" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your admin username">
+            </div>
+            <div style="margin-bottom:1rem;">
+                <label style="font-weight:600; font-size:0.9rem; display:block; margin-bottom:0.5rem;">Confirm Admin Password</label>
+                <input type="password" name="admin_password" required style="width:100%; padding:0.75rem; border:1px solid #e2e8f0; border-radius:0.75rem; font-family:inherit; box-sizing:border-box;" placeholder="Enter your password to confirm">
+            </div>
+            <div style="display:flex; gap:1rem;">
+                <button type="submit" style="flex:1; background:#ef4444; color:white; border:none; padding:0.8rem; border-radius:0.75rem; font-weight:700; cursor:pointer;">Approve & Permanently Delete</button>
+                <button type="button" onclick="closeApproveModal()" style="flex:1; background:#f1f5f9; color:#64748b; border:1px solid #e2e8f0; padding:0.8rem; border-radius:0.75rem; font-weight:600; cursor:pointer;">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+</div>
+
+<script>
+var approveUrl = "{% url 'approve_deletion_request' del_request.uid %}";
+function openApproveModal() {
+    document.getElementById('approveItemName').textContent = "{{ chapter_name|escapejs }}";
+    document.getElementById('approveForm').action = approveUrl;
+    document.getElementById('approveModal').style.display = 'flex';
+}
+function closeApproveModal() { document.getElementById('approveModal').style.display = 'none'; }
+function showRejectForm() { document.getElementById('rejectForm').style.display = 'block'; }
+function hideRejectForm() { document.getElementById('rejectForm').style.display = 'none'; }
+</script>
+{% endblock %}

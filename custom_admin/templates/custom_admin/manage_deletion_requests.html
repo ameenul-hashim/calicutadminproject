@@ -90,7 +90,11 @@
                     <td style="color: #64748b;">{{ req.created_at|date:"M d, Y" }}</td>
                     <td>
                         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            {% if req.item_type == 'Chapter' %}
+                            <a href="{% url 'verify_chapter_deletion' req.uid %}" class="view-btn" style="background: #eef2ff; color: #4f46e5; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">View Content</a>
+                            {% else %}
                             <a href="{% url 'verify_deletion_request' req.uid %}" class="view-btn" style="background: #eef2ff; color: #4f46e5; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem;">View Content</a>
+                            {% endif %}
                             <button onclick="openApproveModal('{{ req.uid }}', '{{ req.item_name|escapejs }}')" class="view-btn" style="background: #10b981; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer;">Approve Delete</button>
                             <button onclick="openRejectModal('{{ req.uid }}', '{{ req.item_name|escapejs }}')" class="view-btn" style="background: #ef4444; color: white; border: none; padding: 0.4rem 0.8rem; font-size: 0.8rem; cursor: pointer;">Reject</button>
                         </div>

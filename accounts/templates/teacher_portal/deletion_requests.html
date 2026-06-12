@@ -99,8 +99,26 @@
             <span>{{ dr.reason }}</span>
         </div>
         {% endif %}
+        {% if dr.status == 'REJECTED' and dr.admin_feedback %}
         <div class="info-row">
-            <strong>Requested:</strong>
+            <strong>Reject Reason:</strong>
+            <span style="color: #dc2626;">{{ dr.admin_feedback }}</span>
+        </div>
+        {% endif %}
+        {% if dr.reviewed_by %}
+        <div class="info-row">
+            <strong>Reviewed By:</strong>
+            <span>{{ dr.reviewed_by.full_name|default:dr.reviewed_by.username }}</span>
+        </div>
+        {% endif %}
+        {% if dr.reviewed_at %}
+        <div class="info-row">
+            <strong>Reviewed At:</strong>
+            <span>{{ dr.reviewed_at|date:"M d, Y h:i A" }}</span>
+        </div>
+        {% endif %}
+        <div class="info-row">
+            <strong>Submitted:</strong>
             <span>{{ dr.created_at|date:"M d, Y h:i A" }}</span>
         </div>
     </div>
@@ -110,7 +128,7 @@
 <div style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 1.25rem; border: 1px solid #e2e8f0;">
     <div style="font-size: 3rem; margin-bottom: 1rem;">&#x2705;</div>
     <h3 style="margin: 0 0 0.5rem; color: #1e293b;">All Requests Processed</h3>
-    <p style="color: #94a3b8; margin: 0;">Processed deletion request results are shown in your Notifications.</p>
+    <p style="color: #94a3b8; margin: 0;">You have no deletion requests. Processed request results appear here with status and feedback.</p>
 </div>
 {% endif %}
 {% endblock %}

@@ -1828,6 +1828,39 @@ def verify_deletion_request(request, request_uid):
     return redirect('manage_deletion_requests')
 
 @user_passes_test(is_admin, login_url='admin_login')
+def verify_chapter_deletion(request, request_uid):
+    del_request = get_object_or_404(DeletionRequest, uid=request_uid)
+    if del_request.item_type != 'Chapter':
+        messages.error(request, "This verification page is only for chapter deletion requests.")
+        return redirect('manage_deletion_requests')
+    if del_request.status != 'PENDING':
+        messages.error(request, "This request has already been processed.")
+        return redirect('manage_deletion_requests')
+
+    course = Course.objects.filter(id=del_request.item_id).first()
+    if not course:
+        messages.error(request, "The course for this chapter no longer exists.")
+        return redirect('manage_deletion_requests')
+
+    chapter_name = del_request.item_name
+    lessons = course.lessons.filter(chapter=chapter_name).order_by('order')
+    resources = course.resources.filter(chapter=chapter_name, is_deleted=False)
+    lesson_count = lessons.count()
+    resource_count = resources.count()
+    lessons_with_video_count = sum(1 for l in lessons if l.video_url or l.video_file or l.youtube_video_id)
+
+    return render(request, 'custom_admin/verify_chapter_deletion.html', {
+        'del_request': del_request,
+        'course': course,
+        'chapter_name': chapter_name,
+        'lessons': lessons,
+        'lesson_count': lesson_count,
+        'resources': resources,
+        'resource_count': resource_count,
+        'lessons_with_video_count': lessons_with_video_count,
+    })
+
+@user_passes_test(is_admin, login_url='admin_login')
 @require_POST
 def approve_deletion_request(request, request_uid):
     del_request = get_object_or_404(DeletionRequest, uid=request_uid)
@@ -1933,7 +1966,7 @@ def approve_deletion_request(request, request_uid):
         else:
             messages.warning(request, "The course for this chapter no longer exists.")
 
-    # Delete the DeletionRequest — no history saved
+    # Delete the DeletionRequest
     del_request.delete()
     from accounts.models import Notification
     Notification.objects.create(
@@ -1965,6 +1998,8 @@ def reject_deletion_request(request, request_uid):
         messages.error(request, "Admin credentials verification failed. Please enter your admin username and password.")
         return redirect('manage_deletion_requests')
     
+    reject_reason = request.POST.get('admin_feedback', '').strip() or 'No reason provided.'
+
     # If it's a Resource deletion request, restore the resource status to APPROVED
     if del_request.item_type == 'Resource':
         from accounts.models import CourseResource
@@ -1972,14 +2007,20 @@ def reject_deletion_request(request, request_uid):
         if resource:
             resource.status = 'APPROVED'
             resource.save()
-    
-    admin_feedback = request.POST.get('admin_feedback', '').strip() or 'No reason provided.'
+
+    # Save rejection history
+    from django.utils import timezone
+    del_request.status = 'REJECTED'
+    del_request.reviewed_by = request.user
+    del_request.reviewed_at = timezone.now()
+    del_request.admin_feedback = reject_reason
+    del_request.save()
+
     from accounts.models import Notification
     Notification.objects.create(
         user=del_request.teacher,
-        message=f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.\n\nReason: {admin_feedback}"
+        message=f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.\n\nReason: {reject_reason}"
     )
-    del_request.delete()
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Teacher notified with reason.")
     return redirect('manage_deletion_requests')
 

@@ -56,6 +56,7 @@ urlpatterns = [
     path('course/<uuid:course_uid>/verify/', views.admin_view_course_content, name='admin_view_course_content'),
     path('deletion-requests/', views.manage_deletion_requests, name='manage_deletion_requests'),
     path('deletion-requests/<uuid:request_uid>/verify/', views.verify_deletion_request, name='verify_deletion_request'),
+    path('deletion-requests/<uuid:request_uid>/verify-chapter/', views.verify_chapter_deletion, name='verify_chapter_deletion'),
     path('deletion-requests/<uuid:request_uid>/approve/', views.approve_deletion_request, name='approve_deletion_request'),
     path('deletion-requests/<uuid:request_uid>/reject/', views.reject_deletion_request, name='reject_deletion_request'),
     path('course-deletion-requests/', views.course_deletion_requests, name='course_deletion_requests'),
