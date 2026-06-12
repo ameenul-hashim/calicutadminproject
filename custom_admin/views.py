@@ -46,10 +46,10 @@ def log_admin_activity(request, action, target_user=None, details=""):
         pass
 
 def create_notification(user, message):
-    from accounts.models import Notification
     if user.user_type == 'STUDENT':
         return
-    Notification.objects.create(user=user, message=message)
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(user.uid), "Notification", message)
 
 @user_passes_test(lambda u: u.is_authenticated and (u.is_superuser or u.user_type == 'ADMIN' or (u.is_staff and u.user_type != 'TEACHER')), login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1736,11 +1736,8 @@ def approve_course_deletion(request, request_uid):
     req.save()
 
     log_admin_activity(request, f"Approved course deletion for '{course.title}'", target_user=course.teacher, details=f"Course: {course.title} ({course.uid})")
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=course.teacher,
-        message=f"Your course deletion request for '{course.title}' has been approved. The course has been removed."
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(course.teacher.uid), "Course Deletion Approved", f"Your course deletion request for '{course.title}' has been approved. The course has been removed.")
 
     messages.success(request, f"Course '{course.title}' has been soft-deleted. Moved to Recycle Bin.")
     return redirect('course_deletion_requests')
@@ -1777,11 +1774,8 @@ def reject_course_deletion(request, request_uid):
     req.save()
 
     log_admin_activity(request, f"Rejected course deletion for '{req.course.title}'", target_user=req.teacher, details=f"Reason: {admin_feedback}")
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=req.teacher,
-        message=f"Your course deletion request for '{req.course.title}' was rejected.\n\nReason: {admin_feedback}"
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(req.teacher.uid), "Course Deletion Rejected", f"Your course deletion request for '{req.course.title}' was rejected.\n\nReason: {admin_feedback}")
 
     messages.success(request, f"Deletion request for '{req.course.title}' rejected. Teacher notified.")
     return redirect('course_deletion_requests')
@@ -1968,11 +1962,8 @@ def approve_deletion_request(request, request_uid):
 
     # Delete the DeletionRequest
     del_request.delete()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=del_request.teacher,
-        message=f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been approved."
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(del_request.teacher.uid), "Deletion Approved", f"Your request to delete {del_request.item_type} '{del_request.item_name}' has been approved.")
     messages.success(request, f"{success_msg}")
     return redirect('manage_deletion_requests')
 
@@ -2016,11 +2007,8 @@ def reject_deletion_request(request, request_uid):
     del_request.admin_feedback = reject_reason
     del_request.save()
 
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=del_request.teacher,
-        message=f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.\n\nReason: {reject_reason}"
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(del_request.teacher.uid), "Deletion Rejected", f"Your request to delete {del_request.item_type} '{del_request.item_name}' was rejected.\n\nReason: {reject_reason}")
     messages.success(request, f"Deletion request for '{del_request.item_name}' rejected. Teacher notified with reason.")
     return redirect('manage_deletion_requests')
 
@@ -2098,11 +2086,8 @@ def admin_restore_course(request, course_uid):
         CourseResource.objects.filter(course=course).update(is_deleted=False, deleted_at=None, status='APPROVED')
 
         log_admin_activity(request, f"Restored course '{course_title}'", target_user=course.teacher, details=f"Course: {course_title} ({course.uid})")
-        from accounts.models import Notification
-        Notification.objects.create(
-            user=course.teacher,
-            message=f"Your course '{course_title}' and all its content (lessons, resources) have been restored from the Recycle Bin and are now active!"
-        )
+        from accounts.utils.firebase_db import notif_create
+        notif_create(str(course.teacher.uid), "Course Restored", f"Your course '{course_title}' and all its content (lessons, resources) have been restored from the Recycle Bin and are now active!")
 
         messages.success(request, f"Course '{course_title}' and all content restored successfully.")
 
@@ -3197,11 +3182,8 @@ def suspend_lesson(request, lesson_uid):
     lesson.suspended_by = request.user
     lesson.suspended_at = timezone.now()
     lesson.save()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=lesson.course.teacher,
-        message=f"Your lesson '{lesson.title}' has been suspended.\n\nReason: {reason}"
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(lesson.course.teacher.uid), "Lesson Suspended", f"Your lesson '{lesson.title}' has been suspended.\n\nReason: {reason}")
     messages.success(request, f"Lesson '{lesson.title}' suspended. Teacher notified.")
     return redirect('admin_view_course_content', course_uid=lesson.course.uid)
 
@@ -3218,11 +3200,8 @@ def unsuspend_lesson(request, lesson_uid):
     lesson.suspended_by = None
     lesson.suspended_at = None
     lesson.save()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=lesson.course.teacher,
-        message=f"Your lesson '{lesson.title}' has been reinstated. You can now edit and use it again."
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(lesson.course.teacher.uid), "Lesson Reinstated", f"Your lesson '{lesson.title}' has been reinstated. You can now edit and use it again.")
     messages.success(request, f"Lesson '{lesson.title}' reinstated.")
     return redirect('admin_view_course_content', course_uid=lesson.course.uid)
 
@@ -3243,11 +3222,8 @@ def edit_lesson_suspension(request, lesson_uid):
     lesson.suspended_by = request.user
     lesson.suspended_at = lesson.suspended_at or timezone.now()
     lesson.save()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=lesson.course.teacher,
-        message=f"The suspension reason for your lesson '{lesson.title}' has been updated.\n\nUpdated reason: {new_reason}"
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(lesson.course.teacher.uid), "Suspension Updated", f"The suspension reason for your lesson '{lesson.title}' has been updated.\n\nUpdated reason: {new_reason}")
     messages.success(request, f"Suspension reason updated for '{lesson.title}'.")
     return redirect('admin_view_course_content', course_uid=lesson.course.uid)
 
@@ -3269,11 +3245,8 @@ def suspend_resource(request, resource_uid):
     resource.suspended_by = request.user
     resource.suspended_at = timezone.now()
     resource.save()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=resource.course.teacher,
-        message=f"Your resource '{resource.title}' has been suspended.\n\nReason: {reason}"
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(resource.course.teacher.uid), "Resource Suspended", f"Your resource '{resource.title}' has been suspended.\n\nReason: {reason}")
     messages.success(request, f"Resource '{resource.title}' suspended. Teacher notified.")
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
@@ -3290,11 +3263,8 @@ def unsuspend_resource(request, resource_uid):
     resource.suspended_by = None
     resource.suspended_at = None
     resource.save()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=resource.course.teacher,
-        message=f"Your resource '{resource.title}' has been reinstated."
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(resource.course.teacher.uid), "Resource Reinstated", f"Your resource '{resource.title}' has been reinstated.")
     messages.success(request, f"Resource '{resource.title}' reinstated.")
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
@@ -3315,11 +3285,8 @@ def edit_resource_suspension(request, resource_uid):
     resource.suspended_by = request.user
     resource.suspended_at = resource.suspended_at or timezone.now()
     resource.save()
-    from accounts.models import Notification
-    Notification.objects.create(
-        user=resource.course.teacher,
-        message=f"The suspension reason for your resource '{resource.title}' has been updated.\n\nUpdated reason: {new_reason}"
-    )
+    from accounts.utils.firebase_db import notif_create
+    notif_create(str(resource.course.teacher.uid), "Suspension Updated", f"The suspension reason for your resource '{resource.title}' has been updated.\n\nUpdated reason: {new_reason}")
     messages.success(request, f"Suspension reason updated for '{resource.title}'.")
     return redirect('admin_view_course_content', course_uid=resource.course.uid)
 
@@ -3339,10 +3306,27 @@ def backup_cron_trigger(request):
             buf = StringIO()
             call_command('backup_daily_full', stdout=buf)
             output = buf.getvalue()
-            return JsonResponse({'status': 'ok', 'output': output[:500]})
         except Exception as e:
             logger.exception(f"Backup API error for type '{btype}': {e}")
             return JsonResponse({'status': 'error', 'error': 'Backup operation failed. Please try again.'}, status=500)
+        # Cleanup old notifications and EmailOTPs on each cron run
+        try:
+            from accounts.utils.notification_helper import cleanup_old_notifications
+            deleted = cleanup_old_notifications()
+            if deleted:
+                logger.info(f"Cleaned up {deleted} old notifications")
+        except Exception:
+            pass
+        try:
+            from accounts.utils.otp_engine import OTPEngine
+            OTPEngine.cleanup_old_otps()
+        except Exception:
+            pass
+        return JsonResponse({'status': 'ok', 'output': output[:500]})
+    if btype == 'notif-cleanup':
+        from accounts.utils.notification_helper import cleanup_old_notifications
+        deleted = cleanup_old_notifications()
+        return JsonResponse({'status': 'ok', 'deleted': deleted})
     return JsonResponse({'error': f'Unknown backup type: {btype}'}, status=400)
 
 

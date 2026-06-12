@@ -70,7 +70,7 @@ def _get_app():
 #   expires_at: int (ms) or null
 # ============================================================
 
-NOTIF_RETENTION_DAYS = 30
+NOTIF_RETENTION_DAYS = 7
 
 def _notif_now_ms():
     return int(time.time() * 1000)
@@ -793,11 +793,8 @@ def cleanup_user_firebase_data(user_uid):
 # ============================================================
 
 def run_all_cleanup():
-    from .firebase_chat import cleanup_old_messages as chat_v2_cleanup
     return {
         'notifications': notif_cleanup(),
-        'chat_legacy': chat_cleanup(),
-        'chat_v2': chat_v2_cleanup(),
         'login_history': login_history_cleanup(),
         'admin_log': admin_log_cleanup(),
     }

@@ -1,4 +1,4 @@
-RETENTION_DAYS = 30
+RETENTION_DAYS = 7
 
 
 def _uid(val):

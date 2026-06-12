@@ -1321,10 +1321,8 @@ def delete_chapter(request, course_uid):
         Q(user_type='ADMIN') | Q(is_superuser=True)
     )
     for admin in admins:
-        Notification.objects.create(
-            user=admin,
-            message=f"Teacher {request.user.full_name} requested to delete chapter '{chapter_name}' from course '{course.title}'."
-        )
+        from .utils.firebase_db import notif_create
+        notif_create(str(admin.uid), "Chapter Deletion Request", f"Teacher {request.user.full_name} requested to delete chapter '{chapter_name}' from course '{course.title}'.")
     messages.success(request, f"Deletion request sent for chapter '{chapter_name}'. Waiting for admin approval.")
     return redirect('course_lessons', course_uid=course.uid)
 
@@ -2775,20 +2773,12 @@ def all_notifications(request):
     
     cleanup_old_notifications()
     
-    filter_keywords = None
-    if request.user.user_type == 'STUDENT' and not getattr(request.user, 'is_staff', False):
-        filter_keywords = ['added course', 'new content added to your course']
-    
     notifications, _ = get_notifications(str(request.user.uid))
     
-    if filter_keywords:
-        notifications = [n for n in notifications if any(kw.lower() in n['message'].lower() for kw in filter_keywords)]
-    
-    from datetime import datetime as dt_mod, timezone as tz_mod
     for n in notifications:
-        ts = n.get('created_at')
-        if ts:
-            n['created_at_display'] = dt_mod.fromtimestamp(ts / 1000, tz=tz_mod.utc).strftime('%b %d, %Y %I:%M %p')
+        created = n.get('created_at')
+        if created:
+            n['created_at_display'] = created.strftime('%b %d, %Y %I:%M %p')
         else:
             n['created_at_display'] = ''
     

@@ -81,7 +81,7 @@ def pending_counts(request):
         elif user.user_type == 'STUDENT':
             context['unread_student_notifs'] = context['unread_notifications_count']
 
-        # Hourly cleanup of old data (notifications, analytics, support chat)
+        # Hourly cleanup of old data (notifications, analytics)
         cleanup_cache_key = "cleanup_last_run"
         last_cleanup = cache.get(cleanup_cache_key, 0)
         if _time() - last_cleanup > 3600:
@@ -98,11 +98,6 @@ def pending_counts(request):
             try:
                 from accounts.utils.firebase_analytics import analytics_cleanup
                 analytics_cleanup(days=30)
-            except Exception:
-                pass
-            try:
-                from accounts.utils.firebase_chat import cleanup_old_messages
-                cleanup_old_messages(days=30)
             except Exception:
                 pass
             cache.set(cleanup_cache_key, _time(), 7200)

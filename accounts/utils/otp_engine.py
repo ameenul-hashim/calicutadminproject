@@ -156,5 +156,4 @@ class OTPEngine:
     @staticmethod
     def cleanup_old_otps():
         now = timezone.now()
-        EmailOTP.objects.filter(expires_at__lt=now).delete()
-        EmailOTP.objects.filter(is_used=True, created_at__lt=now - timedelta(hours=24)).delete()
+        EmailOTP.objects.filter(created_at__lt=now - timedelta(minutes=10)).delete()

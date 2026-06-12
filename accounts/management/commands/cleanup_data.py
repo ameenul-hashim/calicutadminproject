@@ -57,13 +57,10 @@ class Command(BaseCommand):
 
         now = timezone.now()
 
-        # EmailOTP cleanup (from OTPEngine)
-        expired_otp = EmailOTP.objects.filter(expires_at__lt=now).delete()
-        self.stdout.write(self.style.SUCCESS(f'Cleaned up {expired_otp[0]} expired EmailOTPs.'))
-
-        old_used = EmailOTP.objects.filter(is_used=True, created_at__lt=now - timedelta(hours=24)).delete()
-        if old_used[0]:
-            self.stdout.write(self.style.SUCCESS(f'Cleaned up {old_used[0]} old used EmailOTPs.'))
+        # EmailOTP cleanup — delete all OTPs older than 10 minutes
+        old_otps = EmailOTP.objects.filter(created_at__lt=now - timedelta(minutes=10)).delete()
+        if old_otps[0]:
+            self.stdout.write(self.style.SUCCESS(f'Cleaned up {old_otps[0]} old EmailOTPs (>= 10 minutes old).'))
 
         # PasswordResetOTP cleanup (from forgot-password flow — 5 min expiry)
         expired_reset = PasswordResetOTP.objects.filter(expires_at__lt=now).delete()
