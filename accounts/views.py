@@ -1186,7 +1186,7 @@ def course_lessons(request, course_uid):
                 ts.append(r.created_at)
         return ts[0] if ts else dt_module.min
     for name in course_chapters:
-        if name and name in derived_chapters and name not in seen:
+        if name and name not in seen:
             seen.add(name)
             all_chapter_names.append(name)
     for name in sorted((d for d in derived_chapters if d), key=_chapter_first_ts):
