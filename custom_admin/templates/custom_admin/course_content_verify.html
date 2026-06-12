@@ -531,12 +531,9 @@
     {% for chapter in chapters %}
         {% if chapter.has_approved %}
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
-                <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: {% if chapter.deletion_request %}#fef2f2{% else %}#f8fafc{% endif %}; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
-                    <span style="font-size: 1.2rem;">{% if chapter.deletion_request %}🗑️{% else %}📂{% endif %}</span>
+                <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
+                    <span style="font-size: 1.2rem;">📂</span>
                     <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
-                    {% if chapter.deletion_request %}
-                    <span style="font-size: 0.65rem; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 2rem; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; white-space: nowrap;">⏳ Pending Delete</span>
-                    {% endif %}
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
                         {{ chapter.approved_lessons|length }}L ·
                         {{ chapter.cat_counts.ENGLISH.total }}E ·
@@ -545,15 +542,6 @@
                     </span>
                     <span class="admin-ch-chevron" style="font-size: 0.75rem; color: #94a3b8; transition: transform 0.2s;">▶</span>
                 </div>
-                {% if chapter.deletion_request %}
-                <div style="background: #fef2f2; border-bottom: 2px solid #fecaca; padding: 0.9rem 1.25rem; display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-                    <span style="font-size: 1.2rem;">🗑️</span>
-                    <span style="font-weight: 700; color: #991b1b; flex: 1;">Chapter Deletion Requested</span>
-                    <span style="font-size: 0.8rem; color: #b91c1c;">{{ chapter.deletion_request.reason|truncatechars:80 }}</span>
-                    <button onclick="openGenericModal('Approve Chapter Delete', '{% url 'approve_deletion_request' chapter.deletion_request.uid %}')" style="background: #ef4444; color: white; border: none; padding: 0.4rem 1rem; border-radius: 0.5rem; font-weight: 700; font-size: 0.8rem; cursor: pointer;">Approve Delete</button>
-                    <button onclick="openGenericModal('Reject Chapter Delete', '{% url 'reject_deletion_request' chapter.deletion_request.uid %}')" style="background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; padding: 0.4rem 1rem; border-radius: 0.5rem; font-weight: 600; font-size: 0.8rem; cursor: pointer;">Reject</button>
-                </div>
-                {% endif %}
                 <div class="admin-chapter-body" style="padding: 1.5rem;">
                     <!-- Approved Lessons -->
                     {% if chapter.approved_lessons %}
