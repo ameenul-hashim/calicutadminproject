@@ -1733,7 +1733,7 @@ def edit_resource(request, resource_uid):
                 resource.suspension_reason = ''
             title = request.POST.get('title', '').strip()
             category = request.POST.get('category', '').strip()
-            chapter = request.POST.get('chapter', '').strip()
+            chapter = request.POST.get('chapter', '').strip() or resource.chapter
             upload_file = request.FILES.get('upload_file')
 
             if not title:
