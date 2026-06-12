@@ -1088,6 +1088,11 @@ def approve_lesson(request, lesson_uid):
             messages.warning(request, "Lesson approved but YouTube visibility could not be updated. The video may remain private.")
             return redirect('admin_view_course_content', course_uid=lesson.course.uid)
         
+    # Clear suspension on approval
+    lesson.is_suspended = False
+    lesson.suspended_at = None
+    lesson.suspended_by = None
+    lesson.suspension_reason = None
     lesson.status = 'APPROVED'
     lesson.is_approved = True
     lesson.upload_status = 'READY'
@@ -1119,9 +1124,20 @@ def reject_lesson(request, lesson_uid):
         course_uid = lesson.course.uid
         teacher = lesson.course.teacher
 
-        lesson.status = 'REJECTED'
+        # If course is PUBLISHED, content was once visible → reject as SUSPENDED (re-review required)
+        # If course is not PUBLISHED → reject as REJECTED (normal rejection)
+        course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
+        if course_is_published:
+            lesson.is_suspended = True
+            lesson.suspended_by = request.user
+            lesson.suspended_at = timezone.now()
+            lesson.suspension_reason = reason
+            lesson.status = 'SUSPENDED'
+        else:
+            lesson.status = 'REJECTED'
         lesson.is_approved = False
         lesson.rejection_reason = reason
+        lesson.has_pending_edits = False
         lesson.save()
 
         create_notification(teacher, f"Your lesson '{lesson_title}' was rejected. Reason: {reason}. Please edit and resubmit.")
@@ -1193,11 +1209,21 @@ def approve_resource(request, resource_uid):
         resource.pending_thumbnail_path = None
         resource.pending_thumbnail_public_id = None
         resource.has_pending_edits = False
+        # Clear suspension on approval
+        resource.is_suspended = False
+        resource.suspended_at = None
+        resource.suspended_by = None
+        resource.suspension_reason = None
         # CRITICAL: Ensure APPROVED status is maintained after an edit is approved
         resource.status = 'APPROVED'
         resource.is_approved = True
     else:
         resource.firebase_file_path = final_supabase_path
+        # Clear suspension on approval
+        resource.is_suspended = False
+        resource.suspended_at = None
+        resource.suspended_by = None
+        resource.suspension_reason = None
         resource.status = 'APPROVED'
         resource.is_approved = True
 
@@ -1248,11 +1274,22 @@ def reject_resource(request, resource_uid):
     resource = get_object_or_404(CourseResource, uid=resource_uid)
     if request.method == 'POST':
         reason = request.POST.get('reason')
-        resource.status = 'REJECTED'
+        # If course is PUBLISHED, content was once visible → reject as SUSPENDED (re-review required)
+        # If course is not PUBLISHED → reject as REJECTED (normal rejection)
+        course_is_published = resource.course.status == 'PUBLISHED' and resource.course.is_approved
+        if course_is_published:
+            resource.is_suspended = True
+            resource.suspended_by = request.user
+            resource.suspended_at = timezone.now()
+            resource.suspension_reason = reason
+            resource.status = 'SUSPENDED'
+        else:
+            resource.status = 'REJECTED'
         resource.is_approved = False
         resource.rejection_reason = reason
         resource.rejected_by = request.user
         resource.rejected_at = timezone.now()
+        resource.has_pending_edits = False
         resource.save()
         
         create_notification(resource.course.teacher, f"Your resource '{resource.title}' in course '{resource.course.title}' was rejected. Reason: {reason}.")
@@ -3096,6 +3133,8 @@ def suspend_lesson(request, lesson_uid):
         return redirect('admin_view_course_content', course_uid=lesson.course.uid)
     from django.utils import timezone
     lesson.is_suspended = True
+    lesson.status = 'SUSPENDED'
+    lesson.is_approved = False
     lesson.suspension_reason = reason
     lesson.suspended_by = request.user
     lesson.suspended_at = timezone.now()
@@ -3115,6 +3154,8 @@ def unsuspend_lesson(request, lesson_uid):
     from accounts.models import Lesson
     lesson = get_object_or_404(Lesson, uid=lesson_uid)
     lesson.is_suspended = False
+    lesson.status = 'APPROVED'
+    lesson.is_approved = True
     lesson.suspension_reason = None
     lesson.suspended_by = None
     lesson.suspended_at = None
@@ -3164,6 +3205,8 @@ def suspend_resource(request, resource_uid):
         return redirect('admin_view_course_content', course_uid=resource.course.uid)
     from django.utils import timezone
     resource.is_suspended = True
+    resource.status = 'SUSPENDED'
+    resource.is_approved = False
     resource.suspension_reason = reason
     resource.suspended_by = request.user
     resource.suspended_at = timezone.now()
@@ -3183,6 +3226,8 @@ def unsuspend_resource(request, resource_uid):
     from accounts.models import CourseResource
     resource = get_object_or_404(CourseResource, uid=resource_uid)
     resource.is_suspended = False
+    resource.status = 'APPROVED'
+    resource.is_approved = True
     resource.suspension_reason = None
     resource.suspended_by = None
     resource.suspended_at = None

@@ -162,7 +162,7 @@ class Lesson(models.Model):
     video_file = models.FileField(upload_to='lessons/videos/', null=True, blank=True)
     chapter = models.CharField(max_length=255, default='', blank=True, db_index=True)
     order = models.PositiveIntegerField(default=1)
-    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected')], default='PENDING')
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected'), ('SUSPENDED', 'Suspended')], default='PENDING')
     is_approved = models.BooleanField(default=False, db_index=True) # Keep for backward compatibility/quick checks
     rejection_reason = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -233,7 +233,7 @@ class CourseResource(models.Model):
     download_count = models.PositiveIntegerField(default=0)
     
     # Approval Workflow
-    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected'), ('DELETION_PENDING', 'Deletion Pending')], default='PENDING', db_index=True)
+    status = models.CharField(max_length=20, choices=[('PENDING', 'Pending'), ('APPROVED', 'Approved'), ('REJECTED', 'Rejected'), ('SUSPENDED', 'Suspended'), ('DELETION_PENDING', 'Deletion Pending')], default='PENDING', db_index=True)
     is_approved = models.BooleanField(default=False, db_index=True)
     approved_by = models.ForeignKey('accounts.CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_resources')
     approved_at = models.DateTimeField(null=True, blank=True)

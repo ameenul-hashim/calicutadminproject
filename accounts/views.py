@@ -1445,7 +1445,8 @@ def edit_lesson(request, lesson_uid):
     """
     lesson = get_object_or_404(Lesson, uid=lesson_uid, course__teacher=request.user)
     if request.method == 'POST':
-        # Auto-unsuspend if teacher is editing a suspended lesson
+        # Save suspended state BEFORE auto-unsuspending
+        was_suspended = lesson.is_suspended or lesson.status == 'SUSPENDED'
         if lesson.is_suspended:
             lesson.is_suspended = False
             lesson.suspended_at = None
@@ -1480,40 +1481,33 @@ def edit_lesson(request, lesson_uid):
 
         course_is_published = lesson.course.status == 'PUBLISHED' and lesson.course.is_approved
 
-        if course_is_published:
-            lesson.title = title
-            if new_youtube_video_id:
-                lesson.youtube_video_id = new_youtube_video_id
-                lesson.youtube_upload_status = 'UPLOADED'
-                lesson.youtube_uploaded_at = timezone.now()
-            lesson.video_url = video_url
-            lesson.order = order
+        lesson.title = title
+        if new_youtube_video_id:
+            lesson.youtube_video_id = new_youtube_video_id
+            lesson.youtube_upload_status = 'UPLOADED'
+            lesson.youtube_uploaded_at = timezone.now()
+        lesson.video_url = video_url
+        lesson.order = order
+
+        if was_suspended:
+            # Suspended content edited → route to PENDING for re-review
+            lesson.is_approved = False
+            lesson.status = 'PENDING'
+            lesson.has_pending_edits = True
+            lesson.save()
+            messages.success(request, "Your lesson has been updated and submitted for re-review.")
+        elif course_is_published:
             lesson.is_approved = True
             lesson.status = 'APPROVED'
             lesson.save()
             messages.success(request, "Lesson updated and immediately visible to students.")
         elif lesson.is_approved:
-            lesson.title = title
-            if new_youtube_video_id:
-                lesson.youtube_video_id = new_youtube_video_id
-                lesson.youtube_upload_status = 'UPLOADED'
-                lesson.youtube_uploaded_at = timezone.now()
-            lesson.video_url = video_url
-            lesson.order = order
             lesson.save()
             messages.success(request, "Lesson updated successfully.")
         else:
-            lesson.title = title
-            if new_youtube_video_id:
-                lesson.youtube_video_id = new_youtube_video_id
-                lesson.youtube_upload_status = 'UPLOADED'
-                lesson.youtube_uploaded_at = timezone.now()
-            lesson.video_url = video_url
-            lesson.order = order
             lesson.is_approved = False
             lesson.status = 'PENDING'
             lesson.save()
-
             messages.success(request, "Lesson updated successfully.")
 
         # Auto-reinstate BLOCKED teacher after successful edit
@@ -1699,7 +1693,8 @@ def edit_resource(request, resource_uid):
     course = resource.course
 
     if request.method == 'POST':
-        # Auto-unsuspend if teacher is editing a suspended resource
+        # Save suspended state BEFORE auto-unsuspending
+        was_suspended = resource.is_suspended or resource.status == 'SUSPENDED'
         if resource.is_suspended:
             resource.is_suspended = False
             resource.suspended_at = None
@@ -1768,21 +1763,30 @@ def edit_resource(request, resource_uid):
 
         course_is_published = course.status == 'PUBLISHED' and course.is_approved
 
-        if course_is_published:
-            if new_fb_path and resource.firebase_file_path:
-                try:
-                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                except:
-                    pass
-            resource.title = title
-            resource.category = category
-            resource.resource_type = 'PDF'
-            if new_fb_path:
-                resource.firebase_file_path = new_fb_path
-                resource.mime_type = 'application/pdf'
-                resource.file_extension = 'pdf'
-                resource.original_size = new_file_size
-                resource.compressed_size = new_file_size
+        # Set resource metadata fields
+        if new_fb_path and resource.firebase_file_path:
+            try:
+                StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+            except:
+                pass
+        resource.title = title
+        resource.category = category
+        resource.resource_type = 'PDF'
+        if new_fb_path:
+            resource.firebase_file_path = new_fb_path
+            resource.mime_type = 'application/pdf'
+            resource.file_extension = 'pdf'
+            resource.original_size = new_file_size
+            resource.compressed_size = new_file_size
+
+        if was_suspended:
+            resource.status = 'PENDING'
+            resource.is_approved = False
+            resource.rejection_reason = None
+            resource.has_pending_edits = True
+            resource.save()
+            messages.success(request, f"Resource '{title}' updated and submitted for re-review.")
+        elif course_is_published:
             resource.status = 'APPROVED'
             resource.is_approved = True
             resource.rejection_reason = None
@@ -1790,38 +1794,10 @@ def edit_resource(request, resource_uid):
             resource.save()
             messages.success(request, f"Resource '{title}' updated and immediately available to students.")
         elif is_approved:
-            if new_fb_path and resource.firebase_file_path:
-                try:
-                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                except:
-                    pass
-            resource.title = title
-            resource.category = category
-            resource.resource_type = 'PDF'
-            if new_fb_path:
-                resource.firebase_file_path = new_fb_path
-                resource.mime_type = 'application/pdf'
-                resource.file_extension = 'pdf'
-                resource.original_size = new_file_size
-                resource.compressed_size = new_file_size
             resource.has_pending_edits = False
             resource.save()
             messages.success(request, f"Resource '{title}' updated successfully.")
         else:
-            if new_fb_path and resource.firebase_file_path:
-                try:
-                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                except:
-                    pass
-            resource.title = title
-            resource.category = category
-            resource.resource_type = 'PDF'
-            if new_fb_path:
-                resource.firebase_file_path = new_fb_path
-                resource.mime_type = 'application/pdf'
-                resource.file_extension = 'pdf'
-                resource.original_size = new_file_size
-                resource.compressed_size = new_file_size
             resource.status = 'PENDING'
             resource.is_approved = False
             resource.rejection_reason = None
