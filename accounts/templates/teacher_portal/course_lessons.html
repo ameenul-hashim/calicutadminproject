@@ -373,8 +373,16 @@
     <div class="ch-card-header" onclick="toggleChapter(this)">
         <span class="toggle-icon" id="icon-{{ forloop.counter }}">&#x25B6;</span>
         <span style="font-size: 1.3rem;">&#x1F4C1;</span>
-        <h3>{{ chapter.name }}</h3>
+        <h3>{% if chapter.name %}{{ chapter.name }}{% else %}Uncategorized{% endif %}</h3>
         <span style="margin-left: 0.75rem; display: flex; gap: 0.3rem;">
+            <div style="display: flex; gap: 0.4rem; margin-right: 0.75rem;">
+                <a href="{% url 'add_lesson' course.uid %}?chapter={{ chapter.name|urlencode }}" onclick="event.stopPropagation();" class="btn" style="background: #eef2ff; color: #4f46e5; padding: 0.35rem 0.9rem; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.3rem;">
+                    + Lesson
+                </a>
+                <a href="{% url 'add_resource' course.uid %}?chapter={{ chapter.name|urlencode }}" onclick="event.stopPropagation();" class="btn" style="background: #ecfdf5; color: #059669; padding: 0.35rem 0.9rem; border-radius: 0.5rem; text-decoration: none; font-weight: 700; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.3rem;">
+                    + Resource
+                </a>
+            </div>
             <button onclick="event.stopPropagation(); openRenameModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #6366f1; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Rename chapter">&#x270F;&#xFE0F;</button>
             {% if chapter.name %}<button onclick="event.stopPropagation(); openDeleteChapterModal('{{ course.uid }}', '{{ chapter.name|escapejs }}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.75rem; padding: 0.1rem 0.3rem; border-radius: 0.3rem;" title="Delete chapter">&#x1F5D1;&#xFE0F;</button>{% endif %}
         </span>
@@ -387,15 +395,6 @@
     </div>
 
     <div class="ch-card-body" id="body-{{ forloop.counter }}">
-        <!-- Action Buttons -->
-        <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
-            <a href="{% url 'add_lesson' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #eef2ff; color: #4f46e5; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                + Add Lesson
-            </a>
-            <a href="{% url 'add_resource' course.uid %}?chapter={{ chapter.name|urlencode }}" class="btn" style="background: #ecfdf5; color: #059669; padding: 0.5rem 1.2rem; border-radius: 0.6rem; text-decoration: none; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.4rem;">
-                + Add Resource
-            </a>
-        </div>
 
         <!-- Videos Section -->
         <div class="section-header">
