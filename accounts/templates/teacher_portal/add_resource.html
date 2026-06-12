@@ -55,15 +55,7 @@
                         <input type="text" name="title" id="title" required placeholder="e.g. Chapter 1 Notes">
                     </div>
 
-                    <div class="input-group">
-                        <label for="chapter">Chapter</label>
-                        <select name="chapter" id="chapter" required style="cursor: pointer;">
-                            <option value="">-- Select Chapter --</option>
-                            {% for ch in course_chapters %}
-                            <option value="{{ ch }}" {% if chapter == ch %}selected{% endif %}>{{ ch }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+                    <input type="hidden" name="chapter" value="{{ chapter }}">
                     
                     <div class="input-group">
                         <label for="category">Category</label>
