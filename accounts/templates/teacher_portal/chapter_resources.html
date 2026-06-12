@@ -80,7 +80,7 @@
 {% endfor %}
 
 <div style="margin-top: 2rem;">
-    <a href="{% url 'add_resource' course.uid %}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">+ Add {{ category_label }} Resource to {{ chapter_name }}</a>
+    <a href="{% url 'add_resource' course.uid %}?chapter={{ chapter_name|urlencode }}" class="btn" style="background: #10b981; color: white; padding: 0.8rem 1.5rem; border-radius: 0.75rem; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 0.5rem;">+ Add {{ category_label }} Resource to {{ chapter_name }}</a>
 </div>
 
 <!-- Deletion Request Modal -->

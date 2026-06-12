@@ -1438,7 +1438,6 @@ def add_lesson(request, course_uid):
     return render(request, 'teacher_portal/add_lesson.html', {
         'course': course,
         'chapter': chapter,
-        'course_chapters': course.chapters or [],
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
@@ -1694,7 +1693,6 @@ def add_resource(request, course_uid):
     return render(request, 'teacher_portal/add_resource.html', {
         'course': course,
         'chapter': chapter,
-        'course_chapters': course.chapters or [],
     })
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
