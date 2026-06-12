@@ -1369,7 +1369,7 @@ def admin_view_course_content(request, course_uid):
         for r in res_by_chapter.get(ch_name, []):
             if r.created_at:
                 ts.append(r.created_at)
-        return ts[0] if ts else dt_module.min
+        return ts[0] if ts else timezone.make_aware(dt_module.min)
     for name in course_chapters:
         if name and name not in seen:
             seen.add(name)
