@@ -1556,20 +1556,8 @@ def delete_lesson(request, lesson_uid):
         return redirect('course_lessons', course_uid=course_uid)
 
     from .models import DeletionRequest
-    
-    # For PENDING/REJECTED lessons (not yet approved), delete immediately
-    if lesson.status in ('PENDING', 'REJECTED'):
-        from .utils.youtube_uploader import delete_youtube_video
-        if lesson.youtube_video_id:
-            try:
-                delete_youtube_video(lesson.youtube_video_id)
-            except Exception:
-                pass
-        lesson.delete()
-        messages.success(request, "Lesson deleted successfully.")
-        return redirect('course_lessons', course_uid=course_uid)
-    
-    # For APPROVED lessons — create a deletion request
+
+    # Always create a deletion request (even for PENDING/REJECTED items)
     existing_request = DeletionRequest.objects.filter(
         teacher=request.user, item_type='Lesson', item_id=lesson.id, status='PENDING'
     ).first()
@@ -1873,24 +1861,7 @@ def delete_resource(request, resource_uid):
         messages.error(request, "Incorrect password. Please enter your account password to confirm deletion.")
         return redirect('course_lessons', course_uid=resource.course.uid)
 
-    # If still PENDING / REJECTED (not yet approved), allow immediate deletion
-    if resource.status in ('PENDING', 'REJECTED'):
-        from .utils.storage_manager import StorageManager
-        from django.utils import timezone
-        try:
-            StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-            if resource.thumbnail_public_id:
-                from accounts.utils.cloudinary_helpers import delete_temp_image
-                delete_temp_image(resource.thumbnail_public_id)
-        except Exception:
-            pass
-        resource.is_deleted = True
-        resource.deleted_at = timezone.now()
-        resource.save()
-        messages.success(request, "Resource deleted successfully.")
-        return redirect('course_lessons', course_uid=resource.course.uid)
-
-    # For APPROVED resources — create a deletion request and wait for admin approval
+    # Always create a deletion request for admin approval (even for PENDING/REJECTED items)
     # Prevent duplicate PENDING deletion requests
     existing = DeletionRequest.objects.filter(resource=resource, status='PENDING').exists()
     if existing:
