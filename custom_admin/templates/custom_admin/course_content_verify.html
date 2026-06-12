@@ -184,9 +184,12 @@
     {% for chapter in chapters %}
         {% if chapter.has_pending %}
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
-                <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
-                    <span style="font-size: 1.2rem;">📂</span>
+                <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: {% if chapter.deletion_request %}#fef2f2{% else %}#f8fafc{% endif %}; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
+                    <span style="font-size: 1.2rem;">{% if chapter.deletion_request %}🗑️{% else %}📂{% endif %}</span>
                     <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
+                    {% if chapter.deletion_request %}
+                    <span style="font-size: 0.65rem; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 2rem; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; white-space: nowrap;">⏳ Pending Delete</span>
+                    {% endif %}
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
                         {{ chapter.pending_lessons|length }}L ·
                         {{ chapter.cat_counts.ENGLISH.total }}E ·
@@ -528,9 +531,12 @@
     {% for chapter in chapters %}
         {% if chapter.has_approved %}
             <div class="admin-chapter-item" style="margin-bottom: 1.5rem; background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden;">
-                <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: #f8fafc; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
-                    <span style="font-size: 1.2rem;">📂</span>
+                <div class="admin-chapter-header" onclick="toggleAdminChapter(this)" style="padding: 0.9rem 1.25rem; background: {% if chapter.deletion_request %}#fef2f2{% else %}#f8fafc{% endif %}; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; user-select: none; border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
+                    <span style="font-size: 1.2rem;">{% if chapter.deletion_request %}🗑️{% else %}📂{% endif %}</span>
                     <h2 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700; flex: 1;">{{ chapter.name }}</h2>
+                    {% if chapter.deletion_request %}
+                    <span style="font-size: 0.65rem; font-weight: 800; padding: 0.3rem 0.7rem; border-radius: 2rem; background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; white-space: nowrap;">⏳ Pending Delete</span>
+                    {% endif %}
                     <span style="font-size: 0.7rem; color: #64748b; white-space: nowrap;">
                         {{ chapter.approved_lessons|length }}L ·
                         {{ chapter.cat_counts.ENGLISH.total }}E ·
