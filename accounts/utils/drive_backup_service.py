@@ -137,7 +137,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
     from datetime import datetime
     import requests as req
 
-    backup_url = os.getenv('BACKUP_SUPABASE_URL', '').rstrip('/')
+    backup_url = os.getenv('BACKUP_SUPABASE_URL', '').rstrip('/').replace('/rest/v1', '')
     backup_key = os.getenv('BACKUP_SUPABASE_KEY', '')
     bucket = os.getenv('BACKUP_SUPABASE_BUCKET', 'backups')
 

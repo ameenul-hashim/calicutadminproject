@@ -36,7 +36,7 @@ if resource_url and resource_key:
         logger.error(f"Resource Supabase Client Init Error: {e}")
 
 # Backup Supabase (third instance — live DB restore + database backup ZIP storage)
-backup_url: str = os.getenv("BACKUP_SUPABASE_URL")
+backup_url: str = (os.getenv("BACKUP_SUPABASE_URL") or '').rstrip('/').replace('/rest/v1', '')
 backup_key: str = os.getenv("BACKUP_SUPABASE_KEY")
 backup_bucket: str = os.getenv("BACKUP_SUPABASE_BUCKET", "backups")
 

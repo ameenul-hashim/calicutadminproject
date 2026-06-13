@@ -135,7 +135,7 @@ class Command(BaseCommand):
         Returns True if uploaded, False if skipped or failed."""
         import requests as req
 
-        backup_url = os.getenv('BACKUP_SUPABASE_URL', '').rstrip('/')
+        backup_url = os.getenv('BACKUP_SUPABASE_URL', '').rstrip('/').replace('/rest/v1', '')
         backup_key = os.getenv('BACKUP_SUPABASE_KEY', '')
         if not backup_url or not backup_key:
             self.stdout.write('  Backup Supabase (3rd): skipped (BACKUP_SUPABASE_URL/KEY not set)')
