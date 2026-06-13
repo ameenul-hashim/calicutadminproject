@@ -136,7 +136,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
     
     try:
         result = subprocess.run(
-            ['psql', backup_db_url],
+            ['psql', '-4', backup_db_url],
             input=sql_bytes,
             capture_output=True,
             timeout=300  # 5 minutes for large DBs
