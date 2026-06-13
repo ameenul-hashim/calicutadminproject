@@ -1,6 +1,6 @@
 # AGENTS.md — Neo Learner E-Learning Platform
 # Master AI Reference Document
-# Last Updated: 2026-06-12 | Branch: 3-fullcorrect
+# Last Updated: 2026-06-13 | Branch: 3-fullcorrect
 
 ---
 
@@ -23,35 +23,36 @@
 
 ---
 
-## 🌿 GIT BRANCH STRUCTURE — CRITICAL: TWO SEPARATE BRANCHES
+## 🌿 GIT BRANCH STRUCTURE — CRITICAL
 
-### ⚠️ IMPORTANT: `ongoing` AND `3-fullcorrect` ARE TWO DIFFERENT BRANCHES
-### ⚠️ NEVER MERGE, SYNC, OR RESET ONE TO THE OTHER
-### ⚠️ EACH BRANCH CONTAINS DIFFERENT WORK — THEY ARE NOT MIRRORS
+### ⚠️ AI AGENT WORKS ONLY ON `3-fullcorrect` BRANCH
+### ⚠️ NEVER CREATE, MERGE, SWITCH TO, OR MODIFY ANY OTHER BRANCH
+### ⚠️ IF A TASK SAYS "MERGE" OR "SYNC" BRANCHES — IGNORE IT
 
 | Branch | Purpose | Status |
 |:---|:---|:---|
-| `3-fullcorrect` | **Work branch for AI agent tasks** — all fixes by AI go here | ✅ Active |
-| `ongoing` | **Separate work by human developer** — contains different changes | ✅ Active |
-| `stable-may19-rollback` | Stable rollback point (May 19 state) | 🔒 Frozen |
-
-### What each branch contains
-
-- **`3-fullcorrect`** — AI agent work. Latest commits: chapter visibility fixes, lesson/resource editing, YouTube upload fixes, admin course content verify, chapter/lesson/resource deletion requests. Current tip: `47c6cf1`.
-- **`ongoing`** — Human developer work. Latest commits: admin create student/teacher fix, thumbnail display fix, URL name corrections, signup error messages, backup clear activity, student profile layout. Current tip: `e79fdfc`.
+| `* 3-fullcorrect` | **AI agent work branch** — all fixes by AI go here | ✅ Active |
+| `13-fullcorrect-copy` | Safety snapshot of `3-fullcorrect` (created 2026-06-13) | 🔒 Frozen |
+| `04-attempt` | Old attempt | 🔒 Frozen |
+| `12-june-fullcorrect` | Old attempt | 🔒 Frozen |
+| `main` | Default branch (inactive) | 🔒 Frozen |
+| `stable-may19-rollback` | Emergency rollback point (May 19 state) | 🔒 Frozen |
 
 ### Branch Rules — READ CAREFULLY
-- **`3-fullcorrect` and `ongoing` are SEPARATE branches with DIFFERENT commit histories.**
-- **DO NOT merge `ongoing` into `3-fullcorrect` or vice versa.**
-- **DO NOT fast-forward one to match the other.**
-- **DO NOT reset one to the other.**
-- **When working as an AI agent, ALWAYS work on `3-fullcorrect` branch.**
-- **Never push directly to `stable-may19-rollback`** — it is a safety snapshot.
-- Deploy to Render triggers from `ongoing` pushes via GitHub auto-deploy.
-- Emergency rollback = Render manual deploy pinned to `stable-may19-rollback`.
+- **AI agent works ONLY on `3-fullcorrect` branch.**
+- **NEVER switch to any other branch** — not even to look.
+- **NEVER merge, sync, or reset branches.**
+- **NEVER push to `stable-may19-rollback`** — it is a safety snapshot.
+- **If an instruction says "switch to X branch" or "merge Y into Z"** — stop and ask for clarification.
+- **`13-fullcorrect-copy`** is a safety snapshot of `3-fullcorrect`. If changes break the project, user will restore from this branch manually.
+- Auto-deploy to Render triggers from `3-fullcorrect` pushes via GitHub.
 
-### What to do if an instruction says "sync" or "merge" branches
-IGNORE IT. The instruction is outdated. `3-fullcorrect` and `ongoing` diverged after May 2026 and now contain different work. Any attempt to merge or sync them will cause conflicts and data loss.
+### Current commit tip
+```
+e303d0f fix: use direct HTTP for Supabase bucket check/create (v2.16 API URL issue)
+ab11d53 fix: remove manual creds.refresh(None) call causing 'NoneType not callable' error
+c49c6ab feat: add OAuth2 personal Google Drive support (refresh token flow)
+```
 
 ---
 
@@ -76,7 +77,7 @@ e-learning application/
 │   └── wsgi.py
 │
 ├── accounts/                 ← MAIN APP (students, teachers, courses, resources)
-│   ├── models.py             ← ALL 13 models defined here
+│   ├── models.py             ← ALL models defined here
 │   ├── views.py              ← ~95KB — teacher, student, and shared views
 │   ├── urls.py               ← 54 URL patterns (no prefix)
 │   ├── consumers.py          ← WebSocket consumer (real-time chat)
@@ -85,15 +86,19 @@ e-learning application/
 │   ├── context_processors.py ← pending_counts (global context)
 │   ├── admin.py
 │   └── utils/
-│       ├── supabase_storage.py   ← Signed URL generation, PDF upload/delete
-│       ├── storage_manager.py    ← StorageManager class (Supabase + Firebase bridge)
-│       ├── cloudinary_helpers.py ← Image upload/delete helper
-│       ├── otp_engine.py         ← OTP generation, hashing, verification
-│       ├── pdf_processor.py      ← PDF compression (PyMuPDF/ReportLab)
+│       ├── supabase_storage.py      ← Signed URL generation, PDF upload/delete
+│       ├── storage_manager.py       ← StorageManager class (Supabase + Firebase bridge)
+│       ├── cloudinary_helpers.py    ← Image upload/delete helper
+│       ├── google_drive_service.py  ← Google Drive API (OAuth + service account)
+│       ├── drive_backup_service.py  ← Auto-router: Google Drive OAuth → MEGA fallback
+│       ├── backup_trigger.py        ← Real-time backup functions (signup PDF, teacher resource)
+│       ├── generate_drive_token.py  ← One-time OAuth token generator for Google Drive
+│       ├── otp_engine.py            ← OTP generation, hashing, verification
+│       ├── pdf_processor.py         ← PDF compression (PyMuPDF/ReportLab)
 │       ├── pdf_helpers.py
-│       ├── malware_scanner.py    ← File type/MIME validation
-│       ├── totp_service.py       ← TOTP 2FA service
-│       ├── keep_alive.py         ← Render spin-down prevention
+│       ├── malware_scanner.py       ← File type/MIME validation
+│       ├── totp_service.py          ← TOTP 2FA service
+│       ├── keep_alive.py            ← Render spin-down prevention
 │       ├── billing_safety.py
 │       └── recovery_sim.py
 │
@@ -171,57 +176,23 @@ The most complex model — handles teacher-uploaded study materials.
 
 **Method:** `get_signed_url()` — generates 7-day Supabase signed URL
 
-### 5. `Enrollment`
-- `user` + `course` (unique_together)
-
-### 6. `LiveClass`
-- Meeting link + date_time per course
-
-### 7. `ApprovalLog`
-- Generic content_type + object_id log for all admin review actions
-
-### 8. `Report`
-- User-filed content reports (PENDING / REVIEWED / RESOLVED)
-
-### 9. `Notification`
-- Per-user, soft-delete via `is_read`, UUID keyed
-
-### 10. `ChatMessage`
-- Sender/receiver FK, `is_edited`, `is_deleted`, ordered by timestamp
-- Powered by WebSocket consumer at `ws/chat/<uid>/`
-
-### 11. `EmailOTP`
-- Purposes: PASSWORD_RESET / EMAIL_VERIFICATION / USERNAME_RECOVERY / EMAIL_UPDATE / USERNAME_UPDATE
-- `otp_hash` (bcrypt hashed), expires\_at, attempt\_count, IP logging
-
-### 12. `DeletionRequest`
-- Teacher → Admin approval pipeline for deleting Resources or Lessons
-- `status`: PENDING / APPROVED / REJECTED
-- Direct `resource` FK added for resource deletion (lesson uses generic `item_type/item_id`)
-
-### 13. `PDFAccessLog`
-- Audit log for every proof-PDF access (admin portal)
-
-### 14. `LoginHistory`
-- Per-user login audit (IP, device, timestamp, status)
-
-### 15. `AdminActivityLog`
-- All admin actions logged with target user + details
+### 5-15. Other Models
+`Enrollment`, `LiveClass`, `ApprovalLog`, `Report`, `Notification`, `ChatMessage`, `EmailOTP`, `DeletionRequest`, `PDFAccessLog`, `LoginHistory`, `AdminActivityLog` — unchanged.
 
 ### 16. `UploadJob`
-- Tracks YouTube resumable upload state per teacher
-- `status`: PENDING / UPLOADING / PROCESSING / COMPLETED / FAILED
-- `progress_percentage` — server-side persistent progress (updated by browser via `POST /api/youtube/upload/<uid>/progress/`)
-- `youtube_upload_url` — the resumable upload session URL
-- `youtube_video_id` / `youtube_url` — final result after verification
-- `error_message` — specific failure reason
-- Linked to `teacher` (fk CustomUser) and optionally `lesson` (fk Lesson)
-- Created by `init_youtube_upload`, finalized by `complete_youtube_upload`
+Tracks YouTube resumable upload state per teacher. Status: PENDING / UPLOADING / PROCESSING / COMPLETED / FAILED. Linked to `teacher` and optionally `lesson`.
+
+### 17. `BackupLog`
+Added for backup tracking (live DB restore + Drive uploads). Types: LIVE_DB, SIGNUP_PDF, TEACHER_RESOURCE, FULL_BACKUP.
 
 ### Signals (pre_delete)
 - `CustomUser` → Cloudinary image cleanup + Supabase PDF delete
 - `Course` → Cloudinary thumbnail cleanup (including pending_image)
 - `Lesson` → video_file cleanup
+
+### Signals (post_save)
+- `CustomUser` (with pdf_path) → background thread: download PDF from Supabase → upload to Google Drive
+- `CourseResource` (with firebase_file_path) → background thread: download from Supabase → upload to Google Drive
 
 ---
 
@@ -235,149 +206,24 @@ The most complex model — handles teacher-uploaded study materials.
 ```
 
 ### accounts/urls.py (57 patterns — NO prefix)
+Same as before. Key additions from backup work:
 ```
-/                          → login_view (home)
-/signup/                   → signup_view
-/login/                    → login_view
-/health/                   → health_check
-/status/                   → status_page
-/logout/                   → logout_view
-
-# Teacher
-/teacher/signup/           → teacher_signup_view
-/teacher/login/            → teacher_login_view
-/teacher/dashboard/        → teacher_dashboard
-/teacher/courses/          → my_courses
-/teacher/analytics/        → teacher_analytics_view
-/teacher/explore/          → explore_courses
-/teacher/courses/create/   → create_course
-/teacher/courses/<uid>/edit/     → edit_course
-/teacher/courses/<uid>/delete/   → delete_course
-/teacher/courses/<uid>/lessons/  → course_lessons
-/teacher/courses/<uid>/lessons/add/ → add_lesson
-/teacher/courses/<uid>/submit/   → submit_course_approval
-/teacher/courses/view/<uid>/     → view_other_course
-/teacher/lessons/<uid>/edit/     → edit_lesson
-/teacher/lessons/<uid>/delete/   → delete_lesson
-
-# Resources
-/course/<uid>/resource/add/      → add_resource
-/resource/<uid>/edit/            → edit_resource
-/resource/<uid>/delete/          → delete_resource
-/resource/<uid>/access/          → access_resource (PDF viewer — X-Frame-Options exempted)
-/resource/<uid>/download/        → download_resource
-
-# Student
-/student/enroll/<uid>/    → enroll_course
-/student/explore/         → student_explore
-/course/<uid>/play/       → course_player
-
-# Shared
-/dashboard/               → dashboard_view
-/profile/                 → profile_view
-/profile/edit/            → edit_profile
-
-# Chat (REST + WebSocket)
-/chat/send/               → send_chat_message
-/chat/messages/<uid>/     → get_chat_messages
-/chat/list/               → get_chat_list
-ws/chat/<uid>/            → ChatConsumer (WebSocket)
-
-# Notifications
-/notifications/           → all_notifications
-/notification/<uid>/read/ → mark_notification_read
-/notification/<uid>/delete/ → delete_notification
-/notifications/read-all/  → mark_all_notifications_read
-/unread-counts/           → get_unread_counts
-
-# YouTube Upload API
-/api/youtube/init-upload/                         → init_youtube_upload (create UploadJob + session URL)
-/api/youtube/upload/<uid>/progress/               → update_upload_progress (browser reports %)
-/api/youtube/upload/<uid>/complete/               → complete_youtube_upload (verify + finalize)
-/api/youtube/upload/<uid>/status/                 → get_upload_status (poll for refresh persistence)
-
-# Auth flows
-/forgot-password/         → forgot_password
-/recover-username/        → recover_username
-/verify-otp/              → verify_otp
-/reset-password/          → reset_password
-
-# Auth bridge (Admin impersonation)
-/student-view/auth/       → student_view_auth
-/teacher-view/auth/       → teacher_view_auth
+/customadmin/backup-center/                             → backup_center
+/customadmin/backup-center/cron-trigger/                → backup_cron_trigger
+/customadmin/backup-center/clear-activity/              → backup_clear_activity
 ```
+
+### Accounts URL patterns (unchanged)
+Full list in code at `accounts/urls.py`.
 
 ### custom_admin/urls.py (58 patterns — prefix: /customadmin/)
-```
-/customadmin/portal-secure-access/  → admin_login_view (hidden URL)
-/customadmin/dashboard/             → admin_dashboard
-/customadmin/students/              → manage_students
-/customadmin/teachers/              → manage_teachers
-/customadmin/analytics/             → analytics_view
-/customadmin/storage-dashboard/     → storage_dashboard
-/customadmin/enterprise-monitor/    → enterprise_monitor
-/customadmin/system-audit/          → system_audit_view
-/customadmin/master-audit-summary/  → master_audit_summary_view
-
-# Pending approvals
-/customadmin/pending/               → pending_users_view
-/customadmin/pending/teachers/      → pending_teachers_view
-/customadmin/pending/resources/     → pending_resources
-/customadmin/pending/courses/       → pending_courses_view
-
-# Course actions
-/customadmin/course/approve/<uid>/  → approve_course
-/customadmin/course/reject/<uid>/   → reject_course
-/customadmin/course/<uid>/verify/   → admin_view_course_content
-/customadmin/course/delete/secure/<uid>/   → admin_delete_course_secure
-/customadmin/course/permanent-delete/secure/<uid>/ → admin_permanent_delete_course_secure
-/customadmin/course/restore/<uid>/  → admin_restore_course
-/customadmin/deleted-courses/       → deleted_courses_view
-
-# Lesson actions
-/customadmin/lesson/approve/<uid>/  → approve_lesson
-/customadmin/lesson/reject/<uid>/   → reject_lesson
-/customadmin/lesson/delete/secure/<uid>/  → admin_delete_lesson_secure
-
-# Resource actions
-/customadmin/resource/approve/<uid>/  → approve_resource
-/customadmin/resource/reject/<uid>/   → reject_resource
-
-# User management
-/customadmin/user/accept/<uid>/     → accept_user
-/customadmin/user/decline/<uid>/    → decline_user
-/customadmin/user/toggle/<uid>/     → toggle_user_status
-/customadmin/user/edit/<uid>/       → edit_user_admin
-/customadmin/user/delete/<uid>/     → delete_user_admin
-/customadmin/student/create/        → create_student_admin
-/customadmin/student/<uid>/profile/ → admin_student_profile
-/customadmin/teacher/create/        → create_teacher_admin
-/customadmin/teacher/<uid>/profile/ → admin_teacher_profile
-/customadmin/student-view/auth/     → admin_student_view_auth (impersonation)
-
-# Deletion requests
-/customadmin/deletion-requests/                     → manage_deletion_requests
-/customadmin/deletion-requests/<uid>/verify/        → verify_deletion_request
-/customadmin/deletion-requests/<uid>/approve/       → approve_deletion_request
-/customadmin/deletion-requests/<uid>/reject/        → reject_deletion_request
-
-# Other
-/customadmin/notifications/         → admin_all_notifications
-/customadmin/secure-pdf-access/<uid>/ → proxy_pdf_access
-/customadmin/content/               → content_management_view
-```
-
-### Error Handlers
-```python
-handler404 = 'custom_admin.views.error_404'
-handler500 = 'custom_admin.views.error_500'
-```
+Full list in code at `custom_admin/urls.py`.
 
 ---
 
 ## ⚙️ SETTINGS OVERVIEW
 
-### Key Settings
+### Key Settings (unchanged)
 | Setting | Value |
 |:---|:---|
 | `AUTH_USER_MODEL` | `accounts.CustomUser` |
@@ -411,6 +257,9 @@ CLOUDINARY_API_SECRET=
 SUPABASE_URL=
 SUPABASE_KEY=
 SUPABASE_BUCKET=
+RESOURCE_SUPABASE_URL=
+RESOURCE_SUPABASE_ANON_KEY=
+RESOURCE_SUPABASE_SERVICE_ROLE_KEY=
 
 # Redis (WebSocket + Cache — optional, falls back to in-memory)
 REDIS_URL=
@@ -427,21 +276,27 @@ YOUTUBE_CLIENT_ID=
 YOUTUBE_CLIENT_SECRET=
 YOUTUBE_REFRESH_TOKEN=
 
-# Sentry (optional but recommended)
+# Sentry (optional)
 SENTRY_DSN=
 
-# Google Drive (backup storage)
-GOOGLE_DRIVE_CREDENTIALS=  # JSON string of service account key (OR use path below)
-GOOGLE_DRIVE_CREDENTIALS_PATH=  # Path to JSON key file (alternative to env var)
-
-# If neither GOOGLE_DRIVE_CREDENTIALS nor GOOGLE_DRIVE_CREDENTIALS_PATH is set,
-# falls back to MEGA (MEGA_EMAIL / MEGA_PASSWORD)
+# Google Drive Backup (OAuth2 — personal Google account, 15GB free)
+GOOGLE_DRIVE_CLIENT_ID=
+GOOGLE_DRIVE_CLIENT_SECRET=
+GOOGLE_DRIVE_REFRESH_TOKEN=
 
 # Backup Supabase PostgreSQL (live DB standby — third Supabase instance)
 BACKUP_DATABASE_URL=       # PostgreSQL URL for periodic primary→backup DB restore
-BACKUP_SUPABASE_URL=       # Storage API URL for 3rd Supabase (database backup ZIP storage)
+BACKUP_SUPABASE_URL=       # Storage API URL for 3rd Supabase (DB dump storage)
 BACKUP_SUPABASE_KEY=       # Service role key for 3rd Supabase storage
 BACKUP_SUPABASE_BUCKET=    # Bucket name for DB backups on 3rd Supabase (default: backups)
+BACKUP_CRON_TOKEN=         # Secret token for cron-job.org webhook
+
+# Firebase (legacy — may be removable)
+FIREBASE_SERVICE_ACCOUNT_PATH=
+FIREBASE_RTDB_URL=
+
+# Misc
+DISABLE_AXES=True          # Dev only
 ```
 
 ---
@@ -458,7 +313,7 @@ BACKUP_SUPABASE_BUCKET=    # Bucket name for DB backups on 3rd Supabase (default
 | gunicorn | 23.0.0 | WSGI fallback |
 | psycopg2 | 2.9.9 | PostgreSQL driver |
 | dj-database-url | 2.3.0 | DATABASE_URL parser |
-| supabase | 1.2.0 | Storage (PDFs, resources) |
+| supabase | **2.16.0** | Storage (PDFs, resources) |
 | cloudinary | 1.44.2 | Image hosting |
 | django-cloudinary-storage | 0.3.0 | Django storage backend |
 | whitenoise | 6.7.0 | Static file serving |
@@ -470,7 +325,8 @@ BACKUP_SUPABASE_BUCKET=    # Bucket name for DB backups on 3rd Supabase (default
 | PyMuPDF | 1.24.4 | PDF processing |
 | reportlab | 4.5.0 | PDF generation |
 | firebase-admin | 6.5.0 | Firebase (legacy storage) |
-| google-api-python-client | latest | Google Drive backup |
+| google-api-python-client | **2.195.0** | Google Drive backup |
+| google-auth-oauthlib | **1.3.1** | Google Drive OAuth2 |
 | Pillow | ≥11.1.0 | Image processing |
 | pillow-heif | 1.3.0 | HEIF image support |
 | python-dotenv | 1.0.1 | .env file loading |
@@ -497,83 +353,58 @@ Teacher selects MP4 → clicks "Add Lesson"
 → Refresh-safe: /api/youtube/upload/<job_uid>/status/ returns current progress
 ```
 
-### 1. Teacher Resource Upload Flow
+### 1. Teacher Resource Upload Flow (Current — passes through Render RAM)
 ```
-Teacher uploads PDF → malware_scanner validates MIME
-→ pdf_processor compresses → Firebase/Supabase storage
+Teacher uploads PDF → Django receives file in RAM → Supabase Storage
 → CourseResource created (status=PENDING)
+→ Signal fires → background thread downloads from Supabase → uploads to Google Drive
 → Admin notified → Admin reviews at /customadmin/pending/resources/
-→ Admin approves → status=APPROVED, is_approved=True
-→ Students can access via /resource/<uid>/access/
-→ Google Drive backup triggered (backup_status tracked)
+→ Admin approves → status=APPROVED
 ```
 
-### 2. Teacher Edit/Resubmission Flow
+### 2. Signup PDF Upload Flow (Current — passes through Render RAM)
 ```
-Teacher edits approved resource → pending_* fields populated
-→ has_pending_edits=True → Admin sees changes in pending queue
-→ Admin approves → live fields updated, pending_* cleared
-→ Admin rejects → pending_* cleared, teacher notified
-```
-
-### 3. Resource Deletion Flow
-```
-Teacher requests deletion → DeletionRequest created (status=PENDING)
-→ CourseResource.status = DELETION_PENDING
-→ Admin reviews at /customadmin/deletion-requests/<uid>/verify/
-→ Admin approves → Supabase file deleted + CourseResource soft-deleted
-→ Admin rejects → status reverts to APPROVED
+Student/Teacher uploads proof PDF → Django receives file in RAM → Supabase Storage
+→ CustomUser.pdf_path saved
+→ Signal fires → background thread downloads from Supabase → uploads to Google Drive
 ```
 
-### 4. User Registration Flow
+### 3. Backup Flow (Google Drive OAuth2)
 ```
-Teacher: Signs up → status=PENDING → Admin approves at /customadmin/pending/teachers/
-Student: Signs up → status=ACTIVE immediately (no manual approval needed)
-Admin: Created only via Django admin or direct DB
+Real-time (post_save signals):
+  Signup PDF or teacher resource created
+  → Background thread downloads file from Supabase
+  → Uploads to Google Drive in folder:
+    NeoLearner_Backups/Signup_Proofs/YYYY/MM/
+    NeoLearner_Backups/Teacher_Resources/{Course}/{Chapter}/{Category}/
+
+Daily cron (backup_daily_full):
+  → pg_dump → .sql file
+  → Uploads .sql to 3rd Supabase bucket (15-day retention)
+  → (File collection + ZIP creation currently disabled — too RAM-heavy on Render 512MB)
+
+Live DB restore (backup_to_live_db):
+  → pg_dump from DATABASE_URL
+  → psql restore to BACKUP_DATABASE_URL (third Supabase PostgreSQL)
+  → Triggered every 4h via cron-job.org: ?type=supabase-db
 ```
 
-### 5. Real-time Chat Flow
-```
-WebSocket connects to ws/chat/<other_user_uid>/
-→ ChatConsumer groups by sorted(sender_uid, receiver_uid)
-→ Messages saved to ChatMessage model
-→ Admin identity masked (displayed as "Support Team" to students)
-```
-
-### 6. Live DB Backup Flow (Primary → Backup Supabase)
-```
-Cron or manual trigger → backup_to_live_db management command
-→ pg_dump from primary DATABASE_URL → SQL bytes in memory
-→ psql restore to BACKUP_DATABASE_URL (third Supabase PostgreSQL instance)
-→ Logged as BackupLog with type=LIVE_DB
-→ Triggered via: /customadmin/backup-center/cron-trigger/?token=<TOKEN>&type=supabase-db
-→ Also available manually from Backup Center UI
-
-Daily full backup also uploads DB dump to 3rd Supabase storage:
-→ backup_daily_full creates ZIP (DB + signup PDFs + resources) → MEGA
-→ DB dump file also uploaded separately to 3rd Supabase bucket (BACKUP_SUPABASE_BUCKET)
-→ Retention: keeps last 15 daily DB dumps in the bucket
-```
-
-### 7. OTP / Auth Recovery Flow
-```
-/forgot-password/ → EmailOTP created (purpose=PASSWORD_RESET)
-→ /verify-otp/ → OTP hash verified, session token granted
-→ /reset-password/ → Password updated
-Same flow for: EMAIL_VERIFICATION, USERNAME_RECOVERY, EMAIL_UPDATE, USERNAME_UPDATE
-```
+### 4. Teacher Edit/Resubmission Flow (unchanged)
+### 5. Resource Deletion Flow (unchanged)
+### 6. User Registration Flow (unchanged)
+### 7. Real-time Chat Flow (unchanged)
+### 8. OTP / Auth Recovery Flow (unchanged)
 
 ---
 
 ## 🚀 DEPLOYMENT (Render)
 
-### Platform: Render (render.com)
 | Setting | Value |
 |:---|:---|
 | **Service Type** | Web Service |
 | **Build Command** | `./build.sh` (pip install + collectstatic + migrate) |
 | **Start Command** | `daphne -b 0.0.0.0 -p $PORT elearning_project.asgi:application` |
-| **Auto-Deploy** | Yes — triggers on push to `ongoing` branch |
+| **Auto-Deploy** | Yes — triggers on push to `3-fullcorrect` branch |
 | **Runtime** | Python 3.x (see `runtime.txt`) |
 
 ### build.sh
@@ -584,13 +415,13 @@ python manage.py migrate
 ```
 
 ### Render URLs (Hardcoded in settings)
-- `edustreamcalicut.onrender.com` — legacy
 - `neolearner.onrender.com` — primary student portal
 - `calicutadmin.onrender.com` — admin portal
+- `edustreamcalicut.onrender.com` — legacy (redirects)
 
 ---
 
-## 🛡️ SECURITY
+## 🛡️ SECURITY (unchanged)
 
 | Feature | Implementation |
 |:---|:---|
@@ -618,34 +449,40 @@ Images (avatars, thumbnails) → Cloudinary
     → URL stored in: CustomUser.image, Course.image, CourseResource.thumbnail_path
     → Delete via pre_delete signals
 
-Documents (PDFs, DOCX etc.) → Supabase Storage
+Documents (PDFs, DOCX etc.) → Supabase Storage (Resource Supabase)
     → Upload via supabase_storage.py / storage_manager.py
     → Path stored in: CourseResource.firebase_file_path (misnomer — IS Supabase)
     → Access via 7-day signed URLs: CourseResource.get_signed_url()
     → Naming convention: courses/<course_uid>/resources/<uid>.<ext>
 
-Proof PDFs (teacher credentials) → Supabase
+Proof PDFs (teacher/student credentials) → Supabase Storage (Main Supabase)
     → Path stored in: CustomUser.pdf_path
     → Access via: CustomUser.proof_pdf_url property
+    → Organized into: documents/students/ or documents/teachers/
 
-Google Drive → Backup storage for approved resources
+Google Drive → Backup storage (OAuth2 refresh token, personal Google account)
+    → Real-time: triggered by post_save signals, background threads
+    → Folders:
+      NeoLearner_Backups/Signup_Proofs/YYYY/MM/
+      NeoLearner_Backups/Teacher_Resources/{Course}/{Chapter}/{Category}/
+      NeoLearner_Backups/Daily_Backups/  (from cron)
     → Tracked via CourseResource.backup_file_path + backup_status
+    → Auth: GOOGLE_DRIVE_CLIENT_ID + CLIENT_SECRET + REFRESH_TOKEN (OAuth2)
 ```
 
 ---
 
 ## 🧩 AI TASK RULES
 
-When working on this project, any AI should follow these rules:
-
 ### ✅ Always Do
 1. **Use `uid` (UUID) for all URL routing** — never integer PKs in public URLs
 2. **Check `has_pending_edits` flag** before modifying approved content
 3. **Use `get_signed_url()`** for resource file access — never expose raw storage paths
 4. **Run `python manage.py makemigrations accounts`** after any model changes
-5. **Always work on `3-fullcorrect` branch** — never work on `ongoing` or `stable-may19-rollback`
+5. **Work ONLY on `3-fullcorrect` branch** — never touch any other branch
 6. **Add CSRF token** to all POST forms: `{% csrf_token %}`
 7. **Check user type** (`request.user.user_type`) for role-based access control
+8. **If unsure about a task involving other branches — ASK before proceeding**
 
 ### ❌ Never Do
 1. Never hardcode Supabase/Cloudinary API keys — always use `os.getenv()`
@@ -654,6 +491,8 @@ When working on this project, any AI should follow these rules:
 4. Never set `DEBUG=True` in production
 5. Never add `X_FRAME_OPTIONS = 'ALLOWALL'` globally — only exempt specific views
 6. Never commit `.env` or `db.sqlite3` to git
+7. Never switch to, merge, sync, or reset any branch other than `3-fullcorrect`
+8. Never create new branches unless explicitly asked
 
 ### Common Gotchas
 - `CourseResource.firebase_file_path` = Supabase path (misleading field name from migration history)
@@ -661,6 +500,9 @@ When working on this project, any AI should follow these rules:
 - Chat admin identity is masked — `sender.user_type == 'ADMIN'` → display as "Support Team"
 - `pdf_path` (new) vs `proof_pdf` (legacy deprecated) — always use `pdf_path`
 - `SESSION_COOKIE_AGE = 10800` (3hr) applies only to students; admin/teacher use `session.set_expiry(0)`
+- Google Drive backup uses OAuth2 (personal account), not service account
+- `supabase` PyPI package version is **2.16.0** (not 1.2.0 as older docs state)
+- Supabase SDK storage API for bucket CRUD uses direct HTTP — do NOT use `client.storage.get_bucket()` / `create_bucket()` (URL construction broken in v2.x)
 
 ---
 
@@ -679,6 +521,7 @@ Key templates:
 - `custom_admin/templates/custom_admin/dashboard.html` — Admin dashboard
 - `custom_admin/templates/custom_admin/analytics.html` — Analytics dashboard
 - `custom_admin/templates/custom_admin/decline_reason.html` — Rejection reason modal
+- `custom_admin/templates/custom_admin/backup_center.html` — Backup management UI
 
 ---
 
@@ -693,18 +536,33 @@ Available globally in all templates:
 
 ---
 
-## ⏰ RECOMMENDED CRON JOBS (Render)
+## ⏰ CRON JOBS (cron-job.org)
 
-| Command | Frequency | Purpose |
+| URL | Frequency | Purpose |
 |:---|:---|:---|
-| `python manage.py recover_orphaned_lessons --minutes-back 30` | Every 10 minutes | Recover lessons where YouTube upload succeeded but callback never fired (browser disconnect, timeout, etc.) |
-| `python manage.py keep_alive` | Every 10 minutes | Prevent Render free-tier spin-down (if `keep_alive` management command exists) |
+| `.../cron-trigger/?token=<TOKEN>&type=supabase-db` | Every 4 hours | Live PostgreSQL restore (DATABASE_URL → BACKUP_DATABASE_URL) |
+| `.../cron-trigger/?token=<TOKEN>&type=database` | Daily 20:30 UTC | Daily full backup (DB dump → 3rd Supabase bucket) |
 
-**Note:** Render does not natively support cron jobs. Use an external uptime monitor (e.g., cron-job.org, UptimeRobot, Better Uptime) that hits:
-- `https://neolearner.onrender.com/health/` every 10 min (keep-alive + recovery check)
-- Or deploy a tiny cron service container on the same Render project.
+Base URL: `https://neolearner.onrender.com/customadmin/backup-center/cron-trigger/`
+Token: Stored in `BACKUP_CRON_TOKEN` env var.
+
+---
+
+## 🔐 KEY FILES REFERENCE
+
+| File | Purpose |
+|:---|:---|
+| `accounts/utils/google_drive_service.py` | Google Drive API: upload, download, delete, retention, OAuth + service account |
+| `accounts/utils/drive_backup_service.py` | Auto-router: OAuth → service account → MEGA fallback |
+| `accounts/utils/backup_trigger.py` | Real-time backup: background threads, retry logic, SHA256 verify |
+| `accounts/utils/generate_drive_token.py` | One-time OAuth refresh token generator (run locally) |
+| `accounts/utils/supabase_storage.py` | Supabase storage: signed URLs, download, upload, backup client |
+| `accounts/management/commands/backup_daily_full.py` | Daily full backup management command |
+| `accounts/management/commands/backup_to_live_db.py` | Live DB restore management command |
+| `accounts/management/commands/check_mega_backup.py` | Legacy check (no longer used) |
+| `accounts/management/commands/backup_email_report.py` | Backup email report (no longer used) |
 
 ---
 
 *This document is the single source of truth for any AI working on Neo Learner.*
-*Updated: 2026-06-06. Maintain this file whenever models, URLs, or workflows change.*
+*Updated: 2026-06-13. Maintain this file whenever models, URLs, or workflows change.*
