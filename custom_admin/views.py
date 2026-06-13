@@ -3364,7 +3364,7 @@ def backup_cron_trigger(request):
             OTPEngine.cleanup_old_otps()
         except Exception:
             pass
-        return JsonResponse({'status': 'ok', 'output': output[:500]})
+        return JsonResponse({'status': 'ok', 'output': output[:2000]})
     if btype == 'notif-cleanup':
         from accounts.utils.notification_helper import cleanup_old_notifications
         deleted = cleanup_old_notifications()
@@ -3377,7 +3377,7 @@ def backup_cron_trigger(request):
         except Exception as e:
             logger.exception(f"Backup API error for type '{btype}': {e}")
             return JsonResponse({'status': 'error', 'error': 'Live DB backup failed'}, status=500)
-        return JsonResponse({'status': 'ok', 'output': output[:500]})
+        return JsonResponse({'status': 'ok', 'output': output[:2000]})
     return JsonResponse({'error': f'Unknown backup type: {btype}'}, status=400)
 
 
