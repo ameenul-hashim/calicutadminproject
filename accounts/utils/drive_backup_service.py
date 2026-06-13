@@ -3,9 +3,7 @@ import io
 import hashlib
 import logging
 import subprocess
-import socket
 from datetime import datetime
-from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -126,82 +124,62 @@ def run_pg_dump_fallback():
 
 
 def restore_to_backup_db(sql_bytes, backup_db_url=None):
-    """Restore a pg_dump SQL dump to the backup Supabase PostgreSQL database.
+    """Upload a pg_dump SQL dump to the 3rd Supabase storage bucket.
     
-    Uses BACKUP_DATABASE_URL env var if no URL is provided.
+    Direct PostgreSQL restore is not possible because the backup Supabase
+    database only supports IPv6 and Render does not support outbound IPv6.
+    Instead, the SQL dump is uploaded to the backup Supabase storage bucket
+    (which uses HTTPS/IPv4) for later manual restore if needed.
+    
+    Uses BACKUP_DATABASE_URL for metadata only — actual upload uses
+    BACKUP_SUPABASE_URL/BACKUP_SUPABASE_KEY/BACKUP_SUPABASE_BUCKET.
     Returns (success: bool, message: str).
     """
-    if not backup_db_url:
-        backup_db_url = os.getenv('BACKUP_DATABASE_URL')
-    if not backup_db_url:
-        return False, "BACKUP_DATABASE_URL not set"
-    
+    from datetime import datetime
+    import requests as req
+
+    backup_url = os.getenv('BACKUP_SUPABASE_URL', '').rstrip('/')
+    backup_key = os.getenv('BACKUP_SUPABASE_KEY', '')
+    bucket = os.getenv('BACKUP_SUPABASE_BUCKET', 'backups')
+
+    if not backup_url or not backup_key:
+        return False, "BACKUP_SUPABASE_URL or BACKUP_SUPABASE_KEY not set"
+
     try:
-        import psycopg2
-        from urllib.parse import urlparse, parse_qs
-
-        parsed = urlparse(backup_db_url)
-        dbname = parsed.path.lstrip('/') or 'postgres'
-        user = parsed.username or 'postgres'
-        password = parsed.password or ''
-        port = parsed.port or 5432
-        host = parsed.hostname or 'localhost'
-        qs = parse_qs(parsed.query)
-
-        # Resolve hostname to IPv4 to avoid Render IPv6 connectivity issues
-        ipv4 = None
-        try:
-            addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-            if addrs:
-                ipv4 = addrs[0][4][0]
-        except Exception:
-            pass
-
-        # Build connection parameters
-        conn_params = {
-            'dbname': dbname,
-            'user': user,
-            'password': password,
-            'port': port,
-            'sslmode': qs.get('sslmode', ['require'])[0],
-            'connect_timeout': 10,
+        headers = {
+            'Authorization': f'Bearer {backup_key}',
+            'Content-Type': 'application/json',
         }
 
-        if ipv4:
-            conn_params['host'] = ipv4
-        else:
-            conn_params['host'] = host
+        # Ensure bucket exists (direct HTTP since supabase-py v2.x has URL issues)
+        r = req.get(f'{backup_url}/storage/v1/bucket/{bucket}', headers=headers)
+        if r.status_code == 404:
+            r2 = req.post(f'{backup_url}/storage/v1/bucket', headers=headers,
+                          json={'name': bucket, 'public': False})
+            if r2.status_code not in (200, 201):
+                return False, f"Failed to create bucket: {r2.text}"
 
-        conn = psycopg2.connect(**conn_params)
-        conn.autocommit = True
-        cur = conn.cursor()
-        cur.execute(sql_bytes.decode('utf-8'))
-        cur.close()
-        conn.close()
+        # Upload SQL dump to storage
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+        remote_path = f'live_db_restore/{timestamp}.sql'
 
-        logger.info(f"Backup DB restore succeeded: {len(sql_bytes)} bytes restored")
+        upload_headers = {
+            'Authorization': f'Bearer {backup_key}',
+            'Content-Type': 'application/octet-stream',
+        }
+        r3 = req.post(
+            f'{backup_url}/storage/v1/object/{bucket}/{remote_path}',
+            headers=upload_headers,
+            data=sql_bytes,
+        )
+        if r3.status_code not in (200, 201):
+            return False, f"Upload failed: {r3.status_code} {r3.text}"
+
+        logger.info(f"Backup DB SQL dump uploaded to storage: {bucket}/{remote_path} ({len(sql_bytes)} bytes)")
         return True, None
 
-    except psycopg2.OperationalError as e:
-        err_str = str(e)
-        if 'could not connect' in err_str.lower() or 'network is unreachable' in err_str.lower():
-            # Try fallback: swap port (5432 ↔ 6543)
-            fallback_port = 5432 if port == 6543 else 6543
-            try:
-                conn_params['port'] = fallback_port
-                conn = psycopg2.connect(**conn_params)
-                conn.autocommit = True
-                cur = conn.cursor()
-                cur.execute(sql_bytes.decode('utf-8'))
-                cur.close()
-                conn.close()
-                logger.info(f"Backup DB restore succeeded via port {fallback_port}: {len(sql_bytes)} bytes restored")
-                return True, None
-            except Exception as e2:
-                return False, f"psycopg2 restore failed: {e2}"
-        return False, f"psycopg2 restore failed: {err_str}"
     except Exception as e:
-        return False, f"psycopg2 restore failed: {e}"
+        return False, f"Backup upload failed: {e}"
 
 
 def delete_old_backups(service, folder_path, keep_count=30):
