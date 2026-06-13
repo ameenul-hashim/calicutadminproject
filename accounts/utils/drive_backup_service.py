@@ -3,7 +3,9 @@ import io
 import hashlib
 import logging
 import subprocess
+import socket
 from datetime import datetime
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -135,8 +137,18 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
         return False, "BACKUP_DATABASE_URL not set"
     
     try:
+        # Resolve hostname to IPv4 to avoid Render IPv6 connectivity issues
+        if 'hostaddr' not in backup_db_url:
+            try:
+                parsed = urlparse(backup_db_url)
+                if parsed.hostname:
+                    ipv4 = socket.gethostbyname(parsed.hostname)
+                    backup_db_url = backup_db_url.replace(parsed.hostname, ipv4, 1)
+            except Exception:
+                pass  # fallback to original URL
+
         result = subprocess.run(
-            ['psql', '-4', backup_db_url],
+            ['psql', backup_db_url],
             input=sql_bytes,
             capture_output=True,
             timeout=300  # 5 minutes for large DBs
