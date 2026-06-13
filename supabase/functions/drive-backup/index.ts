@@ -118,24 +118,11 @@ function getDestinationPath(bucketId: string, name: string): { folder: string[];
   const parts = name.split("/");
   const fileName = parts.pop() || name;
 
-  if (bucketId === "calicutadminpanelpdf") {
-    // Signup proofs from Main Supabase
-    const now = new Date();
-    const year = now.getFullYear().toString();
-    const month = (now.getMonth() + 1).toString().padStart(2, "0");
-    return { folder: [ROOT_FOLDER, "Signup_Proofs", year, month], fileName };
-  }
-
-  if (bucketId === "resources" || bucketId === "resource_bucket" || name.includes("/resources/")) {
-    // Teacher resources: <course_slug>/<category>/<name>.pdf
-    const [courseSlug, category] = parts;
-    return {
-      folder: [ROOT_FOLDER, "Teacher_Resources", courseSlug || "Unknown", category || "General"],
-      fileName: fileName,
-    };
-  }
-
-  return { folder: [ROOT_FOLDER, "Daily_Backups"], fileName };
+  // Mirror the exact Supabase path structure under the root folder
+  // e.g. calicutadminpanelpdf/documents/students/<uid>.pdf
+  //   → NeoLearner_Backups/calicutadminpanelpdf/documents/students/<uid>.pdf
+  const dirParts = parts.length > 0 ? parts : [];
+  return { folder: [ROOT_FOLDER, bucketId, ...dirParts], fileName };
 }
 
 async function downloadFromSupabase(
