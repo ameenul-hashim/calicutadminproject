@@ -10,11 +10,32 @@ SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
 
 def _get_credentials():
-    """Get Google Drive service account credentials from env var.
-    Supports:
-    - GOOGLE_DRIVE_CREDENTIALS = JSON string directly
-    - GOOGLE_DRIVE_CREDENTIALS = file path (e.g., Render secret files)
-    - GOOGLE_DRIVE_CREDENTIALS_PATH = file path to JSON key"""
+    """Get Google Drive credentials.
+    Priority:
+    1. OAuth refresh token (GOOGLE_DRIVE_REFRESH_TOKEN + CLIENT_ID/SECRET)
+    2. Service account JSON (GOOGLE_DRIVE_CREDENTIALS or _PATH)"""
+    client_id = os.getenv('GOOGLE_DRIVE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_DRIVE_CLIENT_SECRET')
+    refresh_token = os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN')
+
+    if client_id and client_secret and refresh_token:
+        try:
+            from google.oauth2.credentials import Credentials
+            creds = Credentials(
+                None,
+                refresh_token=refresh_token,
+                token_uri='https://oauth2.googleapis.com/token',
+                client_id=client_id,
+                client_secret=client_secret,
+                scopes=SCOPES
+            )
+            creds.refresh(None)
+            logger.info('Google Drive OAuth credentials initialized')
+            return creds
+        except Exception as e:
+            logger.error(f'Google Drive OAuth init failed: {e}')
+            return None
+
     creds_val = os.getenv('GOOGLE_DRIVE_CREDENTIALS')
     creds_path = os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH')
 
@@ -43,7 +64,7 @@ def _get_credentials():
             logger.error(f'Failed to load GOOGLE_DRIVE_CREDENTIALS_PATH: {e}')
             return None
 
-    logger.warning('Google Drive not configured: set GOOGLE_DRIVE_CREDENTIALS or GOOGLE_DRIVE_CREDENTIALS_PATH')
+    logger.warning('Google Drive not configured')
     return None
 
 

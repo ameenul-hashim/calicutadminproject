@@ -19,13 +19,15 @@ def _get_config(key, default=None):
 def _drive_configured():
     """Check if any drive backend is configured (Google Drive or MEGA)."""
     gd = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS') or os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH'))
+    oauth = bool(os.getenv('GOOGLE_DRIVE_CLIENT_ID') and os.getenv('GOOGLE_DRIVE_CLIENT_SECRET') and os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN'))
     mega = bool(os.getenv('MEGA_EMAIL') and os.getenv('MEGA_PASSWORD'))
-    return gd or mega
+    return gd or oauth or mega
 
 
 def _use_google_drive():
     """Returns True if Google Drive credentials are available."""
-    return bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS') or os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH'))
+    return bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS') or os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH') or
+                (os.getenv('GOOGLE_DRIVE_CLIENT_ID') and os.getenv('GOOGLE_DRIVE_CLIENT_SECRET') and os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN')))
 
 
 def _get_drive_service():

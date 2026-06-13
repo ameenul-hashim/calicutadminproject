@@ -30,6 +30,7 @@ django-axes==8.3.1
 channels-redis==4.2.1
 redis==5.0.8
 django-ratelimit==4.1.0
+google-auth-oauthlib
 django-cleanup==9.0.0
 python-magic==0.4.27
 mega.py
