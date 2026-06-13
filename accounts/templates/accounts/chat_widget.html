@@ -446,6 +446,19 @@
 
   updateUnreadCounts();
   setInterval(updateUnreadCounts, 4000);
+
+  // Listen for WebSocket real-time messages
+  window.addEventListener('neochat-message', function (e) {
+    var data = e.detail;
+    if (selectedUid && data.sender_uid === selectedUid) {
+      pollNewMessages(selectedUid);
+    }
+    if (!selectedUid) {
+      loadChatList(searchInput.value);
+    }
+    loadChatList(searchInput.value);
+  });
+
   window.addEventListener('beforeunload', stopAllPolling);
 })();
 </script>

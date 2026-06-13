@@ -63,6 +63,7 @@ CSRF_TRUSTED_ORIGINS = list(set(_env_csrf + _required_csrf))
 
 INSTALLED_APPS = [
     'daphne',
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -176,6 +177,17 @@ else:
             'LOCATION': 'unique-snowflake',
         }
     }
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer' if REDIS_URL else 'channels.layers.InMemoryChannelLayer',
+        'CONFIG': {
+            'hosts': [REDIS_URL] if REDIS_URL else [],
+            'capacity': 1000,
+            'expiry': 60,
+        } if REDIS_URL else {},
+    },
+}
 
 if not DEBUG:
     SECURE_SSL_REDIRECT = True

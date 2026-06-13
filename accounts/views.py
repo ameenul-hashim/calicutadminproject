@@ -138,13 +138,50 @@ def create_notification(user, message):
 def notify_admins(title, message, notif_type='general', action_url=''):
     from .models import CustomUser
     from .utils.firebase_db import notif_create_batch
+    from .utils.ws_push import push_notification, push_to_group
     admin_uids = list(CustomUser.objects.filter(user_type='ADMIN').values_list('uid', flat=True))
     if admin_uids:
         notif_create_batch([str(uid) for uid in admin_uids], title, message, notif_type, action_url)
+        for uid in admin_uids:
+            try:
+                push_notification(str(uid), title, message, notif_type, 0, action_url)
+            except Exception:
+                pass
+        try:
+            push_to_group('type_admin', {
+                'type': 'notification',
+                'title': title,
+                'message': message,
+                'notif_type': notif_type,
+                'count': 0,
+                'url': action_url,
+            })
+        except Exception:
+            pass
+        try:
+            from .models import Course, DeletionRequest, CourseDeletionRequest
+            counts = CustomUser.objects.filter(user_type__in=('STUDENT', 'TEACHER'), status='PENDING').count()
+            pending_courses = Course.objects.filter(status='PENDING').count()
+            pending_deletions = DeletionRequest.objects.filter(status='PENDING').count()
+            push_to_group('type_admin', {
+                'type': 'pending_counts',
+                'counts': {
+                    'pending-users-count': counts,
+                    'pending-courses-count': pending_courses,
+                    'pending-deletions-count': pending_deletions,
+                },
+            })
+        except Exception:
+            pass
 
 def notify_teacher(teacher_uid, title, message, notif_type='general', action_url=''):
     from .utils.firebase_db import notif_create
+    from .utils.ws_push import push_notification
     notif_create(str(teacher_uid), title, message, notif_type, action_url)
+    try:
+        push_notification(str(teacher_uid), title, message, notif_type, 0, action_url)
+    except Exception:
+        pass
 
 def _is_mobile_ua(request):
     ua = request.META.get('HTTP_USER_AGENT', '').lower()
@@ -2240,6 +2277,12 @@ def send_chat_message(request):
     msg_uid, now_ms = result
     from datetime import datetime
     ts_str = datetime.fromtimestamp(now_ms / 1000).strftime('%b %d, %I:%M %p')
+
+    try:
+        from accounts.utils.ws_push import push_chat_message as ws_push_chat
+        ws_push_chat(str(sender.uid), receiver_uid, msg_uid, sender_name, message_text, now_ms)
+    except Exception:
+        pass
 
     return JsonResponse({
         'status': 'success',

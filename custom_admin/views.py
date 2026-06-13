@@ -50,6 +50,11 @@ def create_notification(user, message):
         return
     from accounts.utils.firebase_db import notif_create
     notif_create(str(user.uid), "Notification", message)
+    try:
+        from accounts.utils.ws_push import push_notification
+        push_notification(str(user.uid), "Notification", message, 'info', 1)
+    except Exception:
+        pass
 
 @user_passes_test(lambda u: u.is_authenticated and (u.is_superuser or u.user_type == 'ADMIN' or (u.is_staff and u.user_type != 'TEACHER')), login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -907,7 +912,12 @@ def approve_course(request, course_uid):
     create_notification(course.teacher, f"Your course '{course.title}' has been approved and published!")
     from accounts.utils.firebase_db import notif_create
     notif_create(str(course.teacher.uid), "Course Approved", f"Your course '{course.title}' has been approved.", 'course_approved', '')
-    
+    try:
+        from accounts.utils.ws_push import push_notification
+        push_notification(str(course.teacher.uid), "Course Approved", f"Your course '{course.title}' has been published.", 'success', 0, f'/courses/{course.uid}/')
+    except Exception:
+        pass
+
     ApprovalLog.objects.create(
         content_type='COURSE',
         object_id=course.id,
@@ -962,6 +972,11 @@ def reject_course(request, course_uid):
         create_notification(teacher, f"❌ Your course '{course_title}' was rejected. Reason: {reason}. Please fix the issues and resubmit for approval.")
         from accounts.utils.firebase_db import notif_create
         notif_create(str(teacher.uid), "Course Rejected", f"Your course '{course_title}' was rejected.", 'course_rejected', '')
+        try:
+            from accounts.utils.ws_push import push_notification
+            push_notification(str(teacher.uid), "Course Rejected", reason, 'error', 1, f'/courses/{course.uid}/')
+        except Exception:
+            pass
 
         messages.warning(request, f"Course '{course_title}' has been rejected. The teacher has been notified to resubmit.")
         return redirect('admin_content')
