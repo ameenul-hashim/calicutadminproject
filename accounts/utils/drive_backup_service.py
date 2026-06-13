@@ -148,7 +148,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
     try:
         headers = {
             'Authorization': f'Bearer {backup_key}',
-            'Content-Type': 'application/json',
+            'apikey': backup_key,
         }
 
         # Ensure bucket exists (direct HTTP since supabase-py v2.x has URL issues)
@@ -165,6 +165,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
 
         upload_headers = {
             'Authorization': f'Bearer {backup_key}',
+            'apikey': backup_key,
             'Content-Type': 'application/octet-stream',
         }
         r3 = req.post(
