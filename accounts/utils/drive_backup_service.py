@@ -137,34 +137,71 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
         return False, "BACKUP_DATABASE_URL not set"
     
     try:
-        # Resolve hostname to IPv4 to avoid Render IPv6 connectivity issues
-        if 'hostaddr' not in backup_db_url:
-            try:
-                parsed = urlparse(backup_db_url)
-                if parsed.hostname:
-                    ipv4 = socket.gethostbyname(parsed.hostname)
-                    backup_db_url = backup_db_url.replace(parsed.hostname, ipv4, 1)
-            except Exception:
-                pass  # fallback to original URL
+        import psycopg2
+        from urllib.parse import urlparse, parse_qs
 
-        result = subprocess.run(
-            ['psql', backup_db_url],
-            input=sql_bytes,
-            capture_output=True,
-            timeout=300  # 5 minutes for large DBs
-        )
-        if result.returncode != 0:
-            error_msg = result.stderr[:500].decode('utf-8', errors='replace') if result.stderr else "Unknown error"
-            return False, f"psql restore failed (exit {result.returncode}): {error_msg}"
-        
+        parsed = urlparse(backup_db_url)
+        dbname = parsed.path.lstrip('/') or 'postgres'
+        user = parsed.username or 'postgres'
+        password = parsed.password or ''
+        port = parsed.port or 5432
+        host = parsed.hostname or 'localhost'
+        qs = parse_qs(parsed.query)
+
+        # Resolve hostname to IPv4 to avoid Render IPv6 connectivity issues
+        ipv4 = None
+        try:
+            addrs = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+            if addrs:
+                ipv4 = addrs[0][4][0]
+        except Exception:
+            pass
+
+        # Build connection parameters
+        conn_params = {
+            'dbname': dbname,
+            'user': user,
+            'password': password,
+            'port': port,
+            'sslmode': qs.get('sslmode', ['require'])[0],
+            'connect_timeout': 10,
+        }
+
+        if ipv4:
+            conn_params['host'] = ipv4
+        else:
+            conn_params['host'] = host
+
+        conn = psycopg2.connect(**conn_params)
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute(sql_bytes.decode('utf-8'))
+        cur.close()
+        conn.close()
+
         logger.info(f"Backup DB restore succeeded: {len(sql_bytes)} bytes restored")
         return True, None
-    except FileNotFoundError:
-        return False, "psql not installed on this server"
-    except subprocess.TimeoutExpired:
-        return False, "psql restore timed out after 300s"
+
+    except psycopg2.OperationalError as e:
+        err_str = str(e)
+        if 'could not connect' in err_str.lower() or 'network is unreachable' in err_str.lower():
+            # Try fallback: swap port (5432 ↔ 6543)
+            fallback_port = 5432 if port == 6543 else 6543
+            try:
+                conn_params['port'] = fallback_port
+                conn = psycopg2.connect(**conn_params)
+                conn.autocommit = True
+                cur = conn.cursor()
+                cur.execute(sql_bytes.decode('utf-8'))
+                cur.close()
+                conn.close()
+                logger.info(f"Backup DB restore succeeded via port {fallback_port}: {len(sql_bytes)} bytes restored")
+                return True, None
+            except Exception as e2:
+                return False, f"psycopg2 restore failed: {e2}"
+        return False, f"psycopg2 restore failed: {err_str}"
     except Exception as e:
-        return False, str(e)
+        return False, f"psycopg2 restore failed: {e}"
 
 
 def delete_old_backups(service, folder_path, keep_count=30):
