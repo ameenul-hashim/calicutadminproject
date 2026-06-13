@@ -45,7 +45,7 @@ def _list_supabase_files(client, bucket, prefix=''):
 
 
 class Command(BaseCommand):
-    help = 'Daily full backup - database + Supabase files to ZIP archive + MEGA + backup Supabase'
+    help = 'Daily full backup - database + Supabase files to ZIP archive + cloud drive + backup Supabase'
 
     def add_arguments(self, parser):
         parser.add_argument('--force', action='store_true', help='Force backup even if already ran today')
@@ -125,7 +125,7 @@ class Command(BaseCommand):
             log.status = 'UPLOADING'
             log.save(update_fields=['file_size', 'status'])
 
-            self.stdout.write(f'Step 5/6: Uploading to MEGA ({file_size} bytes)...')
+            self.stdout.write(f'Step 5/6: Uploading to cloud drive ({file_size} bytes)...')
             with open(archive_path, 'rb') as f:
                 archive_bytes = f.read()
             sha256_hash = compute_sha256(archive_bytes)
@@ -134,11 +134,11 @@ class Command(BaseCommand):
 
             service = _get_drive_service()
             if not service:
-                raise ValueError('MEGA not configured (MEGA_EMAIL / MEGA_PASSWORD missing)')
+                raise ValueError('No drive configured (set GOOGLE_DRIVE_CREDENTIALS or MEGA_EMAIL/PASSWORD)')
 
             folder_id = ensure_folder_path(service, ['NeoLearner_Backups', backup_folder])
             if not folder_id:
-                raise ValueError('Failed to create MEGA folder path')
+                raise ValueError('Failed to create drive folder path')
 
             drive_id, upload_error = upload_file(service, archive_bytes, archive_name, 'application/zip', folder_id)
             if upload_error:
