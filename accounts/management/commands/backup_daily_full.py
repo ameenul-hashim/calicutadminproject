@@ -177,16 +177,18 @@ class Command(BaseCommand):
                 file_bytes = f.read()
 
             uploaded = False
+            upload_url = f'{backup_url}/storage/v1/object/{backup_bucket}/{remote_path}'
             # Try direct HTTP
             upload_headers = {
                 'Authorization': f'Bearer {backup_key}',
                 'apikey': backup_key,
                 'Content-Type': 'application/octet-stream',
             }
-            r = req.post(f'{backup_url}/storage/v1/object/{backup_bucket}/{remote_path}',
-                         headers=upload_headers, data=file_bytes, timeout=30)
+            r = req.post(upload_url, headers=upload_headers, data=file_bytes, timeout=30)
             if r.status_code in (200, 201):
                 uploaded = True
+            else:
+                self.stdout.write(f'  Direct HTTP upload failed ({r.status_code}): {r.text[:200]} for URL: {upload_url}')
 
             # Fallback: try SDK
             if not uploaded and backup_supabase:

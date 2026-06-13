@@ -146,6 +146,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
 
     timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
     remote_path = f'live_db_restore/{timestamp}.sql'
+    upload_url = f'{backup_url}/storage/v1/object/{bucket}/{remote_path}'
 
     # Try direct HTTP first (proven to work from local tests)
     try:
@@ -154,13 +155,14 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
             'apikey': backup_key,
             'Content-Type': 'application/octet-stream',
         }
-        r = req.post(f'{backup_url}/storage/v1/object/{bucket}/{remote_path}',
-                     headers=headers, data=sql_bytes, timeout=30)
+        r = req.post(upload_url, headers=headers, data=sql_bytes, timeout=30)
         if r.status_code in (200, 201):
             logger.info(f"Backup DB dump uploaded: {bucket}/{remote_path} ({len(sql_bytes)} bytes)")
             return True, None
-    except Exception:
-        pass
+        else:
+            logger.warning(f"Direct HTTP upload failed ({r.status_code}): {r.text[:200]} for URL: {upload_url}")
+    except Exception as e:
+        logger.warning(f"Direct HTTP upload exception: {e} for URL: {upload_url}")
 
     # Fallback: try supabase-py SDK
     try:
