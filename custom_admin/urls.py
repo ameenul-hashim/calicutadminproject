@@ -78,6 +78,7 @@ urlpatterns = [
     # Backup Center
     path('backup-center/', views.backup_center, name='backup_center'),
     path('backup-center/run-database-backup/', views.run_database_backup, name='run_database_backup'),
+    path('backup-center/run-live-db-backup/', views.run_live_db_backup, name='run_live_db_backup'),
     path('backup-center/retry-failed/', views.retry_failed_backups, name='retry_failed_backups'),
     path('backup-center/verify-all/', views.verify_all_backups, name='verify_all_backups'),
     path('backup-center/export-report/', views.export_backup_report, name='export_backup_report'),

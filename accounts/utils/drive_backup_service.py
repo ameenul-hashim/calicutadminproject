@@ -16,35 +16,54 @@ def _get_config(key, default=None):
         return os.getenv(key, default)
 
 
-def _mega_configured():
-    """Quick check if MEGA credentials are set (no network call)."""
-    return bool(os.getenv('MEGA_EMAIL') and os.getenv('MEGA_PASSWORD'))
+def _drive_configured():
+    """Check if any drive backend is configured (Google Drive or MEGA)."""
+    gd = bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS') or os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH'))
+    mega = bool(os.getenv('MEGA_EMAIL') and os.getenv('MEGA_PASSWORD'))
+    return gd or mega
+
+
+def _use_google_drive():
+    """Returns True if Google Drive credentials are available."""
+    return bool(os.getenv('GOOGLE_DRIVE_CREDENTIALS') or os.getenv('GOOGLE_DRIVE_CREDENTIALS_PATH'))
 
 
 def _get_drive_service():
-    """Login to MEGA. Returns mega instance or None."""
+    """Login to Google Drive or MEGA (auto-detects based on env vars).
+    Returns service instance or None."""
+    if _use_google_drive():
+        from accounts.utils.google_drive_service import _login
+        return _login()
     from accounts.utils.mega_backup_service import _login
     return _login()
 
 
 def ensure_folder_path(service, path_parts):
-    """Ensure a nested folder path exists in MEGA, creating as needed.
-    Returns the path string on success, None on failure."""
+    """Ensure a nested folder path exists in Google Drive or MEGA.
+    Returns folder ID (Google Drive) or path string (MEGA)."""
+    if _use_google_drive():
+        from accounts.utils.google_drive_service import ensure_folder_path as gd_ensure
+        return gd_ensure(service, path_parts)
     from accounts.utils.mega_backup_service import _ensure_path
     return _ensure_path(service, path_parts)
 
 
 def upload_file(service, file_bytes, filename, mime_type, parent_id):
-    """Upload a file to MEGA. mime_type is ignored (MEGA handles it).
-    parent_id is the folder path string returned by ensure_folder_path.
-    Returns ('mega://<path>', None) on success, (None, error) on failure."""
+    """Upload a file to Google Drive or MEGA (auto-detected).
+    Returns (file_identifier, None) on success, (None, error) on failure."""
+    if _use_google_drive():
+        from accounts.utils.google_drive_service import upload_file as gd_upload
+        return gd_upload(service, file_bytes, filename, mime_type, parent_id)
     from accounts.utils.mega_backup_service import upload_bytes
     return upload_bytes(service, file_bytes, filename, parent_id)
 
 
 def download_file(service, file_id):
-    """Download a file from MEGA by mega:// path.
+    """Download a file from Google Drive or MEGA.
     Returns (bytes, error_message)."""
+    if _use_google_drive():
+        from accounts.utils.google_drive_service import download_file as gd_download
+        return gd_download(service, file_id)
     from accounts.utils.mega_backup_service import download_file as mega_download
     return mega_download(service, file_id)
 
@@ -73,7 +92,7 @@ def run_pg_dump(database_url=None):
         return None, "DATABASE_URL not set", 0
     try:
         result = subprocess.run(
-            ['pg_dump', '--no-owner', '--no-acl', database_url, '-f', '-'],
+            ['pg_dump', '--no-owner', '--no-acl', '--clean', database_url, '-f', '-'],
             capture_output=True, timeout=120
         )
         if result.returncode != 0:
@@ -102,30 +121,83 @@ def run_pg_dump_fallback():
         return None, str(e), 0
 
 
+def restore_to_backup_db(sql_bytes, backup_db_url=None):
+    """Restore a pg_dump SQL dump to the backup Supabase PostgreSQL database.
+    
+    Uses BACKUP_DATABASE_URL env var if no URL is provided.
+    Returns (success: bool, message: str).
+    """
+    if not backup_db_url:
+        backup_db_url = os.getenv('BACKUP_DATABASE_URL')
+    if not backup_db_url:
+        return False, "BACKUP_DATABASE_URL not set"
+    
+    try:
+        result = subprocess.run(
+            ['psql', backup_db_url],
+            input=sql_bytes,
+            capture_output=True,
+            timeout=300  # 5 minutes for large DBs
+        )
+        if result.returncode != 0:
+            error_msg = result.stderr[:500].decode('utf-8', errors='replace') if result.stderr else "Unknown error"
+            return False, f"psql restore failed (exit {result.returncode}): {error_msg}"
+        
+        logger.info(f"Backup DB restore succeeded: {len(sql_bytes)} bytes restored")
+        return True, None
+    except FileNotFoundError:
+        return False, "psql not installed on this server"
+    except subprocess.TimeoutExpired:
+        return False, "psql restore timed out after 300s"
+    except Exception as e:
+        return False, str(e)
+
+
 def delete_old_backups(service, folder_path, keep_count=30):
-    """Delete old MEGA backups beyond keep_count using BackupLog.
+    """Delete old backups beyond keep_count using BackupLog.
+    Supports both Google Drive and MEGA.
     Returns number of backups cleaned up."""
     from accounts.models import BackupLog
-    from . import mega_backup_service
     deleted = 0
     try:
-        old_logs = BackupLog.objects.filter(
-            status='SUCCESS',
-            drive_file_id__startswith='mega://',
-        ).order_by('-created_at')
-        if old_logs.count() <= keep_count:
-            return 0
-        old_logs = list(old_logs[keep_count:])
-        for log in old_logs:
-            try:
-                ok = mega_backup_service.delete_file(service, log.drive_file_id)
-                if ok:
-                    log.status = 'CLEANED'
-                    log.save(update_fields=['status'])
-                    deleted += 1
-                    logger.info(f'Retention: cleaned old backup {log.filename}')
-            except Exception as e:
-                logger.warning(f'Retention delete failed for {log.filename}: {e}')
+        if _use_google_drive():
+            from accounts.utils.google_drive_service import delete_file as gd_delete
+            old_logs = BackupLog.objects.filter(
+                status='SUCCESS',
+                drive_folder_path__isnull=False,
+            ).exclude(drive_file_id__startswith='mega://').order_by('-created_at')
+            if old_logs.count() <= keep_count:
+                return 0
+            old_logs = list(old_logs[keep_count:])
+            for log in old_logs:
+                try:
+                    ok = gd_delete(service, log.drive_file_id)
+                    if ok:
+                        log.status = 'CLEANED'
+                        log.save(update_fields=['status'])
+                        deleted += 1
+                        logger.info(f'Retention: cleaned old backup {log.filename}')
+                except Exception as e:
+                    logger.warning(f'Retention delete failed for {log.filename}: {e}')
+        else:
+            from . import mega_backup_service
+            old_logs = BackupLog.objects.filter(
+                status='SUCCESS',
+                drive_file_id__startswith='mega://',
+            ).order_by('-created_at')
+            if old_logs.count() <= keep_count:
+                return 0
+            old_logs = list(old_logs[keep_count:])
+            for log in old_logs:
+                try:
+                    ok = mega_backup_service.delete_file(service, log.drive_file_id)
+                    if ok:
+                        log.status = 'CLEANED'
+                        log.save(update_fields=['status'])
+                        deleted += 1
+                        logger.info(f'Retention: cleaned old backup {log.filename}')
+                except Exception as e:
+                    logger.warning(f'Retention delete failed for {log.filename}: {e}')
     except Exception as e:
         logger.error(f'Retention cleanup error: {e}')
     return deleted

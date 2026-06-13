@@ -580,6 +580,7 @@ class BackupLog(models.Model):
         ('DATABASE', 'Database Backup'),
         ('SIGNUP_PDF', 'Signup PDF Backup'),
         ('TEACHER_RESOURCE', 'Teacher Resource Backup'),
+        ('LIVE_DB', 'Live DB Restore (Primary → Backup Supabase)'),
     )
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
@@ -741,13 +742,53 @@ def cleanup_course_resource_files(sender, instance, **kwargs):
 
 @receiver(post_save, sender=CustomUser)
 def backup_signup_pdf_on_save(sender, instance, created, **kwargs):
-    """(Disabled) Individual MEGA uploads are replaced by daily full backup."""
-    pass
+    """Backup signup proof PDF to Google Drive in real-time."""
+    if not created or not instance.pdf_path:
+        return
+    import threading
+    threading.Thread(target=_do_backup_signup_pdf, args=(instance,), daemon=False).start()
 
 
 @receiver(post_save, sender=CourseResource)
 def backup_teacher_resource_on_save(sender, instance, created, **kwargs):
-    """(Disabled) Individual MEGA uploads are replaced by daily full backup."""
-    pass
+    """Backup teacher resource to Google Drive in real-time."""
+    if not created or not instance.firebase_file_path:
+        return
+    import threading
+    threading.Thread(target=_do_backup_teacher_resource, args=(instance,), daemon=False).start()
+
+
+def _do_backup_signup_pdf(instance):
+    """Background: download signup PDF from Supabase and upload to Google Drive."""
+    try:
+        from accounts.utils.supabase_storage import download_file
+        from accounts.utils.backup_trigger import backup_signup_pdf
+        file_bytes = download_file(instance.pdf_path, use_resource_client=False)
+        if file_bytes:
+            backup_signup_pdf(str(instance.uid), instance.pdf_path, file_bytes)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'Backup signup PDF failed for {instance.uid}: {e}')
+
+
+def _do_backup_teacher_resource(instance):
+    """Background: download resource from Supabase and upload to Google Drive."""
+    try:
+        from accounts.utils.supabase_storage import download_file
+        from accounts.utils.backup_trigger import backup_teacher_resource
+        from accounts.utils.supabase_storage import resource_bucket_name
+        file_bytes = download_file(instance.firebase_file_path, bucket=resource_bucket_name, use_resource_client=True)
+        if file_bytes:
+            backup_teacher_resource(
+                str(instance.uid),
+                instance.firebase_file_path,
+                file_bytes,
+                instance.course.title if instance.course else 'Unknown',
+                instance.chapter or 'General',
+                instance.category or 'General',
+            )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f'Backup teacher resource failed for {instance.uid}: {e}')
 
 

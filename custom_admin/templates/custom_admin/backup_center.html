@@ -166,6 +166,10 @@
         {% csrf_token %}
         <button type="submit" class="action-btn primary">Run Daily Backup Now</button>
     </form>
+    <form method="POST" action="{% url 'run_live_db_backup' %}" style="display: inline;">
+        {% csrf_token %}
+        <button type="submit" class="action-btn primary" style="background: #0891b2;">Sync to Backup DB</button>
+    </form>
     <form method="POST" action="{% url 'retry_failed_backups' %}" style="display: inline;">
         {% csrf_token %}
         <button type="submit" class="action-btn warning">Retry Failed</button>
@@ -235,6 +239,49 @@
                 Last DB snapshot: {{ stats.db_last.created_at|timesince }} ago
             {% else %}
                 No database backup yet
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Live Backup DB (Supabase #3) -->
+    <div class="backup-card">
+        <div class="label">Live Backup DB (3rd Supabase)</div>
+        <div class="value" style="font-size: 1.25rem;">
+            {% if stats.live_db_success > 0 %}
+                <span style="color: #10b981;">Active</span>
+            {% else %}
+                <span style="color: #94a3b8;">Not configured</span>
+            {% endif %}
+        </div>
+        <div class="sub">
+            {% if stats.live_db_total > 0 %}
+                Last sync: {{ stats.live_db_last.created_at|timesince }} ago<br>
+                <span style="font-size: 0.75rem;">
+                    {{ stats.live_db_success }} successful
+                    {% if stats.live_db_failed > 0 %}| {{ stats.live_db_failed }} failed{% endif %}
+                </span>
+            {% else %}
+                Set BACKUP_DATABASE_URL env var
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Supabase SQL Backup -->
+    <div class="backup-card">
+        <div class="label">Supabase SQL Backup</div>
+        <div class="value" style="font-size: 1.25rem;">
+            {% if stats.daily_full_success > 0 %}
+                <span style="color: #10b981;">Active</span>
+            {% else %}
+                <span style="color: #94a3b8;">Not configured</span>
+            {% endif %}
+        </div>
+        <div class="sub">
+            {% if stats.daily_full_last %}
+                Last SQL upload: {{ stats.daily_full_last.created_at|timesince }} ago<br>
+                <span style="font-size: 0.75rem;">{{ stats.daily_full_last.file_size|filesizeformat }} uploaded to backups bucket</span>
+            {% else %}
+                Runs with daily backup
             {% endif %}
         </div>
     </div>
@@ -309,9 +356,9 @@
         </div>
     </div>
 
-    <!-- MEGA Health -->
+    <!-- Cloud Drive Backup -->
     <div class="backup-card">
-        <div class="label">MEGA Backup</div>
+        <div class="label">{{ stats.drive_type|default:"Cloud" }} Backup</div>
         <div class="value" style="font-size: 1.25rem;">
             {% if stats.drive_health == 'CONNECTED' %}
                 <span style="color: #10b981;">Connected</span>
@@ -323,9 +370,9 @@
         </div>
         <div class="sub">
             {% if stats.drive_configured %}
-                MEGA credentials configured
+                {{ stats.drive_type }} credentials configured
             {% else %}
-                Set MEGA_EMAIL / MEGA_PASSWORD env vars
+                Set GOOGLE_DRIVE_CREDENTIALS or MEGA_EMAIL env vars
             {% endif %}
         </div>
     </div>

@@ -16,6 +16,7 @@ from accounts.utils.drive_backup_service import (
     _get_drive_service, ensure_folder_path, upload_file,
     compute_sha256, delete_old_backups, _get_config
 )
+from accounts.utils.supabase_storage import backup_supabase, backup_bucket
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ def _list_supabase_files(client, bucket, prefix=''):
 
 
 class Command(BaseCommand):
-    help = 'Daily full backup — database + Supabase files → single ZIP archive → MEGA'
+    help = 'Daily full backup - database + Supabase files to ZIP archive + MEGA + backup Supabase'
 
     def add_arguments(self, parser):
         parser.add_argument('--force', action='store_true', help='Force backup even if already ran today')
@@ -158,10 +159,14 @@ class Command(BaseCommand):
             else:
                 log.verify_status = 'PENDING'
 
+            # Upload DB dump to 3rd Supabase bucket
+            db_uploaded = self._upload_db_to_backup_supabase(db_dir)
+
             log.status = 'SUCCESS'
             log.completed_at = timezone.now()
             log.duration_seconds = time.time() - start_time
-            log.save(update_fields=['verify_status', 'status', 'completed_at', 'duration_seconds'])
+            log.metadata['backup_supabase_uploaded'] = db_uploaded
+            log.save(update_fields=['verify_status', 'status', 'completed_at', 'duration_seconds', 'metadata'])
 
             total_files = log.metadata['files_included']
             skipped = log.metadata.get('files_skipped_duplicate', 0)
@@ -289,6 +294,65 @@ class Command(BaseCommand):
         log.metadata['files_skipped_duplicate'] = log.metadata.get('files_skipped_duplicate', 0) + skipped
         self.stdout.write(f'  Resource files: {count} collected, {skipped} duplicates skipped')
         return count
+
+    def _upload_db_to_backup_supabase(self, db_dir):
+        """Upload database dump file to 3rd Supabase storage bucket.
+        Returns True if uploaded, False if skipped or failed."""
+        if not backup_supabase:
+            self.stdout.write('  Backup Supabase (3rd): skipped (BACKUP_SUPABASE_URL/KEY not set)')
+            return False
+
+        db_files = list(Path(db_dir).iterdir())
+        if not db_files:
+            self.stdout.write('  Backup Supabase (3rd): no database dump file found')
+            return False
+
+        db_file = db_files[0]
+        file_name = db_file.name
+        remote_path = f'daily_backups/{datetime.now().strftime("%Y/%m/%d")}/{file_name}'
+
+        try:
+            backup_supabase.storage.get_bucket(backup_bucket)
+        except Exception:
+            try:
+                backup_supabase.storage.create_bucket(backup_bucket, options={"public": False})
+                self.stdout.write(f'  Created bucket "{backup_bucket}" on 3rd Supabase')
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'  Could not create bucket: {e}'))
+                return False
+
+        try:
+            with open(db_file, 'rb') as f:
+                file_bytes = f.read()
+            backup_supabase.storage.from_(backup_bucket).upload(
+                path=remote_path,
+                file=file_bytes,
+                file_options={"content-type": "application/octet-stream", "upsert": "true"}
+            )
+            self.stdout.write(f'  DB dump uploaded to 3rd Supabase: {backup_bucket}/{remote_path} ({len(file_bytes)} bytes)')
+
+            # Retention: keep only last 15 DB dumps in this bucket
+            try:
+                existing = backup_supabase.storage.from_(backup_bucket).list('daily_backups')
+                folders = sorted(
+                    [e['name'] for e in existing if e.get('id') is None],
+                    reverse=True
+                )
+                for old_folder in folders[15:]:
+                    old_files = backup_supabase.storage.from_(backup_bucket).list(f'daily_backups/{old_folder}')
+                    for of in old_files:
+                        if of.get('name'):
+                            backup_supabase.storage.from_(backup_bucket).remove(
+                                [f'daily_backups/{old_folder}/{of["name"]}']
+                            )
+                    self.stdout.write(f'  Retention: removed old backup {old_folder} from 3rd Supabase')
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'  Retention cleanup on 3rd Supabase failed: {e}'))
+
+            return True
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'  Upload to 3rd Supabase failed: {e}'))
+            return False
 
     def _create_zip_archive(self, archive_path, source_dir, log):
         """Create ZIP archive from the collected files."""

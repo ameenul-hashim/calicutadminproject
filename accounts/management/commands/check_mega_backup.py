@@ -1,16 +1,16 @@
 import os
 import logging
 from django.core.management.base import BaseCommand
-from accounts.utils.drive_backup_service import _mega_configured
+from accounts.utils.drive_backup_service import _drive_configured
 
 logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Diagnose MEGA backup configuration and test connectivity'
+    help = 'Diagnose backup drive configuration and test connectivity'
 
     def handle(self, *args, **options):
-        self.stdout.write('\n=== MEGA Backup Diagnostics ===\n')
+        self.stdout.write('\n=== Backup Drive Diagnostics ===\n')
 
         # 1. Check BACKUP_ENABLED
         from accounts.utils.drive_backup_service import _get_config
@@ -21,28 +21,50 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('   ⚠  Backups are DISABLED'))
             self.stdout.write(self.style.WARNING('   Set BACKUP_ENABLED=True in env/settings'))
 
-        # 2. Check MEGA credentials
-        self.stdout.write('\n2. MEGA Credentials Check:')
+        # 2. Check credentials
+        self.stdout.write('\n2. Credentials Check:')
+        from accounts.utils.drive_backup_service import _use_google_drive
+        gd = _use_google_drive()
         mega_email = os.getenv('MEGA_EMAIL')
         mega_pass = os.getenv('MEGA_PASSWORD')
-        if mega_email and mega_pass:
+        mega = bool(mega_email and mega_pass)
+        if gd:
+            self.stdout.write(self.style.SUCCESS('   ✅ Google Drive credentials set'))
+        else:
+            self.stdout.write(self.style.WARNING('   ℹ️  GOOGLE_DRIVE_CREDENTIALS not set'))
+        if mega:
             self.stdout.write(self.style.SUCCESS(f'   ✅ MEGA_EMAIL set ({mega_email[:4]}...)'))
+            self.stdout.write(self.style.SUCCESS('   ✅ MEGA_PASSWORD set'))
         else:
-            self.stdout.write(self.style.ERROR('   ❌ MEGA_EMAIL / MEGA_PASSWORD not set'))
-            self.stdout.write(self.style.WARNING('   Set MEGA_EMAIL and MEGA_PASSWORD env vars'))
+            self.stdout.write(self.style.WARNING('   ℹ️  MEGA_EMAIL / MEGA_PASSWORD not set (fallback)'))
 
-        # 3. MEGA Login Test
-        self.stdout.write('\n3. MEGA Connection Test:')
-        if not _mega_configured():
-            self.stdout.write(self.style.ERROR('   ❌ MEGA not configured — skipping login test'))
-            self.stdout.write(self.style.WARNING('   Set MEGA_EMAIL and MEGA_PASSWORD'))
+        # 3. Drive Login Test
+        self.stdout.write('\n3. Drive Connection Test:')
+        if _drive_configured():
+            self.stdout.write(self.style.SUCCESS('   ✅ Drive credentials configured'))
         else:
+            self.stdout.write(self.style.ERROR('   ❌ No drive backend configured'))
+            self.stdout.write(self.style.WARNING('   Set GOOGLE_DRIVE_CREDENTIALS or MEGA_EMAIL/PASSWORD'))
+
+        if _use_google_drive():
+            self.stdout.write('\n   Google Drive test:')
+            try:
+                from accounts.utils.google_drive_service import build_drive_service
+                gd_service = build_drive_service()
+                about = gd_service.about().get(fields='user').execute()
+                user = about.get('user', {})
+                self.stdout.write(self.style.SUCCESS(f'   ✅ Google Drive connected as {user.get("displayName", "service account")}'))
+            except Exception as e:
+                self.stdout.write(self.style.ERROR(f'   ❌ Google Drive connection failed: {e}'))
+
+        if mega:
+            self.stdout.write('\n   MEGA test:')
             from accounts.utils.mega_backup_service import _login
             try:
-                mega = _login()
-                if mega:
+                mega_instance = _login()
+                if mega_instance:
                     self.stdout.write(self.style.SUCCESS('   ✅ MEGA login successful'))
-                    folder = mega.find('NeoLearner_Backups')
+                    folder = mega_instance.find('NeoLearner_Backups')
                     if folder:
                         self.stdout.write(self.style.SUCCESS('   ✅ Root folder "NeoLearner_Backups" exists'))
                     else:
@@ -87,8 +109,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f'   Error reading CourseResource: {e}'))
 
         self.stdout.write('\n' + '=' * 40)
-        if _mega_configured() and total > 0:
-            self.stdout.write(self.style.SUCCESS('MEGA backup should work'))
+        if _drive_configured() and total > 0:
+            self.stdout.write(self.style.SUCCESS('Drive backup is operational'))
         else:
-            self.stdout.write(self.style.WARNING('Set MEGA_EMAIL and MEGA_PASSWORD in env to enable backups'))
+            self.stdout.write(self.style.WARNING('Set GOOGLE_DRIVE_CREDENTIALS or MEGA_EMAIL/PASSWORD to enable backups'))
         self.stdout.write('=' * 40 + '\n')

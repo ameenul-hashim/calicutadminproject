@@ -431,7 +431,17 @@ YOUTUBE_REFRESH_TOKEN=
 SENTRY_DSN=
 
 # Google Drive (backup storage)
-GOOGLE_DRIVE_CREDENTIALS=  # JSON credential
+GOOGLE_DRIVE_CREDENTIALS=  # JSON string of service account key (OR use path below)
+GOOGLE_DRIVE_CREDENTIALS_PATH=  # Path to JSON key file (alternative to env var)
+
+# If neither GOOGLE_DRIVE_CREDENTIALS nor GOOGLE_DRIVE_CREDENTIALS_PATH is set,
+# falls back to MEGA (MEGA_EMAIL / MEGA_PASSWORD)
+
+# Backup Supabase PostgreSQL (live DB standby — third Supabase instance)
+BACKUP_DATABASE_URL=       # PostgreSQL URL for periodic primary→backup DB restore
+BACKUP_SUPABASE_URL=       # Storage API URL for 3rd Supabase (database backup ZIP storage)
+BACKUP_SUPABASE_KEY=       # Service role key for 3rd Supabase storage
+BACKUP_SUPABASE_BUCKET=    # Bucket name for DB backups on 3rd Supabase (default: backups)
 ```
 
 ---
@@ -530,7 +540,22 @@ WebSocket connects to ws/chat/<other_user_uid>/
 → Admin identity masked (displayed as "Support Team" to students)
 ```
 
-### 6. OTP / Auth Recovery Flow
+### 6. Live DB Backup Flow (Primary → Backup Supabase)
+```
+Cron or manual trigger → backup_to_live_db management command
+→ pg_dump from primary DATABASE_URL → SQL bytes in memory
+→ psql restore to BACKUP_DATABASE_URL (third Supabase PostgreSQL instance)
+→ Logged as BackupLog with type=LIVE_DB
+→ Triggered via: /customadmin/backup-center/cron-trigger/?token=<TOKEN>&type=supabase-db
+→ Also available manually from Backup Center UI
+
+Daily full backup also uploads DB dump to 3rd Supabase storage:
+→ backup_daily_full creates ZIP (DB + signup PDFs + resources) → MEGA
+→ DB dump file also uploaded separately to 3rd Supabase bucket (BACKUP_SUPABASE_BUCKET)
+→ Retention: keeps last 15 daily DB dumps in the bucket
+```
+
+### 7. OTP / Auth Recovery Flow
 ```
 /forgot-password/ → EmailOTP created (purpose=PASSWORD_RESET)
 → /verify-otp/ → OTP hash verified, session token granted

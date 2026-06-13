@@ -35,6 +35,18 @@ if resource_url and resource_key:
     except Exception as e:
         logger.error(f"Resource Supabase Client Init Error: {e}")
 
+# Backup Supabase (third instance — live DB restore + database backup ZIP storage)
+backup_url: str = os.getenv("BACKUP_SUPABASE_URL")
+backup_key: str = os.getenv("BACKUP_SUPABASE_KEY")
+backup_bucket: str = os.getenv("BACKUP_SUPABASE_BUCKET", "backups")
+
+backup_supabase: Client = None
+if backup_url and backup_key:
+    try:
+        backup_supabase = create_client(backup_url, backup_key)
+    except Exception as e:
+        logger.error(f"Backup Supabase Client Init Error: {e}")
+
 def validate_pdf(file_content, filename=None):
     """
     Validates that the content is a PDF.
@@ -125,6 +137,22 @@ def get_signed_url(file_path: str, expires_in: int = 3600):
         return res
     except Exception as e:
         logger.error(f"Supabase Signed URL Error: {e}")
+        return None
+
+def download_file(file_path: str, bucket: str = None, use_resource_client: bool = False):
+    """Download a file from Supabase Storage and return bytes."""
+    client = get_client(use_resource_project=use_resource_client)
+    if not client:
+        logger.error("Supabase client not initialized for download")
+        return None
+    target_bucket = bucket or (resource_bucket_name if use_resource_client else bucket_name)
+    try:
+        if file_path.startswith("/"):
+            file_path = file_path[1:]
+        res = client.storage.from_(target_bucket).download(file_path)
+        return res
+    except Exception as e:
+        logger.error(f"Supabase Download Error for {file_path}: {e}")
         return None
 
 def delete_pdf(file_path: str):

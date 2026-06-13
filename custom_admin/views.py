@@ -2235,8 +2235,8 @@ def system_audit_view(request):
 
     drive_configured = False
     try:
-        from accounts.utils.drive_backup_service import _mega_configured
-        drive_configured = _mega_configured()
+        from accounts.utils.drive_backup_service import _drive_configured
+        drive_configured = _drive_configured()
     except Exception:
         pass
 
@@ -2851,14 +2851,21 @@ def _backup_card_stats():
     daily_full_failed = BackupLog.objects.filter(backup_type='DAILY_FULL', status='FAILED').count()
     daily_full_success = BackupLog.objects.filter(backup_type='DAILY_FULL', status='SUCCESS').count()
 
+    # Live DB backup stats (primary → backup Supabase PostgreSQL)
+    live_db_last = BackupLog.objects.filter(backup_type='LIVE_DB', status='SUCCESS').order_by('-created_at').first()
+    live_db_total = BackupLog.objects.filter(backup_type='LIVE_DB').count()
+    live_db_failed = BackupLog.objects.filter(backup_type='LIVE_DB', status='FAILED').count()
+    live_db_success = BackupLog.objects.filter(backup_type='LIVE_DB', status='SUCCESS').count()
+
     # Legacy per-type stats (for history view)
     db_last = BackupLog.objects.filter(backup_type='DATABASE', status='SUCCESS').order_by('-created_at').first()
     signup_total = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
     resource_total = BackupLog.objects.filter(backup_type='TEACHER_RESOURCE').count()
 
-    # Drive health check (MEGA)
-    from accounts.utils.drive_backup_service import _mega_configured, _get_drive_service
-    drive_configured = _mega_configured()
+    # Drive health check (Google Drive or MEGA)
+    from accounts.utils.drive_backup_service import _drive_configured, _use_google_drive, _get_drive_service
+    drive_configured = _drive_configured()
+    drive_type = 'Google Drive' if _use_google_drive() else 'MEGA'
     drive_available = False
     drive_health = 'NOT_CONFIGURED'
     if drive_configured:
@@ -2908,10 +2915,15 @@ def _backup_card_stats():
         'daily_full_total': daily_full_total,
         'daily_full_failed': daily_full_failed,
         'daily_full_success': daily_full_success,
+        'live_db_last': live_db_last,
+        'live_db_total': live_db_total,
+        'live_db_failed': live_db_failed,
+        'live_db_success': live_db_success,
         'db_last': db_last,
         'signup_total': signup_total,
         'resource_total': resource_total,
         'drive_configured': drive_configured,
+        'drive_type': drive_type,
         'drive_health': drive_health,
         'drive_available': drive_available,
         'overall_health': overall_health,
@@ -2983,6 +2995,36 @@ def run_database_backup(request):
     except Exception as e:
         messages.error(request, 'Daily backup could not be completed. Please try again.')
         logger.exception(f'Manual daily backup error: {e}')
+    return redirect('backup_center')
+
+
+@user_passes_test(is_admin, login_url='admin_login')
+@require_POST
+@ratelimit(key='user', rate='10/hour', method='POST', block=True)
+def run_live_db_backup(request):
+    """Manual trigger for live Supabase DB backup (primary → backup Supabase)."""
+    from django.core.management import call_command
+    from accounts.models import BackupLog
+    from io import StringIO
+    try:
+        backup_db_url = os.getenv('BACKUP_DATABASE_URL')
+        if not backup_db_url:
+            messages.error(request, 'BACKUP_DATABASE_URL not set — cannot run live DB backup')
+            return redirect('backup_center')
+        last_id = BackupLog.objects.filter(backup_type='LIVE_DB').values_list('id', flat=True).first() or 0
+        buf = StringIO()
+        call_command('backup_to_live_db', '--force', stdout=buf)
+        output = buf.getvalue()
+        latest = BackupLog.objects.filter(backup_type='LIVE_DB', id__gt=last_id).order_by('-id').first()
+        if latest and latest.status == 'FAILED':
+            messages.error(request, f'Live DB backup failed: {latest.error_message}')
+            logger.error(f'Manual live DB backup failed: {latest.error_message}')
+        else:
+            messages.success(request, 'Live Supabase DB backup completed.')
+            logger.info(f'Manual live DB backup triggered by {request.user.username}')
+    except Exception as e:
+        messages.error(request, 'Live DB backup could not be completed.')
+        logger.exception(f'Manual live DB backup error: {e}')
     return redirect('backup_center')
 
 
@@ -3327,6 +3369,15 @@ def backup_cron_trigger(request):
         from accounts.utils.notification_helper import cleanup_old_notifications
         deleted = cleanup_old_notifications()
         return JsonResponse({'status': 'ok', 'deleted': deleted})
+    if btype == 'supabase-db':
+        try:
+            buf = StringIO()
+            call_command('backup_to_live_db', stdout=buf)
+            output = buf.getvalue()
+        except Exception as e:
+            logger.exception(f"Backup API error for type '{btype}': {e}")
+            return JsonResponse({'status': 'error', 'error': 'Live DB backup failed'}, status=500)
+        return JsonResponse({'status': 'ok', 'output': output[:500]})
     return JsonResponse({'error': f'Unknown backup type: {btype}'}, status=400)
 
 
