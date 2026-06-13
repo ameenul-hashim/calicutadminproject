@@ -189,6 +189,26 @@ def create_signed_upload_url(file_path: str, expires_in: int = 3600):
         logger.error(f"Supabase Signed Upload URL Error: {e}")
         return None
 
+
+def get_signed_upload_url_for_browser(bucket: str, file_path: str, use_resource: bool = False):
+    """Generate a signed upload URL for browser-direct file upload to Supabase.
+    Returns the signed URL string or None on error.
+    The browser can PUT the file directly to this URL (zero Render RAM)."""
+    client = get_client(use_resource_project=use_resource)
+    if not client:
+        logger.error('Supabase client not available for signed upload URL')
+        return None
+    try:
+        if file_path.startswith('/'):
+            file_path = file_path[1:]
+        res = client.storage.from_(bucket).create_signed_upload_url(file_path)
+        if isinstance(res, dict):
+            return res.get('signed_url')
+        return str(res) if res else None
+    except Exception as e:
+        logger.error(f'Signed upload URL error for {bucket}/{file_path}: {e}')
+        return None
+
 def stream_video_upload(video_file, lesson_uid):
     """
     Uploads an MP4 video to Supabase. Memory-optimized for Render 512MB.

@@ -160,7 +160,7 @@ def signup_view(request):
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
-        proof_file = request.FILES.get('proof_file')
+        supabase_pdf_path = request.POST.get('supabase_pdf_path', '')
         phone_number = request.POST.get('phone_number')
         avatar_url = request.POST.get('avatar_url', '')
 
@@ -168,7 +168,7 @@ def signup_view(request):
 
         ctx = {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number, 'avatar_url': avatar_url}
 
-        if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
+        if not all([username, email, fullname, password, confirm_password, phone_number, supabase_pdf_path]):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/signup.html', ctx)
 
@@ -210,72 +210,14 @@ def signup_view(request):
             messages.error(request, msg)
             return render(request, 'accounts/signup.html', ctx)
 
-        # File validation
-        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
-        file_ext = os.path.splitext(proof_file.name.lower())[1]
-        if file_ext not in allowed_exts:
-            messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
-            return render(request, 'accounts/signup.html', ctx)
-
-        is_image = file_ext != '.pdf'
-        if is_image and not _is_mobile_ua(request):
-            messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
-            return render(request, 'accounts/signup.html', ctx)
-
-        # PDF size check (max 200KB) — for direct PDF uploads
-        if file_ext == '.pdf' and proof_file.size > 200 * 1024:
-            messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'accounts/signup.html', ctx)
-
-        # Image size check (max 10MB) — images are compressed internally but we still need a sanity limit
-        if file_ext != '.pdf' and proof_file.size > 10 * 1024 * 1024:
-            messages.error(request, "Image file is too large. Please choose a smaller image (max 10 MB).")
-            return render(request, 'accounts/signup.html', ctx)
-
-        # 4. Processing File Uploads
+        # Create user with pre-uploaded Supabase path (file was uploaded browser→Supabase, zero Render RAM)
         try:
-            from accounts.utils.supabase_storage import upload_user_proof
-            
-            # create User First
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, status='PENDING', user_type='STUDENT',
+                pdf_path=supabase_pdf_path,
             )
-
-            from accounts.utils.pdf_helpers import convert_image_to_pdf
-            from accounts.utils.supabase_storage import upload_user_proof
-
-            if file_ext == '.pdf':
-                logger.debug("Uploading PDF to Supabase for %s", username)
-                # Final size guard: catch any file >200KB before upload
-                if proof_file.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "PDF size exceeds the maximum limit of 200 KB.")
-                    return redirect('login')
-                if not upload_user_proof(user, proof_file):
-                    user.delete()
-                    raise Exception("Supabase storage failure.")
-            else:
-                logger.debug("Processing image (%s) for %s", file_ext, username)
-                optimized_pdf = convert_image_to_pdf(proof_file)
-                
-                if not optimized_pdf:
-                    user.delete()
-                    raise Exception("PDF conversion failed. File may be corrupted.")
-
-                # Size check on the converted PDF before upload
-                if optimized_pdf.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.")
-                    return redirect('login')
-
-                if not upload_user_proof(user, optimized_pdf):
-                    user.delete()
-                    raise Exception("Supabase upload failed.")
-                
-                logger.info("Student registration complete: %s", username)
-
             messages.success(request, "Registration successful! Admin approval pending.")
             notify_admins("New Student Registration", f"New student: {username}.", 'new_student')
             return redirect('login')
@@ -299,14 +241,14 @@ def teacher_signup_view(request):
         fullname = request.POST.get('fullname')
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
-        proof_file = request.FILES.get('proof_file')
+        supabase_pdf_path = request.POST.get('supabase_pdf_path', '')
         phone_number = request.POST.get('phone_number')
         avatar_url = request.POST.get('avatar_url', '')
 
         ctx = {'username': username, 'email': email, 'fullname': fullname, 'phone_number': phone_number, 'avatar_url': avatar_url}
 
         # 1. Validation Logic
-        if not all([username, email, fullname, password, confirm_password, phone_number, proof_file]):
+        if not all([username, email, fullname, password, confirm_password, phone_number, supabase_pdf_path]):
             messages.error(request, "All fields are required. Please fill in every field to proceed.")
             return render(request, 'accounts/teacher_signup.html', ctx)
 
@@ -350,72 +292,14 @@ def teacher_signup_view(request):
             messages.error(request, msg)
             return render(request, 'accounts/teacher_signup.html', ctx)
 
-        # File validation
-        allowed_exts = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
-        file_ext = os.path.splitext(proof_file.name.lower())[1]
-        if file_ext not in allowed_exts:
-            messages.error(request, f"Unsupported file format '{file_ext}'. Please upload a PDF or an Image.")
-            return render(request, 'accounts/teacher_signup.html', ctx)
-
-        is_image = file_ext != '.pdf'
-        if is_image and not _is_mobile_ua(request):
-            messages.error(request, "Image uploads are only supported on mobile devices. Please upload a PDF from your computer.")
-            return render(request, 'accounts/teacher_signup.html', ctx)
-
-        # PDF size check (max 200KB) — for direct PDF uploads
-        if file_ext == '.pdf' and proof_file.size > 200 * 1024:
-            messages.error(request, "Verification document file size must be below 200 KB.")
-            return render(request, 'accounts/teacher_signup.html', ctx)
-
-        # Image size check (max 10MB) — images are compressed internally but we still need a sanity limit
-        if file_ext != '.pdf' and proof_file.size > 10 * 1024 * 1024:
-            messages.error(request, "Image file is too large. Please choose a smaller image (max 10 MB).")
-            return render(request, 'accounts/teacher_signup.html', ctx)
-
-        # 4. Processing File Uploads
+        # Create user with pre-uploaded Supabase path (file was uploaded browser→Supabase, zero Render RAM)
         try:
-            from accounts.utils.supabase_storage import upload_user_proof
-            
-            # create User First
             user = CustomUser.objects.create_user(
                 username=username, email=email, password=password,
                 full_name=fullname, phone_number=phone_number,
                 is_active=False, status='PENDING', user_type='TEACHER',
+                pdf_path=supabase_pdf_path,
             )
-
-            from accounts.utils.pdf_helpers import convert_image_to_pdf
-            from accounts.utils.supabase_storage import upload_user_proof
-
-            if file_ext == '.pdf':
-                logger.debug("Teacher signup: uploading PDF to Supabase for %s", username)
-                # Final size guard: catch any file >200KB before upload
-                if proof_file.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "PDF size exceeds the maximum limit of 200 KB.")
-                    return redirect('teacher_login')
-                if not upload_user_proof(user, proof_file):
-                    user.delete()
-                    raise Exception("Supabase storage failure.")
-            else:
-                logger.debug("Teacher signup: processing image for %s", username)
-                optimized_pdf = convert_image_to_pdf(proof_file)
-                
-                if not optimized_pdf:
-                    user.delete()
-                    raise Exception("PDF conversion failed. File may be corrupted.")
-
-                # Size check on the converted PDF before upload
-                if optimized_pdf.size > 200 * 1024:
-                    user.delete()
-                    messages.error(request, "Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.")
-                    return redirect('teacher_login')
-
-                if not upload_user_proof(user, optimized_pdf):
-                    user.delete()
-                    raise Exception("Supabase upload failed.")
-                
-                logger.info("Teacher registration complete for %s", username)
-
             messages.success(request, "Teacher registration successful! Admin review pending.")
             notify_admins("New Teacher Registration", f"New teacher: {username}.", 'new_teacher')
             return redirect('teacher_login')
@@ -856,6 +740,86 @@ def dashboard_view(request):
 def dismiss_updates(request):
     request.session['updates_cleared_at'] = timezone.now().isoformat()
     return JsonResponse({'ok': True})
+
+
+@ratelimit(key='ip', rate='10/m', block=True)
+@csrf_exempt
+def api_get_signed_upload_url(request):
+    """Generate a signed upload URL for browser-direct upload to Supabase.
+    Accepts POST (can be JSON or form-encoded) with:
+      - filename: original file name
+      - file_size: file size in bytes
+      - upload_type: 'proof' for signup proofs, 'resource' for teacher resources
+      - course_uid: (required for 'resource' type)
+    Returns JSON: {signed_url, storage_path, error?}
+    Browser can PUT file directly to signed_url — zero Render RAM."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    import json
+    try:
+        data = json.loads(request.body) if request.body else request.POST.dict()
+    except (json.JSONDecodeError, AttributeError):
+        data = request.POST.dict()
+
+    filename = data.get('filename', '')
+    file_size = int(data.get('file_size', 0))
+    upload_type = data.get('upload_type', '')
+    course_uid = data.get('course_uid', '')
+
+    if not filename or not file_size or not upload_type:
+        return JsonResponse({'error': 'filename, file_size, and upload_type required'}, status=400)
+
+    ext = os.path.splitext(filename.lower())[1]
+    import uuid
+    from accounts.utils.supabase_storage import get_signed_upload_url_for_browser, bucket_name, resource_bucket_name
+
+    if upload_type == 'proof':
+        allowed = ['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif']
+        if ext not in allowed:
+            return JsonResponse({'error': 'Unsupported file format. Please upload a PDF or image.'}, status=400)
+        if ext == '.pdf' and file_size > 200 * 1024:
+            return JsonResponse({'error': 'Verification document must be below 200 KB.'}, status=400)
+        if ext != '.pdf' and file_size > 10 * 1024 * 1024:
+            return JsonResponse({'error': 'Image file is too large (max 10 MB).'}, status=400)
+
+        storage_path = f'documents/uploads/{uuid.uuid4()}{ext}'
+        bucket = bucket_name
+        use_resource = False
+
+    elif upload_type == 'resource':
+        if not request.user.is_authenticated or request.user.user_type != 'TEACHER':
+            return JsonResponse({'error': 'Only teachers can upload resources.'}, status=403)
+        if ext != '.pdf':
+            return JsonResponse({'error': 'Only PDF files are allowed for resources.'}, status=400)
+        if file_size > 10 * 1024 * 1024:
+            return JsonResponse({'error': 'File size exceeds the 10MB limit.'}, status=400)
+
+        from .models import Course
+        if not course_uid:
+            return JsonResponse({'error': 'course_uid required for resource uploads'}, status=400)
+        try:
+            course = Course.objects.get(uid=course_uid, teacher=request.user)
+        except Course.DoesNotExist:
+            return JsonResponse({'error': 'Course not found or access denied'}, status=404)
+
+        course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
+        course_slug = re.sub(r'-+', '-', course_slug)
+        safe_title = uuid.uuid4().hex[:8]
+        suffix = uuid.uuid4().hex[:4]
+        storage_path = f'{course_slug}/uncategorised/{safe_title}-{suffix}.pdf'
+        bucket = resource_bucket_name
+        use_resource = True
+
+    else:
+        return JsonResponse({'error': 'Invalid upload_type. Must be "proof" or "resource".'}, status=400)
+
+    signed_url = get_signed_upload_url_for_browser(bucket, storage_path, use_resource=use_resource)
+    if not signed_url:
+        return JsonResponse({'error': 'Failed to generate upload URL. Please try again.'}, status=500)
+
+    logger.info(f'Signed upload URL generated | type={upload_type} path={storage_path} size={file_size}')
+    return JsonResponse({'signed_url': signed_url, 'storage_path': storage_path})
 
 
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)
@@ -1600,7 +1564,7 @@ def add_resource(request, course_uid):
         try:
             title = request.POST.get('title', '').strip()
             category = request.POST.get('category', '').strip()
-            upload_file = request.FILES.get('upload_file')
+            supabase_storage_path = request.POST.get('supabase_storage_path', '')
 
             if not title:
                 messages.error(request, "Please enter a resource name.")
@@ -1610,80 +1574,38 @@ def add_resource(request, course_uid):
                 messages.error(request, "Please select a category (English, Malayalam, or Online).")
                 return redirect('course_lessons', course_uid=course.uid)
 
-            if not upload_file:
+            if not supabase_storage_path:
                 messages.error(request, "Please select a PDF file to upload.")
                 return redirect('course_lessons', course_uid=course.uid)
 
-            MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-            if upload_file.size > MAX_UPLOAD_BYTES:
-                messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
-                return redirect('course_lessons', course_uid=course.uid)
+            chapter = request.POST.get('chapter', '')
+            course_is_published = course.status == 'PUBLISHED' and course.is_approved
+            if course_is_published:
+                resource_status = 'APPROVED'
+                resource_approved = True
+                success_msg = f"Resource '{title}' added and immediately available to students."
+            else:
+                resource_status = 'PENDING'
+                resource_approved = False
+                success_msg = f"Resource '{title}' uploaded and pending approval."
+                notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
 
-            uploaded_fb_path = None
-            try:
-                from .utils.malware_scanner import scanner
-                mime_type, ext = validate_file(upload_file, upload_file.name)
-                is_infected, scan_reason = scanner.scan_file(upload_file)
-                if is_infected:
-                    logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
-                        request.user.username, upload_file.name, scan_reason,
-                        request.META.get('REMOTE_ADDR'))
-                    messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
-                    return redirect('course_lessons', course_uid=course.uid)
-                file_bytes = upload_file.read()
-                file_size = len(file_bytes)
-
-                import uuid
-                course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
-                course_slug = re.sub(r'-+', '-', course_slug)
-                safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).strip()
-                safe_title = re.sub(r'\s+', '-', safe_title)
-                safe_title = re.sub(r'-+', '-', safe_title).lower()
-                safe_title = safe_title[:40]
-                category_folder = category.lower() if category else 'uncategorised'
-                suffix = uuid.uuid4().hex[:4]
-                dest_filename = f"{safe_title}-{suffix}.pdf"
-                dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-                uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
-                del file_bytes
-
-                chapter = request.POST.get('chapter', '')
-                course_is_published = course.status == 'PUBLISHED' and course.is_approved
-                if course_is_published:
-                    resource_status = 'APPROVED'
-                    resource_approved = True
-                    success_msg = f"Resource '{title}' added and immediately available to students."
-                else:
-                    resource_status = 'PENDING'
-                    resource_approved = False
-                    success_msg = f"Resource '{title}' uploaded and pending approval."
-                    notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
-
-                CourseResource.objects.create(
-                    course=course,
-                    title=title,
-                    chapter=chapter,
-                    category=category,
-                    resource_type='PDF',
-                    firebase_file_path=uploaded_fb_path,
-                    backup_file_path=None,
-                    mime_type='application/pdf',
-                    file_extension='pdf',
-                    original_size=file_size,
-                    compressed_size=file_size,
-                    status=resource_status,
-                    is_approved=resource_approved
-                )
-                messages.success(request, success_msg)
-            except Exception as e:
-                logger.error("Resource upload error | user=%s course=%s error=%s",
-                    request.user.username, course.uid, str(e))
-                if uploaded_fb_path:
-                    try:
-                        StorageManager.delete_from_supabase_storage(uploaded_fb_path)
-                    except Exception:
-                        pass
-                messages.error(request, "An error occurred while uploading the file. Please try again.")
+            CourseResource.objects.create(
+                course=course,
+                title=title,
+                chapter=chapter,
+                category=category,
+                resource_type='PDF',
+                firebase_file_path=supabase_storage_path,
+                backup_file_path=None,
+                mime_type='application/pdf',
+                file_extension='pdf',
+                original_size=0,
+                compressed_size=0,
+                status=resource_status,
+                is_approved=resource_approved
+            )
+            messages.success(request, success_msg)
 
             # Auto-reinstate BLOCKED teacher after successful edit
             if request.user.status == 'BLOCKED':
@@ -1728,7 +1650,7 @@ def edit_resource(request, resource_uid):
             title = request.POST.get('title', '').strip()
             category = request.POST.get('category', '').strip()
             chapter = request.POST.get('chapter', '').strip() or resource.chapter
-            upload_file = request.FILES.get('upload_file')
+            supabase_storage_path = request.POST.get('supabase_storage_path', '')
 
             if not title:
                 messages.error(request, "Please enter a resource name.")
@@ -1738,74 +1660,24 @@ def edit_resource(request, resource_uid):
                 messages.error(request, "Please select a category (English, Malayalam, or Online).")
                 return redirect('edit_resource', resource_uid=resource.uid)
 
-            is_approved = resource.status == 'APPROVED'
-            new_fb_path = None
-            new_file_size = 0
-            uploaded_fb_path = None
-
-            if upload_file:
-                MAX_UPLOAD_BYTES = 10 * 1024 * 1024
-                if upload_file.size > MAX_UPLOAD_BYTES:
-                    messages.error(request, "File size exceeds the 10MB limit. Please upload a smaller PDF.")
-                    return redirect('edit_resource', resource_uid=resource.uid)
-
-                try:
-                    from .utils.malware_scanner import scanner
-                    from .utils.pdf_processor import validate_file
-                    new_mime, new_ext = validate_file(upload_file, upload_file.name)
-                    is_infected, scan_reason = scanner.scan_file(upload_file)
-                    if is_infected:
-                        logger.warning("Security scan blocked | user=%s file=%s reason=%s ip=%s",
-                            request.user.username, upload_file.name, scan_reason,
-                            request.META.get('REMOTE_ADDR'))
-                        messages.error(request, "This file could not be uploaded because it does not meet our security requirements.")
-                        return redirect('edit_resource', resource_uid=resource.uid)
-                    file_bytes = upload_file.read()
-                    new_file_size = len(file_bytes)
-
-                    import uuid
-                    course_slug = re.sub(r'[^a-zA-Z0-9]', '-', course.title).strip('-').lower()
-                    course_slug = re.sub(r'-+', '-', course_slug)
-                    safe_title = re.sub(r'[^a-zA-Z0-9\s-]', '', title).strip()
-                    safe_title = re.sub(r'\s+', '-', safe_title)
-                    safe_title = re.sub(r'-+', '-', safe_title).lower()
-                    safe_title = safe_title[:40]
-                    category_folder = category.lower() if category else 'uncategorised'
-                    suffix = uuid.uuid4().hex[:4]
-                    dest_filename = f"{safe_title}-{suffix}.pdf"
-                    dest_path = f"{course_slug}/{category_folder}/{dest_filename}"
-                    uploaded_fb_path = StorageManager.upload_to_supabase_storage(file_bytes, dest_path, 'application/pdf')
-                    new_fb_path = uploaded_fb_path
-                    del file_bytes
-                except Exception as e:
-                    logger.error("Resource edit error | user=%s resource=%s error=%s",
-                        request.user.username, resource.uid, str(e))
-                    if uploaded_fb_path:
-                        try:
-                            StorageManager.delete_from_supabase_storage(uploaded_fb_path)
-                        except Exception:
-                            pass
-                    messages.error(request, "An error occurred while processing the file. Please try again.")
-                    return redirect('edit_resource', resource_uid=resource.uid)
-
             course_is_published = course.status == 'PUBLISHED' and course.is_approved
 
-            # Set resource metadata fields
-            if new_fb_path and resource.firebase_file_path:
-                try:
-                    StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
-                except:
-                    pass
             resource.title = title
             resource.category = category
             resource.chapter = chapter
             resource.resource_type = 'PDF'
-            if new_fb_path:
-                resource.firebase_file_path = new_fb_path
+            if supabase_storage_path:
+                # Delete old file from Supabase
+                if resource.firebase_file_path:
+                    try:
+                        StorageManager.delete_from_supabase_storage(resource.firebase_file_path)
+                    except:
+                        pass
+                resource.firebase_file_path = supabase_storage_path
                 resource.mime_type = 'application/pdf'
                 resource.file_extension = 'pdf'
-                resource.original_size = new_file_size
-                resource.compressed_size = new_file_size
+                resource.original_size = 0
+                resource.compressed_size = 0
 
             if was_suspended:
                 resource.status = 'APPROVED'

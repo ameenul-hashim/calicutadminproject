@@ -72,9 +72,10 @@
         {% include 'includes/messages.html' %}
         {% include 'includes/validation_engine.html' %}
 
-        <form method="POST" enctype="multipart/form-data" id="signupForm" novalidate>
+        <form method="POST" id="signupForm" novalidate>
             {% csrf_token %}
             <input type="hidden" name="is_mobile" id="is_mobile" value="false">
+            <input type="hidden" name="supabase_pdf_path" id="supabase_pdf_path" value="">
             <div class="signup-grid">
                 <div class="form-group">
                     <label for="username">Username</label>
@@ -103,6 +104,7 @@
                         <div style="text-align: left;">
                             <div id="file-name-display" style="font-weight: 700; font-size: 0.9rem; color: #1e293b;">Select qualification document</div>
                             <div id="upload-help-text" style="font-size: 0.75rem; color: #94a3b8;">PDF Document Only (Max 200KB)</div>
+                            <div id="upload-progress" style="display:none; font-size:0.75rem; color:#6366f1; margin-top:0.25rem;">Uploading to storage...</div>
                         </div>
                     </label>
                     <input type="file" name="proof_file" id="proof_file" accept=".pdf" style="display: none;" onchange="handleFileSelection(this)">
@@ -139,7 +141,7 @@
     </div>
 
     <script>
-        var conversionInProgress = false;
+        var uploadInProgress = false;
 
         // Device-aware upload — set accept + text on page load
         (function() {
@@ -149,7 +151,7 @@
             var mobileField = document.getElementById('is_mobile');
             if (isMobile) {
                 input.setAttribute('accept', '.pdf,image/*');
-                helpText.textContent = 'Upload PDF or Take Photo (Max 200KB)';
+                helpText.textContent = 'Upload PDF or Take Photo (Max 200KB after conversion)';
                 mobileField.value = 'true';
             } else {
                 input.setAttribute('accept', '.pdf');
@@ -245,21 +247,56 @@
             var btn = document.getElementById('signup-btn');
             if (show) {
                 btn.disabled = true;
-                btn.innerHTML = '<span class="spinner"></span> Converting image to PDF... Please wait.';
-                conversionInProgress = true;
+                btn.innerHTML = '<span class="spinner"></span> ' + (btnText || 'Uploading to storage...');
+                uploadInProgress = true;
             } else {
                 btn.disabled = false;
                 btn.innerHTML = btnText || 'Register as Teacher';
-                conversionInProgress = false;
+                uploadInProgress = false;
             }
         }
 
         function resetUploadUI(defaultText) {
             var display = document.getElementById('file-name-display');
             var label = document.getElementById('upload-label');
+            var progress = document.getElementById('upload-progress');
+            document.getElementById('supabase_pdf_path').value = '';
             display.innerText = defaultText || 'Select qualification document';
             label.style.borderColor = '#cbd5e1';
             label.style.background = '#f8fafc';
+            progress.style.display = 'none';
+        }
+
+        async function uploadFileToSupabase(file) {
+            var progress = document.getElementById('upload-progress');
+            progress.style.display = 'block';
+            progress.textContent = 'Getting upload URL...';
+
+            var resp = await fetch('/api/upload/signed-url/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                body: JSON.stringify({ filename: file.name, file_size: file.size, upload_type: 'proof' })
+            });
+            var data = await resp.json();
+            if (!resp.ok || !data.signed_url) {
+                progress.style.display = 'none';
+                throw new Error(data.error || 'Failed to get upload URL');
+            }
+
+            progress.textContent = 'Uploading to storage...';
+            var uploadResp = await fetch(data.signed_url, {
+                method: 'PUT',
+                body: file,
+                headers: { 'Content-Type': 'application/pdf' }
+            });
+            if (!uploadResp.ok) {
+                progress.style.display = 'none';
+                throw new Error('Upload to storage failed (HTTP ' + uploadResp.status + ')');
+            }
+
+            progress.textContent = 'Upload complete!';
+            document.getElementById('supabase_pdf_path').value = data.storage_path;
+            return data.storage_path;
         }
 
         function handleFileSelection(input) {
@@ -297,17 +334,35 @@
                 return;
             }
 
-            // Valid PDF
-            if (isPDF) {
-                display.innerText = "Selected: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
-                label.style.borderColor = "#10b981";
-                label.style.background = "#f0fdf4";
+            // Image size check (will be converted to PDF first)
+            if (isImage && file.size > 10 * 1024 * 1024) {
+                Toast.error("Image file is too large. Please choose a smaller image (max 10 MB).");
+                input.value = "";
+                resetUploadUI('Select qualification document');
                 return;
             }
 
-            // Mobile: image selected → convert to PDF client-side
-            if (isMobile && isImage) {
-                setLoading(true, 'Register as Teacher');
+            if (isPDF) {
+                // Upload PDF directly to Supabase
+                setLoading(true, 'Uploading...');
+                display.innerText = "Uploading to storage...";
+                label.style.borderColor = "#f59e0b";
+                label.style.background = "#fffbeb";
+
+                uploadFileToSupabase(file).then(function(path) {
+                    setLoading(false, 'Register as Teacher');
+                    display.innerText = "✓ Uploaded: " + (file.name.length > 20 ? file.name.substring(0, 17) + "..." : file.name);
+                    label.style.borderColor = "#10b981";
+                    label.style.background = "#f0fdf4";
+                }).catch(function(err) {
+                    setLoading(false, 'Register as Teacher');
+                    Toast.error(err.message || "Upload failed. Please try again.");
+                    input.value = "";
+                    resetUploadUI('Select qualification document');
+                });
+            } else if (isMobile && isImage) {
+                // Mobile: image selected → convert to PDF client-side → upload to Supabase
+                setLoading(true, 'Converting image to PDF...');
                 display.innerText = "Converting image to PDF...";
                 label.style.borderColor = "#f59e0b";
                 label.style.background = "#fffbeb";
@@ -320,21 +375,37 @@
                         resetUploadUI('Select qualification document');
                         return;
                     }
-                    var dataTransfer = new DataTransfer();
-                    dataTransfer.items.add(pdfFile);
-                    input.files = dataTransfer.files;
-                    setLoading(false, 'Register as Teacher');
-                    display.innerText = "✓ Image successfully converted to PDF. Ready for upload.";
-                    label.style.borderColor = "#10b981";
-                    label.style.background = "#f0fdf4";
+                    display.innerText = "✓ Converted. Uploading to storage...";
+                    return uploadFileToSupabase(pdfFile);
+                }).then(function(path) {
+                    if (path) {
+                        setLoading(false, 'Register as Teacher');
+                        display.innerText = "✓ Image converted & uploaded. Ready!";
+                        label.style.borderColor = "#10b981";
+                        label.style.background = "#f0fdf4";
+                    }
                 }).catch(function(err) {
                     setLoading(false, 'Register as Teacher');
-                    Toast.error("Image conversion failed. Please select another image or upload a PDF.");
+                    Toast.error(err.message || "Upload failed. Please try again.");
                     input.value = "";
                     resetUploadUI('Select qualification document');
                 });
             }
         }
+
+        // Block form submit while upload is in progress
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+            if (uploadInProgress) {
+                e.preventDefault();
+                Toast.error("Please wait for the upload to complete.");
+                return;
+            }
+            if (!document.getElementById('supabase_pdf_path').value) {
+                e.preventDefault();
+                Toast.error("Please upload a verification document first.");
+                return;
+            }
+        });
 
         // Initialize Validation Engine
         Validation.initForm('signupForm', {
@@ -354,12 +425,7 @@
                     if (val !== form.querySelector('#password').value) return "Passwords do not match";
                     return null;
                 }},
-                { id: 'proof_file', label: 'Qualification Document', custom: function(val, form) {
-                    var file = form.querySelector('#proof_file').files[0];
-                    if (!file) return "Please upload your qualification proof";
-                    if (file.size > 200 * 1024) return "File exceeds 200 KB limit";
-                    return null;
-                }}
+                { id: 'supabase_pdf_path', label: 'Qualification Document', required: true }
             ]
         });
     </script>

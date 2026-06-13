@@ -86,6 +86,7 @@ urlpatterns = [
     path('api/video/renew-session/<uuid:job_uid>/', views.renew_session_view, name='renew_session_view'),
     path('api/video/audit/<uuid:job_uid>/', views.upload_audit_log, name='upload_audit_log'),
 
+    path('api/upload/signed-url/', views.api_get_signed_upload_url, name='api_get_signed_upload_url'),
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
     path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),
 ]

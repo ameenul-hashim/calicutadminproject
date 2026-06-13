@@ -1,0 +1,14 @@
+[api]
+enabled = true
+port = 54321
+
+[db.migrations]
+schema_path = "./migrations"
+
+[functions]
+enabled = true
+include = ["drive-backup"]
+
+[functions.drive-backup]
+verify_jwt = false
+import_map = "./functions/drive-backup/import_map.json"

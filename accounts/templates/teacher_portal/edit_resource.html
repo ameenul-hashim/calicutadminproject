@@ -71,8 +71,9 @@
             {% endif %}
 
             <div class="form-card">
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" id="resourceForm">
                     {% csrf_token %}
+                    <input type="hidden" name="supabase_storage_path" id="supabase_storage_path" value="">
                     <div class="input-group">
                         <label for="title">Resource Title</label>
                         <input type="text" name="title" id="title" required value="{{ resource.title }}" placeholder="e.g. Chapter 1 Notes">
@@ -91,13 +92,15 @@
                         <label for="upload_file">Change PDF File (Optional)</label>
                         <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">Current file: <span style="font-weight: 600; color: #1e293b;">{{ resource.title }} ({{ resource.file_extension|upper }})</span></p>
                         <div style="border: 2px dashed #e2e8f0; padding: 2rem; border-radius: 1rem; text-align: center; background: #f8fafc; transition: all 0.2s;" onmouseover="this.style.borderColor='#4f46e5'; this.style.background='#f5f3ff'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='#f8fafc'">
-                            <input type="file" name="upload_file" id="upload_file" accept=".pdf,application/pdf" style="width: 100%; cursor: pointer;" onchange="validatePDF(this)">
+                            <input type="file" name="upload_file" id="upload_file" accept=".pdf,application/pdf" style="width: 100%; cursor: pointer;" onchange="handleFileSelection(this)">
                             <p style="margin-top: 1rem; font-size: 0.8rem; color: #94a3b8;" id="fileHelp">Upload a new PDF only if you want to replace the existing one. (Max 10MB)</p>
                             <p style="margin-top: 0.3rem; font-size: 0.75rem; color: #ef4444; display: none;" id="fileError"></p>
                         </div>
                     </div>
                     <script>
-                    function validatePDF(input) {
+                    var uploadInProgress = false;
+
+                    function handleFileSelection(input) {
                         var help = document.getElementById('fileHelp');
                         var err = document.getElementById('fileError');
                         var file = input.files[0];
@@ -117,11 +120,46 @@
                             input.value = '';
                             return;
                         }
-                        help.textContent = 'Selected: ' + file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
-                        help.style.color = '#059669';
+
+                        // Upload to Supabase via signed URL
+                        uploadInProgress = true;
+                        help.textContent = 'Uploading to storage...';
+                        help.style.color = '#d97706';
                         help.style.display = 'block';
                         err.style.display = 'none';
+
+                        fetch('/api/upload/signed-url/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+                            body: JSON.stringify({ filename: file.name, file_size: file.size, upload_type: 'resource', course_uid: '{{ resource.course.uid }}' })
+                        })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (!data.signed_url) throw new Error(data.error || 'Failed to get upload URL');
+                            return fetch(data.signed_url, {
+                                method: 'PUT', body: file, headers: { 'Content-Type': 'application/pdf' }
+                            }).then(function() {
+                                document.getElementById('supabase_storage_path').value = data.storage_path;
+                                uploadInProgress = false;
+                                help.textContent = '✓ Uploaded: ' + file.name;
+                                help.style.color = '#059669';
+                            });
+                        })
+                        .catch(function(e) {
+                            uploadInProgress = false;
+                            err.textContent = e.message || 'Upload failed. Please try again.';
+                            err.style.display = 'block';
+                            help.style.display = 'none';
+                            input.value = '';
+                        });
                     }
+
+                    document.getElementById('resourceForm').addEventListener('submit', function(e) {
+                        if (uploadInProgress) {
+                            e.preventDefault();
+                            alert('Please wait for the upload to complete.');
+                        }
+                    });
                     </script>
 
                     <div style="display: flex; gap: 1rem; margin-top: 2rem;">
