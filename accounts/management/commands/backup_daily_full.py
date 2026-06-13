@@ -208,7 +208,26 @@ class Command(BaseCommand):
 
             self.stdout.write(f'  DB dump uploaded to 3rd Supabase: {backup_bucket}/{remote_path} ({len(file_bytes)} bytes)')
 
-            # Retention: keep only last 15 DB dumps
+            # Also upload to Google Drive for extra safety
+            try:
+                from accounts.utils.google_drive_service import ensure_folder_path, upload_file, _get_credentials
+                from googleapiclient.discovery import build
+                creds = _get_credentials()
+                if creds:
+                    service = build('drive', 'v3', credentials=creds)
+                    drive_folder = ensure_folder_path(service, ['NeoLearner_Backups', 'Daily_Backups'])
+                    if drive_folder:
+                        drive_id, drive_err = upload_file(service, file_bytes, file_name, 'application/octet-stream', drive_folder)
+                        if drive_id:
+                            self.stdout.write(f'  DB dump also uploaded to Google Drive: NeoLearner_Backups/Daily_Backups/{file_name}')
+                        else:
+                            self.stdout.write(self.style.WARNING(f'  Google Drive upload failed: {drive_err}'))
+                    else:
+                        self.stdout.write(self.style.WARNING('  Google Drive folder creation failed'))
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f'  Google Drive upload error: {e}'))
+
+            # Retention: keep only last 5 DB dumps
             try:
                 list_headers = {
                     'Authorization': f'Bearer {backup_key}',
@@ -223,7 +242,7 @@ class Command(BaseCommand):
                         set(e['name'].split('/')[1] for e in existing if '/' in e.get('name', '')),
                         reverse=True
                     )
-                    for old_folder in folders[15:]:
+                    for old_folder in folders[5:]:
                         r_old = req.get(f'{backup_url}/storage/v1/object/list/{backup_bucket}',
                                         headers=list_headers,
                                         params={'prefix': f'daily_backups/{old_folder}/'})
