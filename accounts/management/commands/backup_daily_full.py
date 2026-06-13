@@ -168,35 +168,52 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'  Bucket check/create failed: {e}'))
             return False
 
-        # Upload file via supabase-py SDK
+        # Upload file via direct HTTP (supabase-py v2.x SDK has URL construction issues)
         try:
-            if not backup_supabase:
-                self.stdout.write('  Backup Supabase client not initialized')
+            if not backup_url or not backup_key:
+                self.stdout.write('  Backup Supabase (3rd): skipped (BACKUP_SUPABASE_URL/KEY not set)')
                 return False
             with open(db_file, 'rb') as f:
                 file_bytes = f.read()
-            backup_supabase.storage.from_(backup_bucket).upload(
-                path=remote_path,
-                file=file_bytes,
-                file_options={"content-type": "application/octet-stream", "upsert": "true"}
-            )
+            upload_headers = {
+                'Authorization': f'Bearer {backup_key}',
+                'apikey': backup_key,
+                'Content-Type': 'application/octet-stream',
+            }
+            r = req.post(f'{backup_url}/storage/v1/object/{backup_bucket}/{remote_path}',
+                         headers=upload_headers, data=file_bytes)
+            if r.status_code not in (200, 201):
+                self.stdout.write(self.style.WARNING(f'  Upload failed: {r.status_code} {r.text}'))
+                return False
             self.stdout.write(f'  DB dump uploaded to 3rd Supabase: {backup_bucket}/{remote_path} ({len(file_bytes)} bytes)')
 
-            # Retention: keep only last 15 DB dumps in this bucket
+            # Retention: keep only last 15 DB dumps using direct HTTP
             try:
-                existing = backup_supabase.storage.from_(backup_bucket).list('daily_backups')
-                folders = sorted(
-                    [e['name'] for e in existing if e.get('id') is None],
-                    reverse=True
-                )
-                for old_folder in folders[15:]:
-                    old_files = backup_supabase.storage.from_(backup_bucket).list(f'daily_backups/{old_folder}')
-                    for of in old_files:
-                        if of.get('name'):
-                            backup_supabase.storage.from_(backup_bucket).remove(
-                                [f'daily_backups/{old_folder}/{of["name"]}']
-                            )
-                    self.stdout.write(f'  Retention: removed old backup {old_folder} from 3rd Supabase')
+                list_headers = {
+                    'Authorization': f'Bearer {backup_key}',
+                    'apikey': backup_key,
+                }
+                r_list = req.get(f'{backup_url}/storage/v1/object/list/{backup_bucket}',
+                                 headers=list_headers,
+                                 params={'prefix': 'daily_backups/'})
+                if r_list.status_code == 200:
+                    existing = r_list.json()
+                    folders = sorted(
+                        set(e['name'].split('/')[1] for e in existing if '/' in e.get('name', '')),
+                        reverse=True
+                    )
+                    for old_folder in folders[15:]:
+                        # List and delete old files
+                        r_old = req.get(f'{backup_url}/storage/v1/object/list/{backup_bucket}',
+                                        headers=list_headers,
+                                        params={'prefix': f'daily_backups/{old_folder}/'})
+                        if r_old.status_code == 200:
+                            for of in r_old.json():
+                                if of.get('name'):
+                                    del_path = f'{backup_bucket}/{of["name"]}'
+                                    req.delete(f'{backup_url}/storage/v1/object/{del_path}',
+                                              headers=list_headers)
+                            self.stdout.write(f'  Retention: removed old backup {old_folder} from 3rd Supabase')
             except Exception as e:
                 self.stdout.write(self.style.WARNING(f'  Retention cleanup on 3rd Supabase failed: {e}'))
 
