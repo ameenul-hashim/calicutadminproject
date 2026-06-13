@@ -131,8 +131,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
     Instead, the SQL dump is uploaded to the backup Supabase storage bucket
     (which uses HTTPS/IPv4) for later manual restore if needed.
     
-    Uses BACKUP_DATABASE_URL for metadata only — actual upload uses
-    BACKUP_SUPABASE_URL/BACKUP_SUPABASE_KEY/BACKUP_SUPABASE_BUCKET.
+    Uses BACKUP_SUPABASE_URL/BACKUP_SUPABASE_KEY/BACKUP_SUPABASE_BUCKET.
     Returns (success: bool, message: str).
     """
     from datetime import datetime
@@ -145,34 +144,39 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
     if not backup_url or not backup_key:
         return False, "BACKUP_SUPABASE_URL or BACKUP_SUPABASE_KEY not set"
 
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
+    remote_path = f'live_db_restore/{timestamp}.sql'
+
+    # Try direct HTTP first (proven to work from local tests)
     try:
         headers = {
             'Authorization': f'Bearer {backup_key}',
             'apikey': backup_key,
-        }
-
-        # Upload SQL dump to storage (bucket should already exist — daily backup uses it)
-        timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
-        remote_path = f'live_db_restore/{timestamp}.sql'
-
-        upload_headers = {
-            'Authorization': f'Bearer {backup_key}',
-            'apikey': backup_key,
             'Content-Type': 'application/octet-stream',
         }
-        r3 = req.post(
-            f'{backup_url}/storage/v1/object/{bucket}/{remote_path}',
-            headers=upload_headers,
-            data=sql_bytes,
-        )
-        if r3.status_code not in (200, 201):
-            return False, f"Upload failed: {r3.status_code} {r3.text}"
+        r = req.post(f'{backup_url}/storage/v1/object/{bucket}/{remote_path}',
+                     headers=headers, data=sql_bytes, timeout=30)
+        if r.status_code in (200, 201):
+            logger.info(f"Backup DB dump uploaded: {bucket}/{remote_path} ({len(sql_bytes)} bytes)")
+            return True, None
+    except Exception:
+        pass
 
-        logger.info(f"Backup DB SQL dump uploaded to storage: {bucket}/{remote_path} ({len(sql_bytes)} bytes)")
-        return True, None
-
+    # Fallback: try supabase-py SDK
+    try:
+        from accounts.utils.supabase_storage import backup_supabase
+        if backup_supabase:
+            backup_supabase.storage.from_(bucket).upload(
+                path=remote_path,
+                file=sql_bytes,
+                file_options={"content-type": "application/octet-stream", "upsert": "true"}
+            )
+            logger.info(f"Backup DB dump uploaded via SDK: {bucket}/{remote_path} ({len(sql_bytes)} bytes)")
+            return True, None
     except Exception as e:
-        return False, f"Backup upload failed: {e}"
+        return False, f"Backup upload failed (tried direct HTTP and SDK): {e}"
+
+    return False, "Backup Supabase client not initialized"
 
 
 def delete_old_backups(service, folder_path, keep_count=30):

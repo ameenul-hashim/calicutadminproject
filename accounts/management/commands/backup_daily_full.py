@@ -168,26 +168,45 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING(f'  Bucket check/create failed: {e}'))
             return False
 
-        # Upload file via direct HTTP (supabase-py v2.x SDK has URL construction issues)
+        # Upload file — try direct HTTP first, then SDK fallback
         try:
             if not backup_url or not backup_key:
                 self.stdout.write('  Backup Supabase (3rd): skipped (BACKUP_SUPABASE_URL/KEY not set)')
                 return False
             with open(db_file, 'rb') as f:
                 file_bytes = f.read()
+
+            uploaded = False
+            # Try direct HTTP
             upload_headers = {
                 'Authorization': f'Bearer {backup_key}',
                 'apikey': backup_key,
                 'Content-Type': 'application/octet-stream',
             }
             r = req.post(f'{backup_url}/storage/v1/object/{backup_bucket}/{remote_path}',
-                         headers=upload_headers, data=file_bytes)
-            if r.status_code not in (200, 201):
+                         headers=upload_headers, data=file_bytes, timeout=30)
+            if r.status_code in (200, 201):
+                uploaded = True
+
+            # Fallback: try SDK
+            if not uploaded and backup_supabase:
+                try:
+                    backup_supabase.storage.from_(backup_bucket).upload(
+                        path=remote_path,
+                        file=file_bytes,
+                        file_options={"content-type": "application/octet-stream", "upsert": "true"}
+                    )
+                    uploaded = True
+                except Exception:
+                    pass
+
+            if not uploaded:
                 self.stdout.write(self.style.WARNING(f'  Upload failed: {r.status_code} {r.text}'))
                 return False
+
             self.stdout.write(f'  DB dump uploaded to 3rd Supabase: {backup_bucket}/{remote_path} ({len(file_bytes)} bytes)')
 
-            # Retention: keep only last 15 DB dumps using direct HTTP
+            # Retention: keep only last 15 DB dumps
             try:
                 list_headers = {
                     'Authorization': f'Bearer {backup_key}',
@@ -203,7 +222,6 @@ class Command(BaseCommand):
                         reverse=True
                     )
                     for old_folder in folders[15:]:
-                        # List and delete old files
                         r_old = req.get(f'{backup_url}/storage/v1/object/list/{backup_bucket}',
                                         headers=list_headers,
                                         params={'prefix': f'daily_backups/{old_folder}/'})
