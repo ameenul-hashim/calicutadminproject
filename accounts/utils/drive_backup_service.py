@@ -151,15 +151,7 @@ def restore_to_backup_db(sql_bytes, backup_db_url=None):
             'apikey': backup_key,
         }
 
-        # Ensure bucket exists (direct HTTP since supabase-py v2.x has URL issues)
-        r = req.get(f'{backup_url}/storage/v1/bucket/{bucket}', headers=headers)
-        if r.status_code == 404:
-            r2 = req.post(f'{backup_url}/storage/v1/bucket', headers=headers,
-                          json={'name': bucket, 'public': False})
-            if r2.status_code not in (200, 201):
-                return False, f"Failed to create bucket: {r2.text}"
-
-        # Upload SQL dump to storage
+        # Upload SQL dump to storage (bucket should already exist — daily backup uses it)
         timestamp = datetime.now().strftime('%Y-%m-%d_%H%M%S')
         remote_path = f'live_db_restore/{timestamp}.sql'
 
