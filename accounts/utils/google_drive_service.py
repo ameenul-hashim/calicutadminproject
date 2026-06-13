@@ -73,9 +73,11 @@ def _resolve_parent_id(service, parent_id):
 
 def ensure_folder_path(service, path_parts):
     """Ensure a nested folder path exists in Google Drive, creating as needed.
+    If GOOGLE_DRIVE_ROOT_FOLDER_ID is set, uses it as the root parent
+    (storage counts against that folder owner's quota).
     Returns the folder ID of the deepest folder, or None on failure."""
     try:
-        parent_id = None
+        parent_id = os.getenv('GOOGLE_DRIVE_ROOT_FOLDER_ID') or None
         current_path = ''
         for part in path_parts:
             current_path = f'{current_path}/{part}' if current_path else part
