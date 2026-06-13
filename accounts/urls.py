@@ -88,6 +88,7 @@ urlpatterns = [
 
     path('api/upload/signed-url/', views.api_get_signed_upload_url, name='api_get_signed_upload_url'),
     path('api/backup/', views.trigger_backup, name='trigger_backup'),
+    path('api/backup/edge-webhook/', views.backup_edge_webhook, name='backup_edge_webhook'),
     path('api/dismiss-updates/', views.dismiss_updates, name='dismiss_updates'),
 ]
 

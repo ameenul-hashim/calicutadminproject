@@ -13,6 +13,8 @@ import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 const GOOGLE_DRIVE_CLIENT_ID = Deno.env.get("GOOGLE_DRIVE_CLIENT_ID")!;
 const GOOGLE_DRIVE_CLIENT_SECRET = Deno.env.get("GOOGLE_DRIVE_CLIENT_SECRET")!;
 const GOOGLE_DRIVE_REFRESH_TOKEN = Deno.env.get("GOOGLE_DRIVE_REFRESH_TOKEN")!;
+const WEBHOOK_URL = Deno.env.get("WEBHOOK_URL") || "https://neolearner.onrender.com/api/backup/edge-webhook/";
+const BACKUP_CRON_TOKEN = Deno.env.get("BACKUP_CRON_TOKEN")!;
 
 const ROOT_FOLDER = "NeoLearner_Backups";
 
@@ -152,10 +154,34 @@ async function downloadFromSupabase(
   return { bytes, mimeType };
 }
 
-serve(async (req) => {
+async function reportToWebhook(details: {
+  status: string;
+  file_path: string;
+  backup_type: string;
+  drive_file_id?: string;
+  bucket: string;
+  error?: string;
+  duration: number;
+}): Promise<void> {
   try {
-    // Determine which Supabase instance triggered this
-    // If called from Resource Supabase webhook, it passes headers with its own creds
+    if (!WEBHOOK_URL || !BACKUP_CRON_TOKEN) return;
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...details, token: BACKUP_CRON_TOKEN }),
+    });
+  } catch {
+    // Silently fail — webhook is best-effort
+  }
+}
+
+serve(async (req) => {
+  const startTime = Date.now();
+  let backupType = "DRIVE";
+  let bucketId = "";
+  let filePath = "";
+
+  try {
     let supabaseUrl = req.headers.get("X-Resource-URL") || Deno.env.get("SUPABASE_URL")!;
     let supabaseKey = req.headers.get("X-Resource-Key") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
@@ -172,7 +198,9 @@ serve(async (req) => {
       return new Response("Ignored: not a storage INSERT", { status: 200 });
     }
 
-    const { bucket_id: bucketId, name: filePath } = event.record;
+    bucketId = event.record.bucket_id;
+    filePath = event.record.name;
+    backupType = bucketId === "calicutadminpanelpdf" ? "SIGNUP_PDF" : "TEACHER_RESOURCE";
 
     if (filePath.startsWith("daily_backups/")) {
       return new Response("Skipped: daily backup file", { status: 200 });
@@ -182,15 +210,36 @@ serve(async (req) => {
     const token = await getAccessToken();
     const { folder, fileName } = getDestinationPath(bucketId, filePath);
     const folderId = await ensureFolder(token, folder);
-    await uploadToDrive(token, bytes, fileName, mimeType, folderId);
+    const driveFileId = await uploadToDrive(token, bytes, fileName, mimeType, folderId);
 
     console.log(`Backed up ${bucketId}/${filePath} \u2192 Drive: ${folder.join("/")}/${fileName}`);
+
+    // Report success to Django
+    await reportToWebhook({
+      status: "SUCCESS",
+      file_path: `${folder.join("/")}/${fileName}`,
+      backup_type: backupType,
+      drive_file_id: driveFileId,
+      bucket: bucketId,
+      duration: (Date.now() - startTime) / 1000,
+    });
 
     return new Response(JSON.stringify({ success: true, path: `${folder.join("/")}/${fileName}` }), {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Edge function error:", error);
+
+    // Report failure to Django
+    await reportToWebhook({
+      status: "FAILED",
+      file_path: filePath,
+      backup_type: backupType,
+      bucket: bucketId,
+      error: error.message,
+      duration: (Date.now() - startTime) / 1000,
+    });
+
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

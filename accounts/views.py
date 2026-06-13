@@ -3813,6 +3813,57 @@ def trigger_backup(request):
     return JsonResponse({'success': True, 'message': 'Backup started'})
 
 
+import hmac
+
+@csrf_exempt
+def backup_edge_webhook(request):
+    """Receives backup status from Supabase Edge Function via POST.
+    Edge Function calls this after each Drive backup attempt.
+    Protected by BACKUP_CRON_TOKEN for authenticity."""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+    try:
+        data = json.loads(request.body)
+        token = data.get('token', '')
+        expected = os.getenv('BACKUP_CRON_TOKEN', '')
+        if not expected or not hmac.compare_digest(token, expected):
+            logger.warning(f"Unauthorized edge webhook from {request.META.get('REMOTE_ADDR')}")
+            return JsonResponse({'error': 'Forbidden'}, status=403)
+        from .models import BackupLog
+        status = data.get('status', 'FAILED')
+        file_path = data.get('file_path', '')
+        error_msg = data.get('error', '')
+        backup_type = data.get('backup_type', 'DRIVE')
+        log = BackupLog.objects.create(
+            backup_type=backup_type,
+            filename=file_path.split('/')[-1] if file_path else 'unknown',
+            status='SUCCESS' if status == 'SUCCESS' else 'FAILED',
+            error_message=error_msg if status != 'SUCCESS' else '',
+            drive_file_id=data.get('drive_file_id', ''),
+            drive_folder_path=file_path,
+            duration_seconds=data.get('duration', 0),
+            metadata={
+                'source': 'edge_function',
+                'file_path': file_path,
+                'notified_admin': False,
+                'bucket': data.get('bucket', ''),
+            },
+        )
+        if status != 'SUCCESS':
+            notify_admins(
+                f"Drive Backup Failed: {backup_type}",
+                f"File: {file_path}\nError: {error_msg}",
+                'backup_failed'
+            )
+            log.metadata['notified_admin'] = True
+            log.save(update_fields=['metadata'])
+        logger.info(f"Edge webhook: {backup_type} {status} for {file_path}")
+        return JsonResponse({'success': True})
+    except Exception as e:
+        logger.error(f"Edge webhook error: {e}")
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def verify_processing_view(request, job_uid):
     """

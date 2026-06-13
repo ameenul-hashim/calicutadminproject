@@ -581,6 +581,7 @@ class BackupLog(models.Model):
         ('SIGNUP_PDF', 'Signup PDF Backup'),
         ('TEACHER_RESOURCE', 'Teacher Resource Backup'),
         ('LIVE_DB', 'Live DB Restore (Primary → Backup Supabase)'),
+        ('DRIVE', 'Google Drive Real-time Backup'),
     )
     STATUS_CHOICES = (
         ('PENDING', 'Pending'),
