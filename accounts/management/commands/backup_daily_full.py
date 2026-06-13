@@ -297,8 +297,14 @@ class Command(BaseCommand):
 
     def _upload_db_to_backup_supabase(self, db_dir):
         """Upload database dump file to 3rd Supabase storage bucket.
+        Uses direct HTTP requests for bucket management (supabase-py v2.x
+        storage API has URL construction issues for bucket CRUD).
         Returns True if uploaded, False if skipped or failed."""
-        if not backup_supabase:
+        import requests as req
+
+        backup_url = os.getenv('BACKUP_SUPABASE_URL', '').rstrip('/')
+        backup_key = os.getenv('BACKUP_SUPABASE_KEY', '')
+        if not backup_url or not backup_key:
             self.stdout.write('  Backup Supabase (3rd): skipped (BACKUP_SUPABASE_URL/KEY not set)')
             return False
 
@@ -310,18 +316,30 @@ class Command(BaseCommand):
         db_file = db_files[0]
         file_name = db_file.name
         remote_path = f'daily_backups/{datetime.now().strftime("%Y/%m/%d")}/{file_name}'
+        headers = {
+            'Authorization': f'Bearer {backup_key}',
+            'Content-Type': 'application/json',
+        }
 
+        # Check/create bucket via direct HTTP (supabase-py storage API has URL issues)
         try:
-            backup_supabase.storage.get_bucket(backup_bucket)
-        except Exception:
-            try:
-                backup_supabase.storage.create_bucket(backup_bucket, options={"public": False})
-                self.stdout.write(f'  Created bucket "{backup_bucket}" on 3rd Supabase')
-            except Exception as e:
-                self.stdout.write(self.style.WARNING(f'  Could not create bucket: {e}'))
+            r = req.get(f'{backup_url}/storage/v1/bucket/{backup_bucket}', headers=headers)
+            if r.status_code == 404:
+                r2 = req.post(f'{backup_url}/storage/v1/bucket', headers=headers, json={'name': backup_bucket, 'public': False})
+                if r2.status_code in (200, 201):
+                    self.stdout.write(f'  Created bucket "{backup_bucket}" on 3rd Supabase')
+                else:
+                    self.stdout.write(self.style.WARNING(f'  Could not create bucket: {r2.text}'))
+                    return False
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f'  Bucket check/create failed: {e}'))
+            return False
+
+        # Upload file via supabase-py SDK (this endpoint works correctly)
+        try:
+            if not backup_supabase:
+                self.stdout.write('  Backup Supabase client not initialized')
                 return False
-
-        try:
             with open(db_file, 'rb') as f:
                 file_bytes = f.read()
             backup_supabase.storage.from_(backup_bucket).upload(
