@@ -2857,6 +2857,11 @@ def _backup_card_stats():
     live_db_failed = BackupLog.objects.filter(backup_type='LIVE_DB', status='FAILED').count()
     live_db_success = BackupLog.objects.filter(backup_type='LIVE_DB', status='SUCCESS').count()
 
+    # Check if env vars are actually set (not just log presence)
+    backup_db_configured = bool(os.getenv('BACKUP_DATABASE_URL'))
+    backup_supabase_configured = bool(os.getenv('BACKUP_SUPABASE_URL') and os.getenv('BACKUP_SUPABASE_KEY'))
+    edge_function_configured = bool(os.getenv('GOOGLE_DRIVE_CLIENT_ID') and os.getenv('GOOGLE_DRIVE_REFRESH_TOKEN'))
+
     # Legacy per-type stats (for history view)
     db_last = BackupLog.objects.filter(backup_type='DATABASE', status='SUCCESS').order_by('-created_at').first()
     signup_total = BackupLog.objects.filter(backup_type='SIGNUP_PDF').count()
@@ -2938,6 +2943,9 @@ def _backup_card_stats():
         'success_rate': round((success_all / (total_all or 1)) * 100, 1),
         'failure_rate': round((failed_all / (total_all or 1)) * 100, 1) if total_all else 0,
         'next_backup_seconds': next_backup_seconds,
+        'backup_db_configured': backup_db_configured,
+        'backup_supabase_configured': backup_supabase_configured,
+        'edge_function_configured': edge_function_configured,
     }
 
 

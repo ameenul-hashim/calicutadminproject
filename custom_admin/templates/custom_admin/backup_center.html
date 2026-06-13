@@ -249,8 +249,10 @@
         <div class="value" style="font-size: 1.25rem;">
             {% if stats.live_db_success > 0 %}
                 <span style="color: #10b981;">Active</span>
+            {% elif stats.backup_db_configured %}
+                <span style="color: #f59e0b;">Configured (awaiting schedule)</span>
             {% else %}
-                <span style="color: #94a3b8;">Not configured</span>
+                <span style="color: #ef4444;">Not configured</span>
             {% endif %}
         </div>
         <div class="sub">
@@ -260,6 +262,8 @@
                     {{ stats.live_db_success }} successful
                     {% if stats.live_db_failed > 0 %}| {{ stats.live_db_failed }} failed{% endif %}
                 </span>
+            {% elif stats.backup_db_configured %}
+                BACKUP_DATABASE_URL is set — ready for cron (every 4h)
             {% else %}
                 Set BACKUP_DATABASE_URL env var
             {% endif %}
@@ -272,16 +276,20 @@
         <div class="value" style="font-size: 1.25rem;">
             {% if stats.daily_full_success > 0 %}
                 <span style="color: #10b981;">Active</span>
+            {% elif stats.backup_supabase_configured %}
+                <span style="color: #f59e0b;">Configured (awaiting schedule)</span>
             {% else %}
-                <span style="color: #94a3b8;">Not configured</span>
+                <span style="color: #ef4444;">Not configured</span>
             {% endif %}
         </div>
         <div class="sub">
             {% if stats.daily_full_last %}
                 Last SQL upload: {{ stats.daily_full_last.created_at|timesince }} ago<br>
                 <span style="font-size: 0.75rem;">{{ stats.daily_full_last.file_size|filesizeformat }} uploaded to backups bucket</span>
+            {% elif stats.backup_supabase_configured %}
+                BACKUP_SUPABASE_URL is set — runs with daily backup (20:30 UTC)
             {% else %}
-                Runs with daily backup
+                Set BACKUP_SUPABASE_URL & BACKUP_SUPABASE_KEY env vars
             {% endif %}
         </div>
     </div>
