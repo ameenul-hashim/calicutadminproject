@@ -29,7 +29,6 @@ def _get_credentials():
                 client_secret=client_secret,
                 scopes=SCOPES
             )
-            creds.refresh(None)
             logger.info('Google Drive OAuth credentials initialized')
             return creds
         except Exception as e:
