@@ -1114,14 +1114,6 @@ def edit_course(request, course_uid):
             course.save()
             messages.success(request, f"Course '{course.title}' updated successfully!")
 
-        # Auto-reinstate BLOCKED teacher after successful edit
-        if request.user.status == 'BLOCKED':
-            request.user.status = 'ACTIVE'
-            request.user.is_active = True
-            request.user.save(update_fields=['status', 'is_active'])
-            cache.delete(f"user_status_{request.user.id}")
-            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
-            
         return redirect('my_courses')
         
     return render(request, 'teacher_portal/edit_course.html', {'course': course})
@@ -1431,14 +1423,6 @@ def add_lesson(request, course_uid):
             messages.success(request, f"Lesson '{title}' added successfully! Submit for admin approval when ready.")
             notify_admins("New Lesson Added", f"Teacher {request.user.username} added lesson '{title}' to course '{course.title}'.", 'new_lesson', '')
 
-        # Auto-reinstate BLOCKED teacher after successful edit
-        if request.user.status == 'BLOCKED':
-            request.user.status = 'ACTIVE'
-            request.user.is_active = True
-            request.user.save(update_fields=['status', 'is_active'])
-            cache.delete(f"user_status_{request.user.id}")
-            messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
-
         return redirect('course_lessons', course_uid=course.uid)
     
     chapter = request.GET.get('chapter', '')
@@ -1527,14 +1511,6 @@ def edit_lesson(request, lesson_uid):
                 lesson.save()
                 messages.success(request, "Lesson updated successfully.")
 
-            # Auto-reinstate BLOCKED teacher after successful edit
-            if request.user.status == 'BLOCKED':
-                request.user.status = 'ACTIVE'
-                request.user.is_active = True
-                request.user.save(update_fields=['status', 'is_active'])
-                cache.delete(f"user_status_{request.user.id}")
-                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
-
             return redirect('course_lessons', course_uid=lesson.course.uid)
         except Exception as e:
             logger.error("Lesson edit UNHANDLED ERROR | user=%s lesson=%s\n%s",
@@ -1616,16 +1592,11 @@ def add_resource(request, course_uid):
                 return redirect('course_lessons', course_uid=course.uid)
 
             chapter = request.POST.get('chapter', '')
-            course_is_published = course.status == 'PUBLISHED' and course.is_approved
-            if course_is_published:
-                resource_status = 'APPROVED'
-                resource_approved = True
-                success_msg = f"Resource '{title}' added and immediately available to students."
-            else:
-                resource_status = 'PENDING'
-                resource_approved = False
-                success_msg = f"Resource '{title}' uploaded and pending approval."
-                notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
+            # All resources go through PENDING → admin approval, regardless of course status
+            resource_status = 'PENDING'
+            resource_approved = False
+            success_msg = f"Resource '{title}' uploaded and pending approval."
+            notify_admins("New Resource Submitted", f"Teacher {request.user.username} uploaded a resource for course '{course.title}'.", 'new_resource', '')
 
             CourseResource.objects.create(
                 course=course,
@@ -1643,14 +1614,6 @@ def add_resource(request, course_uid):
                 is_approved=resource_approved
             )
             messages.success(request, success_msg)
-
-            # Auto-reinstate BLOCKED teacher after successful edit
-            if request.user.status == 'BLOCKED':
-                request.user.status = 'ACTIVE'
-                request.user.is_active = True
-                request.user.save(update_fields=['status', 'is_active'])
-                cache.delete(f"user_status_{request.user.id}")
-                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
 
             return redirect('course_lessons', course_uid=course.uid)
         except Exception as e:
@@ -1740,14 +1703,6 @@ def edit_resource(request, resource_uid):
                 resource.rejection_reason = None
                 resource.save()
                 messages.success(request, f"Resource '{title}' updated successfully.")
-
-            # Auto-reinstate BLOCKED teacher after successful edit
-            if request.user.status == 'BLOCKED':
-                request.user.status = 'ACTIVE'
-                request.user.is_active = True
-                request.user.save(update_fields=['status', 'is_active'])
-                cache.delete(f"user_status_{request.user.id}")
-                messages.success(request, "Your account has been automatically reinstated. Your content is now visible to students again.")
 
             return redirect('course_lessons', course_uid=course.uid)
         except Exception as e:
@@ -1996,6 +1951,15 @@ def edit_profile(request):
                 request.user.save()
                 if password_changed:
                     update_session_auth_hash(request, request.user)
+                    from django.contrib.sessions.models import Session
+                    old_key = request.user.current_session_key
+                    request.user.current_session_key = request.session.session_key
+                    request.user.save(update_fields=['current_session_key'])
+                    if old_key and old_key != request.session.session_key:
+                        try:
+                            Session.objects.filter(session_key=old_key).delete()
+                        except Exception:
+                            logger.exception("Failed to delete old session after password change")
 
                 if avatar_changed:
                     request.session.pop('avatar_skipped', None)
@@ -2092,6 +2056,15 @@ def teacher_edit_profile(request):
                 request.user.save()
                 if password_changed:
                     update_session_auth_hash(request, request.user)
+                    from django.contrib.sessions.models import Session
+                    old_key = request.user.current_session_key
+                    request.user.current_session_key = request.session.session_key
+                    request.user.save(update_fields=['current_session_key'])
+                    if old_key and old_key != request.session.session_key:
+                        try:
+                            Session.objects.filter(session_key=old_key).delete()
+                        except Exception:
+                            logger.exception("Failed to delete old session after password change")
                 if avatar_url:
                     request.session.pop('avatar_skipped', None)
                     photo_cache_key = f"user_has_photo_{request.user.id}"

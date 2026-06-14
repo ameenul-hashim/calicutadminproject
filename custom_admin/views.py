@@ -262,6 +262,8 @@ def manage_teachers(request):
         'page_obj': page_obj,
     })
 
+@ratelimit(key='ip', rate='60/hour', block=True)
+@user_passes_test(is_admin, login_url='admin_login')
 def check_email(request):
     from django.http import JsonResponse
     email = request.GET.get('email', '').strip()
