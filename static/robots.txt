@@ -1,0 +1,8 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /customadmin/
+Disallow: /accounts/
+Disallow: /api/
+Allow: /
+
+Sitemap: https://neolearner.onrender.com/sitemap.xml
