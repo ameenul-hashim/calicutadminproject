@@ -803,6 +803,7 @@ def api_get_signed_upload_url(request):
     file_size = int(data.get('file_size', 0))
     upload_type = data.get('upload_type', '')
     course_uid = data.get('course_uid', '')
+    role = data.get('role', '').lower()
 
     if not filename or not file_size or not upload_type:
         return JsonResponse({'error': 'filename, file_size, and upload_type required'}, status=400)
@@ -820,7 +821,8 @@ def api_get_signed_upload_url(request):
         if ext != '.pdf' and file_size > 10 * 1024 * 1024:
             return JsonResponse({'error': 'Image file is too large (max 10 MB).'}, status=400)
 
-        storage_path = f'documents/uploads/{uuid.uuid4()}{ext}'
+        folder = 'students' if role == 'student' else 'teachers' if role == 'teacher' else 'uploads'
+        storage_path = f'documents/{folder}/{uuid.uuid4()}{ext}'
         bucket = bucket_name
         use_resource = False
 

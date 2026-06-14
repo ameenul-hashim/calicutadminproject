@@ -284,7 +284,7 @@
             var resp = await fetch('/api/upload/signed-url/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
-                body: JSON.stringify({ filename: file.name, file_size: file.size, upload_type: 'proof' })
+                body: JSON.stringify({ filename: file.name, file_size: file.size, upload_type: 'proof', role: 'student' })
             });
             var data = await resp.json();
             if (!resp.ok || !data.signed_url) {
