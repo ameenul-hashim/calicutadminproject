@@ -833,15 +833,20 @@ def content_management_view(request):
 
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_courses_view(request):
+    from django.core.paginator import Paginator
     # Show courses that are PENDING approval OR courses that are PUBLISHED but have new unapproved content OR have pending edits
-    courses = Course.objects.filter(
+    courses_qs = Course.objects.filter(
         Q(status='PENDING') | 
         Q(has_pending_edits=True) |
         Q(lessons__is_approved=False) |
         Q(lessons__has_pending_edits=True)
     ).select_related('teacher').prefetch_related('lessons').distinct().order_by('-created_at')
+    paginator = Paginator(courses_qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
     return render(request, 'custom_admin/pending_courses.html', {
-        'courses': courses,
+        'courses': page_obj,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1316,8 +1321,12 @@ def reject_resource(request, resource_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def pending_resources(request):
     from accounts.models import CourseResource
-    resources = CourseResource.objects.filter(is_approved=False, status='PENDING').select_related('course__teacher').order_by('-created_at')
-    return render(request, 'custom_admin/pending_resources.html', {'resources': resources})
+    from django.core.paginator import Paginator
+    resources_qs = CourseResource.objects.filter(is_approved=False, status='PENDING').select_related('course__teacher').order_by('-created_at')
+    paginator = Paginator(resources_qs, 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    return render(request, 'custom_admin/pending_resources.html', {'resources': page_obj, 'page_obj': page_obj})
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_view_course_content(request, course_uid):
@@ -1795,13 +1804,18 @@ def reject_course_deletion(request, request_uid):
 @user_passes_test(is_admin, login_url='admin_login')
 def manage_deletion_requests(request):
     from accounts.models import Lesson, CourseResource
-    pending_requests = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')[:20]
-    for dr in pending_requests:
+    from django.core.paginator import Paginator
+    pending_qs = DeletionRequest.objects.filter(status='PENDING').select_related('teacher', 'resource').order_by('-created_at')
+    paginator = Paginator(pending_qs, 20)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    for dr in page_obj:
         if dr.item_type == 'Chapter':
             dr.lesson_count = Lesson.objects.filter(course_id=dr.item_id, chapter=dr.item_name).count()
             dr.resource_count = CourseResource.objects.filter(course_id=dr.item_id, chapter=dr.item_name, is_deleted=False).count()
     return render(request, 'custom_admin/manage_deletion_requests.html', {
-        'requests': pending_requests,
+        'requests': page_obj,
+        'page_obj': page_obj,
     })
 
 @user_passes_test(is_admin, login_url='admin_login')

@@ -13,15 +13,14 @@ def pending_counts(request):
         user = request.user
         is_admin = user.user_type == 'ADMIN'
 
-        # Admins always get fresh counts (no cache). Other users can use cached.
-        if not is_admin:
-            cache_key = f"pending_counts_{user.id}_{user.user_type}"
-            try:
-                cached_context = cache.get(cache_key)
-                if cached_context:
-                    return cached_context
-            except Exception:
-                pass
+        # All users get cached counts (30s for admin, 300s for others)
+        cache_key = f"pending_counts_{user.id}_{user.user_type}"
+        try:
+            cached_context = cache.get(cache_key)
+            if cached_context:
+                return cached_context
+        except Exception:
+            pass
 
         context = {
             'is_admin_preview': request.session.get('student_view_unlocked', False)
@@ -102,12 +101,11 @@ def pending_counts(request):
                 pass
             cache.set(cleanup_cache_key, _time(), 7200)
 
-        # Cache for non-admin only (5 min)
-        if not is_admin:
-            try:
-                cache.set(cache_key, context, 300)
-            except Exception:
-                pass
+        # Cache counts (30s admin, 300s others)
+        try:
+            cache.set(cache_key, context, 30 if is_admin else 300)
+        except Exception:
+            pass
 
         return context
     except Exception as e:
