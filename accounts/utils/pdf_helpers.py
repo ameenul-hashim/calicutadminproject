@@ -2,7 +2,6 @@ from PIL import Image
 import io
 import os
 import gc
-import requests
 import logging
 from django.core.files.base import ContentFile
 from pillow_heif import register_heif_opener
@@ -34,14 +33,10 @@ def optimize_image_internally(img, max_width=1200, quality=80):
     return output_io
 
 def convert_image_to_pdf(image_source):
+    """Convert an uploaded image file to a PDF. Only accepts file objects — never URLs."""
     try:
-        if isinstance(image_source, str) and (image_source.startswith('http://') or image_source.startswith('https://')):
-            response = requests.get(image_source, timeout=15)
-            img = Image.open(io.BytesIO(response.content))
-            filename = os.path.basename(image_source).split('?')[0]
-        else:
-            img = Image.open(image_source)
-            filename = getattr(image_source, 'name', 'verification_upload.jpg')
+        img = Image.open(image_source)
+        filename = getattr(image_source, 'name', 'verification_upload.jpg')
 
         logger.info(f"PDF Pipeline: Processing {filename} ({img.width}x{img.height})")
 

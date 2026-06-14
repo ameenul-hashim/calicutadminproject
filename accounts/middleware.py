@@ -187,9 +187,13 @@ class PortalSecurityMiddleware:
 
             response["Server"] = "Webserver"
             response["X-Powered-By"] = "Secure Portal"
-            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            response["Pragma"] = "no-cache"
-            response["Expires"] = "Sat, 01 Jan 2000 00:00:00 GMT"
+
+            # Allow WhiteNoise static files to keep their long cache headers
+            # Only override Cache-Control for dynamic pages
+            if not path.startswith('/static/') and not path.startswith('/media/'):
+                response["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+                response["Pragma"] = "no-cache"
+                response["Expires"] = "Sat, 01 Jan 2000 00:00:00 GMT"
             response["Referrer-Policy"] = "same-origin"
 
             return response

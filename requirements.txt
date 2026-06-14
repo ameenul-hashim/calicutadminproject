@@ -17,8 +17,8 @@ typing-extensions==4.14.1
 channels==4.3.2
 daphne==4.2.1
 
-# Stable Supabase stack
-supabase==1.2.0
+# Stable Supabase stack — v2.x API required for signed upload URLs and file_options
+supabase==2.16.0
 pydantic==2.13.3
 pydantic-core==2.46.3
 annotated-types==0.7.0

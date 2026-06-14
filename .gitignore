@@ -54,6 +54,9 @@ bug_report.txt
 # Scratch / temp scripts
 scratch/
 
+# Supabase CLI local temp metadata
+supabase/.temp/
+
 # Local backups (Neon snapshots)
 local_backups/
 

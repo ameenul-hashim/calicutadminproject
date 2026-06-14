@@ -682,7 +682,7 @@ def cleanup_user_files(sender, instance, **kwargs):
             from .utils.supabase_storage import delete_pdf
             delete_pdf(instance.pdf_path)
         except Exception:
-            pass
+            logger.exception(f"Failed to delete Supabase PDF for user {instance.id}")
 
     # 3. Cleanup Firebase RTDB data (notifications, chat, login_history, admin_activity)
     if hasattr(instance, 'uid') and instance.uid:
@@ -690,7 +690,7 @@ def cleanup_user_files(sender, instance, **kwargs):
             from .utils.firebase_db import cleanup_user_firebase_data
             cleanup_user_firebase_data(instance.uid)
         except Exception:
-            pass
+            logger.exception(f"Failed to cleanup Firebase data for user {instance.id}")
 
 @receiver(pre_delete, sender=Course)
 def cleanup_course_image(sender, instance, **kwargs):
@@ -700,7 +700,7 @@ def cleanup_course_image(sender, instance, **kwargs):
             import cloudinary.uploader
             cloudinary.uploader.destroy(instance.pending_image_public_id)
         except Exception:
-            pass
+            logger.exception(f"Failed to delete pending image for course {instance.id}")
 
 @receiver(pre_delete, sender=Lesson)
 def cleanup_lesson_video(sender, instance, **kwargs):
@@ -709,19 +709,19 @@ def cleanup_lesson_video(sender, instance, **kwargs):
         try:
             instance.video_file.delete(save=False)
         except Exception:
-            pass
+            logger.exception(f"Failed to delete video file for lesson {instance.id}")
     if hasattr(instance, 'pending_video_file') and instance.pending_video_file:
         try:
             instance.pending_video_file.delete(save=False)
         except Exception:
-            pass
+            logger.exception(f"Failed to delete pending video for lesson {instance.id}")
     # Clean up YouTube video if present
     if instance.youtube_video_id:
         try:
             from accounts.utils.youtube_uploader import delete_youtube_video
             delete_youtube_video(instance.youtube_video_id)
         except Exception:
-            pass
+            logger.exception(f"Failed to delete YouTube video {instance.youtube_video_id}")
 
 
 @receiver(pre_delete, sender=CourseResource)
@@ -732,13 +732,53 @@ def cleanup_course_resource_files(sender, instance, **kwargs):
         if instance.firebase_file_path:
             StorageManager.delete_from_supabase_storage(instance.firebase_file_path)
     except Exception:
-        pass
+        logger.exception("Failed to delete CourseResource Supabase file")
     try:
         if instance.thumbnail_public_id:
             from accounts.utils.cloudinary_helpers import delete_temp_image
             delete_temp_image(instance.thumbnail_public_id)
     except Exception:
-        pass
+        logger.exception("Failed to delete CourseResource Cloudinary thumbnail")
+
+
+@receiver(post_save, sender=CustomUser)
+def backup_user_pdf_to_drive(sender, instance, created, **kwargs):
+    """Backup signup proof PDF to Google Drive when user is created with pdf_path."""
+    if not instance.pdf_path:
+        return
+    if not created and kwargs.get('update_fields') and 'pdf_path' not in kwargs.get('update_fields'):
+        return
+    try:
+        from accounts.utils.supabase_storage import download_file
+        file_bytes = download_file(instance.pdf_path, use_resource_client=False)
+        if file_bytes:
+            from accounts.utils.backup_trigger import backup_signup_pdf
+            backup_signup_pdf(instance.id, instance.pdf_path, file_bytes)
+    except Exception:
+        logger.exception(f"Failed to trigger signup PDF backup for user {instance.id}")
+
+
+@receiver(post_save, sender=CourseResource)
+def backup_resource_to_drive(sender, instance, created, **kwargs):
+    """Backup teacher resource to Google Drive when resource is created."""
+    if not instance.firebase_file_path:
+        return
+    if not created:
+        return
+    try:
+        from accounts.utils.supabase_storage import download_file
+        file_bytes = download_file(instance.firebase_file_path, use_resource_client=True)
+        if file_bytes:
+            from accounts.utils.backup_trigger import backup_teacher_resource
+            course_title = instance.course.title if instance.course else ''
+            chapter = instance.chapter or ''
+            category = instance.category or ''
+            backup_teacher_resource(
+                instance.id, instance.firebase_file_path, file_bytes,
+                course_title, chapter, category
+            )
+    except Exception:
+        logger.exception(f"Failed to trigger resource backup for resource {instance.id}")
 
 
 

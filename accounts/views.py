@@ -2449,7 +2449,7 @@ def mark_notification_read(request, notif_uid):
         return redirect(next_url)
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({"status": "read"})
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return redirect('dashboard')
 
 @login_required
 def delete_notification(request, notif_uid):
@@ -2460,7 +2460,7 @@ def delete_notification(request, notif_uid):
     if request.headers.get('x-requested-with') == 'XMLHttpRequest':
         return JsonResponse({"status": "deleted"})
     messages.success(request, "Notification deleted.")
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return redirect('dashboard')
 
 @user_passes_test(lambda u: u.is_authenticated and u.user_type == 'TEACHER', login_url='teacher_login')
 def teacher_analytics_view(request):
@@ -2517,7 +2517,7 @@ def mark_all_notifications_read(request):
     mark_all_read(str(request.user.uid))
     from django.core.cache import cache
     cache.delete(f"pending_counts_{request.user.id}_{request.user.user_type}")
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return redirect('dashboard')
 
 @xframe_options_exempt
 @login_required(login_url='login')

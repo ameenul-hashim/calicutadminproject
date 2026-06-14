@@ -940,9 +940,6 @@ def approve_course(request, course_uid):
         )
     
     messages.success(request, f"Course '{course.title}' has been approved and published!")
-    referer = request.META.get('HTTP_REFERER')
-    if referer and ('content' in referer or 'pending' in referer):
-        return redirect(referer)
     return redirect('pending_courses')
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1487,13 +1484,10 @@ def admin_delete_course_secure(request, course_uid):
 
             messages.success(request, f"'{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
             return redirect('deleted_courses')
-            
-            messages.success(request, f"'{course_title}' and all its content moved to Deleted Courses area. You can restore or permanently delete it from there.")
-            return redirect('deleted_courses')
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+    return redirect('admin_content')
 
 @user_passes_test(is_admin, login_url='admin_login')
 @csrf_protect
@@ -1538,7 +1532,7 @@ def admin_delete_lesson_secure(request, lesson_uid):
         else:
             messages.error(request, "Action not allowed. Please verify administrator credentials.")
             
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+    return redirect('admin_content')
 
 @user_passes_test(is_admin, login_url='admin_login')
 def admin_delete_resource_secure(request, resource_uid):
@@ -1576,7 +1570,7 @@ def admin_delete_resource_secure(request, resource_uid):
         logger.exception(f"Could not delete resource: {e}")
         messages.error(request, "Could not delete the resource. Please try again.")
 
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+    return redirect('admin_content')
 
 
 @user_passes_test(is_admin, login_url='admin_login')
@@ -1605,7 +1599,7 @@ def admin_update_order(request, item_type, uid):
         except Exception:
             messages.error(request, "Invalid order value.")
 
-    return redirect(request.META.get('HTTP_REFERER', 'admin_content'))
+    return redirect('admin_content')
 
 @user_passes_test(is_admin, login_url='admin_login')
 @csrf_protect
@@ -2079,7 +2073,7 @@ def admin_permanent_delete_course_secure(request, course_uid):
         else:
             messages.error(request, "Authentication failed. Please verify your administrator username/email and password.")
             
-    return redirect(request.META.get('HTTP_REFERER', 'deleted_courses'))
+    return redirect('deleted_courses')
 
 @ratelimit(key='user', rate='60/hour', method='POST', block=True)
 @user_passes_test(is_admin, login_url='admin_login')
@@ -2159,7 +2153,7 @@ def proxy_pdf_access(request, user_uid):
         return redirect(pdf_url)
 
     messages.error(request, "PDF document not found or not yet uploaded.")
-    return redirect(request.META.get('HTTP_REFERER') or 'admin_dashboard')
+    return redirect('admin_dashboard')
 
 @user_passes_test(is_admin, login_url='admin_login')
 @cache_control(no_cache=True, must_revalidate=True, no_store=True)

@@ -74,7 +74,7 @@ INSTALLED_APPS = [
     'custom_admin',
     'cloudinary_storage',
     'cloudinary',
-    #'axes',  # Brute-force protection - DISABLED
+    'axes',  # Brute-force protection — enterprise config
 ]
 
 MIDDLEWARE = [
@@ -94,19 +94,22 @@ MIDDLEWARE += [
     'accounts.middleware.PortalSecurityMiddleware',
     'accounts.middleware.EnterpriseHardeningMiddleware',
     'accounts.middleware.SlowQueryMonitorMiddleware',
-    #'axes.middleware.AxesMiddleware',  # DISABLED for testing
+    'axes.middleware.AxesMiddleware',
 ]
 
 AUTHENTICATION_BACKENDS = [
-    #'axes.backends.AxesStandaloneBackend',  # DISABLED for testing
+    'axes.backends.AxesStandaloneBackend',
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-# AXES Brute-Force Protection - DISABLED
-# AXES_FAILURE_LIMIT = 5
-# AXES_COOLOFF_TIME = 1
-# AXES_RESET_ON_SUCCESS = True
-# AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+# AXES Brute-Force Protection — Enterprise Configuration
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_ONLY_ADMIN_SITE = False  # Protect all auth endpoints, not just /admin/
+AXES_ENABLE_ADMIN = True      # Show lockout info in Django admin
+AXES_VERBOSE = True           # Detailed logging for security audit
 
 # Performance & Security Tweaks
 DATA_UPLOAD_MAX_MEMORY_SIZE = 20971520  # 20MB (matches view-level check)

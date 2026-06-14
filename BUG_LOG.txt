@@ -1,0 +1,918 @@
+================================================================================
+                     NEO LEARNER - COMPLETE BUG/ISSUE LOG
+================================================================================
+Generated: 2026-06-14 | Branch: 3-fullcorrect
+================================================================================
+
+TABLE OF CONTENTS
+  1.  Supabase-py v2.16 SDK - Storage URL Construction Broken
+  2.  Supabase-py v2.16 SDK - File Upload API Incompatibility
+  3.  Supabase Backup URL - /rest/v1 Suffix Corruption
+  4.  Render to Backup DB - IPv6 Connectivity Failure
+  5.  Google Drive OAuth - creds.refresh(None) TypeError
+  6.  Google Drive OAuth - MEGA Misleading Log Messages
+  7.  Google Drive Backup - Arbitrary Folder Names (Not Mirroring Paths)
+  8.  Backup Center UI - Log-Only Check Instead of Real Env Var Status
+  9.  Django ASGI - Background Threads Broken in WebSocket Mode
+  10. YouTube Upload - Background Verify Thread Hangs in ASGI
+  11. YouTube Upload - CSRF Token Undefined (CSRF_USE_SESSIONS=True)
+  12. YouTube Upload - CSRF Token Timing in edit_lesson
+  13. YouTube Upload - Job UID Missing from Renew-Session URL
+  14. YouTube Error 153 - Embed Restrictions
+  15. Video Playback - Broken iframe Fallback
+  16. Course Player - Chapter Ordering Not Matching Teacher Order
+  17. Resource Grouping - Groupby Before Sort Produces Wrong Order
+  18. Edit Resource 500 - int(order_raw) Crash
+  19. Edit Resource 500 - Dead Import process_pdf
+  20. Admin Content Verify 500 - Offset-Naive vs Offset-Aware datetime
+  21. Admin Content Verify - Template Syntax Error
+  22. Suspended Content Edit 500 - course.chapters None
+  23. Admin Create Student/Teacher 500 - Missing Imports
+  24. Student Avatar Update 500 - Import Inside Skip Block
+  25. Student Enrollment 500 - Soft-Delete Interference
+  26. PDF Retrieval - Wrong Supabase Client in 3 Views
+  27. Storage Cleanup - delete_supabase_file() Nonexistent Method
+  28. PDF Zoom - Default 200% Instead of 90%
+  29. Signup Error Messages - Misleading 'Cloud Upload' Wording
+  30. Malware Scanner - PDF False Positives (MZ/ELF Bytes)
+  31. EnterpriseHardeningMiddleware - Blank Security Alert Page
+  32. File Upload - Signup Security Scan Too Aggressive
+  33. File Upload - supabase-py v1.x vs v2.x file_options kwarg
+  34. CSS - Thumbnail JS Typo: removNLtribute
+  35. CSS - Avatar/f_auto/q_auto Quality Loss
+  36. Chat Widget - Global Scope, Field Name Mismatch, CSRF
+  37. Chat - Teacher send, Per-User Deletion, 1h Edit/Delete Window
+  38. Notifications - Firebase 7-Day Retention, Teacher 500 Error
+  39. Notifications - Bell Dropdown Not Showing on Student Pages
+  40. Course Deletion - Cascade Cleanup Not Cleaning Supabase Files
+  41. Admin GET Views - No try/except, Raw 500 on Users
+  42. Admin Redirects - Misleading 'Could Not Load' Messages
+  43. Admin URL Names - teacherdeletion_requests Typo
+  44. Admin Session Persistence - Student Session Leaking to Admin
+  45. Course Thumbnail - cloudinary_url() Broken Return
+  46. Course Deletion - No Soft-Delete Cleanup for Resources
+  47. Enrollment - Avatar URL for Unenrolled Students 500
+  48. Lesson/Resource Order - No Created_at Default Sort
+  49. Migration 0049 Missing - order Column on CourseResource
+  50. Migration 0048 Missing - LiveClass Table
+  51. WebSocket - Django Channels Not in INSTALLED_APPS
+  52. WebSocket - In-Memory Channel Layer as Redis Fallback
+  53. Supabase Storage List - v2.16 SDK list() URL Broken
+  54. Cron Trigger - Middleware Auth Blocking Public URL
+  55. Daily Backup - 15-Day Retention Too Long for Free Tier
+  56. Daily Backup - Upload URL Not Included in Error Messages
+  57. Env Var - BACKUP_DATABASE_URL Password # Encoding
+  58. Edge Function - Deploy via CLI Needs SUPABASE_ACCESS_TOKEN
+
+
+================================================================================
+ISSUE 1: Supabase-py v2.16 SDK - Storage URL Construction Broken
+================================================================================
+What:    client.storage.get_bucket() / create_bucket() constructs invalid URLs
+         for bucket management operations. The SDK appends /rest/v1 incorrectly,
+         breaking the storage REST path (e.g. /storage/v1/bucket/xxx becomes
+         /rest/v1/storage/v1/bucket/xxx).
+Where:   accounts/utils/supabase_storage.py (init)
+         accounts/management/commands/backup_daily_full.py (bucket check/create)
+         accounts/utils/drive_backup_service.py (bucket check)
+Why:     supabase-py v2.x changed internal URL routing. The SDK assumes a
+         specific supabase-js pattern that doesn't match the Python REST client.
+         PyPI package locked at 2.16.0.
+Fix:     Replace all bucket CRUD with direct HTTP requests:
+           GET  https://{url}/storage/v1/bucket/{name}
+           POST https://{url}/storage/v1/bucket
+         Also replaced list operations with direct GET /storage/v1/object/list/
+         See commit e303d0f.
+
+
+================================================================================
+ISSUE 2: Supabase-py v2.16 SDK - File Upload API Incompatibility
+================================================================================
+What:    Teacher resource upload silently fails on Render because supabase-py
+         v1.x rejects the file_options dict kwarg, while v2.x requires it.
+Where:   accounts/utils/supabase_storage.py (upload methods)
+         accounts/utils/storage_manager.py (upload_to_supabase_storage)
+Why:     Render has supabase==1.2.0 installed which uses content_type/upsert
+         kwargs. Local dev has v2.16.0 which requires file_options dict.
+         No version check exists.
+Fix:     Create version-agnostic _do_upload helper that tries file_options first,
+         falls back to content_type/upsert on TypeError.
+         Also added direct HTTP upload option as primary with SDK fallback.
+         See commits a219183, 3647316, 1b91056.
+
+
+================================================================================
+ISSUE 3: Supabase Backup URL - /rest/v1 Suffix Corruption
+================================================================================
+What:    BACKUP_SUPABASE_URL env var includes '/rest/v1' suffix (e.g.
+         https://lyerarxaupljrzwcavnj.supabase.co/rest/v1). All storage API
+         calls construct double-pathed URLs like /rest/v1/storage/v1/...
+Where:   accounts/utils/supabase_storage.py (BACKUP_STORAGE_URL init)
+         accounts/utils/drive_backup_service.py (BACKUP_STORAGE_URL usage)
+         accounts/management/commands/backup_daily_full.py (upload URL)
+Why:     User copied URL from Supabase API docs (REST endpoint) instead of
+         the project URL (without /rest/v1).
+Fix:     Strip /rest/v1 suffix on init: url.replace('/rest/v1', '')
+         Applied in all 3 files. See commit 816491c.
+
+
+================================================================================
+ISSUE 4: Render to Backup DB - IPv6 Connectivity Failure
+================================================================================
+What:    pg_dump restore via psql subprocess fails because backup Supabase
+         PostgreSQL host (db.lyerarxaupljrzwcavnj.supabase.co) has only AAAA
+         records (IPv6-only). Render has no IPv6 connectivity.
+Where:   accounts/management/commands/backup_to_live_db.py (entire command)
+         accounts/utils/drive_backup_service.py (restore_to_backup_db)
+Why:     Render's runtime environment does not support IPv6. Supabase free-tier
+         databases are IPv6-only since early 2026 for new projects.
+Fix:     Three attempts:
+         1. Force IPv4 with psql -4 flag → fails (no A record)
+         2. Resolve IPv4 in Python before psql → fails (no A record)
+         3. Upload SQL dump to backup Supabase STORAGE bucket instead of
+            PostgreSQL restore. Now saves to live_db_restore/YYYY-MM-DD-HHMMSS.sql
+            in backup Supabase storage. Direct HTTP upload.
+         See commits 9f544f4, 9c15b60, ed589c4, 282b1e0, 4f84d34.
+
+
+================================================================================
+ISSUE 5: Google Drive OAuth - creds.refresh(None) TypeError
+================================================================================
+What:    Calling creds.refresh(None) raises 'NoneType not callable' because
+         the refresh() method signature changed in google-auth library v2+.
+Where:   accounts/utils/google_drive_service.py (get_authenticated_service)
+Why:     Old google-auth docs show creds.refresh(requests.Request()) pattern.
+         Developer passed None inadvertently when replacing the arg. The new
+         library version requires a valid requests.Session or httpx.Client.
+Fix:     Remove manual creds.refresh(None) call entirely. The OAuth2 flow
+         uses GOOGLE_DRIVE_REFRESH_TOKEN directly via direct HTTP POST to
+         https://oauth2.googleapis.com/token, bypassing google-auth library.
+         See commit ab11d53.
+
+
+================================================================================
+ISSUE 6: Google Drive OAuth - MEGA Misleading Log Messages
+================================================================================
+What:    Backup log messages say "Uploading to MEGA" when actually uploading
+         to Google Drive. Confuses debugging.
+Where:   accounts/management/commands/backup_daily_full.py (multiple print/log)
+Why:     Code was copied from an earlier MEGA-based backup implementation.
+         Strings were not updated after switching to Google Drive.
+Fix:     Replace all 'MEGA' log messages with 'Google Drive' or 'cloud drive'.
+         See commit 91fcce3.
+
+
+================================================================================
+ISSUE 7: Google Drive Backup - Arbitrary Folder Names Instead of Mirroring Paths
+================================================================================
+What:    Edge Function creates Drive folders like
+         NeoLearner_Backups/Signup_Proofs/YYYY/MM/  instead of mirroring the
+         exact Supabase bucket path. Makes it impossible to trace back from
+         Drive to database records.
+Where:   supabase/functions/drive-backup/index.ts (getDestinationPath)
+Why:     Original implementation used arbitrary human-readable folder names
+         that didn't preserve the bucket_id + object path structure.
+Fix:     Update getDestinationPath to return:
+           NeoLearner_Backups/{bucket_id}/{full_supabase_object_path}
+         e.g. calicutadminpanelpdf/documents/students/<uid>.pdf
+         → NeoLearner_Backups/calicutadminpanelpdf/documents/students/<uid>.pdf
+         See commit 0897216.
+
+
+================================================================================
+ISSUE 8: Backup Center UI - Log-Only Check Instead of Real Env Var Status
+================================================================================
+What:    Backup center page only showed log entries (last backup time, etc.)
+         and did not show whether env vars like GOOGLE_DRIVE_CLIENT_ID etc.
+         are actually configured. Confusing: says "Active" but Drive may not
+         be configured.
+Where:   custom_admin/views.py (backup_center view)
+         custom_admin/templates/custom_admin/backup_center.html (template)
+Why:     The view only queried BackupLog models to determine status, never
+         checked os.getenv() for required env vars.
+Fix:     Add env var checking logic: verify GOOGLE_DRIVE_CLIENT_ID,
+         GOOGLE_DRIVE_REFRESH_TOKEN, BACKUP_CRON_TOKEN, etc. Show 3 states
+         in template: Active / Configured (awaiting schedule) / Not configured.
+         See commit 9579563.
+
+
+================================================================================
+ISSUE 9: Django ASGI - Background Threads Broken in WebSocket Mode
+================================================================================
+What:    Post_save signals that spawn background threads (threading.Thread)
+         to upload files to Google Drive hang or crash in ASGI/Daphne mode.
+         The background thread cannot acquire the Django database connection.
+Where:   accounts/models.py (post_save signal handlers)
+         accounts/utils/backup_trigger.py (backup_signup_pdf_on_save,
+         backup_teacher_resource_on_save)
+Why:     Daphne runs in ASGI mode. Django's database connections are per-thread
+         and ASGI's async event loop doesn't properly support thread spawning
+         for DB operations. Threads deadlock waiting for connection.
+Fix:     Remove post_save signal handlers entirely. Move all backup logic to
+         Supabase Edge Function (drive-backup), triggered by database webhook
+         on the storage.objects table INSERT event. Zero Django RAM/threads.
+         See commit ad400db, bbe1204.
+
+
+================================================================================
+ISSUE 10: YouTube Upload - Background Verify Thread Hangs in ASGI
+================================================================================
+What:    After YouTube upload completes, a background thread runs
+         verify_youtube_video() to confirm the video is processed. In ASGI,
+         this thread hangs.
+Where:   accounts/views.py (youtube_upload_complete)
+Why:     Same ASGI/thread issue as ISSUE 9. The background thread can't acquire
+         DB connections or make HTTP requests reliably in Daphne's event loop.
+Fix:     Remove background verify thread. Set UploadJob.status = READY
+         immediately on upload complete. Add @ratelimit and try/except for
+         safety. YouTube verification happens lazily when video is accessed.
+         See commit ac414de.
+
+
+================================================================================
+ISSUE 11: YouTube Upload - CSRF Token Undefined (CSRF_USE_SESSIONS=True)
+================================================================================
+What:    JavaScript in add_lesson.html references csrfToken variable that is
+         undefined because CSRF_USE_SESSIONS=True causes csrftoken cookie to
+         not be set (token is stored in session, not cookie).
+Where:   accounts/templates/accounts/add_lesson.html (JavaScript section)
+Why:     With CSRF_USE_SESSIONS=True, Django stores CSRF token in session only
+         and does not set the csrftoken cookie. JS code reading document.cookie
+         for csrftoken gets undefined.
+Fix:     Override CSRF cookie value retrieval: use Django template tag
+         {% csrf_token %} to embed token in HTML, then read it from the DOM
+         hidden input instead of from cookies. See commit f0bdd5f.
+
+
+================================================================================
+ISSUE 12: YouTube Upload - CSRF Token Timing in edit_lesson
+================================================================================
+What:    Edit lesson YouTube upload fails because CSRF token is fetched before
+         the form is fully rendered, or the UploadJob creation happens before
+         Django middleware sets the session CSRF token.
+Where:   accounts/views.py (edit_lesson)
+         accounts/templates/accounts/edit_lesson.html
+Why:     The edit_lesson view creates the UploadJob before the template renders.
+         CSRF token may not yet be in the session at that point.
+Fix:     Reorder operations: create UploadJob AFTER session CSRF is established.
+         Ensure /api/youtube/init-upload/ endpoint (called by JS) also gets
+         proper CSRF context. See commit 29ae4c1.
+
+
+================================================================================
+ISSUE 13: YouTube Upload - Job UID Missing from Renew-Session URL
+================================================================================
+What:    The renew-session URL for long uploads must include the UploadJob UID
+         in the URL path, but edit_lesson was not passing it.
+Where:   accounts/views.py (edit_lesson, renew_session)
+Why:     URL pattern requires job_uid parameter for session renewal during
+         long uploads. Missing parameter causes 404/500.
+Fix:     Include job UID in renew-session URL generation:
+         {% url 'renew_upload_session' job_uid=upload_job.uid %}
+         See commit 206642f.
+
+
+================================================================================
+ISSUE 14: YouTube Error 153 - Embed Restrictions
+================================================================================
+What:    YouTube videos show "Error 153" when embedded, meaning the video owner
+         has restricted embedding. Also occurs when using certain embed params.
+Where:   accounts/templates/accounts/course_player.html
+         accounts/templates/accounts/lesson_modal.html
+Why:     YouTube's embed restriction policy. Some videos have 'embedding disabled'
+         flag. Also certain URL parameters trigger restriction.
+Fix:     Multiple attempts:
+         1. Simplify embed URL to bare https://www.youtube.com/embed/{id}
+         2. Add ?origin= parameter for domain verification
+         3. Remove rel=0, modestbranding=1 params that trigger restriction
+         4. Add direct YouTube link fallback when embed fails
+         5. Use Plyr with youtube API for unified handling
+         See commits 1bfda27, fb423ae, 240ff92, 84cf707.
+
+
+================================================================================
+ISSUE 15: Video Playback - Broken iframe Fallback
+================================================================================
+What:    YouTube video fallback code uses broken iframe with wrong URL format
+         or missing API params, showing blank player instead of video.
+Where:   accounts/templates/accounts/course_player.html
+         accounts/templates/accounts/lesson_modal.html
+Why:     Fallback code constructs iframe.src without checking youtube_video_id
+         field directly, using a computed URL that often breaks.
+Fix:     Use youtube_video_id field directly for all YouTube URLs. Remove
+         broken iframe fallback. Plyr handles both YouTube and HTML5 video
+         through a single interface. See commit aadd192.
+
+
+================================================================================
+ISSUE 16: Course Player - Chapter Ordering Not Matching Teacher Order
+================================================================================
+What:    Student course_player displays chapters in arbitrary order (usually
+         insertion order) instead of the order set by the teacher in the UI.
+Where:   accounts/views.py (course_player)
+Why:     Course.chapters.all() returns chapters in default ordering (by PK)
+         rather than the teacher's custom order stored in chapter.order field.
+Fix:     Use course.chapters.all().order_by('order', 'created_at') in the
+         course_player view. Also fixed admin and teacher views to use
+         consistent ordering. See commit f5ca190, d8b7129.
+
+
+================================================================================
+ISSUE 17: Resource Grouping - Groupby Before Sort Produces Wrong Order
+================================================================================
+What:    Resources grouped by chapter show in wrong order within each group
+         because groupby() is applied before sorting.
+Where:   accounts/views.py (teacher_course_lessons, course_player)
+Why:     Python's itertools.groupby requires the iterable to be sorted by the
+         grouping key first. Resources were grouped by chapter but not sorted
+         by order field within each chapter.
+Fix:     Sort resources by (chapter_id, order, created_at) before passing to
+         groupby. Also fix lesson/resource ordering to oldest-first within
+         chapters for students, teacher-set order for teachers.
+         See commits 664714e, dc805c3, 6b7b15b.
+
+
+================================================================================
+ISSUE 18: Edit Resource 500 - int(order_raw) Crash
+================================================================================
+What:    Editing a resource with blank/non-numeric order field crashes with
+         ValueError: invalid literal for int().
+Where:   accounts/views.py (edit_resource POST handler)
+Why:     request.POST.get('order') returns empty string when field is blank.
+         int('') raises ValueError.
+Fix:     Wrap int(order_raw) in try/except ValueError with default value.
+         Also added comprehensive traceback logging to all POST handlers.
+         See commit fae4b21.
+
+
+================================================================================
+ISSUE 19: Edit Resource 500 - Dead Import process_pdf
+================================================================================
+What:    edit_resource view has 'from accounts.utils.pdf_processor import
+         process_pdf' but process_pdf function does not exist in pdf_processor.py.
+         ImportError on module load.
+Where:   accounts/views.py (top-level import)
+Why:     process_pdf was removed from pdf_processor.py during refactoring but
+         the import in views.py was not cleaned up.
+Fix:     Remove the dead import. See commit f4ed937.
+
+
+================================================================================
+ISSUE 20: Admin Content Verify 500 - Offset-Naive vs Offset-Aware datetime
+================================================================================
+What:    Admin course content verification page crashes with:
+         "can't compare offset-naive and offset-aware datetimes"
+Where:   custom_admin/views.py (course_content_verify)
+Why:     Code uses datetime.min (offset-naive) to compare against model
+         DateTimeField values that Django returns as offset-aware (with timezone).
+Fix:     Replace datetime.min with timezone.make_aware(datetime.min) using
+         Django's timezone utilities. See commit 9e80cf5.
+
+
+================================================================================
+ISSUE 21: Admin Content Verify - Template Syntax Error
+================================================================================
+What:    Template rendering crashes with TemplateSyntaxError due to duplicate
+         or mismatched template tags (endblock, endif).
+Where:   custom_admin/templates/custom_admin/course_content_verify.html
+Why:     Block/conditional nesting was broken during edit. Missing endblock
+         or extra endif.
+Fix:     Fix template tag nesting. Ensure each block has exactly one endblock.
+         See commit 083c600.
+
+
+================================================================================
+ISSUE 22: Suspended Content Edit 500 - course.chapters None
+================================================================================
+What:    Editing a course/suspended content causes 500 because course.chapters
+         property returns None instead of an empty queryset.
+Where:   accounts/views.py (edit_lesson, edit_resource)
+         accounts/models.py (Course.chapters property)
+Why:     When a course is suspended/deleted, the chapters property may fail
+         to query properly, returning None instead of []. Template then tries
+         to iterate None → TypeError.
+Fix:     Add None check on course.chapters in all edit views. Return empty list
+         when chapters is None. Add suspension notice banner in template.
+         See commit 865f9d1.
+
+
+================================================================================
+ISSUE 23: Admin Create Student/Teacher 500 - Missing Imports
+================================================================================
+What:    Admin create student/teacher page crashes with NameError: validate_email
+         or ValidationError not defined.
+Where:   custom_admin/views.py (admin_create_student, admin_create_teacher)
+Why:     Code uses validate_email() and ValidationError but does not import them
+         from django.core.validators / django.core.exceptions.
+Fix:     Add missing imports:
+           from django.core.validators import validate_email
+           from django.core.exceptions import ValidationError
+         See commit c5eaa1c.
+
+
+================================================================================
+ISSUE 24: Student Avatar Update 500 - Import Inside Skip Block
+================================================================================
+What:    Student avatar update crashes with 500 when cache import is inside a
+         conditional skip block, causing NameError on first invocation.
+Where:   accounts/views.py (student_avatar_update)
+Why:     from django.core.cache import cache is inside an if block that is
+         skipped on first execution. cache variable is undefined when used later.
+Fix:     Move cache import to top of function, outside any conditional block.
+         Add try/except around the entire update logic. See commit f92544c.
+
+
+================================================================================
+ISSUE 25: Student Enrollment 500 - Soft-Delete Interference
+===============================================================================
+What:    Student enrollment triggers 500 error when course is soft-deleted
+         (is_deleted=True) because enrollment check doesn't filter out
+         deleted courses.
+Where:   accounts/views.py (enroll_course, course_player)
+Why:     Enrollment view checks Course.objects.get(uid=...) without filtering
+         is_deleted=False. Returns deleted course. Subsequent queries fail.
+Fix:     Add is_deleted=False filter to all course lookups. Also added
+         soft-delete filtering to course_player, enrollment list, etc.
+         See commit 274e7b2.
+
+
+================================================================================
+ISSUE 26: PDF Retrieval - Wrong Supabase Client in 3 Views
+================================================================================
+What:    PDF signed URL generation uses wrong Supabase client (main Supabase
+         instead of resource Supabase) for teacher resource PDFs, causing 404.
+Where:   accounts/views.py (view_pdf, download_resource, access_resource)
+Why:     Three views hardcode a single Supabase client, but teacher resources
+         live in a different Supabase project (wahfxicsaygqzgefmkta) than
+         signup PDFs (ypcebdfiiohtgrptnmwv).
+Fix:     Route to correct Supabase client based on resource's bucket_id.
+         Signup PDFs → main Supabase. Teacher resources → resource Supabase.
+         See commit 14e6779.
+
+
+================================================================================
+ISSUE 27: Storage Cleanup - delete_supabase_file() Nonexistent Method
+================================================================================
+What:    pre_delete signal on CourseResource calls
+         storage_manager.delete_supabase_file() which does not exist on the
+         StorageManager class. Causes AttributeError on course/resource delete.
+Where:   accounts/models.py (CourseResource pre_delete signal)
+         accounts/utils/storage_manager.py (no such method exists)
+Why:     Method was referenced in signal code but never implemented in
+         StorageManager class.
+Fix:     Replace call with direct supabase_storage.delete_file() or implement
+         the missing method. Also fix permanent course delete to clean up
+         all related resources from Supabase. See commit ee474b1.
+
+
+================================================================================
+ISSUE 28: PDF Zoom - Default 200% Instead of 90%
+================================================================================
+What:    Embedded PDF viewer shows at 200% zoom by default, cutting off content
+         on screen. User must manually zoom out every time.
+Where:   accounts/templates/accounts/resource_access.html (PDF embed tag)
+Why:     <embed> tag has #zoom=200 (or no zoom param, browser defaults to fit
+         page which on mobile = 200% equivalent).
+Fix:     Set #zoom=90 (or pagefit) in the PDF URL fragment. Also use
+         #view=FitH for horizontal fitting. See commit 26e5da1.
+
+
+================================================================================
+ISSUE 29: Signup Error Messages - Misleading 'Cloud Upload' Wording
+================================================================================
+What:    Signup error messages say "Registration failed. Could not upload
+         document to cloud." when the actual error is something else (e.g.
+         email already exists, password too short).
+Where:   accounts/views.py (signup_view, teacher_signup_view - error handling)
+Why:     Generic catch-all error handler assumes all registration failures are
+         due to cloud upload, overwriting the real error message.
+Fix:     Simplify to just "Registration failed. Please try again." without
+         mentioning cloud upload. Let real validation errors propagate.
+         See commit 3f30fb3.
+
+
+================================================================================
+ISSUE 30: Malware Scanner - PDF False Positives (MZ/ELF Bytes)
+================================================================================
+What:    Malware scanner flags legitimate PDF files as malicious because PDF
+         containers can legitimately contain MZ (Windows executable) or ELF
+         (Linux binary) byte sequences within embedded streams.
+Where:   accounts/utils/malware_scanner.py (scan_file)
+Why:     Byte signature scanning checks for MZ (0x4D5A) and ELF (0x7F454C46)
+         magic bytes at any position, but these can appear inside PDF binary
+         streams that are part of the legitimate file format.
+Fix:     Early-return for PDFs: skip byte signature + entropy checks for PDF
+         MIME types. Only check file size (<10MB) and valid PDF header (%PDF-).
+         Full scan still runs on images, DOCX, etc. See commit 27723f6.
+
+
+================================================================================
+ISSUE 31: EnterpriseHardeningMiddleware - Blank Security Alert Page
+================================================================================
+What:    When malware scanner blocks a file, the middleware returns a raw
+         HttpResponseForbidden with technical error codes like
+         MALICIOUS_SIGNATURE_EXECUTABLE_WINDOWS. User sees blank/confusing page.
+Where:   accounts/middleware.py (EnterpriseHardeningMiddleware.process_view)
+Why:     Middleware was written to return HttpResponseForbidden with technical
+         codes instead of user-friendly error messages with redirect back to
+         the upload form.
+Fix:     Replace raw HttpResponseForbidden with redirect to the referring page
+         plus a user-friendly error message in Django messages framework.
+         Technical codes are logged server-side only. See commit 80faced.
+
+
+================================================================================
+ISSUE 32: File Upload - Signup Security Scan Too Aggressive
+================================================================================
+What:    Student/teacher signup PDF upload runs full malware scan (deep PDF
+         analysis with PyMuPDF) which is unnecessary for identity proofs and
+         causes upload failures for legitimate PDFs.
+Where:   accounts/views.py (signup_view, teacher_signup_view)
+Why:     Same malware scanner used for teacher resources was being applied to
+         signup PDFs. Signup PDFs are identity proofs (Aadhaar, etc.) that
+         may have unusual formatting triggering false positives.
+Fix:     Remove security scanning from signup uploads entirely. Signup only
+         checks: 200KB file size limit + file type per device (laptop=PDF,
+         mobile=images→PDF). Add strict_pdf=False flag, True only on signup.
+         See commits 6e0ccc4, d961c83.
+
+
+================================================================================
+ISSUE 33: File Upload - supabase-py v1.x vs v2.x file_options kwarg
+================================================================================
+What:    StorageManager.upload_to_supabase_storage() silently fails on Render
+         because supabase==1.2.0 does not accept the file_options dict kwarg
+         that supabase-py v2.x requires.
+Where:   accounts/utils/storage_manager.py (upload_to_supabase_storage)
+Why:     Development environment has supabase==2.16.0 (file_options kwarg).
+         Render production has supabase==1.2.0 (uses content_type, upsert
+         kwargs directly). No version detection.
+Fix:     Create _do_upload helper that tries file_options first, catches
+         TypeError, falls back to content_type/upsert kwargs. Logs which
+         version path was used. See commits c8e1b4a, a219183, 3647316.
+
+
+================================================================================
+ISSUE 34: CSS - Thumbnail JS Typo: removNLtribute
+================================================================================
+What:    Course thumbnail not displaying because JavaScript has typo:
+         removNLtribute instead of removeAttribute. Silent failure.
+Where:   custom_admin/templates/custom_admin/manage_courses.html (JS section)
+Why:     Typo in attribute removal function name. Browser silently ignores
+         calls to undefined functions in event handlers.
+Fix:     Fix typo: removNLtribute → removeAttribute. Add user-facing error
+         message when thumbnail upload fails. See commit b140b10.
+
+
+================================================================================
+ISSUE 35: CSS - Avatar/f_auto/q_auto Quality Loss
+================================================================================
+What:    Student/teacher avatars look pixelated because Cloudinary f_auto/q_auto
+         transformations reduce quality too aggressively for small images.
+Where:   accounts/models.py (CustomUser.avatar_url property)
+         accounts/templates/accounts/* (avatar img tags)
+Why:     f_auto/q_auto tells Cloudinary to auto-select format and quality.
+         For small profile photos, it often chooses low quality to save bytes.
+Fix:     Use f_auto/q_auto only for large images. For avatars, use explicit
+         q_auto:best or remove quality param. Also use Cloudinary's
+         dpr_auto for retina displays. See commit 274e7b2.
+
+
+================================================================================
+ISSUE 36: Chat Widget - Global Scope, Field Name Mismatch, CSRF
+================================================================================
+What:    Chat loads on every page but has multiple issues: (a) JS poll runs
+         globally instead of per-user, (b) backend uses 'text' but frontend
+         sends 'message', (c) CSRF token missing in widget context.
+Where:   accounts/templates/accounts/chat_widget.html (JS)
+         accounts/views.py (chat_messages API)
+Why:     (a) JS handles all users in one poll loop
+         (b) field name mismatch between form and JS
+         (c) chat widget is loaded via AJAX, CSRF not included in context
+Fix:     (a) Per-user message polling
+         (b) Unify field name to 'text' in both frontend and backend
+         (c) Include CSRF token in widget template context
+         (d) Add 30min edit/delete window for messages
+         (e) Add admin chat_display name masking
+         See commit 9ef9612.
+
+
+================================================================================
+ISSUE 37: Chat - Teacher send, Per-User Deletion, 1h Edit/Delete Window
+================================================================================
+What:    Teachers cannot send messages to admin via chat. Message deletion
+         deletes for all users instead of per-user. Edit/delete window missing.
+Where:   accounts/views.py (send_chat_message, delete_chat_message)
+         accounts/models.py (ChatMessage)
+Why:     Chat was designed as admin-only broadcast. Teacher/send direction
+         was not implemented. Delete was hard-delete from DB instead of
+         per-user soft-delete.
+Fix:     Add teacher→admin send capability. Implement per-user deletion
+         (sender deletes only their copy). Add 1-hour edit/delete window
+         with timestamps. Add login_required to all chat views.
+         See commit 18c141e.
+
+
+================================================================================
+ISSUE 38: Notifications - Firebase 7-Day Retention, Teacher 500 Error
+================================================================================
+What:    Teacher 'all notifications' page crashes with 500 error when loading
+         notifications from Firebase. Also, no cleanup of old notifications.
+Where:   accounts/views.py (teacher_all_notifications)
+         accounts/utils/notification_helper.py (Firebase integration)
+Why:     Firebase Realtime Database has no built-in TTL. Notifications pile
+         up forever. On load, the code tries to parse all notifications into
+         Django template context, hitting memory limit or query timeout.
+Fix:     Implement 7-day retention: delete from Firebase any notification
+         older than 7 days on each page load. Limit query to last 50
+         notifications. Add pagination. See commit a6c5238.
+
+
+================================================================================
+ISSUE 39: Notifications - Bell Dropdown Not Showing on Student Pages
+================================================================================
+What:    Notification bell icon with dropdown is invisible on student pages.
+         The HTML exists but is hidden by CSS or JS.
+Where:   accounts/templates/accounts/student_base.html
+         static/css/student.css
+Why:     CSS z-index issue: bell dropdown container has lower z-index than
+         the sidebar overlay. Also dropdown position is off-screen.
+Fix:     Increase z-index of notification dropdown. Fix position calculation.
+         Ensure dropdown is visible on all page widths (mobile responsive).
+         See commit 3756eb5.
+
+
+================================================================================
+ISSUE 40: Course Deletion - Cascade Cleanup Not Cleaning Supabase Files
+================================================================================
+What:    When a course is deleted (teacher deletion request → admin approve),
+         the associated Supabase files (resource PDFs, thumbnails) are not
+         cleaned up. They remain in Supabase storage forever.
+Where:   accounts/models.py (CourseResource pre_delete signal)
+Why:     Django's cascade delete only deletes database rows. The pre_delete
+         signal on CourseResource should clean up Supabase files but was
+         either missing or broken.
+Fix:     Add/restore pre_delete signal on CourseResource that calls
+         supabase_storage.delete_file() for firebase_file_path and
+         cloudinary_helpers.delete_image() for thumbnail_path.
+         See commit 87bd924.
+
+
+================================================================================
+ISSUE 41: Admin GET Views - No try/except, Raw 500 on Users
+================================================================================
+What:    Many admin views (analytics, content management, storage dashboard,
+         enterprise monitor, system audit, master audit, deletion requests,
+         deleted courses, pending resources) have no error handling. Any
+         unhandled exception shows raw 500 to admin user.
+Where:   custom_admin/views.py (multiple views)
+Why:     Views were written without try/except blocks. Django's DEBUG=False
+         shows generic 500 page with no useful information for the admin.
+Fix:     Wrap all remaining admin GET views with comprehensive try/except
+         that logs the error (to Sentry) and shows a user-friendly error
+         message. See commit cd9798c.
+
+
+================================================================================
+ISSUE 42: Admin Redirects - Misleading 'Could Not Load' Messages
+================================================================================
+What:    Instead of showing a proper 500 error page, some admin views redirect
+         to a page with "Could not load" flash message, hiding the real error
+         and making debugging impossible.
+Where:   custom_admin/views.py (multiple views - analytics, content mgmt, etc.)
+Why:     Redirect-on-error pattern was used instead of raising proper HTTP
+         errors. The redirect loses the original error context.
+Fix:     Replace redirect-on-error with raise Http404 or raise HttpResponseServerError
+         (raw 500). Add comprehensive try/except with logging before raising.
+         See commit 04fbedf.
+
+
+================================================================================
+ISSUE 43: Admin URL Names - teacherdeletion_requests Typo
+================================================================================
+What:    Admin template references {% url 'teacherdeletion_requests' %} but
+         the correct URL name is teacher_deletion_requests (with underscore).
+         Causes NoReverseMatch error.
+Where:   custom_admin/templates/custom_admin/manage_teachers.html
+         custom_admin/templates/custom_admin/teacher_profile.html
+Why:     Typo in URL tag: missing underscore between 'teacher' and 'deletion'.
+Fix:     Fix template URL tag: teacherdeletion_requests → teacher_deletion_requests.
+         Also fix any other URL names with missing underscores.
+         See commit e3cadf5.
+
+
+================================================================================
+ISSUE 44: Admin Session Persistence - Student Session Leaking to Admin
+================================================================================
+What:    Admin browser session sometimes shows student dashboard instead of
+         admin dashboard because session cookie is shared between portals.
+Where:   accounts/middleware.py (PortalSecurityMiddleware)
+         elearning_project/settings.py (SESSION_COOKIE_NAME)
+Why:     Both portals (neolearner.onrender.com and calicutadmin.onrender.com)
+         share the same SESSION_COOKIE_NAME ('neolearner_sessionid') and cookie
+         domain. Browser sends the same cookie to both origins.
+Fix:     Set separate SESSION_COOKIE_NAME for admin portal or use
+         SESSION_COOKIE_DOMAIN to restrict. Also add PortalSecurityMiddleware
+         to validate user.user_type against the portal being accessed.
+         See commit b94ea6f, 8314259, 56b327b.
+
+
+================================================================================
+ISSUE 45: Course Thumbnail - cloudinary_url() Broken Return
+================================================================================
+What:    Course thumbnail URL field stores a Cloudinary URL that when passed
+         through cloudinary_url() again, returns a transformed URL that breaks
+         the image. Debug revealed double-transformation.
+Where:   accounts/models.py (Course.image field usage)
+         accounts/views.py (course thumbnail handling)
+         accounts/templates/accounts/* (thumbnail img tags)
+Why:     The image URL returned by Cloudinary's upload is already a full URL.
+         Passing it again through cloudinary_url() adds transformation params
+         on top of an already-transformed URL, breaking Cloudinary's parser.
+Fix:     Return raw Cloudinary URL directly from upload (no second
+         cloudinary_url() call). Remove debug prints. See commit 0b5478e.
+
+
+================================================================================
+ISSUE 46: Course Deletion - No Soft-Delete Cleanup for Resources
+================================================================================
+What:    When a course is soft-deleted (is_deleted=True), its resources are
+         not soft-deleted. Course is hidden from students but resources remain
+         accessible via direct URL.
+Where:   accounts/models.py (Course.delete/soft_delete)
+         accounts/views.py (resource access views)
+Why:     Soft-delete only toggles Course.is_deleted. Cascade does not propagate
+         to CourseResource or Lesson.
+Fix:     On course soft-delete, also set is_deleted=True on all related
+         CourseResource and Lesson. Resource access views check is_deleted
+         and return 404 for deleted resources. See commit 274e7b2.
+
+
+================================================================================
+ISSUE 47: Enrollment - Avatar URL for Unenrolled Students 500
+================================================================================
+What:    Course player crashes when rendering avatar for student who hasn't
+         set a profile photo (image field is None/null). avatar_url property
+         fails.
+Where:   accounts/models.py (CustomUser.avatar_url property)
+Why:     avatar_url property tries to call Cloudinary URL builder on None.
+         No null check before Cloudinary transformation.
+Fix:     Add null check: if self.image is None or empty, return ui-avatars.com
+         fallback URL with initials. See commit 274e7b2.
+
+
+================================================================================
+ISSUE 48: Lesson/Resource Order - No Created_at Default Sort
+================================================================================
+What:    Lessons and resources appear in arbitrary order (PK order) when
+         order field values are equal or NULL.
+Where:   accounts/views.py (course_player, teacher_course_lessons)
+Why:     ORDER BY clause only includes 'order' field. When multiple items
+         have same order value (or NULL), database returns them in unspecified
+         order which may not match creation order.
+Fix:     Add created_at as secondary sort: .order_by('order', 'created_at')
+         for students (oldest first), .order_by('order', '-created_at') for
+         teachers (newest first in edit view). See commit 6b7b15b, 63bf271.
+
+
+================================================================================
+ISSUE 49: Migration 0049 Missing - order Column on CourseResource
+================================================================================
+What:    Admin pending resources, deletion requests, and recycle bin pages
+         crash with "column accounts_courseresource.order does not exist"
+         because the 'order' column was never added to the table.
+Where:   accounts/models.py (CourseResource - the field exists in model)
+         accounts/migrations/ (0049 is missing)
+Why:     Model has order = IntegerField(default=0) but migration 0049 that
+         adds it was never generated/applied. Likely due to squashed migrations
+         or manual DB changes.
+Fix:     Create migration 0049 to ALTER TABLE ADD COLUMN order.
+         See commit 3f227ae.
+
+
+================================================================================
+ISSUE 50: Migration 0048 Missing - LiveClass Table
+================================================================================
+What:    LiveClass model exists in models.py but migration 0048 that creates
+         the table was never generated. Causes "relation does not exist" error
+         on fresh DB.
+Where:   accounts/models.py (LiveClass model)
+         accounts/migrations/ (0048 is missing)
+Why:     Model was added to models.py but makemigrations was not run, or
+         migration was deleted/lost.
+Fix:     Create migration 0048 to CREATE TABLE accounts_liveclass.
+         See commit 63bf271.
+
+
+================================================================================
+ISSUE 51: WebSocket - Django Channels Not in INSTALLED_APPS
+================================================================================
+What:    ASGI application fails with "cannot import channels" because
+         'channels' is not in INSTALLED_APPS. Daphne starts but routing fails.
+Where:   elearning_project/settings.py (INSTALLED_APPS)
+         elearning_project/asgi.py (ProtocolTypeRouter import)
+Why:     'channels' app must be listed in INSTALLED_APPS for Django to
+         discover the channel layer and consumer routing.
+Fix:     Add 'channels' to INSTALLED_APPS in settings.py.
+         See commit 6354db3.
+
+
+================================================================================
+ISSUE 52: WebSocket - In-Memory Channel Layer as Redis Fallback
+================================================================================
+What:    WebSocket connections fail when REDIS_URL is not set (Render free
+         tier doesn't include Redis). Django Channels requires a channel layer.
+Where:   elearning_project/settings.py (CHANNEL_LAYERS)
+Why:     Channels requires either Redis channel layer (production) or in-memory
+         layer (development). On Render free tier, no Redis is available.
+Fix:     Use Redis channel layer when REDIS_URL is set, fall back to
+         InMemoryChannelLayer when not. Add import fallback:
+           try: from channels.layers import InMemoryChannelLayer
+           except: pass
+         See commit 6354db3.
+
+
+================================================================================
+ISSUE 53: Supabase Storage List - v2.16 SDK list() URL Broken
+================================================================================
+What:    supabase.storage.from_('bucket').list() constructs wrong URL path
+         (same /rest/v1 issue as ISSUE 1). Pagination breaks.
+Where:   accounts/utils/supabase_storage.py (list_files function)
+Why:     Same supabase-py v2.16 URL construction bug. The SDK builds:
+         /rest/v1/storage/v1/object/list/ instead of /storage/v1/object/list/
+Fix:     Use direct HTTP GET /storage/v1/object/list/{bucket_id} with
+         Authorization header instead of SDK list() method.
+         See commit e303d0f.
+
+
+================================================================================
+ISSUE 54: Cron Trigger - Middleware Auth Blocking Public URL
+================================================================================
+What:    Cron-job.org POST to /customadmin/backup-center/cron-trigger/ gets
+         blocked by PortalSecurityMiddleware because URL is behind admin prefix
+         and request has no authenticated session.
+Where:   accounts/middleware.py (PortalSecurityMiddleware.process_request)
+         accounts/urls.py (backup_cron_trigger URL pattern)
+Why:     Middleware checks if URL starts with /customadmin/ and if user is
+         authenticated. Cron requests have no session → redirected to login.
+Fix:     Add backup_cron_trigger to PUBLIC_URLS whitelist in middleware.
+         Also add @csrf_exempt to the view. Use token parameter for auth.
+         See commit d1e4a2b.
+
+
+================================================================================
+ISSUE 55: Daily Backup - 15-Day Retention Too Long for Free Tier
+================================================================================
+What:    Daily backup retention was set to 15 days, consuming too much space
+         on free Supabase storage (500MB limit) and Google Drive (15GB limit).
+Where:   accounts/management/commands/backup_daily_full.py (retention logic)
+Why:     Default retention was conservative (15 days) but free tiers have
+         strict storage limits. SQL dumps can be 50-200MB each.
+Fix:     Change retention to 5 days. Also upload to Google Drive as extra
+         safety net. Delete files older than 5 days from backup Supabase
+         storage and Google Drive folder. See commit fcd6f45.
+
+
+================================================================================
+ISSUE 56: Daily Backup - Upload URL Not Included in Error Messages
+================================================================================
+What:    When daily backup upload fails, error message does not include the
+         upload URL being used, making debugging impossible.
+Where:   accounts/management/commands/backup_daily_full.py (upload section)
+Why:     Exception handler catches error but doesn't log the full URL.
+Fix:     Include upload URL in error message string. See commit 325e304.
+
+
+================================================================================
+ISSUE 57: Env Var - BACKUP_DATABASE_URL Password # Encoding
+================================================================================
+What:    PostgreSQL connection fails because password contains '#' character
+         which is interpreted as URL fragment separator.
+Where:   .env file (BACKUP_DATABASE_URL value)
+         accounts/utils/drive_backup_service.py (URL parsing)
+Why:     # in URL is reserved for fragment identifier. libpq truncates the
+         password at #, causing authentication failure.
+Fix:     URL-encode # as %23 in the connection string. Also add
+         ?sslmode=require to force SSL. See AGENTS.md and .env config.
+
+
+================================================================================
+ISSUE 58: Edge Function - Deploy via CLI Needs SUPABASE_ACCESS_TOKEN
+================================================================================
+What:    'supabase functions deploy drive-backup' fails with "Access token
+         not provided." Cannot deploy via CLI without login or env var.
+Where:   supabase/functions/drive-backup/index.ts
+         supabase/DEPLOY_EDGE_FUNCTION.md
+Why:     supabase CLI requires authentication via supabase login (browser
+         flow) or SUPABASE_ACCESS_TOKEN env var. Neither was set up.
+Fix:     Two options available:
+         (a) Run 'supabase login' interactively, then deploy
+         (b) Set SUPABASE_ACCESS_TOKEN env var from Supabase dashboard
+             (Settings → API → Access Token → Generate token)
+         (c) Alternative: paste code via Supabase dashboard web editor
+             (Edge Functions → drive-backup → Edit → paste → Deploy)
+         See DEPLOY_EDGE_FUNCTION.md for instructions.
+
+================================================================================
+                        END OF BUG LOG
+================================================================================
