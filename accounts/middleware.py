@@ -37,6 +37,7 @@ _PUBLIC_URL_NAMES = frozenset([
     'verify_otp', 'reset_password', 'logout', 'admin_logout',
     'student_view_auth', 'teacher_view_auth', 'health_check', 'firebase_health_check', 'status_page',
     'trigger_backup', 'backup_cron_trigger', 'dismiss_updates',
+    'api_get_signed_upload_url',
 ])
 
 # Pre-compute student/teacher URL names as sets
