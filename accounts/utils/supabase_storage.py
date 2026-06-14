@@ -183,6 +183,10 @@ def create_signed_upload_url(file_path: str, expires_in: int = 3600):
             file_path = file_path[1:]
         res = supabase.storage.from_(video_bucket).create_signed_upload_url(file_path)
         if isinstance(res, dict) and 'signed_url' in res:
+            signed_url = res.get('signed_url', '')
+            if '/storage/v1' in signed_url and '/storage/v1/' not in signed_url:
+                signed_url = signed_url.replace('/storage/v1', '/storage/v1/', 1)
+                res['signed_url'] = signed_url
             return res
         return res
     except Exception as e:
@@ -203,7 +207,13 @@ def get_signed_upload_url_for_browser(bucket: str, file_path: str, use_resource:
             file_path = file_path[1:]
         res = client.storage.from_(bucket).create_signed_upload_url(file_path)
         if isinstance(res, dict):
-            return res.get('signed_url')
+            signed_url = res.get('signed_url', '')
+            # FIX: storage3 v2.16.0 create_signed_upload_url has a bug -
+            # constructs URLs missing '/' between base path and object path
+            # e.g. ".../storage/v1object/..." instead of ".../storage/v1/object/..."
+            if '/storage/v1' in signed_url and '/storage/v1/' not in signed_url:
+                signed_url = signed_url.replace('/storage/v1', '/storage/v1/', 1)
+            return signed_url
         return str(res) if res else None
     except Exception as e:
         logger.error(f'Signed upload URL error for {bucket}/{file_path}: {e}')

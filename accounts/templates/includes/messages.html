@@ -1,34 +1,22 @@
-{% if messages %}
-<div id="notification-hub" class="notification-hub">
-    <div id="toast-container" class="toast-container">
-        {% if messages %}
-            <div class="toast-card toast-info animate-slide-in" role="alert" aria-live="polite" style="max-width: 450px;">
-                <div class="toast-content" style="padding: 20px;">
+<div id="toast-container" class="toast-container">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="toast-card toast-{% if message.tags == 'error' %}error{% elif message.tags == 'success' %}success{% elif message.tags == 'warning' %}warning{% else %}info{% endif %} animate-slide-in" role="alert" aria-live="polite">
+                <div class="toast-content">
                     <div class="toast-icon">
-                        <i class="fas fa-bell"></i>
+                        <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% else %}fa-info-circle{% endif %}"></i>
                     </div>
                     <div class="toast-body">
-                        <div class="toast-title" style="margin-bottom: 12px; border-bottom: 2px solid rgba(0,0,0,0.05); padding-bottom: 8px;">System Notifications</div>
-                        <div class="messages-list" style="display: flex; flex-direction: column; gap: 10px;">
-                            {% for message in messages %}
-                                <div class="toast-message" style="font-size: 14px; display: flex; align-items: flex-start; gap: 8px;">
-                                    <span style="flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; background: 
-                                        {% if message.tags == 'success' %}var(--toast-success-bg){% elif message.tags == 'error' %}var(--toast-error-bg){% elif message.tags == 'warning' %}var(--toast-warning-bg){% else %}var(--toast-info-bg){% endif %};">
-                                        {% if message.tags == 'success' %}✓{% elif message.tags == 'error' %}✕{% elif message.tags == 'warning' %}!{% else %}i{% endif %}
-                                    </span>
-                                    <span style="flex: 1;">{{ message }}</span>
-                                </div>
-                            {% endfor %}
-                        </div>
+                        <div class="toast-title">{% if message.tags == 'error' %}Error{% elif message.tags == 'success' %}Success{% elif message.tags == 'warning' %}Warning{% else %}Note{% endif %}</div>
+                        <div class="toast-message">{{ message }}</div>
                     </div>
-                    <button class="toast-close" onclick="Toast.dismiss(this.parentElement.parentElement)" aria-label="Close notification" style="margin-top: -10px;">&times;</button>
+                    <button class="toast-close" onclick="Toast.dismiss(this.parentElement.parentElement)">&times;</button>
                 </div>
                 <div class="toast-progress"></div>
             </div>
-        {% endif %}
-    </div>
+        {% endfor %}
+    {% endif %}
 </div>
-{% endif %}
 
 <style>
     :root {

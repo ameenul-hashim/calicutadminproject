@@ -267,6 +267,15 @@
             progress.style.display = 'none';
         }
 
+        function showError(errMsg) {
+            var display = document.getElementById('file-name-display');
+            var label = document.getElementById('upload-label');
+            display.innerText = '\u274c ' + errMsg;
+            label.style.borderColor = '#ef4444';
+            label.style.background = '#fef2f2';
+            try { Toast.error(errMsg); } catch(e) {}
+        }
+
         async function uploadFileToSupabase(file) {
             var progress = document.getElementById('upload-progress');
             progress.style.display = 'block';
@@ -312,7 +321,7 @@
 
             // Desktop: PDF only
             if (!isMobile && !isPDF) {
-                Toast.error("Only PDF files are allowed on desktop devices. Please upload a PDF document not exceeding 200 KB.");
+                showError("Only PDF files are allowed on desktop devices. Please upload a PDF document not exceeding 200 KB.");
                 input.value = "";
                 resetUploadUI('Select qualification document');
                 return;
@@ -320,7 +329,7 @@
 
             // Unsupported format
             if (!isPDF && !isImage) {
-                Toast.error("Unsupported file format. Please upload a PDF or supported image.");
+                showError("Unsupported file format. Please upload a PDF or supported image.");
                 input.value = "";
                 resetUploadUI('Select qualification document');
                 return;
@@ -328,7 +337,7 @@
 
             // PDF size check
             if (isPDF && file.size > 200 * 1024) {
-                Toast.error("PDF size exceeds the maximum limit of 200 KB. Please upload a smaller PDF.");
+                showError("PDF size exceeds the maximum limit of 200 KB. Please upload a smaller PDF.");
                 input.value = "";
                 resetUploadUI('Select qualification document');
                 return;
@@ -336,7 +345,7 @@
 
             // Image size check (will be converted to PDF first)
             if (isImage && file.size > 10 * 1024 * 1024) {
-                Toast.error("Image file is too large. Please choose a smaller image (max 10 MB).");
+                showError("Image file is too large. Please choose a smaller image (max 10 MB).");
                 input.value = "";
                 resetUploadUI('Select qualification document');
                 return;
@@ -356,7 +365,7 @@
                     label.style.background = "#f0fdf4";
                 }).catch(function(err) {
                     setLoading(false, 'Register as Teacher');
-                    Toast.error(err.message || "Upload failed. Please try again.");
+                    showError(err.message || "Upload failed. Please try again.");
                     input.value = "";
                     resetUploadUI('Select qualification document');
                 });
@@ -370,7 +379,7 @@
                 convertImageToPdf(file).then(function(pdfFile) {
                     if (pdfFile.size > 200 * 1024) {
                         setLoading(false, 'Register as Teacher');
-                        Toast.error("Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.");
+                        showError("Unable to convert the image into a PDF smaller than 200 KB. Please choose a smaller or lower-resolution image.");
                         input.value = "";
                         resetUploadUI('Select qualification document');
                         return;
@@ -386,7 +395,7 @@
                     }
                 }).catch(function(err) {
                     setLoading(false, 'Register as Teacher');
-                    Toast.error(err.message || "Upload failed. Please try again.");
+                    showError(err.message || "Upload failed. Please try again.");
                     input.value = "";
                     resetUploadUI('Select qualification document');
                 });
